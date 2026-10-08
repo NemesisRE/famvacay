@@ -1,0 +1,45 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+model UserProfile {
+  id             String         @id @default(uuid())
+  homeLocation   String         // Postal code / City
+  originAirports String[]       // e.g. ["STR", "FKB", "FRA", "BSL"]
+  federalState   String         // e.g. "DE-BW"
+  childrenAges   Int[]          // e.g. [4, 8]
+  blackoutRanges BlackoutDate[]
+  trips          TripPlan[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model BlackoutDate {
+  id            String      @id @default(uuid())
+  startDate     DateTime
+  endDate       DateTime
+  reason        String?
+  userProfileId String
+  userProfile   UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+}
+
+model TripPlan {
+  id              String      @id @default(uuid())
+  destinationType String      // "BEACH", "CITY", "NATURE", "SKI"
+  targetRegion    String?     // Specific airport/country or null for auto-discovery
+  durationDays    Int         // e.g. 10
+  earliestDate    DateTime
+  latestDate      DateTime
+  maxBudgetTotal  Float?
+  userProfileId   String
+  userProfile     UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+

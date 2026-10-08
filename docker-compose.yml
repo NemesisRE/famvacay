@@ -1,0 +1,97 @@
+# Hardened Docker Compose Configuration for FamVacay
+# Strict network isolation: backend-internal has internal: true (no outbound internet or host exposure)
+# Only web joins proxy-network to be exposed via host reverse proxy (Traefik, Nginx, NPM, Caddy)
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: famvacay:latest
+    container_name: famvacay-web
+    restart: unless-stopped
+    expose:
+      - "3000"
+    # Optional direct host port mapping if reverse proxy runs outside docker networks:
+    # ports:
+    #   - "${WEB_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - APP_URL=${APP_URL:-http://localhost:3000}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-localhost:3000}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-famvacay}:${POSTGRES_PASSWORD:-supersecret123}@postgres:5432/${POSTGRES_DB:-famvacay_db}?schema=public
+      - REDIS_URL=redis://redis:6379
+      - AMADEUS_CLIENT_ID=${AMADEUS_CLIENT_ID:-}
+      - AMADEUS_CLIENT_SECRET=${AMADEUS_CLIENT_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend-internal
+      - proxy-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: famvacay-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-famvacay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-supersecret123}
+      POSTGRES_DB: ${POSTGRES_DB:-famvacay_db}
+    expose:
+      - "5432" # STRICT: No host port binding to prevent leakage
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-famvacay} -d ${POSTGRES_DB:-famvacay_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: famvacay-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    expose:
+      - "6379" # STRICT: No host port binding
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  # Internal bridge network strictly isolated from host and external networks
+  backend-internal:
+    driver: bridge
+    internal: true
+
+  # External network for your existing reverse proxy (Traefik, Nginx, Caddy, etc.)
+  # Run `docker network create proxy-network` if it does not yet exist.
+  proxy-network:
+    external: true
+

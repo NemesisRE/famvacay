@@ -1,0 +1,8 @@
+node_modules
+.next
+.env*.local
+coverage
+.turbo
+dist
+test-results
+
