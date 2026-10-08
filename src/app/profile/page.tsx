@@ -7,8 +7,6 @@ import {
   Users,
   MapPin,
   Calendar,
-  Plane,
-  Shield,
   Plus,
   Trash2,
   CheckCircle2,
@@ -16,6 +14,7 @@ import {
   Clock,
   Compass,
 } from 'lucide-react';
+import { useI18n } from '@/lib/i18n/i18n-context';
 
 interface FamilyMemberForm {
   firstName: string;
@@ -27,14 +26,14 @@ interface FamilyMemberForm {
 }
 
 export default function FamilyProfilePage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
+  const { t } = useI18n();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Profile state
   const [familyName, setFamilyName] = useState('');
   const [homeLocation, setHomeLocation] = useState('Stuttgart, Germany');
   const [federalState, setFederalState] = useState('DE-BW');
@@ -44,7 +43,6 @@ export default function FamilyProfilePage() {
   const [climatePreference, setClimatePreference] = useState('MODERATE');
   const [passportCheckRequired, setPassportCheckRequired] = useState(true);
 
-  // Members list
   const [members, setMembers] = useState<FamilyMemberForm[]>([
     {
       firstName: 'Sarah',
@@ -170,7 +168,7 @@ export default function FamilyProfilePage() {
         throw new Error(data.error || 'Failed to update family profile.');
       }
 
-      setMessage({ type: 'success', text: 'Family profile saved successfully!' });
+      setMessage({ type: 'success', text: t.profile.successSaved });
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Error saving profile.' });
     } finally {
@@ -182,7 +180,7 @@ export default function FamilyProfilePage() {
     return (
       <div className="py-20 text-center">
         <span className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin inline-block"></span>
-        <p className="mt-4 text-xs font-semibold text-slate-500">Loading family profile...</p>
+        <p className="mt-4 text-xs font-semibold text-slate-500">Loading...</p>
       </div>
     );
   }
@@ -194,14 +192,12 @@ export default function FamilyProfilePage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
               <Users className="w-6 h-6 text-blue-600" />
-              Family Vacation Profile
+              {t.profile.title}
             </h1>
-            <p className="text-xs text-slate-500 mt-1">
-              Configure participating family members, birth dates, travel radius, and preferences.
-            </p>
+            <p className="text-xs text-slate-500 mt-1">{t.profile.subtitle}</p>
           </div>
           <span className="text-xs px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-200 self-start sm:self-auto">
-            {members.length} Family Members Registered
+            {members.length} {t.profile.membersBadge}
           </span>
         </div>
 
@@ -223,16 +219,16 @@ export default function FamilyProfilePage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-8 mt-6">
-          {/* Section 1: Geographic & Logistics */}
+          {/* Section 1 */}
           <div className="space-y-4">
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
               <MapPin className="w-4 h-4 text-slate-400" />
-              1. Home Location & School Authority
+              {t.profile.sec1Title}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Family Name (Optional)
+                  {t.profile.familyName}
                 </label>
                 <input
                   type="text"
@@ -245,7 +241,7 @@ export default function FamilyProfilePage() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Home Location (City / ZIP)
+                  {t.profile.homeLocation}
                 </label>
                 <input
                   type="text"
@@ -259,7 +255,7 @@ export default function FamilyProfilePage() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Federal State (School Holidays)
+                  {t.profile.federalState}
                 </label>
                 <select
                   value={federalState}
@@ -276,17 +272,17 @@ export default function FamilyProfilePage() {
             </div>
           </div>
 
-          {/* Section 2: Vacation Preferences */}
+          {/* Section 2 */}
           <div className="space-y-4">
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
               <Compass className="w-4 h-4 text-slate-400" />
-              2. Autonomously Added Travel Attributes
+              {t.profile.sec2Title}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  Max Drive to Airport (Hours)
+                  {t.profile.maxDrive}
                 </label>
                 <input
                   type="number"
@@ -301,31 +297,31 @@ export default function FamilyProfilePage() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Preferred Cabin Class
+                  {t.profile.cabinClass}
                 </label>
                 <select
                   value={preferredCabinClass}
                   onChange={(e) => setPreferredCabinClass(e.target.value)}
                   className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
-                  <option value="ECONOMY">Economy</option>
-                  <option value="PREMIUM_ECONOMY">Premium Economy</option>
-                  <option value="BUSINESS">Business Class</option>
+                  <option value="ECONOMY">{t.profile.economy}</option>
+                  <option value="PREMIUM_ECONOMY">{t.profile.premiumEconomy}</option>
+                  <option value="BUSINESS">{t.profile.business}</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Climate Suitability Preference
+                  {t.profile.climatePref}
                 </label>
                 <select
                   value={climatePreference}
                   onChange={(e) => setClimatePreference(e.target.value)}
                   className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
-                  <option value="WARM">Warm / Tropical (&gt;24°C)</option>
-                  <option value="MODERATE">Moderate (18°C–26°C)</option>
-                  <option value="COOL">Cool / Alpine (&lt;18°C)</option>
+                  <option value="WARM">{t.profile.warm}</option>
+                  <option value="MODERATE">{t.profile.moderate}</option>
+                  <option value="COOL">{t.profile.cool}</option>
                 </select>
               </div>
             </div>
@@ -339,17 +335,17 @@ export default function FamilyProfilePage() {
                 className="rounded text-blue-600 focus:ring-blue-500"
               />
               <label htmlFor="passportCheck" className="text-xs text-slate-700 font-medium">
-                Enforce Passport Expiry Validation (warn if expiry is within 6 months of vacation window)
+                {t.profile.passportCheck}
               </label>
             </div>
           </div>
 
-          {/* Section 3: Family Members Table */}
+          {/* Section 3 */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-slate-400" />
-                3. Family Members & Birth Dates
+                {t.profile.sec3Title}
               </h2>
               <button
                 type="button"
@@ -357,7 +353,7 @@ export default function FamilyProfilePage() {
                 className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Add Family Member
+                {t.profile.addMember}
               </button>
             </div>
 
@@ -369,7 +365,7 @@ export default function FamilyProfilePage() {
                 >
                   <div className="sm:col-span-3">
                     <label className="block text-[10px] font-semibold text-slate-500 uppercase">
-                      Name
+                      {t.profile.name}
                     </label>
                     <input
                       type="text"
@@ -382,23 +378,23 @@ export default function FamilyProfilePage() {
 
                   <div className="sm:col-span-2">
                     <label className="block text-[10px] font-semibold text-slate-500 uppercase">
-                      Role
+                      {t.profile.role}
                     </label>
                     <select
                       value={member.role}
                       onChange={(e) => updateMember(index, 'role', e.target.value)}
                       className="w-full text-xs rounded-lg border border-slate-300 px-2 py-1.5 bg-white"
                     >
-                      <option value="PARENT">Parent</option>
-                      <option value="CHILD">Child</option>
-                      <option value="INFANT">Infant (&lt;2y)</option>
-                      <option value="OTHER">Other</option>
+                      <option value="PARENT">{t.profile.parent}</option>
+                      <option value="CHILD">{t.profile.child}</option>
+                      <option value="INFANT">{t.profile.infant}</option>
+                      <option value="OTHER">{t.profile.other}</option>
                     </select>
                   </div>
 
                   <div className="sm:col-span-3">
                     <label className="block text-[10px] font-semibold text-slate-500 uppercase">
-                      Birth Date
+                      {t.profile.birthDate}
                     </label>
                     <input
                       type="date"
@@ -411,7 +407,7 @@ export default function FamilyProfilePage() {
 
                   <div className="sm:col-span-3">
                     <label className="block text-[10px] font-semibold text-slate-500 uppercase">
-                      Passport Expiry
+                      {t.profile.passportExpiry}
                     </label>
                     <input
                       type="date"
@@ -445,12 +441,12 @@ export default function FamilyProfilePage() {
               {saving ? (
                 <>
                   <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  Saving Profile...
+                  {t.profile.saving}
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  Save Family Profile
+                  {t.profile.saveProfile}
                 </>
               )}
             </button>
@@ -460,4 +456,3 @@ export default function FamilyProfilePage() {
     </div>
   );
 }
-
