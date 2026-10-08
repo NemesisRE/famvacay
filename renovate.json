@@ -1,0 +1,69 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":automergeMinor",
+    "security:openssf-scorecard"
+  ],
+  "timezone": "UTC",
+  "schedule": ["before 5am on Monday"],
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 5,
+  "rebaseWhen": "behind-base-branch",
+  "pinDigests": true,
+  "labels": ["dependencies", "automated"],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "schedule": ["at any time"],
+    "labels": ["security", "vulnerability"],
+    "addLabels": ["security", "high-priority"]
+  },
+  "packageRules": [
+    {
+      "description": "Security advisories and patch alerts immediate PR generation",
+      "matchUpdateTypes": ["vulnerability"],
+      "schedule": ["at any time"],
+      "prHourlyLimit": 0,
+      "prConcurrentLimit": 0
+    },
+    {
+      "description": "Group minor and patch dependencies to minimize pull request noise",
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchPackagePatterns": ["*"],
+      "groupName": "production minor and patch updates",
+      "groupSlug": "prod-minor-patch"
+    },
+    {
+      "description": "Group linters, type checkers, and test frameworks together",
+      "matchDepTypes": ["devDependencies"],
+      "matchPackagePatterns": [
+        "eslint*",
+        "@typescript-eslint/*",
+        "prettier*",
+        "vitest*",
+        "@vitest/*",
+        "@playwright/*",
+        "typescript",
+        "postcss",
+        "autoprefixer",
+        "tailwindcss"
+      ],
+      "groupName": "development & quality toolchain",
+      "groupSlug": "dev-toolchain"
+    },
+    {
+      "description": "Isolated review for major updates",
+      "matchUpdateTypes": ["major"],
+      "schedule": ["before 5am on Monday"],
+      "labels": ["dependencies", "major-update"]
+    },
+    {
+      "description": "Pin GitHub Actions to immutable full commit SHAs with comments",
+      "matchManagers": ["github-actions"],
+      "pinDigests": true
+    }
+  ]
+}
+
