@@ -93,6 +93,7 @@ model FamilyProfile {
   preferredCabinClass   String?        @default("ECONOMY") // ECONOMY, PREMIUM_ECONOMY, BUSINESS
   climatePreference     String?        @default("MODERATE") // WARM, MODERATE, COOL
   passportCheckRequired Boolean        @default(false)
+  travelModes           String[]       @default(["FLIGHT", "CAR"]) // e.g. ["CAR", "TRAIN", "FLIGHT", "CAMPER"]
   membersCount          Int            @default(1)
   members               FamilyMember[]
   blackoutRanges        BlackoutDate[]

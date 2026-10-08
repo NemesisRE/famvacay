@@ -60,3 +60,4 @@ FamVacay enforces strict cross-platform code formatting and normalization standa
 ### 2. `.gitattributes`
 - `* text=auto eol=lf`: Normalizes line endings to LF upon checkout and commit.
 - Binary flags explicitly configured for media formats (`.png`, `.jpg`, `.ico`, `.woff2`).
+

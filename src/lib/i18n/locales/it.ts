@@ -66,6 +66,12 @@ export const it: TranslationDictionary = {
     moderate: 'Temperato (18°C–26°C)',
     cool: 'Fresco / Alpino (<18°C)',
     passportCheck: 'Controllo validità passaporto (avviso se scade entro 6 mesi)',
+    travelModesLabel: 'Mezzi di trasporto preferiti',
+    travelModesHint: 'Seleziona tutti i mezzi di trasporto adatti alla tua famiglia.',
+    modeCar: 'Auto / In viaggio',
+    modeTrain: 'Treno / Rotaia',
+    modeFlight: 'Aereo / Volo',
+    modeCamper: 'Camper / Roulotte',
     sec3Title: '3. Membri della Famiglia & Date di Nascita',
     addMember: 'Aggiungi membro',
     name: 'Nome',
@@ -102,3 +108,4 @@ export const it: TranslationDictionary = {
     footer: 'FamVacay — Motore di ottimizzazione vacanze familiari — Multi-Arch Container Ready',
   },
 };
+

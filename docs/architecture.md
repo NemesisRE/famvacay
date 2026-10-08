@@ -99,6 +99,7 @@ model FamilyProfile {
   preferredCabinClass   String?        @default("ECONOMY")
   climatePreference     String?        @default("MODERATE")
   passportCheckRequired Boolean        @default(false)
+  travelModes           String[]       @default(["FLIGHT", "CAR"]) // e.g. ["CAR", "TRAIN", "FLIGHT", "CAMPER"]
   membersCount          Int            @default(1)
   members               FamilyMember[]
   blackoutRanges        BlackoutDate[]
@@ -149,3 +150,4 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
 | `POST` | `/api/family-profile` | Create or update family profile |
 | `POST` | `/api/vacations/optimize` | Execute CSP vacation optimization engine |
 | `GET` | `/api/health` | Application, database, and Redis health check |
+

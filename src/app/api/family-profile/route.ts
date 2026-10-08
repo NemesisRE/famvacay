@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
       preferredCabinClass,
       climatePreference,
       passportCheckRequired,
+      travelModes,
       members,
       blackoutRanges,
     } = body;
@@ -72,6 +73,11 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Default travel modes to ['FLIGHT', 'CAR'] if omitted
+    const sanitizedTravelModes = Array.isArray(travelModes) && travelModes.length > 0
+      ? travelModes
+      : ['FLIGHT', 'CAR'];
 
     // Upsert FamilyProfile
     const profile = await prisma.familyProfile.upsert({
@@ -85,6 +91,7 @@ export async function POST(req: NextRequest) {
         preferredCabinClass: preferredCabinClass || 'ECONOMY',
         climatePreference: climatePreference || 'MODERATE',
         passportCheckRequired: Boolean(passportCheckRequired),
+        travelModes: sanitizedTravelModes,
         membersCount: Array.isArray(members) ? members.length : 1,
       },
       create: {
@@ -97,6 +104,7 @@ export async function POST(req: NextRequest) {
         preferredCabinClass: preferredCabinClass || 'ECONOMY',
         climatePreference: climatePreference || 'MODERATE',
         passportCheckRequired: Boolean(passportCheckRequired),
+        travelModes: sanitizedTravelModes,
         membersCount: Array.isArray(members) ? members.length : 1,
       },
     });

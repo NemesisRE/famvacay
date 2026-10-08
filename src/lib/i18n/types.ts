@@ -74,6 +74,12 @@ export interface TranslationDictionary {
     moderate: string;
     cool: string;
     passportCheck: string;
+    travelModesLabel: string;
+    travelModesHint: string;
+    modeCar: string;
+    modeTrain: string;
+    modeFlight: string;
+    modeCamper: string;
     sec3Title: string;
     addMember: string;
     name: string;
@@ -110,3 +116,4 @@ export interface TranslationDictionary {
     footer: string;
   };
 }
+

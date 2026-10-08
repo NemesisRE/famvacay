@@ -42,6 +42,17 @@ export default function FamilyProfilePage() {
   const [preferredCabinClass, setPreferredCabinClass] = useState('ECONOMY');
   const [climatePreference, setClimatePreference] = useState('MODERATE');
   const [passportCheckRequired, setPassportCheckRequired] = useState(true);
+  const [travelModes, setTravelModes] = useState<string[]>(['FLIGHT', 'CAR']);
+
+  const toggleTravelMode = (mode: string) => {
+    if (travelModes.includes(mode)) {
+      if (travelModes.length > 1) {
+        setTravelModes(travelModes.filter((m) => m !== mode));
+      }
+    } else {
+      setTravelModes([...travelModes, mode]);
+    }
+  };
 
   const [members, setMembers] = useState<FamilyMemberForm[]>([
     {
@@ -98,6 +109,9 @@ export default function FamilyProfilePage() {
             setPreferredCabinClass(p.preferredCabinClass || 'ECONOMY');
             setClimatePreference(p.climatePreference || 'MODERATE');
             setPassportCheckRequired(p.passportCheckRequired ?? true);
+            if (Array.isArray(p.travelModes) && p.travelModes.length > 0) {
+              setTravelModes(p.travelModes);
+            }
 
             if (p.members && p.members.length > 0) {
               setMembers(
@@ -159,6 +173,7 @@ export default function FamilyProfilePage() {
           preferredCabinClass,
           climatePreference,
           passportCheckRequired,
+          travelModes,
           members,
         }),
       });
@@ -337,6 +352,38 @@ export default function FamilyProfilePage() {
               <label htmlFor="passportCheck" className="text-xs text-slate-700 font-medium">
                 {t.profile.passportCheck}
               </label>
+            </div>
+
+            {/* Travel Modes (Multi-Select) */}
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <label className="block text-xs font-semibold text-slate-700">
+                {t.profile.travelModesLabel}
+              </label>
+              <p className="text-[11px] text-slate-500">{t.profile.travelModesHint}</p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[
+                  { id: 'CAR', label: t.profile.modeCar },
+                  { id: 'TRAIN', label: t.profile.modeTrain },
+                  { id: 'FLIGHT', label: t.profile.modeFlight },
+                  { id: 'CAMPER', label: t.profile.modeCamper },
+                ].map((mode) => {
+                  const isSelected = travelModes.includes(mode.id);
+                  return (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => toggleTravelMode(mode.id)}
+                      className={`text-xs px-3.5 py-2 rounded-xl border font-semibold transition-all ${
+                        isSelected
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {mode.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 

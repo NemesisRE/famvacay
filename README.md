@@ -9,7 +9,7 @@
 [![Redis](https://img.shields.io/badge/Redis-7--alpine-DC382D.svg)](https://redis.io/)
 [![Docker](https://img.shields.io/badge/Docker-Multi--Arch-2496ED.svg)](Dockerfile)
 [![Coverage](https://img.shields.io/badge/Coverage-96.06%25-brightgreen.svg)](docs/development.md)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 
 Planning memorable family vacations shouldn't require juggling multiple spreadsheets, manually checking school calendars, or paying peak-season flight prices.
 
@@ -67,5 +67,5 @@ Detailed technical guides, deployment blueprints, and dependency strategies are 
 ---
 
 ## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
+ 
+This project is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE) to ensure strong copyleft protection, including network use and hosted services.
