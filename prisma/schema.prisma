@@ -8,38 +8,132 @@ generator client {
   binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x"]
 }
 
-model UserProfile {
-  id             String         @id @default(uuid())
-  homeLocation   String         // Postal code / City
-  originAirports String[]       // e.g. ["STR", "FKB", "FRA", "BSL"]
-  federalState   String         // e.g. "DE-BW"
-  childrenAges   Int[]          // e.g. [4, 8]
-  blackoutRanges BlackoutDate[]
-  trips          TripPlan[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+// -------------------------------------------------------------
+// Authentication Models (NextAuth + WebAuthn/Passkey support)
+// -------------------------------------------------------------
+
+model User {
+  id            String          @id @default(uuid())
+  name          String?
+  email         String?         @unique
+  emailVerified DateTime?
+  passwordHash  String?         // For Email/Password credential login
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  passkeys      Authenticator[]
+  familyProfile FamilyProfile?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// WebAuthn / Passkey Authenticator credential
+model Authenticator {
+  credentialID         String  @id
+  userId               String
+  providerAccountId    String
+  credentialPublicKey  String
+  counter              BigInt
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, credentialID])
+}
+
+// -------------------------------------------------------------
+// Multi-User Family Profile Models
+// -------------------------------------------------------------
+
+model FamilyProfile {
+  id                    String         @id @default(uuid())
+  userId                String         @unique
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyName            String?
+  homeLocation          String         // Postal code / City / Address
+  federalState          String         // e.g., "DE-BW", "DE-BY", "DE-HE"
+  originAirports        String[]       // e.g., ["STR", "FKB", "FRA", "BSL"]
+  maxDrivingHours       Float?         @default(2.5) // Max acceptable drive to departure airport
+  preferredCabinClass   String?        @default("ECONOMY") // ECONOMY, PREMIUM_ECONOMY, BUSINESS
+  climatePreference     String?        @default("MODERATE") // WARM, MODERATE, COOL
+  passportCheckRequired Boolean        @default(false)
+  membersCount          Int            @default(1)
+  members               FamilyMember[]
+  blackoutRanges        BlackoutDate[]
+  trips                 TripPlan[]
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+}
+
+model FamilyMember {
+  id              String        @id @default(uuid())
+  familyProfileId String
+  familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
+  firstName       String?
+  role            String        // "PARENT", "CHILD", "INFANT", "OTHER"
+  birthDate       DateTime
+  schoolRequired  Boolean       @default(false)
+  passportExpiry  DateTime?
+  specialDiet     String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model BlackoutDate {
-  id            String      @id @default(uuid())
-  startDate     DateTime
-  endDate       DateTime
-  reason        String?
-  userProfileId String
-  userProfile   UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  id              String        @id @default(uuid())
+  startDate       DateTime
+  endDate         DateTime
+  reason          String?
+  familyProfileId String
+  familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
 }
 
 model TripPlan {
-  id              String      @id @default(uuid())
-  destinationType String      // "BEACH", "CITY", "NATURE", "SKI"
-  targetRegion    String?     // Specific airport/country or null for auto-discovery
-  durationDays    Int         // e.g. 10
+  id              String        @id @default(uuid())
+  destinationType String        // "BEACH", "CITY", "NATURE", "SKI"
+  targetRegion    String?       // Specific airport/country or null for auto-discovery
+  durationDays    Int           // e.g. 10
   earliestDate    DateTime
   latestDate      DateTime
   maxBudgetTotal  Float?
-  userProfileId   String
-  userProfile     UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  familyProfileId String
+  familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
-
