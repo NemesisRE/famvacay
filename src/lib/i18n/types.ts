@@ -12,19 +12,19 @@ export const SUPPORTED_LOCALES: { code: SupportedLocale; name: string; flag: str
 
 export interface TranslationDictionary {
   nav: {
-    tagline: string;
     familyProfile: string;
     signIn: string;
     signOut: string;
-    health: string;
   };
   home: {
     heroBadge: string;
     heroTitle: string;
     heroDescription: string;
     constraintsTitle: string;
+    countryLabel: string;
     homeStateLabel: string;
     airportsLabel: string;
+    airportsHint: string;
     childrenAgesLabel: string;
     childrenAgesHint: string;
     tripTypeLabel: string;
@@ -32,10 +32,20 @@ export interface TranslationDictionary {
     city: string;
     nature: string;
     ski: string;
+    targetDestinationLabel: string;
+    allDestinations: string;
     durationLabel: string;
+    durationMinLabel: string;
+    durationMaxLabel: string;
     earliestDateLabel: string;
     latestDateLabel: string;
     blackoutFilterTitle: string;
+    addBlackout: string;
+    removeBlackout: string;
+    noBlackouts: string;
+    blackoutStart: string;
+    blackoutEnd: string;
+    prefilledFromProfile: string;
     runOptimization: string;
     optimizing: string;
     resultsTitle: string;
@@ -46,6 +56,7 @@ export interface TranslationDictionary {
     noResultsHint: string;
     arbitrageBadge: string;
     arbitrageSaving: string;
+    seasonalWarningBadge: string;
     days: string;
     ptoConsumed: string;
     ptoSaved: string;
@@ -62,6 +73,7 @@ export interface TranslationDictionary {
     sec1Title: string;
     familyName: string;
     homeLocation: string;
+    country: string;
     federalState: string;
     sec2Title: string;
     maxDrive: string;
@@ -80,6 +92,11 @@ export interface TranslationDictionary {
     modeTrain: string;
     modeFlight: string;
     modeCamper: string;
+    blackoutDatesTitle: string;
+    blackoutDatesDesc: string;
+    addBlackout: string;
+    removeBlackout: string;
+    noBlackouts: string;
     sec3Title: string;
     addMember: string;
     name: string;

@@ -10,7 +10,7 @@ import {
 import { calculatePtoDaysConsumed } from './pto-calculator';
 import { calculatePassengerCostMultiplier } from './child-tiers';
 import { NEIGHBORING_STATES, SUPPORTED_ORIGIN_AIRPORTS, calculateDistanceKm } from './arbitrage';
-import { POPULAR_DESTINATIONS, getEstimatedClimate } from './weather';
+import { POPULAR_DESTINATIONS, getEstimatedClimate, getDestinationSeasonalWarning } from './weather';
 
 /**
  * Filter blackout dates: Checks if [candidateStart, candidateEnd] overlaps with any blackout range.
@@ -83,7 +83,16 @@ export function optimizeVacationWindows(
   publicHolidaysByState: Record<string, PublicHoliday[]>,
   weights: OptimizationWeights = DEFAULT_WEIGHTS
 ): CandidateWindow[] {
-  const { userProfile, durationDays, earliestDate, latestDate, destinationType, targetRegion } = input;
+  const { userProfile, earliestDate, latestDate, destinationType, targetRegion } = input;
+  const minDuration = input.durationDaysMin || input.durationDays;
+  const maxDuration = input.durationDaysMax || input.durationDays;
+
+  // Merge profile blackouts and ad-hoc search blackouts
+  const allBlackouts = [
+    ...(userProfile.blackoutRanges || []),
+    ...(input.searchBlackouts || []),
+  ];
+
   const hasSchoolKids = userProfile.childrenAges.some((age) => age >= 6);
   const homeState = userProfile.federalState;
   const homeSchoolHolidays = schoolHolidaysByState[homeState] || [];
@@ -114,111 +123,116 @@ export function optimizeVacationWindows(
   const earliest = parseISO(earliestDate);
   const latest = parseISO(latestDate);
 
-  // Generate candidate dates
-  let currentDate = earliest;
-  while (true) {
-    const windowEnd = addDays(currentDate, durationDays - 1);
-    if (isAfter(windowEnd, latest)) {
-      break;
-    }
+  // Generate candidate dates across flexible duration range
+  for (let durationDays = minDuration; durationDays <= maxDuration; durationDays++) {
+    let currentDate = earliest;
+    while (true) {
+      const windowEnd = addDays(currentDate, durationDays - 1);
+      if (isAfter(windowEnd, latest)) {
+        break;
+      }
 
-    const startStr = format(currentDate, 'yyyy-MM-dd');
-    const endStr = format(windowEnd, 'yyyy-MM-dd');
-    const monthIndex = currentDate.getMonth();
+      const startStr = format(currentDate, 'yyyy-MM-dd');
+      const endStr = format(windowEnd, 'yyyy-MM-dd');
+      const monthIndex = currentDate.getMonth();
 
-    // 1. Blackout Filtering
-    if (overlapsWithBlackout(startStr, endStr, userProfile.blackoutRanges)) {
-      currentDate = addDays(currentDate, 1);
-      continue;
-    }
-
-    // 2. School Holiday Enforcement (for home state)
-    let homeInsideHoliday = true;
-    if (hasSchoolKids) {
-      homeInsideHoliday = isWithinSchoolHoliday(startStr, endStr, homeSchoolHolidays);
-      if (!homeInsideHoliday) {
+      // 1. Blackout Filtering
+      if (overlapsWithBlackout(startStr, endStr, allBlackouts)) {
         currentDate = addDays(currentDate, 1);
         continue;
       }
-    }
 
-    // 3. PTO consumption calculation
-    const ptoInfo = calculatePtoDaysConsumed(startStr, endStr, homePublicHolidays);
-
-    // 4. Test each origin airport and destination combination
-    for (const origin of originAirports) {
-      const airportDetails = SUPPORTED_ORIGIN_AIRPORTS[origin];
-      const airportState = airportDetails?.state || homeState;
-      const isArbitrage = airportState !== homeState;
-
-      // Arbitrage check: If departing from an airport in neighboring state, check if that state is NOT on holiday
-      let arbitrageNote: string | undefined;
-      let arbitrageState: string | undefined;
-
-      if (isArbitrage) {
-        const neighborHolidays = schoolHolidaysByState[airportState] || [];
-        const neighborInHoliday = isWithinSchoolHoliday(startStr, endStr, neighborHolidays);
-        if (!neighborInHoliday) {
-          arbitrageNote = `Arbitrage opportunity: Depart from ${origin} (${airportState}) where schools are in session! Flight fares typically 25-45% lower.`;
-          arbitrageState = airportState;
+      // 2. School Holiday Enforcement (for home state)
+      let homeInsideHoliday = true;
+      if (hasSchoolKids) {
+        homeInsideHoliday = isWithinSchoolHoliday(startStr, endStr, homeSchoolHolidays);
+        if (!homeInsideHoliday) {
+          currentDate = addDays(currentDate, 1);
+          continue;
         }
       }
 
-      for (const dest of candidateDestinations) {
-        // Weather assessment
-        const weather = getEstimatedClimate(dest, monthIndex);
-        if (!weather.isSuitable) {
-          // Weather suitability filter
-          continue;
+      // 3. PTO consumption calculation
+      const ptoInfo = calculatePtoDaysConsumed(startStr, endStr, homePublicHolidays);
+
+      // 4. Test each origin airport and destination combination
+      for (const origin of originAirports) {
+        const airportDetails = SUPPORTED_ORIGIN_AIRPORTS[origin];
+        const airportState = airportDetails?.state || homeState;
+        const isArbitrage = airportState !== homeState;
+
+        // Arbitrage check: If departing from an airport in neighboring state, check if that state is NOT on holiday
+        let arbitrageNote: string | undefined;
+        let arbitrageState: string | undefined;
+
+        if (isArbitrage) {
+          const neighborHolidays = schoolHolidaysByState[airportState] || [];
+          const neighborInHoliday = isWithinSchoolHoliday(startStr, endStr, neighborHolidays);
+          if (!neighborInHoliday) {
+            arbitrageNote = `Arbitrage opportunity: Depart from ${origin} (${airportState}) where schools are in session! Flight fares typically 25-45% lower.`;
+            arbitrageState = airportState;
+          }
         }
 
-        // Base price calculation with simulated pricing model & arbitrage discount
-        let baseFare = 140; // Base baseline per adult
-        if (monthIndex >= 6 && monthIndex <= 7) {
-          baseFare = 280; // Peak summer season
-        } else if (monthIndex === 3 || monthIndex === 4 || monthIndex === 9) {
-          baseFare = 190; // Shoulder season
+        for (const dest of candidateDestinations) {
+          // Weather assessment
+          const weather = getEstimatedClimate(dest, monthIndex);
+          if (!weather.isSuitable) {
+            // Weather suitability filter
+            continue;
+          }
+
+          const seasonalWarning = getDestinationSeasonalWarning(dest, monthIndex);
+
+          // Base price calculation with simulated pricing model & arbitrage discount
+          let baseFare = 140; // Base baseline per adult
+          if (monthIndex >= 6 && monthIndex <= 7) {
+            baseFare = 280; // Peak summer season
+          } else if (monthIndex === 3 || monthIndex === 4 || monthIndex === 9) {
+            baseFare = 190; // Shoulder season
+          }
+
+          // Apply arbitrage discount if schools are NOT on holiday at departure airport
+          if (isArbitrage && arbitrageNote) {
+            baseFare = Math.round(baseFare * 0.70); // 30% arbitrage discount
+          }
+
+          const totalCost = Math.round(baseFare * pCostMultiplier);
+          const perPersonCost = Math.round(totalCost / (2 + userProfile.childrenAges.length));
+
+          // Budget check
+          if (input.maxBudgetTotal && totalCost > input.maxBudgetTotal) {
+            continue;
+          }
+
+          const ptoEfficiencyRatio = ptoInfo.ptoDaysConsumed > 0
+            ? Math.round((durationDays / ptoInfo.ptoDaysConsumed) * 10) / 10
+            : durationDays * 2;
+
+          candidatePool.push({
+            startDate: startStr,
+            endDate: endStr,
+            durationDays,
+            originAirport: origin,
+            destinationAirport: dest,
+            totalWeekdays: ptoInfo.totalWeekdays,
+            publicHolidaysCount: ptoInfo.publicHolidaysCount,
+            ptoDaysConsumed: ptoInfo.ptoDaysConsumed,
+            ptoEfficiencyRatio,
+            estimatedTotalCost: totalCost,
+            pricePerPerson: perPersonCost,
+            isCachedBenchmark: true,
+            weather,
+            seasonalWarning,
+            isArbitrageOpportunity: Boolean(arbitrageNote),
+            arbitrageOriginState: arbitrageState,
+            arbitrageNote,
+          });
         }
-
-        // Apply arbitrage discount if schools are NOT on holiday at departure airport
-        if (isArbitrage && arbitrageNote) {
-          baseFare = Math.round(baseFare * 0.70); // 30% arbitrage discount
-        }
-
-        const totalCost = Math.round(baseFare * pCostMultiplier);
-        const perPersonCost = Math.round(totalCost / (2 + userProfile.childrenAges.length));
-
-        // Budget check
-        if (input.maxBudgetTotal && totalCost > input.maxBudgetTotal) {
-          continue;
-        }
-
-        const ptoEfficiencyRatio = ptoInfo.ptoDaysConsumed > 0
-          ? Math.round((durationDays / ptoInfo.ptoDaysConsumed) * 10) / 10
-          : durationDays * 2;
-
-        candidatePool.push({
-          startDate: startStr,
-          endDate: endStr,
-          durationDays,
-          originAirport: origin,
-          destinationAirport: dest,
-          totalWeekdays: ptoInfo.totalWeekdays,
-          publicHolidaysCount: ptoInfo.publicHolidaysCount,
-          ptoDaysConsumed: ptoInfo.ptoDaysConsumed,
-          ptoEfficiencyRatio,
-          estimatedTotalCost: totalCost,
-          pricePerPerson: perPersonCost,
-          isCachedBenchmark: true,
-          weather,
-          isArbitrageOpportunity: Boolean(arbitrageNote),
-          arbitrageOriginState: arbitrageState,
-          arbitrageNote,
-        });
       }
-    }
 
-    currentDate = addDays(currentDate, 1);
+      currentDate = addDays(currentDate, 1);
+    }
   }
 
   if (candidatePool.length === 0) {

@@ -10,11 +10,15 @@ export async function POST(req: NextRequest) {
   try {
     const body: TripPlanInput = await req.json();
 
-    if (!body.userProfile || !body.earliestDate || !body.latestDate || !body.durationDays) {
+    if (!body.userProfile || !body.earliestDate || !body.latestDate || (!body.durationDays && !body.durationDaysMin)) {
       return NextResponse.json(
         { error: 'Invalid input. Missing mandatory parameters.' },
         { status: 400 }
       );
+    }
+
+    if (!body.durationDays && body.durationDaysMin) {
+      body.durationDays = body.durationDaysMin;
     }
 
     const homeState = body.userProfile.federalState || 'DE-BW';

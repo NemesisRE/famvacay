@@ -34,7 +34,59 @@ export const POPULAR_DESTINATIONS: Record<string, DestinationProfile> = {
   // Ski
   INN: { code: 'INN', name: 'Innsbruck Airport', country: 'AT', type: 'SKI', lat: 47.2602, lon: 11.3440, idealMinTemp: -8, idealMaxTemp: 4, maxAcceptablePrecipRisk: 50 },
   GVA: { code: 'GVA', name: 'Geneva Airport', country: 'CH', type: 'SKI', lat: 46.2381, lon: 6.1089, idealMinTemp: -5, idealMaxTemp: 6, maxAcceptablePrecipRisk: 50 },
+
+  // Long-haul / International Destinations with Seasonality
+  BKK: { code: 'BKK', name: 'Bangkok', country: 'TH', type: 'CITY', lat: 13.6900, lon: 100.7501, idealMinTemp: 24, idealMaxTemp: 34, maxAcceptablePrecipRisk: 35 },
+  HND: { code: 'HND', name: 'Tokyo Haneda', country: 'JP', type: 'CITY', lat: 35.5494, lon: 139.7798, idealMinTemp: 10, idealMaxTemp: 28, maxAcceptablePrecipRisk: 35 },
+  CUN: { code: 'CUN', name: 'Cancun Riviera Maya', country: 'MX', type: 'BEACH', lat: 21.0365, lon: -86.8771, idealMinTemp: 22, idealMaxTemp: 33, maxAcceptablePrecipRisk: 35 },
+  DXB: { code: 'DXB', name: 'Dubai', country: 'AE', type: 'CITY', lat: 25.2532, lon: 55.3657, idealMinTemp: 18, idealMaxTemp: 34, maxAcceptablePrecipRisk: 15 },
 };
+
+export interface SeasonalConstraintWarning {
+  destinationCode: string;
+  seasonType: 'MONSOON' | 'EXTREME_HEAT' | 'TYPHOON_HURRICANE' | 'OVERCROWDED_PEAK';
+  monthRange: number[]; // Months 0-11
+  messageKey: string;
+  fallbackMessage: string;
+}
+
+export const DESTINATION_SEASONAL_CONSTRAINTS: SeasonalConstraintWarning[] = [
+  {
+    destinationCode: 'BKK',
+    seasonType: 'MONSOON',
+    monthRange: [5, 6, 7, 8, 9], // June to October
+    messageKey: 'seasonWarningMonsoon',
+    fallbackMessage: 'Monsoon season: Heavy tropical downpours and high humidity.',
+  },
+  {
+    destinationCode: 'DXB',
+    seasonType: 'EXTREME_HEAT',
+    monthRange: [5, 6, 7, 8], // June to September
+    messageKey: 'seasonWarningExtremeHeat',
+    fallbackMessage: 'Extreme summer heat: Daily temperatures consistently exceed 42°C.',
+  },
+  {
+    destinationCode: 'CUN',
+    seasonType: 'TYPHOON_HURRICANE',
+    monthRange: [7, 8, 9], // August to October
+    messageKey: 'seasonWarningHurricane',
+    fallbackMessage: 'Atlantic hurricane season: Elevated risk of tropical storms and squalls.',
+  },
+  {
+    destinationCode: 'HND',
+    seasonType: 'OVERCROWDED_PEAK',
+    monthRange: [2, 3], // Late March to April
+    messageKey: 'seasonWarningCrowdedPeak',
+    fallbackMessage: 'Cherry blossom hyper-peak: Extreme tourist crowding and elevated hotel rates.',
+  },
+];
+
+export function getDestinationSeasonalWarning(destinationCode: string, monthIndex: number): SeasonalConstraintWarning | null {
+  const found = DESTINATION_SEASONAL_CONSTRAINTS.find(
+    (c) => c.destinationCode === destinationCode && c.monthRange.includes(monthIndex)
+  );
+  return found || null;
+}
 
 /**
  * Historical climate model benchmark (used if Open-Meteo is offline / during fast simulation)

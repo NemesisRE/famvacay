@@ -261,5 +261,54 @@ describe('CSP Optimizer - Edge Cases & Core Engine', () => {
     expect(normalizeScore(100, 0, 100, false)).toBe(0);
     expect(normalizeScore(50, 50, 50, true)).toBe(80);
   });
+
+  it('supports flexible durations and produces candidates across duration min to max', () => {
+    const input: TripPlanInput = {
+      destinationType: 'BEACH',
+      durationDays: 7,
+      durationDaysMin: 7,
+      durationDaysMax: 8,
+      earliestDate: '2026-08-01',
+      latestDate: '2026-08-14',
+      userProfile: {
+        homeLocation: 'Stuttgart',
+        federalState: 'DE-BW',
+        originAirports: ['STR'],
+        childrenAges: [8],
+        blackoutRanges: [],
+      },
+    };
+
+    const results = optimizeVacationWindows(input, { 'DE-BW': mockSchoolHolidaysBW }, {});
+    expect(results.length).toBeGreaterThan(0);
+    const durations = new Set(results.map((r) => r.durationDays));
+    expect(durations.has(7)).toBe(true);
+    expect(durations.has(8)).toBe(true);
+  });
+
+  it('merges profile blackouts and ad-hoc search blackouts', () => {
+    const input: TripPlanInput = {
+      destinationType: 'BEACH',
+      durationDays: 7,
+      earliestDate: '2026-08-01',
+      latestDate: '2026-08-20',
+      searchBlackouts: [
+        { startDate: '2026-08-01', endDate: '2026-08-10', reason: 'Search blackout' },
+      ],
+      userProfile: {
+        homeLocation: 'Stuttgart',
+        federalState: 'DE-BW',
+        originAirports: ['STR'],
+        childrenAges: [8],
+        blackoutRanges: [
+          { startDate: '2026-08-11', endDate: '2026-08-20', reason: 'Profile blackout' },
+        ],
+      },
+    };
+
+    const results = optimizeVacationWindows(input, { 'DE-BW': mockSchoolHolidaysBW }, {});
+    // All dates between 08-01 and 08-20 are blocked
+    expect(results).toHaveLength(0);
+  });
 });
 

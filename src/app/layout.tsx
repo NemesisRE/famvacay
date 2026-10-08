@@ -29,20 +29,9 @@ export default function RootLayout({
                       Fam<span className="text-blue-600">Vacay</span>
                     </span>
                   </Link>
-                  <span className="ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 hidden sm:inline">
-                    Multi-User Ready
-                  </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <LanguageSelector />
-                  <a
-                    href="/api/health"
-                    target="_blank"
-                    className="flex items-center gap-1.5 hover:text-slate-900 font-mono text-xs bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 hidden md:flex"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Health
-                  </a>
                   <NavigationBar />
                 </div>
               </div>
@@ -51,7 +40,7 @@ export default function RootLayout({
               {children}
             </main>
             <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
-              FamVacay — Family Vacation & Holiday Arbitrage Engine — Multi-Arch Container Ready
+              FamVacay — Family Vacation & Holiday Arbitrage
             </footer>
           </I18nProvider>
         </AuthProvider>

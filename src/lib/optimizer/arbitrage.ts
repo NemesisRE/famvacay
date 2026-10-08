@@ -33,6 +33,34 @@ export const SUPPORTED_ORIGIN_AIRPORTS: Record<string, AirportInfo> = {
   HAM: { code: 'HAM', name: 'Hamburg Airport', city: 'Hamburg', state: 'DE-HH', country: 'DE', lat: 53.6304, lon: 9.9882 },
   DUS: { code: 'DUS', name: 'Düsseldorf Airport', city: 'Düsseldorf', state: 'DE-NW', country: 'DE', lat: 51.2895, lon: 6.7668 },
   CGN: { code: 'CGN', name: 'Cologne Bonn Airport', city: 'Cologne', state: 'DE-NW', country: 'DE', lat: 50.8659, lon: 7.1427 },
+  DTM: { code: 'DTM', name: 'Dortmund Airport', city: 'Dortmund', state: 'DE-NW', country: 'DE', lat: 51.5183, lon: 7.6122 },
+  HAJ: { code: 'HAJ', name: 'Hannover Airport', city: 'Hannover', state: 'DE-NI', country: 'DE', lat: 52.4611, lon: 9.6850 },
+  BRE: { code: 'BRE', name: 'Bremen Airport', city: 'Bremen', state: 'DE-HB', country: 'DE', lat: 53.0475, lon: 8.7867 },
+  LEJ: { code: 'LEJ', name: 'Leipzig/Halle Airport', city: 'Leipzig', state: 'DE-SN', country: 'DE', lat: 51.4239, lon: 12.2364 },
+  DRS: { code: 'DRS', name: 'Dresden Airport', city: 'Dresden', state: 'DE-SN', country: 'DE', lat: 51.1328, lon: 13.7672 },
+
+  // Austria
+  VIE: { code: 'VIE', name: 'Vienna International', city: 'Vienna', state: 'AT-9', country: 'AT', lat: 48.1103, lon: 16.5697 },
+  SZG: { code: 'SZG', name: 'Salzburg Airport', city: 'Salzburg', state: 'AT-5', country: 'AT', lat: 47.7944, lon: 13.0044 },
+  INN: { code: 'INN', name: 'Innsbruck Airport', city: 'Innsbruck', state: 'AT-7', country: 'AT', lat: 47.2602, lon: 11.3440 },
+
+  // France & Switzerland
+  GVA: { code: 'GVA', name: 'Geneva Airport', city: 'Geneva', state: 'CH-GE', country: 'CH', lat: 46.2381, lon: 6.1089 },
+  CDG: { code: 'CDG', name: 'Paris Charles de Gaulle', city: 'Paris', state: 'FR-IDF', country: 'FR', lat: 49.0097, lon: 2.5479 },
+  ORY: { code: 'ORY', name: 'Paris Orly', city: 'Paris', state: 'FR-IDF', country: 'FR', lat: 48.7262, lon: 2.3652 },
+  LYS: { code: 'LYS', name: 'Lyon Saint-Exupéry', city: 'Lyon', state: 'FR-ARA', country: 'FR', lat: 45.7256, lon: 5.0811 },
+  NCE: { code: 'NCE', name: 'Nice Côte d’Azur', city: 'Nice', state: 'FR-PAC', country: 'FR', lat: 43.6584, lon: 7.2159 },
+
+  // Spain
+  MAD: { code: 'MAD', name: 'Madrid-Barajas', city: 'Madrid', state: 'ES-MD', country: 'ES', lat: 40.4839, lon: -3.5680 },
+  BCN: { code: 'BCN', name: 'Barcelona-El Prat', city: 'Barcelona', state: 'ES-CT', country: 'ES', lat: 41.2974, lon: 2.0833 },
+  VLC: { code: 'VLC', name: 'Valencia Airport', city: 'Valencia', state: 'ES-VC', country: 'ES', lat: 39.4893, lon: -0.4816 },
+
+  // Italy
+  MXP: { code: 'MXP', name: 'Milan Malpensa', city: 'Milan', state: 'IT-LOM', country: 'IT', lat: 45.6301, lon: 8.7255 },
+  BGY: { code: 'BGY', name: 'Milan Bergamo', city: 'Bergamo', state: 'IT-LOM', country: 'IT', lat: 45.6739, lon: 9.7042 },
+  FCO: { code: 'FCO', name: 'Rome Fiumicino', city: 'Rome', state: 'IT-LAZ', country: 'IT', lat: 41.8003, lon: 12.2389 },
+  VCE: { code: 'VCE', name: 'Venice Marco Polo', city: 'Venice', state: 'IT-VEN', country: 'IT', lat: 45.5053, lon: 12.3519 },
 };
 
 export const NEIGHBORING_STATES: Record<string, string[]> = {

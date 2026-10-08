@@ -121,18 +121,58 @@ model FamilyMember {
 
 ---
 
+## Regional Subdivisions & International School Calendars
+
+The system coordinates jurisdictional school calendars across administrative subdivisions (`src/lib/regions/subdivisions.ts`):
+
+- **Germany (`DE`)**: Complete coverage of all 16 federal states (`DE-BW`, `DE-BY`, `DE-BE`, `DE-BB`, `DE-HB`, `DE-HH`, `DE-HE`, `DE-MV`, `DE-NI`, `DE-NW`, `DE-RP`, `DE-SL`, `DE-SN`, `DE-ST`, `DE-SH`, `DE-TH`).
+- **Austria (`AT`)**: All 9 Bundesländer (`AT-1` through `AT-9`).
+- **Switzerland (`CH`)**: 10 primary Cantons (`CH-ZH`, `CH-BE`, `CH-BS`, `CH-BL`, `CH-GE`, `CH-VD`, etc.).
+- **France (`FR`)**: Academic zones and administrative regions (`FR-IDF`, `FR-ARA`, `FR-GES`, etc.).
+- **Spain (`ES`)**: Autonomous communities (`ES-MD`, `ES-CT`, `ES-AN`, `ES-VC`, etc.).
+- **Italy (`IT`)**: Regional administrative authorities (`IT-LOM`, `IT-LAZ`, `IT-VEN`, etc.).
+
+---
+
+## Dynamic Departure Airport Proximity Engine
+
+Rather than static hardcoded airport lists, departure airports are resolved dynamically (`src/lib/airports/airports-db.ts`):
+
+- **Geographical Distance**: Uses the Great-Circle Haversine distance from the centroid of the family's administrative region:
+  $$d = 2r \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta\phi}{2}\right) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\Delta\lambda}{2}\right)}\right)$$
+- **Proximity Filtering**: Intelligently ranks and suggests airports within reasonable driving reach (default $\le 380-450\text{ km}$), enabling cross-border and cross-state flight arbitrage.
+
+---
+
 ## Optimization Engine (CSP)
 
-The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows $[Start\_Date, End\_Date]$ of length $N$:
+The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows $[Start\_Date, End\_Date]$:
 
-1. **School Holiday Hard Constraint**:
-   If any member is $\ge 6$ years old, candidate windows must fall completely inside the state's school holiday interval.
-2. **Flight Arbitrage Detection**:
-   Evaluates departure airports located in neighboring jurisdictions where schools remain in session.
-3. **Parental Leave Minimization**:
+1. **Flexible Duration Exploration**:
+   Evaluates window spans across user-defined duration ranges $[\text{durationDaysMin}, \text{durationDaysMax}]$ (e.g. 10 to 14 days), computing Pareto-optimal configurations.
+2. **Multiple Blackout Periods (Sperrzeiten)**:
+   Merges persistent profile blackouts with ad-hoc search blackouts:
+   $$\text{Blackouts} = \text{ProfileBlackouts} \cup \text{SearchBlackouts}$$
+   Any candidate window overlapping any blackout range is pruned.
+3. **School Holiday Hard Constraint**:
+   If any child is $\ge 6$ years old, candidate windows must fall completely inside the state's school holiday interval.
+4. **Automatic Age Tier Derivation**:
+   Ages are derived directly from birthdates:
+   - Infant: $< 2$ years ($10\%$ base fare)
+   - Child: $2 - 11$ years ($75\%$ base fare)
+   - Teen / Adult: $\ge 12$ years ($100\%$ base fare)
+5. **Destination Seasonality Warnings**:
+   Detects seasonal risks (`src/lib/optimizer/weather.ts`) for target destinations:
+   - `MONSOON`: Tropical downpours and high humidity (e.g., Southeast Asia in summer).
+   - `EXTREME_HEAT`: Daytime temperatures exceeding safe family thresholds (e.g., Middle East in summer).
+   - `TYPHOON_HURRICANE`: Tropical storm activity windows.
+   - `OVERCROWDED_PEAK`: Peak surge crowds and inflated lodging (e.g., Cherry blossom peak in Japan).
+6. **Flight Arbitrage Detection**:
+   Evaluates departure airports located in neighboring jurisdictions where schools remain in session, factoring a $30\%$ simulated price advantage.
+7. **Parental Leave Minimization**:
    Calculates consumed PTO:
    $$\text{PTO\_days} = \text{total\_weekdays} - \text{public\_holidays}$$
-4. **Multi-Objective Scoring**:
+8. **Multi-Objective Scoring**:
    $$\text{Score} = (w_1 \cdot \text{Price}) + (w_2 \cdot \text{Weather}) + (w_3 \cdot \text{PTO}) - (w_4 \cdot \text{Friction})$$
 
 ---
@@ -150,4 +190,5 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
 | `POST` | `/api/family-profile` | Create or update family profile |
 | `POST` | `/api/vacations/optimize` | Execute CSP vacation optimization engine |
 | `GET` | `/api/health` | Application, database, and Redis health check |
+
 

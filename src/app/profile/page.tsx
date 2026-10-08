@@ -13,8 +13,12 @@ import {
   AlertCircle,
   Clock,
   Compass,
+  Plane,
+  Ban,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
+import { COUNTRIES, getCountryCodeFromSubdivision } from '@/lib/regions/subdivisions';
+import { getRecommendedAirportsForRegion } from '@/lib/airports/airports-db';
 
 interface FamilyMemberForm {
   firstName: string;
@@ -23,6 +27,12 @@ interface FamilyMemberForm {
   schoolRequired: boolean;
   passportExpiry: string;
   specialDiet: string;
+}
+
+interface BlackoutRangeForm {
+  startDate: string;
+  endDate: string;
+  reason?: string;
 }
 
 export default function FamilyProfilePage() {
@@ -36,6 +46,7 @@ export default function FamilyProfilePage() {
 
   const [familyName, setFamilyName] = useState('');
   const [homeLocation, setHomeLocation] = useState('Stuttgart, Germany');
+  const [country, setCountry] = useState('DE');
   const [federalState, setFederalState] = useState('DE-BW');
   const [originAirports, setOriginAirports] = useState<string[]>(['STR', 'FRA', 'BSL']);
   const [maxDrivingHours, setMaxDrivingHours] = useState(2.5);
@@ -43,6 +54,7 @@ export default function FamilyProfilePage() {
   const [climatePreference, setClimatePreference] = useState('MODERATE');
   const [passportCheckRequired, setPassportCheckRequired] = useState(true);
   const [travelModes, setTravelModes] = useState<string[]>(['FLIGHT', 'CAR']);
+  const [blackoutRanges, setBlackoutRanges] = useState<BlackoutRangeForm[]>([]);
 
   const toggleTravelMode = (mode: string) => {
     if (travelModes.includes(mode)) {
@@ -103,7 +115,10 @@ export default function FamilyProfilePage() {
             const p = data.profile;
             setFamilyName(p.familyName || '');
             setHomeLocation(p.homeLocation || 'Stuttgart, Germany');
-            setFederalState(p.federalState || 'DE-BW');
+            if (p.federalState) {
+              setFederalState(p.federalState);
+              setCountry(getCountryCodeFromSubdivision(p.federalState));
+            }
             setOriginAirports(p.originAirports || ['STR', 'FRA']);
             setMaxDrivingHours(p.maxDrivingHours ?? 2.5);
             setPreferredCabinClass(p.preferredCabinClass || 'ECONOMY');
@@ -111,6 +126,16 @@ export default function FamilyProfilePage() {
             setPassportCheckRequired(p.passportCheckRequired ?? true);
             if (Array.isArray(p.travelModes) && p.travelModes.length > 0) {
               setTravelModes(p.travelModes);
+            }
+
+            if (Array.isArray(p.blackoutRanges)) {
+              setBlackoutRanges(
+                p.blackoutRanges.map((b: any) => ({
+                  startDate: b.startDate ? b.startDate.split('T')[0] : '',
+                  endDate: b.endDate ? b.endDate.split('T')[0] : '',
+                  reason: b.reason || '',
+                }))
+              );
             }
 
             if (p.members && p.members.length > 0) {
@@ -130,6 +155,41 @@ export default function FamilyProfilePage() {
         .finally(() => setLoading(false));
     }
   }, [status, router]);
+
+  const handleCountryChange = (newCountry: string) => {
+    setCountry(newCountry);
+    const countryData = COUNTRIES[newCountry];
+    if (countryData && countryData.subdivisions.length > 0) {
+      setFederalState(countryData.subdivisions[0].code);
+    }
+  };
+
+  const addBlackout = () => {
+    setBlackoutRanges([
+      ...blackoutRanges,
+      { startDate: '', endDate: '', reason: '' },
+    ]);
+  };
+
+  const removeBlackout = (index: number) => {
+    setBlackoutRanges(blackoutRanges.filter((_, i) => i !== index));
+  };
+
+  const updateBlackout = (index: number, field: keyof BlackoutRangeForm, value: string) => {
+    const updated = [...blackoutRanges];
+    updated[index] = { ...updated[index], [field]: value };
+    setBlackoutRanges(updated);
+  };
+
+  const toggleAirport = (code: string) => {
+    if (originAirports.includes(code)) {
+      if (originAirports.length > 1) {
+        setOriginAirports(originAirports.filter((a) => a !== code));
+      }
+    } else {
+      setOriginAirports([...originAirports, code]);
+    }
+  };
 
   const addMember = () => {
     setMembers([
@@ -175,6 +235,7 @@ export default function FamilyProfilePage() {
           passportCheckRequired,
           travelModes,
           members,
+          blackoutRanges: blackoutRanges.filter((b) => b.startDate && b.endDate),
         }),
       });
 
@@ -190,6 +251,8 @@ export default function FamilyProfilePage() {
       setSaving(false);
     }
   };
+
+  const recommendedAirports = getRecommendedAirportsForRegion(federalState, 450);
 
   if (loading) {
     return (
@@ -240,7 +303,7 @@ export default function FamilyProfilePage() {
               <MapPin className="w-4 h-4 text-slate-400" />
               {t.profile.sec1Title}
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   {t.profile.familyName}
@@ -270,6 +333,23 @@ export default function FamilyProfilePage() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  {t.profile.country}
+                </label>
+                <select
+                  value={country}
+                  onChange={(e) => handleCountryChange(e.target.value)}
+                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  {Object.values(COUNTRIES).map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   {t.profile.federalState}
                 </label>
                 <select
@@ -277,12 +357,40 @@ export default function FamilyProfilePage() {
                   onChange={(e) => setFederalState(e.target.value)}
                   className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
-                  <option value="DE-BW">Baden-Württemberg (DE-BW)</option>
-                  <option value="DE-BY">Bayern (DE-BY)</option>
-                  <option value="DE-HE">Hessen (DE-HE)</option>
-                  <option value="DE-NW">Nordrhein-Westfalen (DE-NW)</option>
-                  <option value="DE-BE">Berlin (DE-BE)</option>
+                  {(COUNTRIES[country]?.subdivisions || []).map((sub) => (
+                    <option key={sub.code} value={sub.code}>
+                      {sub.name} ({sub.code})
+                    </option>
+                  ))}
                 </select>
+              </div>
+            </div>
+
+            {/* Departure Airports Section */}
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <label className="block text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <Plane className="w-3.5 h-3.5 text-blue-600" />
+                {t.home.airportsLabel}
+              </label>
+              <p className="text-[11px] text-slate-500">{t.home.airportsHint}</p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {recommendedAirports.map((airport) => {
+                  const isSelected = originAirports.includes(airport.code);
+                  return (
+                    <button
+                      key={airport.code}
+                      type="button"
+                      onClick={() => toggleAirport(airport.code)}
+                      className={`text-xs px-3 py-1.5 rounded-xl border font-medium transition-all ${
+                        isSelected
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {airport.code} · {airport.city} ({Math.round(airport.distanceKm)} km)
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -385,6 +493,89 @@ export default function FamilyProfilePage() {
                 })}
               </div>
             </div>
+          </div>
+
+          {/* Persistent Blackout Dates (Sperrzeiten) */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <Ban className="w-4 h-4 text-amber-500" />
+                  {t.profile.blackoutDatesTitle}
+                </h2>
+                <p className="text-[11px] text-slate-500 mt-0.5">{t.profile.blackoutDatesDesc}</p>
+              </div>
+              <button
+                type="button"
+                onClick={addBlackout}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {t.profile.addBlackout}
+              </button>
+            </div>
+
+            {blackoutRanges.length === 0 ? (
+              <p className="text-xs text-slate-400 italic bg-slate-50 p-4 rounded-xl border border-dashed border-slate-200">
+                {t.profile.noBlackouts}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {blackoutRanges.map((range, index) => (
+                  <div
+                    key={index}
+                    className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 grid grid-cols-1 sm:grid-cols-12 gap-3 items-center"
+                  >
+                    <div className="sm:col-span-4">
+                      <label className="block text-[10px] font-semibold text-slate-500 uppercase">
+                        {t.home.blackoutStart}
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={range.startDate}
+                        onChange={(e) => updateBlackout(index, 'startDate', e.target.value)}
+                        className="w-full text-xs rounded-lg border border-slate-300 px-2.5 py-1.5 bg-white"
+                      />
+                    </div>
+                    <div className="sm:col-span-4">
+                      <label className="block text-[10px] font-semibold text-slate-500 uppercase">
+                        {t.home.blackoutEnd}
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={range.endDate}
+                        onChange={(e) => updateBlackout(index, 'endDate', e.target.value)}
+                        className="w-full text-xs rounded-lg border border-slate-300 px-2.5 py-1.5 bg-white"
+                      />
+                    </div>
+                    <div className="sm:col-span-3">
+                      <label className="block text-[10px] font-semibold text-slate-500 uppercase">
+                        Reason (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Work exam"
+                        value={range.reason || ''}
+                        onChange={(e) => updateBlackout(index, 'reason', e.target.value)}
+                        className="w-full text-xs rounded-lg border border-slate-300 px-2.5 py-1.5 bg-white"
+                      />
+                    </div>
+                    <div className="sm:col-span-1 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => removeBlackout(index)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 transition"
+                        title={t.profile.removeBlackout}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Section 3 */}
