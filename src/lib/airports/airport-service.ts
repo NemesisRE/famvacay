@@ -466,6 +466,36 @@ export function getAllCommercialAirports(): DynamicAirport[] {
 }
 
 /**
+ * Dynamically resolves major commercial passenger airports serving a sovereign nation
+ */
+export function getMajorAirportsForCountry(countryCodeOrName: string): string[] {
+  const clean = countryCodeOrName.trim();
+  if (!clean) return [];
+
+  let targetCountryName = clean.toLowerCase();
+  if (clean.length === 2) {
+    try {
+      const enRegion = new Intl.DisplayNames(['en'], { type: 'region' });
+      const resolved = enRegion.of(clean.toUpperCase());
+      if (resolved) targetCountryName = resolved.toLowerCase();
+    } catch {
+      // Fall through to direct match
+    }
+  }
+
+  const matched = indexedAirports.filter((a) => {
+    const c = a.country.toLowerCase();
+    const st = (a.state || '').toLowerCase();
+    return c === targetCountryName || (clean.length === 2 && st.startsWith(clean.toLowerCase() + '-'));
+  });
+
+  // Prioritize major airline hubs first
+  matched.sort((a, b) => (b.isMajorHub ? 1 : 0) - (a.isMajorHub ? 1 : 0));
+  const unique = Array.from(new Set(matched.map((a) => a.code)));
+  return unique.slice(0, 8);
+}
+
+/**
  * Calculate geodesic distance in kilometers between two coordinate pairs
  */
 export function calculateGeodesicDistanceKm(

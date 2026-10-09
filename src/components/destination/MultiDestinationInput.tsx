@@ -10,7 +10,7 @@ import {
   validateDestinationInput,
   DestinationCategory,
 } from '@/lib/optimizer/destinations';
-import { GLOBAL_PLACES_CATALOG, GlobalPlaceEntity } from '@/lib/geo/places-data';
+import { GlobalPlaceEntity } from '@/lib/geo/places-data';
 
 export interface DisplayDestinationSuggestion {
   id: string;
@@ -202,24 +202,7 @@ export function MultiDestinationInput({
       };
     }
 
-    // 2. Global Catalog
-    const lower = tag.trim().toLowerCase();
-    const globalPlace = GLOBAL_PLACES_CATALOG.find(
-      (p) =>
-        p.id.toLowerCase() === lower ||
-        p.name.toLowerCase() === lower ||
-        Object.values(p.names).some((n) => n.toLowerCase() === lower)
-    );
-    if (globalPlace) {
-      return {
-        displayName: globalPlace.names[loc] || globalPlace.name,
-        category: globalPlace.category as DestinationCategory,
-        categoryLabel: getLocalizedCategoryName(globalPlace.category as DestinationCategory, locale),
-        code: globalPlace.airportCodes[0],
-      };
-    }
-
-    // 3. IATA code
+    // 2. IATA code
     const upper = tag.trim().toUpperCase();
     if (upper.length === 3) {
       return {
