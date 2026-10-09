@@ -1,7 +1,8 @@
 import { POPULAR_DESTINATIONS, DestinationProfile } from './weather';
 import { getAirportByIata } from '../airports/airport-service';
+import { GLOBAL_PLACES_CATALOG } from '../geo/places-data';
 
-export type DestinationCategory = 'country' | 'region' | 'city' | 'airport';
+export type DestinationCategory = 'country' | 'region' | 'island' | 'city' | 'airport';
 
 export interface LocalizedDestinationEntity {
   id: string;
@@ -1281,11 +1282,11 @@ export function getLocalizedCategoryName(
 ): string {
   const l = locale.slice(0, 2);
   const map: Record<string, Record<DestinationCategory, string>> = {
-    de: { country: 'Land', region: 'Region', city: 'Stadt', airport: 'Flughafen' },
-    en: { country: 'Country', region: 'Region', city: 'City', airport: 'Airport' },
-    fr: { country: 'Pays', region: 'Région', city: 'Ville', airport: 'Aéroport' },
-    es: { country: 'País', region: 'Región', city: 'Ciudad', airport: 'Aeropuerto' },
-    it: { country: 'Paese', region: 'Regione', city: 'Città', airport: 'Aeroporto' },
+    de: { country: 'Land', region: 'Region', island: 'Insel', city: 'Stadt', airport: 'Flughafen' },
+    en: { country: 'Country', region: 'Region', island: 'Island', city: 'City', airport: 'Airport' },
+    fr: { country: 'Pays', region: 'Région', island: 'Île', city: 'Ville', airport: 'Aéroport' },
+    es: { country: 'País', region: 'Región', island: 'Isla', city: 'Ciudad', airport: 'Aeropuerto' },
+    it: { country: 'Paese', region: 'Regione', island: 'Isola', city: 'Città', airport: 'Aeroporto' },
   };
 
   const set = map[l] || map.de;
@@ -1331,16 +1332,30 @@ export function resolveDestinationCodes(destinationTags?: string[]): string[] {
         found = true;
       }
     }
+    if (found) continue;
 
-    // 4. Check POPULAR_DESTINATIONS by name or country with word-boundary matching
-    if (!found) {
-      for (const [code, dest] of Object.entries(POPULAR_DESTINATIONS)) {
-        const destName = normalizeDestinationString(dest.name);
-        const destCountry = dest.country.toLowerCase();
-        if (isWordMatch(destName, clean) || destCountry === clean) {
-          resolved.add(code);
-          found = true;
-        }
+    // 4. Check GLOBAL_PLACES_CATALOG
+    for (const place of GLOBAL_PLACES_CATALOG) {
+      const pName = normalizeDestinationString(place.name);
+      const pId = place.id.toLowerCase();
+      const aliasMatches = place.aliases.some((a) => isWordMatch(normalizeDestinationString(a), clean));
+      const nameMatches = Object.values(place.names).some((n) => isWordMatch(normalizeDestinationString(n), clean));
+
+      if (clean === pId || isWordMatch(pName, clean) || aliasMatches || nameMatches) {
+        place.airportCodes.forEach((code) => resolved.add(code));
+        found = true;
+        break;
+      }
+    }
+    if (found) continue;
+
+    // 5. Check POPULAR_DESTINATIONS by name or country with word-boundary matching
+    for (const [code, dest] of Object.entries(POPULAR_DESTINATIONS)) {
+      const destName = normalizeDestinationString(dest.name);
+      const destCountry = dest.country.toLowerCase();
+      if (isWordMatch(destName, clean) || destCountry === clean) {
+        resolved.add(code);
+        found = true;
       }
     }
   }
@@ -1422,6 +1437,50 @@ export async function validateDestinationInput(
     }
   }
 
-  // 4. Strict rejection for unknown or fictitious places (e.g. "Mars")
+  // 4. Check GLOBAL_PLACES_CATALOG
+  const locKey = (locale.slice(0, 2) as 'en' | 'de' | 'fr' | 'es' | 'it') || 'en';
+  for (const place of GLOBAL_PLACES_CATALOG) {
+    const pName = normalizeDestinationString(place.name);
+    const pId = place.id.toLowerCase();
+    const aliasMatches = place.aliases.some((a) => isWordMatch(normalizeDestinationString(a), cleanNorm));
+    const nameMatches = Object.values(place.names).some((n) => isWordMatch(normalizeDestinationString(n), cleanNorm));
+
+    if (cleanNorm === pId || isWordMatch(pName, cleanNorm) || aliasMatches || nameMatches) {
+      const localizedName = place.names[locKey] || place.name;
+      // Containment check for global place
+      const containment = checkRegionalContainment(
+        {
+          id: place.id,
+          category: place.category,
+          code: place.airportCodes[0],
+          parentRegionId: place.parentRegionId,
+          airportCodes: place.airportCodes,
+          countryCode: place.countryCode,
+          names: place.names,
+          countryNames: {
+            en: place.countryName,
+            de: place.countryName,
+            fr: place.countryName,
+            es: place.countryName,
+            it: place.countryName,
+          },
+        },
+        selectedDestinations,
+        locale
+      );
+
+      return {
+        isValid: true,
+        resolvedName: localizedName,
+        category: place.category,
+        categoryLabel: getLocalizedCategoryName(place.category, locale),
+        airportCodes: place.airportCodes,
+        isContained: containment.isContained,
+        containment,
+      };
+    }
+  }
+
+  // 5. Strict rejection for unknown or fictitious places (e.g. "Mars")
   return { isValid: false };
 }

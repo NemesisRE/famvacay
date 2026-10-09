@@ -178,53 +178,80 @@ Departure hubs and distance metrics are managed by a unified airport service (`s
 
 ---
 
-## Multi-Destination Architecture, Fuzzy Search & Regional Containment
+### Universal Geocoding, Global Places Taxonomy & Dynamic Autocomplete
 
-The vacation planner enforces structured destination validation, localized entity resolution, resilient fuzzy matching, and hierarchical regional containment:
+The vacation planner provides universal global place resolution, entity taxonomy classification, and hierarchical regional containment (`src/lib/geo/places.ts` and `src/lib/optimizer/destinations.ts`):
 
-1. **Strict Pre-Validation & Multilingual Fuzzy Matching (`validateDestinationInput`)**:
-   - Destination tags are strictly pre-validated before they can be added as search filters.
-   - Inputs are matched against canonical holiday destinations (`CANONICAL_DESTINATIONS`), multilingual aliases across 5 languages, normalized synonyms, or commercial IATA airport records.
-   - A resilient fuzzy matching engine using Levenshtein distance handles user typos and language-specific orthography (e.g., resolving "Athen", "Athens", "Athènes", or "Athene" to Athens with IATA `ATH`).
-   - Invalid, ambiguous, or fictitious inputs (such as "Mars") that cannot be mapped to a recognized vacation entity or commercial airport corridor are rejected with inline validation feedback.
-2. **Hierarchical Regional Containment Detection (`checkRegionalContainment`)**:
-   - When a user selects a destination that is already encompassed by an active parent selection (for example, attempting to add "Palma" when "Mallorca" is already active, or "Hurghada City" when "Hurghada & Red Sea" is active, or "Athens" when "Greece" is selected), the system identifies the hierarchical containment.
-   - The engine checks:
-     - Explicit `parentRegionId` references defined on child entities.
-     - Subset containment of IATA airport codes (`child.airportCodes.every(code => parent.airportCodes.includes(code))`).
-     - Sovereign country-level territorial inclusion (`child.countryCode === parent.countryCode`).
-   - Instead of inserting a duplicate or redundant tag, the user interface triggers immediate visual feedback (a temporary subtle green pulse highlight on the parent chip) and renders an informative notification explaining that the location is already covered.
-3. **Resolved Entity Model & Category Metadata**:
-   - Every valid destination resolves to a structured entity (`LocalizedDestinationEntity`) with explicit categorization:
-     - `country`: Sovereign destination states (e.g., Egypt, Spain, Greece, Turkey, Italy, Portugal, Austria).
-     - `region`: Tourist resort corridors and archipelagos (e.g., "Hurghada & Red Sea", "Mallorca (Balearic Islands)", "Canary Islands", "Turkish Riviera & Antalya", "Crete & Greek Islands", "Rhodes").
-     - `city`: Urban, coastal, and cultural metropolitan destinations (e.g., Athens, Palma, Barcelona, Rome, Lisbon, Vienna, Madrid, Dubai).
-     - `airport`: Specific commercial airport hubs.
-   - Destination chips clearly render the resolved entity name and category badge (e.g., "Mallorca (Balearen) [Region]", "Ägypten [Land]", "Barcelona [Stadt]").
-4. **End-to-End Localization Across Supported Locales**:
-   - Destination names, country labels, and entity categories dynamically adjust to the active user locale (`en`, `de`, `fr`, `es`, `it`).
-5. **Destination-Bound Strict Matching & False Positive Elimination**:
-   - When user queries specify target destinations, candidate generation is strictly constrained to the corresponding destination airport codes (e.g., searching for "Rotes Meer" resolves strictly to `HRG`, `SSH`, and `RMF`).
-   - The engine eliminates arbitrary fallbacks to unrequested destinations (such as `PMI`, `AYT`, or `HER`).
-   - If no candidate windows satisfy all duration, budget, or school constraints for the selected destination, the optimizer returns zero candidates, and the interface displays an explicit empty state. Open exploration across all standard holiday hubs occurs solely when no destination filters are active.
+1. **Global Entity Taxonomy & Categorization (`GlobalPlaceEntity`)**:
+   - Entities are structured into an unambiguous geographic taxonomy across all continents:
+     - `country`: Sovereign destination nations (e.g., Indonesia, Thailand, Egypt, Spain, Greece, Australia, Japan, United States).
+     - `region`: Administrative sub-regions and resort corridors (e.g., Red Sea, Costa del Sol, Queensland, Bavaria).
+     - `island`: Distinct islands and archipelagos (e.g., Bali, Ko Samui, Phuket, Mallorca, Ibiza, Tenerife, Santorini, Hawaii, Fiji).
+     - `city`: International metropolitan and resort cities (e.g., Denpasar, Bangkok, Tokyo, Sydney, Honolulu, Cancun, Orlando, Palma, Athens, Rome).
+     - `airport`: Specific commercial passenger airports.
+2. **Dynamic Debounced Typeahead Suggestions (`GET /api/destinations/search`)**:
+   - The destination selector replaces static dropdown presets with active debounced typeahead search (250ms debounce threshold, triggering from 2 keystrokes).
+   - Queries query a curated catalog of global holiday hubs, with multi-stage matching across localized names (`en`, `de`, `fr`, `es`, `it`), aliases, and fuzzy tokens, backed by Redis caching.
+   - For uncataloged locations worldwide, dynamic OpenStreetMap Nominatim geocoding resolves coordinates and automatically maps closest commercial passenger airports within a 350 km radius.
+   - Suggestions render with categorized badge metadata (Island, Country, City, Region, Airport).
+3. **Hierarchical Regional Containment Detection (`checkRegionalContainment`)**:
+   - When a user adds a destination encompassed by an existing selection (e.g., adding "Denpasar" when "Bali" is selected, "Palma" when "Mallorca" is selected, or "Rome" when "Italy" is selected), containment is identified via explicit parent IDs, airport code subsets, or country inclusion.
+   - The system triggers visual feedback (pulse animation on the parent chip) and informative notices rather than redundant tag insertions.
+4. **Strict Destination-Bound Corridor Filtering**:
+   - When destination filters are active, vacation window generation is strictly constrained to matching airport codes without fallback to unrequested regions.
+   - Open discovery hubs are presented only when no destination constraints are supplied.
 
 ---
 
-## Commercial Airport Filtering & Reactive Recalculation
+## Universal Airport Catchment Engine & Stale Airport Pruning
 
-1. **Commercial Passenger Status Filtering**:
-   - Airport suggestions and recommendations are strictly restricted to active commercial passenger hubs handling scheduled commercial flights or leisure charter operations.
-   - An exclusion filter (`EXCLUDED_NON_COMMERCIAL_AIRPORTS` and `NON_COMMERCIAL_KEYWORDS`) eliminates:
-     - Military air bases and naval air stations (e.g., Ramstein Air Base `RMS`, Spangdahlem `SPM`, Geilenkirchen `GKE`, Gütersloh `GUT`, Giebelstadt `GHF`, Hanau `ZNF`, Whiting Field `NDZ`, Istres `QMI`, Aviano `AVB`).
-     - Decommissioned commercial airports (e.g., Berlin Tegel `TXL`, Tempelhof `THF`, Schönefeld `SXF`).
-     - Small general aviation airfields, glider strips, and private airfields (e.g., Frankfurt-Egelsbach `QEF`, Mannheim `MHG`, Speyer `ZQC`, Trier-Föhren `ZQF`, Koblenz `ZNV`, Donaueschingen `ZQL`, Bayreuth `BYU`, Hof-Plauen `HOQ`, Lahr `LHA`, Cochstedt `CSO`, Peenemünde `PEF`, Bitburg `BBJ`, Freiburg `QFB`, Bielefeld `BFE`).
-   - Certified major passenger hubs (e.g., `FRA`, `MUC`, `STR`, `BER`, `HAM`, `DUS`, `CGN`, `FKB`, `NUE`, `BSL`, `CDG`, `ORY`, `VIE`, `ZRH`) are preserved with localized metadata.
-2. **Reactive Coordinate Recalculation**:
-   - When a user enters or modifies their departure location, the system performs reactive geocoding.
-   - Updating `departureCoords` reactively triggers the departure airport recommendation engine, dynamically ranking proximity hubs and high-speed rail connections without requiring page reloads.
-3. **Location Persistence & Scope Decoupling**:
-   - The user's home location resolves into a fully qualified, human-readable place name (`City, State, Country`) upon profile loading and selection, preventing inputs from reverting to raw postal codes or numeric identifiers.
-   - The residence country and administrative subdivision (Bundesland, Kanton, Région) are explicitly decoupled from departure travel distance, exclusively scoping school holiday calendar intervals and statutory public holiday calculations.
+The dynamic airport engine (`src/lib/airports/airport-service.ts`) operates globally without regional bias:
+
+1. **Geodesic Catchment Resolution**:
+   - Airport proximity is computed using true geodesic distance and transit connectivity from origin coordinates worldwide.
+   - Arbitrary country-specific hardcoding is eliminated, enabling consistent recommendations for origins across Australia, North America, Asia, and Europe.
+2. **Commercial Passenger Status Filtering**:
+   - Airport recommendations are restricted to active commercial passenger hubs handling scheduled commercial flights or leisure charter operations.
+   - An exclusion filter (`EXCLUDED_NON_COMMERCIAL_AIRPORTS` and `NON_COMMERCIAL_KEYWORDS`) eliminates military air bases, decommissioned facilities, and general aviation airstrips.
+3. **Stale Airport Pruning (`pruneStaleAirportsForCoordinates`)**:
+   - When departure origin coordinates change (e.g., switching from Germany to Sydney, Australia or Tokyo), active airport selections are automatically re-evaluated.
+   - Selected airports exceeding the catchment radius (default 450 km) without high-speed rail connectivity are pruned.
+   - If the selection becomes empty, the engine automatically populates the closest regional passenger hubs for the new location.
+
+---
+
+## UI Layering, Stacking Context & Popover Portal Architecture
+
+Tooltips, climate popovers, and booking deal drawers are engineered to prevent clipping and stacking context collisions:
+
+1. **Top-Layer React Portal Rendering (`createPortal`)**:
+   - `ClimateDetailsPopover` and `BookingDealsPopover` mount directly to `document.body` via React `createPortal`.
+   - Elements render in the top-layer stacking context with `position: fixed` and high z-index (`z-index: 9999`), bypassing parent container clipping.
+2. **Dynamic Viewport Edge Detection (`getBoundingClientRect`)**:
+   - Popover positions are dynamically calculated from the trigger element's bounding rectangle.
+   - Vertical collision detection flips the popover above the trigger when downward space is insufficient.
+   - Horizontal clamping prevents bleed past viewport edges on both desktop and mobile viewports.
+   - Scroll and resize listeners recalculate position in real time while active.
+3. **Container Clipping Elimination**:
+   - Search result candidate cards avoid `overflow: hidden` boundaries, ensuring non-portal popovers and action menus render cleanly.
+
+---
+
+## Pluggable Travel Portal Provider Registry
+
+The booking portal architecture (`src/lib/pricing/portals.ts`) provides a modular multi-market registry:
+
+1. **Market-Aware Portal Registry**:
+   - Supports localized major providers across geographic operating markets:
+     - DACH (Germany, Austria, Switzerland): HolidayCheck, CHECK24, ab-in-den-urlaub.
+     - Oceania (Australia & New Zealand): Webjet, Wotif.
+     - North America (United States & Canada): Expedia, Priceline.
+     - Global / Metasearch: Google Flights, Skyscanner, Kayak, Booking.com, Trip.com.
+2. **Dynamic Deep Link Parameterization**:
+   - Each portal provider defines a URL construction factory receiving origin, destination, travel dates, and passenger counts.
+3. **Market-Aware Defaults & User Customization**:
+   - Default portal selections are initialized based on the user's residence country.
+   - Users can customize active booking portals through an interactive settings panel, persisting preferences in `localStorage`.
 
 ---
 
@@ -236,17 +263,17 @@ The weather model (`src/lib/optimizer/weather.ts`) provides multi-metric climate
    - `avgTempC`: Expected mean daytime air temperature (Celsius).
    - `maxTempC`: Expected daytime high temperature.
    - `minTempC`: Expected nighttime low temperature.
-   - `waterTempC`: Coastal sea surface temperature for beach destinations (null for inland metropolitan or ski destinations).
+   - `waterTempC`: Coastal sea surface temperature for beach destinations (null for inland destinations).
    - `rainyDays`: Estimated monthly precipitation days.
    - `sunshineHoursPerDay`: Estimated daily sunshine duration.
    - `precipitationRiskPercent`: Probability of measurable precipitation.
    - `isSuitable`: Boolean flag evaluating family comfort boundaries.
 2. **Interactive UI Popover (`ClimateDetailsPopover`)**:
-   - Clicking or hovering over temperature badges in search result cards opens a dedicated climate popover displaying daytime highs/lows, sea water temperature, precipitation frequency, sunshine hours, and suitability rationales.
+   - Clicking temperature badges opens the portal popover displaying daytime highs/lows, sea water temperature, precipitation frequency, sunshine hours, and suitability rationales.
 
 ---
 
-## Modular Travel Pricing & Booking Portal Architecture
+## Modular Travel Pricing Architecture
 
 The pricing engine implements a decoupled provider pattern (`src/lib/pricing/`):
 
@@ -254,13 +281,8 @@ The pricing engine implements a decoupled provider pattern (`src/lib/pricing/`):
    - `TravelPricingProvider`: Defines standard contract for flight quotes, lodging estimates, total cost aggregation, and deep link generation.
    - `PortalAggregatorProvider`: Evaluates seasonal market fare models, passenger age tier multipliers, cabin class factors, and arbitrage differentials.
    - `AmadeusPricingProvider`: Extensible live GDS provider querying live airline fares when credentials (`AMADEUS_CLIENT_ID`, `AMADEUS_CLIENT_SECRET`) are present, with automatic fallback to `PortalAggregatorProvider`.
-2. **Dynamic Booking Portal Deep-Linking**:
-   - Each generated candidate window is equipped with deep-links populated with the specific travel dates, origin and destination airports, adult passenger counts, and child age arrays:
-     - **Google Flights**: Round-trip search deep link prefilling airports and exact travel interval.
-     - **Skyscanner**: Flight comparison deep link with parameterized party composition and cabin class.
-     - **Booking.com**: Accommodation search deep link prefilling destination locality, check-in/check-out dates, and children ages.
-3. **Actionable UI Integration (`BookingDealsPopover`)**:
-   - Result cards include an interactive portal deals popover providing itemized cost breakdowns (return flight share vs. lodging share) and one-click direct booking navigation.
+2. **Actionable UI Integration (`BookingDealsPopover`)**:
+   - Result cards include an interactive portal deals popover providing itemized cost breakdowns and one-click direct booking navigation across active providers.
 
 ---
 
@@ -334,6 +356,7 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
 | `GET` | `/api/family-profile` | Retrieve family profile and member roster |
 | `POST` | `/api/family-profile` | Create or update family profile |
 | `GET` | `/api/locations/geocode` | Autocomplete and geocode departure location |
+| `GET` | `/api/destinations/search` | Dynamic global destination and place search with entity taxonomy |
 | `GET` | `/api/airports/search` | Search airports by query, proximity coordinates, or flight corridor destinations |
 | `POST` | `/api/vacations/optimize` | Execute CSP vacation optimization engine |
 | `GET` | `/api/health` | Application, database, and Redis health check |

@@ -50,8 +50,10 @@ export interface TranslationDictionary {
     lodgingShare: string;
     categoryCountry: string;
     categoryRegion: string;
+    categoryIsland: string;
     categoryCity: string;
     categoryAirport: string;
+    noDestinationsFound: string;
     airportsLabel: string;
     airportsHint: string;
     searchAirportsPlaceholder: string;

@@ -71,5 +71,45 @@ describe('Dynamic Airport Engine & Proximity Service', () => {
     expect(cdgItem?.isHighSpeedRailConnected).toBe(true);
     expect(cdgItem?.railConnectivityNote).toContain('TGV');
   });
+
+  it('recommends departure airports globally (e.g. Sydney, Tokyo, New York) without European bias', () => {
+    // Sydney, Australia (-33.8688, 151.2093)
+    const sydneyRecs = getRecommendedAirportsForCoordinates(-33.8688, 151.2093, 450);
+    const sydneyCodes = sydneyRecs.map((a) => a.code);
+    expect(sydneyCodes).toContain('SYD');
+    expect(sydneyCodes).not.toContain('FRA');
+    expect(sydneyCodes).not.toContain('STR');
+
+    // Tokyo, Japan (35.6762, 139.6503)
+    const tokyoRecs = getRecommendedAirportsForCoordinates(35.6762, 139.6503, 350);
+    const tokyoCodes = tokyoRecs.map((a) => a.code);
+    expect(tokyoCodes).toContain('HND');
+    expect(tokyoCodes).toContain('NRT');
+
+    // New York, USA (40.7128, -74.0060)
+    const nyRecs = getRecommendedAirportsForCoordinates(40.7128, -74.0060, 200);
+    const nyCodes = nyRecs.map((a) => a.code);
+    expect(nyCodes).toContain('JFK');
+  });
+
+  it('prunes stale airports when coordinates move to another continent and auto-recommends local hubs', async () => {
+    const { pruneStaleAirportsForCoordinates } = await import('./airport-service');
+
+    // User previously had European airports selected: FRA, STR, FKB
+    const previousAirports = ['FRA', 'STR', 'FKB'];
+
+    // User changes origin to Sydney, Australia (-33.8688, 151.2093)
+    const result = pruneStaleAirportsForCoordinates(previousAirports, -33.8688, 151.2093, 450);
+
+    // All European airports must be pruned because they are > 15,000 km away
+    expect(result.prunedCodes).toContain('FRA');
+    expect(result.prunedCodes).toContain('STR');
+    expect(result.prunedCodes).toContain('FKB');
+    expect(result.validCodes.length).toBe(0);
+
+    // Auto-populates local Australian hubs since selection became empty
+    expect(result.updatedSelection).toContain('SYD');
+    expect(result.updatedSelection).not.toContain('FRA');
+  });
 });
 

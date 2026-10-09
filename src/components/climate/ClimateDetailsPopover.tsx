@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Sun, CloudRain, Waves, Thermometer, Info, Sparkles } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { Sun, CloudRain, Waves, Thermometer, Info, Sparkles, X } from 'lucide-react';
 import { WeatherAssessment } from '@/lib/optimizer/types';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
@@ -18,12 +19,69 @@ export function ClimateDetailsPopover({
 }: ClimateDetailsPopoverProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number; openAbove: boolean }>({
+    top: 0,
+    left: 0,
+    openAbove: false,
+  });
+  const [mounted, setMounted] = useState(false);
+
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const updatePosition = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const popoverWidth = Math.min(320, window.innerWidth - 32);
+    const popoverHeight = 320;
+
+    // Viewport edge detection: open above if not enough space below
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openAbove = spaceBelow < popoverHeight && rect.top > popoverHeight;
+
+    const top = openAbove ? rect.top - popoverHeight - 8 : rect.bottom + 8;
+
+    // Horizontal clamping: ensure popover stays within viewport margins
+    let left = rect.left;
+    if (left + popoverWidth > window.innerWidth - 16) {
+      left = window.innerWidth - popoverWidth - 16;
+    }
+    if (left < 16) left = 16;
+
+    setCoords({
+      top: Math.max(8, top),
+      left,
+      openAbove,
+    });
+  }, []);
+
+  // Update position when opening, scrolling, or resizing
+  useEffect(() => {
+    if (isOpen) {
+      updatePosition();
+      window.addEventListener('resize', updatePosition);
+      window.addEventListener('scroll', updatePosition, true);
+    }
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen, updatePosition]);
 
   // Close on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(target) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     }
@@ -41,14 +99,10 @@ export function ClimateDetailsPopover({
   const sunshineHours = weather.sunshineHoursPerDay ?? 8;
 
   return (
-    <div
-      ref={popoverRef}
-      className={`relative inline-block ${className}`}
-      onMouseEnter={() => setIsOpen(true)}
-      onMouseLeave={() => setIsOpen(false)}
-    >
+    <div className={`inline-block ${className}`}>
       {/* Trigger: Interactive temperature badge */}
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-1 font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-md border border-amber-200/80 transition-colors cursor-pointer group"
@@ -59,17 +113,35 @@ export function ClimateDetailsPopover({
         <Info className="w-3 h-3 text-amber-400 opacity-60 group-hover:opacity-100 ml-0.5" />
       </button>
 
-      {/* Popover Card */}
-      {isOpen && (
-        <div className="absolute z-50 left-0 bottom-full mb-2 w-72 sm:w-80 bg-white rounded-xl shadow-xl border border-slate-200 p-4 text-slate-800 animate-in fade-in zoom-in-95 duration-150">
+      {/* Popover Card mounted in React Portal to document.body */}
+      {isOpen && mounted && createPortal(
+        <div
+          ref={popoverRef}
+          style={{
+            position: 'fixed',
+            top: `${coords.top}px`,
+            left: `${coords.left}px`,
+            zIndex: 9999,
+          }}
+          className="w-72 sm:w-80 bg-white rounded-xl shadow-2xl border border-slate-200 p-4 text-slate-800 animate-in fade-in zoom-in-95 duration-150"
+        >
           <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
             <div className="flex items-center gap-1.5 font-bold text-xs text-slate-800">
               <Thermometer className="w-4 h-4 text-amber-500" />
               <span>{t.home.climateDetailsTitle || 'Climate & Weather Insights'}</span>
             </div>
-            <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
-              {destinationAirport}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
+                {destinationAirport}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2.5 py-3 text-xs">
@@ -137,12 +209,9 @@ export function ClimateDetailsPopover({
               {weather.reason}
             </p>
           )}
-
-          {/* Small tooltip arrow */}
-          <div className="absolute left-6 top-full -mt-1 w-2.5 h-2.5 bg-white border-b border-r border-slate-200 rotate-45" />
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
 }
-

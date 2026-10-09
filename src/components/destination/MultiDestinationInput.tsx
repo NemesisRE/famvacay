@@ -1,16 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Compass, Search, X, Plus, Sparkles, Globe, AlertCircle } from 'lucide-react';
+import { Compass, Search, X, Plus, Sparkles, Globe, AlertCircle, Loader2 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import {
-  CANONICAL_DESTINATIONS,
   getDestinationEntity,
   getLocalizedDestinationName,
   getLocalizedCategoryName,
   validateDestinationInput,
   DestinationCategory,
 } from '@/lib/optimizer/destinations';
+import { GLOBAL_PLACES_CATALOG, GlobalPlaceEntity } from '@/lib/geo/places-data';
 
 export interface DisplayDestinationSuggestion {
   id: string;
@@ -19,6 +19,7 @@ export interface DisplayDestinationSuggestion {
   categoryLabel: string;
   code?: string;
   country?: string;
+  airportCodes?: string[];
 }
 
 interface MultiDestinationInputProps {
@@ -37,42 +38,61 @@ export function MultiDestinationInput({
   const [inputVal, setInputVal] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<DisplayDestinationSuggestion[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [destinationWarning, setDestinationWarning] = useState<string | null>(null);
   const [destinationNotice, setDestinationNotice] = useState<string | null>(null);
   const [highlightedParentTag, setHighlightedParentTag] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Generate localized destination recommendations based on current locale & query
+  // Active debounced dynamic search for global places (no static presets!)
   useEffect(() => {
-    const loc = locale || 'de';
-    const q = inputVal.trim().toLowerCase();
-
-    const allSuggestions: DisplayDestinationSuggestion[] = CANONICAL_DESTINATIONS.map((d) => {
-      const locKey = (loc.slice(0, 2) as keyof typeof d.countryNames) || 'de';
-      return {
-        id: d.id,
-        name: getLocalizedDestinationName(d, loc),
-        category: d.category,
-        categoryLabel: getLocalizedCategoryName(d.category, loc),
-        code: d.code,
-        country: d.countryNames[locKey] || d.countryNames.de,
-      };
-    });
-
-    if (!q) {
-      setSearchResults(allSuggestions.slice(0, 8));
+    const q = inputVal.trim();
+    if (q.length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
       return;
     }
 
-    const matched = allSuggestions.filter(
-      (d) =>
-        d.name.toLowerCase().includes(q) ||
-        (d.country && d.country.toLowerCase().includes(q)) ||
-        (d.code && d.code.toLowerCase().includes(q))
-    );
+    setIsSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/destinations/search?q=${encodeURIComponent(q)}&locale=${locale || 'de'}&limit=10`
+        );
+        if (!res.ok) throw new Error('Search failed');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.destinations)) {
+          const suggestions: DisplayDestinationSuggestion[] = data.destinations.map(
+            (item: GlobalPlaceEntity) => {
+              const loc = (locale || 'de').slice(0, 2) as 'en' | 'de' | 'fr' | 'es' | 'it';
+              const localizedName = item.names?.[loc] || item.name;
+              return {
+                id: item.id,
+                name: localizedName,
+                category: item.category as DestinationCategory,
+                categoryLabel: getLocalizedCategoryName(
+                  item.category as DestinationCategory,
+                  locale
+                ),
+                code: item.airportCodes?.[0],
+                country: item.countryName,
+                airportCodes: item.airportCodes,
+              };
+            }
+          );
+          setSearchResults(suggestions);
+        } else {
+          setSearchResults([]);
+        }
+      } catch (err) {
+        console.error('Failed to query destination search API:', err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 250);
 
-    setSearchResults(matched.slice(0, 8));
+    return () => clearTimeout(timer);
   }, [inputVal, locale]);
 
   // Handle outside click
@@ -169,19 +189,42 @@ export function MultiDestinationInput({
 
   // Helper to resolve entity details for selected chips
   const getChipDetails = (tag: string) => {
+    const loc = (locale || 'de').slice(0, 2) as 'en' | 'de' | 'fr' | 'es' | 'it';
+
+    // 1. Canonical entity
     const entity = getDestinationEntity(tag, locale);
     if (entity) {
       return {
         displayName: getLocalizedDestinationName(entity, locale),
+        category: entity.category,
         categoryLabel: getLocalizedCategoryName(entity.category, locale),
         code: entity.code,
       };
     }
 
+    // 2. Global Catalog
+    const lower = tag.trim().toLowerCase();
+    const globalPlace = GLOBAL_PLACES_CATALOG.find(
+      (p) =>
+        p.id.toLowerCase() === lower ||
+        p.name.toLowerCase() === lower ||
+        Object.values(p.names).some((n) => n.toLowerCase() === lower)
+    );
+    if (globalPlace) {
+      return {
+        displayName: globalPlace.names[loc] || globalPlace.name,
+        category: globalPlace.category as DestinationCategory,
+        categoryLabel: getLocalizedCategoryName(globalPlace.category as DestinationCategory, locale),
+        code: globalPlace.airportCodes[0],
+      };
+    }
+
+    // 3. IATA code
     const upper = tag.trim().toUpperCase();
     if (upper.length === 3) {
       return {
         displayName: tag,
+        category: 'airport' as DestinationCategory,
         categoryLabel: getLocalizedCategoryName('airport', locale),
         code: upper,
       };
@@ -189,14 +232,31 @@ export function MultiDestinationInput({
 
     return {
       displayName: tag,
+      category: 'region' as DestinationCategory,
       categoryLabel: getLocalizedCategoryName('region', locale),
     };
+  };
+
+  const getCategoryBadgeClass = (category?: DestinationCategory) => {
+    switch (category) {
+      case 'island':
+        return 'bg-teal-500/40 text-teal-100 border-teal-300/40';
+      case 'country':
+        return 'bg-emerald-500/40 text-emerald-100 border-emerald-300/40';
+      case 'city':
+        return 'bg-amber-500/40 text-amber-100 border-amber-300/40';
+      case 'airport':
+        return 'bg-sky-500/40 text-sky-100 border-sky-300/40';
+      case 'region':
+      default:
+        return 'bg-indigo-500/40 text-indigo-100 border-indigo-300/40';
+    }
   };
 
   return (
     <div ref={containerRef} className={`space-y-2.5 ${className}`}>
       <div className="flex items-center justify-between">
-        <label className="block text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+        <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
           <Compass className="w-3.5 h-3.5 text-blue-600" />
           {t.home.destinationsLabel}
         </label>
@@ -235,7 +295,11 @@ export function MultiDestinationInput({
               >
                 <Globe className="w-3.5 h-3.5 text-blue-200 flex-shrink-0" />
                 <span>{chip.displayName}</span>
-                <span className="text-[9px] font-bold uppercase tracking-wider bg-blue-500/50 text-blue-100 px-1.5 py-0.5 rounded border border-blue-400/40">
+                <span
+                  className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${getCategoryBadgeClass(
+                    chip.category
+                  )}`}
+                >
                   {chip.categoryLabel}
                 </span>
                 <button
@@ -260,8 +324,15 @@ export function MultiDestinationInput({
           onChange={(e) => {
             setInputVal(e.target.value);
             if (destinationWarning) setDestinationWarning(null);
+            if (!dropdownOpen && e.target.value.trim().length >= 2) {
+              setDropdownOpen(true);
+            }
           }}
-          onFocus={() => setDropdownOpen(true)}
+          onFocus={() => {
+            if (inputVal.trim().length >= 2) {
+              setDropdownOpen(true);
+            }
+          }}
           onKeyDown={handleKeyDown}
           placeholder={t.home.destinationsPlaceholder}
           className={`w-full text-xs rounded-lg border pl-8 pr-20 py-2 bg-white focus:outline-none focus:ring-2 shadow-sm ${
@@ -270,7 +341,12 @@ export function MultiDestinationInput({
               : 'border-slate-300 focus:ring-blue-500'
           }`}
         />
-        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+        {isSearching ? (
+          <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin absolute left-2.5 top-2.5" />
+        ) : (
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+        )}
+
         {inputVal.trim() && (
           <button
             type="button"
@@ -289,8 +365,8 @@ export function MultiDestinationInput({
           </button>
         )}
 
-        {/* Dropdown with Suggestions */}
-        {dropdownOpen && (
+        {/* Dynamic Typeahead Dropdown */}
+        {dropdownOpen && inputVal.trim().length >= 2 && (
           <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100">
             {inputVal.trim() && (
               <button
@@ -301,6 +377,12 @@ export function MultiDestinationInput({
                 <span>+ {t.home.addCustomDestination} &ldquo;{inputVal.trim()}&rdquo;</span>
                 <Plus className="w-3.5 h-3.5" />
               </button>
+            )}
+
+            {searchResults.length === 0 && !isSearching && (
+              <div className="px-3 py-2.5 text-xs text-slate-500 italic">
+                {t.home.noDestinationsFound || 'No destinations found'}
+              </div>
             )}
 
             {searchResults.map((item) => {
@@ -330,7 +412,19 @@ export function MultiDestinationInput({
                       <span className="text-slate-400 text-[11px]">({item.country})</span>
                     )}
                   </div>
-                  <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded capitalize flex-shrink-0 ml-2">
+                  <span
+                    className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border capitalize flex-shrink-0 ml-2 ${
+                      item.category === 'island'
+                        ? 'bg-teal-100 text-teal-700 border-teal-200'
+                        : item.category === 'country'
+                        ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                        : item.category === 'city'
+                        ? 'bg-amber-100 text-amber-700 border-amber-200'
+                        : item.category === 'airport'
+                        ? 'bg-sky-100 text-sky-700 border-sky-200'
+                        : 'bg-indigo-100 text-indigo-700 border-indigo-200'
+                    }`}
+                  >
                     {item.categoryLabel}
                   </span>
                 </button>

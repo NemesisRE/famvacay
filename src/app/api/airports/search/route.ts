@@ -3,6 +3,7 @@ import {
   getRecommendedAirportsForCoordinates,
   searchAirports,
   getAirportByIata,
+  pruneStaleAirportsForCoordinates,
 } from '@/lib/airports/airport-service';
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,8 @@ export async function GET(req: NextRequest) {
     const lonStr = searchParams.get('lon');
     const locale = searchParams.get('locale') || 'en';
     const codesParam = searchParams.get('codes');
+    const selectedParam = searchParams.get('selected');
+    const destinationsParam = searchParams.get('destinations');
 
     // Batch lookup by codes (for chip synchronization)
     if (codesParam) {
@@ -48,12 +51,32 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const destinationsParam = searchParams.get('destinations');
     const targetDestinations = destinationsParam
       ? destinationsParam.split(',').map((d) => d.trim()).filter(Boolean)
       : undefined;
 
     if (userCoords) {
+      // If selected airports were passed, perform geodesic pruning & auto-recommendation
+      if (selectedParam) {
+        const selectedCodes = selectedParam.split(',').map((c) => c.trim().toUpperCase()).filter(Boolean);
+        const pruneResult = pruneStaleAirportsForCoordinates(
+          selectedCodes,
+          userCoords.lat,
+          userCoords.lon,
+          450,
+          targetDestinations,
+          locale
+        );
+        return NextResponse.json({
+          success: true,
+          count: pruneResult.recommendedReplacements.length,
+          airports: pruneResult.recommendedReplacements,
+          prunedCodes: pruneResult.prunedCodes,
+          validCodes: pruneResult.validCodes,
+          updatedSelection: pruneResult.updatedSelection,
+        });
+      }
+
       const recommended = getRecommendedAirportsForCoordinates(
         userCoords.lat,
         userCoords.lon,
@@ -78,7 +101,7 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     console.error('[API /api/airports/search] Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to search airports' },
+      { error: error?.message || 'Failed to search airports' },
       { status: 500 }
     );
   }

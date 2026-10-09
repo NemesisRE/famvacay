@@ -854,11 +854,11 @@ export default function HomePage() {
                     return (
                       <div
                         key={`${win.startDate}-${win.originAirport}-${win.destinationAirport}-${win.durationDays}`}
-                        className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+                        className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow relative"
                       >
                         {/* Arbitrage Banner */}
                         {win.isArbitrageOpportunity && (
-                          <div className="bg-emerald-600 text-white text-[11px] font-bold px-3 py-1 flex items-center justify-between -mx-5 -mt-5 mb-4">
+                          <div className="bg-emerald-600 text-white text-[11px] font-bold px-3 py-1 flex items-center justify-between -mx-5 -mt-5 mb-4 rounded-t-xl">
                             <span className="flex items-center gap-1.5">
                               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
                               {t.home.arbitrageBadge} ({win.originAirport} in {win.arbitrageOriginState})
@@ -910,6 +910,9 @@ export default function HomePage() {
                               estimatedTotalCost={win.estimatedTotalCost}
                               originAirport={win.originAirport}
                               destinationAirport={win.destinationAirport}
+                              countryCode={country}
+                              startDate={win.startDate}
+                              endDate={win.endDate}
                             />
                           </div>
                         </div>

@@ -69,7 +69,7 @@ export function AirportSelector({
       .catch(() => {});
   }, [selectedAirports, airportDetails, locale]);
 
-  // Fetch recommended airports when coordinates or destinations change
+  // Fetch recommended airports and prune stale airports when coordinates or destinations change
   useEffect(() => {
     let active = true;
 
@@ -80,9 +80,13 @@ export function AirportSelector({
           targetDestinations && targetDestinations.length > 0
             ? `&destinations=${encodeURIComponent(targetDestinations.join(','))}`
             : '';
+        const selectedParam =
+          selectedAirports && selectedAirports.length > 0
+            ? `&selected=${encodeURIComponent(selectedAirports.join(','))}`
+            : '';
         const url = coordinates
-          ? `/api/airports/search?lat=${coordinates.lat}&lon=${coordinates.lon}&locale=${locale}${destParam}`
-          : `/api/airports/search?locale=${locale}${destParam}`;
+          ? `/api/airports/search?lat=${coordinates.lat}&lon=${coordinates.lon}&locale=${locale}${destParam}${selectedParam}`
+          : `/api/airports/search?locale=${locale}${destParam}${selectedParam}`;
 
         const res = await fetch(url);
         if (res.ok) {
@@ -98,6 +102,18 @@ export function AirportSelector({
               }
               return updated;
             });
+
+            // Automatically synchronize pruned airports if selection became stale
+            if (
+              Array.isArray(data.updatedSelection) &&
+              (data.prunedCodes?.length > 0 || (selectedAirports.length === 0 && data.updatedSelection.length > 0))
+            ) {
+              const currentStr = selectedAirports.slice().sort().join(',');
+              const newStr = data.updatedSelection.slice().sort().join(',');
+              if (currentStr !== newStr) {
+                onChange(data.updatedSelection);
+              }
+            }
           }
         }
       } catch (err) {

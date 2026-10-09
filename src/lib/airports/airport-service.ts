@@ -574,10 +574,6 @@ export function getRecommendedAirportsForCoordinates(
   );
 
   for (const airport of indexedAirports) {
-    if (!airport.isMajorHub && airport.country !== 'Germany' && airport.country !== 'France' && airport.country !== 'Switzerland' && airport.country !== 'Austria') {
-      continue;
-    }
-
     const distanceKm = calculateGeodesicDistanceKm(userLat, userLon, airport.lat, airport.lon);
     const rail = evaluateHighSpeedRailConnectivity(userLat, userLon, airport.code);
 
@@ -630,7 +626,7 @@ export function getRecommendedAirportsForCoordinates(
     }
   }
 
-  // If long-haul destinations selected, ensure Frankfurt (FRA) or Paris (CDG) are included
+  // If long-haul destinations selected, ensure Frankfurt (FRA) or Paris (CDG) are included if within catchment
   if (hasLongHaulDestinations) {
     for (const code of ['FRA', 'CDG', 'MUC']) {
       const hub = scored.find((a) => a.code === code);
@@ -643,6 +639,63 @@ export function getRecommendedAirportsForCoordinates(
 
   // Sort final list by distance, keeping HSR hubs prominently displayed
   return combined.slice(0, 10);
+}
+
+/**
+ * Prunes selected airports that fall outside the geodesic catchment area of the new coordinates.
+ * Evaluates geodesic distance and any active high-speed rail connectivity.
+ * If all selected airports are pruned (or none are within catchment), auto-selects the closest recommended airports.
+ */
+export function pruneStaleAirportsForCoordinates(
+  selectedAirportCodes: string[],
+  userLat: number,
+  userLon: number,
+  maxCatchmentRadiusKm: number = 450,
+  targetDestinations?: string[],
+  locale?: string
+): {
+  prunedCodes: string[];
+  validCodes: string[];
+  recommendedReplacements: DynamicAirport[];
+  updatedSelection: string[];
+} {
+  const validCodes: string[] = [];
+  const prunedCodes: string[] = [];
+
+  for (const code of selectedAirportCodes) {
+    const airport = getAirportByIata(code);
+    if (!airport) {
+      prunedCodes.push(code);
+      continue;
+    }
+    const dist = calculateGeodesicDistanceKm(userLat, userLon, airport.lat, airport.lon);
+    const rail = evaluateHighSpeedRailConnectivity(userLat, userLon, airport.code);
+    if (dist <= maxCatchmentRadiusKm || rail.isConnected) {
+      validCodes.push(code);
+    } else {
+      prunedCodes.push(code);
+    }
+  }
+
+  const recommendedReplacements = getRecommendedAirportsForCoordinates(
+    userLat,
+    userLon,
+    maxCatchmentRadiusKm,
+    targetDestinations,
+    locale
+  );
+
+  let updatedSelection = validCodes;
+  if (validCodes.length === 0 && recommendedReplacements.length > 0) {
+    updatedSelection = recommendedReplacements.slice(0, 3).map((a) => a.code);
+  }
+
+  return {
+    prunedCodes,
+    validCodes,
+    recommendedReplacements,
+    updatedSelection,
+  };
 }
 
 /**
