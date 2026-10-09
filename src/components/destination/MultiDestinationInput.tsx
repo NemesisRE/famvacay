@@ -38,6 +38,8 @@ export function MultiDestinationInput({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<DisplayDestinationSuggestion[]>([]);
   const [destinationWarning, setDestinationWarning] = useState<string | null>(null);
+  const [destinationNotice, setDestinationNotice] = useState<string | null>(null);
+  const [highlightedParentTag, setHighlightedParentTag] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -90,14 +92,38 @@ export function MultiDestinationInput({
 
     setIsValidating(true);
     setDestinationWarning(null);
+    setDestinationNotice(null);
 
     try {
-      const validation = await validateDestinationInput(clean, locale);
+      const validation = await validateDestinationInput(clean, locale, selectedDestinations);
 
       if (!validation.isValid || !validation.resolvedName) {
         setDestinationWarning(
           t.home.destinationUnverifiedWarning.replace('{name}', clean)
         );
+        return;
+      }
+
+      // Regional containment check (e.g. adding Palma when Mallorca is already selected)
+      if (validation.isContained && validation.containment?.parentTag) {
+        const parentTag = validation.containment.parentTag;
+        const parentName = validation.containment.parentEntity
+          ? getLocalizedDestinationName(validation.containment.parentEntity, locale)
+          : parentTag;
+        const childName = validation.resolvedName;
+
+        setHighlightedParentTag(parentTag);
+        setDestinationNotice(
+          t.home.destinationAlreadyContained
+            .replace('{child}', childName)
+            .replace('{parent}', parentName)
+        );
+        setInputVal('');
+        setDropdownOpen(false);
+
+        setTimeout(() => {
+          setHighlightedParentTag(null);
+        }, 3500);
         return;
       }
 
@@ -197,10 +223,15 @@ export function MultiDestinationInput({
         ) : (
           selectedDestinations.map((dest) => {
             const chip = getChipDetails(dest);
+            const isHighlighted = highlightedParentTag === dest;
             return (
               <span
                 key={dest}
-                className="inline-flex items-center gap-2 text-xs font-semibold pl-2.5 pr-1.5 py-1 rounded-lg bg-blue-600 text-white shadow-xs"
+                className={`inline-flex items-center gap-2 text-xs font-semibold pl-2.5 pr-1.5 py-1 rounded-lg shadow-xs transition-all duration-300 ${
+                  isHighlighted
+                    ? 'bg-emerald-600 text-white ring-2 ring-emerald-400 ring-offset-1 animate-pulse'
+                    : 'bg-blue-600 text-white'
+                }`}
               >
                 <Globe className="w-3.5 h-3.5 text-blue-200 flex-shrink-0" />
                 <span>{chip.displayName}</span>
@@ -314,6 +345,21 @@ export function MultiDestinationInput({
         <div className="mt-1.5 p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-1.5 text-xs text-amber-800">
           <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
           <span className="text-[11px] leading-tight font-medium">{destinationWarning}</span>
+        </div>
+      )}
+
+      {/* Containment Notice Feedback */}
+      {destinationNotice && (
+        <div className="mt-1.5 p-2 bg-emerald-50 border border-emerald-200 rounded-lg flex items-start gap-1.5 text-xs text-emerald-800 animate-in fade-in duration-200">
+          <Sparkles className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+          <span className="text-[11px] leading-tight font-medium flex-1">{destinationNotice}</span>
+          <button
+            type="button"
+            onClick={() => setDestinationNotice(null)}
+            className="text-emerald-500 hover:text-emerald-700 p-0.5 cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
     </div>

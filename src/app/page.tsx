@@ -20,6 +20,7 @@ import {
   ChevronRight,
   ArrowUpDown,
   SlidersHorizontal,
+  Info,
 } from 'lucide-react';
 import { differenceInYears, addDays } from 'date-fns';
 import { CandidateWindow } from '@/lib/optimizer/types';
@@ -29,6 +30,8 @@ import { AirportSelector } from '@/components/airports/AirportSelector';
 import { LocationInput } from '@/components/geo/LocationInput';
 import { ChildrenSelector, ChildItem } from '@/components/family/ChildrenSelector';
 import { MultiDestinationInput } from '@/components/destination/MultiDestinationInput';
+import { ClimateDetailsPopover } from '@/components/climate/ClimateDetailsPopover';
+import { BookingDealsPopover } from '@/components/pricing/BookingDealsPopover';
 import { getLocalizedSeasonalWarning } from '@/lib/optimizer/localized-warnings';
 
 export default function HomePage() {
@@ -116,7 +119,6 @@ export default function HomePage() {
         if (data?.profile) {
           const p = data.profile;
           if (p.homeLocation) {
-            setDepartureLocation(p.homeLocation);
             try {
               const geoRes = await fetch(
                 `/api/locations/geocode?q=${encodeURIComponent(p.homeLocation)}`
@@ -124,13 +126,31 @@ export default function HomePage() {
               if (geoRes.ok) {
                 const geoData = await geoRes.json();
                 if (geoData.locations && geoData.locations.length > 0) {
+                  const loc0 = geoData.locations[0];
+                  const cityName = loc0.city || loc0.name;
+                  const parts: string[] = [];
+                  if (loc0.postcode && !loc0.name.includes(loc0.postcode)) {
+                    parts.push(`${loc0.postcode} ${cityName}`);
+                  } else {
+                    parts.push(cityName);
+                  }
+                  if (loc0.state && loc0.state !== cityName) parts.push(loc0.state);
+                  if (loc0.country) parts.push(loc0.country);
+                  const formatted = parts.join(', ');
+
+                  setDepartureLocation(formatted);
                   setDepartureCoords({
-                    lat: geoData.locations[0].lat,
-                    lon: geoData.locations[0].lon,
+                    lat: loc0.lat,
+                    lon: loc0.lon,
                   });
+                } else {
+                  setDepartureLocation(p.homeLocation);
                 }
+              } else {
+                setDepartureLocation(p.homeLocation);
               }
             } catch (err) {
+              setDepartureLocation(p.homeLocation);
               console.error('Failed to geocode saved home location:', err);
             }
           }
@@ -199,6 +219,18 @@ export default function HomePage() {
     setDepartureLocation(loc);
     if (coords) {
       setDepartureCoords(coords);
+    } else if (loc.trim().length >= 2) {
+      fetch(`/api/locations/geocode?q=${encodeURIComponent(loc.trim())}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.locations && data.locations.length > 0) {
+            setDepartureCoords({
+              lat: data.locations[0].lat,
+              lon: data.locations[0].lon,
+            });
+          }
+        })
+        .catch(() => {});
     }
   };
 
@@ -464,6 +496,11 @@ export default function HomePage() {
                     ))}
                   </select>
                 </div>
+
+                <p className="text-[11px] text-slate-500 flex items-center gap-1.5 pt-1 sm:col-span-2">
+                  <Info className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                  <span>{t.home.holidayScopeNotice}</span>
+                </p>
               </div>
             </div>
 
@@ -846,10 +883,10 @@ export default function HomePage() {
                                 {win.originAirport} ➔ {win.destinationAirport}
                               </span>
                               <span>•</span>
-                              <span className="flex items-center gap-1">
-                                <Sun className="w-3.5 h-3.5 text-amber-500" />
-                                {win.weather.avgTempC}°C
-                              </span>
+                              <ClimateDetailsPopover
+                                destinationAirport={win.destinationAirport}
+                                weather={win.weather}
+                              />
                             </div>
                           </div>
 
@@ -868,6 +905,12 @@ export default function HomePage() {
                                 ({t.home.flightAndLodgingIncluded})
                               </span>
                             </div>
+                            <BookingDealsPopover
+                              pricingDetails={win.pricingDetails}
+                              estimatedTotalCost={win.estimatedTotalCost}
+                              originAirport={win.originAirport}
+                              destinationAirport={win.destinationAirport}
+                            />
                           </div>
                         </div>
 

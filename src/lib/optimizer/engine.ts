@@ -13,6 +13,7 @@ import { SUPPORTED_ORIGIN_AIRPORTS } from './arbitrage';
 import { POPULAR_DESTINATIONS, getEstimatedClimate, getDestinationSeasonalWarning } from './weather';
 import { resolveDestinationCodes } from './destinations';
 import { getAirportByIata, calculateGeodesicDistanceKm } from '../airports/airport-service';
+import { getSynchronousTripPricing } from '../pricing/pricing-service';
 
 /**
  * Filter blackout dates: Checks if [candidateStart, candidateEnd] overlaps with any blackout range.
@@ -315,45 +316,23 @@ export function optimizeVacationWindows(
           const weather = getEstimatedClimate(dest, monthIndex);
           const seasonalWarning = getDestinationSeasonalWarning(dest, monthIndex);
 
-          // Return flight calculation per passenger multiplier
-          let baseFlightFare = 140; // Base return flight fare per adult
-          if (monthIndex >= 5 && monthIndex <= 7) {
-            baseFlightFare = 270; // Peak summer season
-          } else if (monthIndex === 3 || monthIndex === 4 || monthIndex === 8 || monthIndex === 9) {
-            baseFlightFare = 190; // Shoulder season
-          } else if (monthIndex === 11 || monthIndex <= 1) {
-            baseFlightFare = 210; // Winter holiday season
-          }
+          // Modular Pricing Engine with deep-links and realistic quotes
+          const pricingDetails = getSynchronousTripPricing({
+            originAirport: origin,
+            destinationAirport: dest,
+            startDate: startStr,
+            endDate: endStr,
+            durationDays,
+            party: {
+              adults: 2,
+              childrenAges: currentChildrenAges,
+              cabinClass: (userProfile.preferredCabinClass as any) || 'ECONOMY',
+            },
+            isArbitrage: Boolean(arbitrageNote),
+          });
 
-          // Apply arbitrage discount if schools are NOT on holiday at departure airport
-          if (isArbitrage && arbitrageNote) {
-            baseFlightFare = Math.round(baseFlightFare * 0.70); // 30% flight arbitrage discount
-          }
-
-          // Factor in preferredCabinClass
-          let cabinClassMultiplier = 1.0;
-          if (userProfile.preferredCabinClass === 'PREMIUM_ECONOMY') {
-            cabinClassMultiplier = 1.4;
-          } else if (userProfile.preferredCabinClass === 'BUSINESS') {
-            cabinClassMultiplier = 2.4;
-          }
-
-          const totalFlightCost = Math.round(baseFlightFare * pCostMultiplier * cabinClassMultiplier);
-
-          // Accommodation lodging calculation for the family
-          let baseNightlyLodging = 100;
-          if (monthIndex >= 5 && monthIndex <= 7) {
-            baseNightlyLodging = 150; // Summer peak lodging
-          } else if (monthIndex === 3 || monthIndex === 4 || monthIndex === 8 || monthIndex === 9) {
-            baseNightlyLodging = 115;
-          }
-          const nights = Math.max(1, durationDays - 1);
-          const totalLodgingCost = baseNightlyLodging * nights;
-
-          // Realistic total trip cost (Flight + Lodging)
-          const totalCost = totalFlightCost + totalLodgingCost;
-          const totalPassengers = Math.max(1, 2 + currentChildrenAges.length);
-          const perPersonCost = Math.round(totalCost / totalPassengers);
+          const totalCost = pricingDetails.totalCost;
+          const perPersonCost = pricingDetails.pricePerPerson;
 
           // Budget check
           if (input.maxBudgetTotal && totalCost > input.maxBudgetTotal) {
@@ -376,7 +355,8 @@ export function optimizeVacationWindows(
             ptoEfficiencyRatio,
             estimatedTotalCost: totalCost,
             pricePerPerson: perPersonCost,
-            isCachedBenchmark: true,
+            isCachedBenchmark: pricingDetails.isCachedBenchmark,
+            pricingDetails,
             weather,
             seasonalWarning,
             isArbitrageOpportunity: Boolean(arbitrageNote),

@@ -340,9 +340,76 @@ export function getLocalizedAirportDetails(airport: DynamicAirport, locale: stri
   };
 }
 
+// Excluded non-commercial, military, or decommissioned airfields
+export const EXCLUDED_NON_COMMERCIAL_AIRPORTS = new Set([
+  // Military Air Bases & Air Stations
+  'RMS', 'SPM', 'GKE', 'GUT', 'GHF', 'ZNF', 'NDZ', 'QMI', 'AVB', 'VVI',
+  // Decommissioned / closed airports
+  'TXL', 'THF', 'SXF', 'BBS',
+  // Small general aviation, private airstrips, glider fields
+  'QEF', 'MHG', 'ZQC', 'ZQF', 'ZNV', 'ZQL', 'ZQW', 'BYU', 'HOQ', 'AAH', 'LHA',
+  'CSO', 'PEF', 'BBJ', 'EUM', 'FNB', 'ZCA', 'ESS', 'MGL', 'OBF', 'RBM', 'SZW',
+  'ZSN', 'BWE', 'BRV', 'FLF', 'BBH', 'AOC', 'KEL', 'EBE', 'EMP', 'ESX', 'LND',
+  'QFB', 'BFE', 'QFD',
+]);
+
+export const NON_COMMERCIAL_KEYWORDS = [
+  'air base',
+  'airbase',
+  ' afb',
+  'army air',
+  'naval air',
+  'militär',
+  'military',
+  'heliport',
+  'helipad',
+  'glider',
+  'segelflug',
+  'segelflugplatz',
+  'sportflug',
+  'ultralight',
+  'airstrip',
+  '[duplicate]',
+];
+
+export function isCommercialPassengerAirport(airport: {
+  iata?: string;
+  code?: string;
+  name: string;
+  city?: string;
+  isMajorHub?: boolean;
+}): boolean {
+  const code = (airport.code || airport.iata || '').toUpperCase();
+  if (!code || code.length !== 3 || code === '\\N') {
+    return false;
+  }
+
+  // Explicit military / non-commercial exclusion set
+  if (EXCLUDED_NON_COMMERCIAL_AIRPORTS.has(code)) {
+    return false;
+  }
+
+  // If designated as a known major commercial hub or metadata major hub, preserve
+  if (KNOWN_MAJOR_HUBS.has(code) || airport.isMajorHub) {
+    return true;
+  }
+
+  const nameLower = (airport.name || '').toLowerCase();
+  const cityLower = (airport.city || '').toLowerCase();
+
+  // Keyword check for military, gliders, heliports
+  for (const kw of NON_COMMERCIAL_KEYWORDS) {
+    if (nameLower.includes(kw) || cityLower.includes(kw)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 // Index valid commercial IATA airports
 const indexedAirports: DynamicAirport[] = rawAirports
-  .filter((a) => a.iata && a.iata.length === 3 && a.iata !== '\\N')
+  .filter((a) => a.iata && a.iata.length === 3 && a.iata !== '\\N' && isCommercialPassengerAirport(a))
   .map((a) => {
     const code = a.iata.toUpperCase();
     const meta = LOCALIZED_AIRPORT_METADATA[code];

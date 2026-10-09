@@ -7,6 +7,8 @@ export interface LocalizedDestinationEntity {
   id: string;
   category: DestinationCategory;
   code?: string;
+  parentRegionId?: string;
+  aliases?: string[];
   airportCodes: string[];
   countryCode: string;
   names: {
@@ -385,6 +387,255 @@ export const CANONICAL_DESTINATIONS: LocalizedDestinationEntity[] = [
       it: 'Italia',
     },
   },
+  {
+    id: 'athens',
+    category: 'city',
+    code: 'ATH',
+    airportCodes: ['ATH'],
+    countryCode: 'GR',
+    aliases: ['athen', 'athens', 'athènes', 'atenas', 'atene', 'athina'],
+    names: {
+      en: 'Athens',
+      de: 'Athen',
+      fr: 'Athènes',
+      es: 'Atenas',
+      it: 'Atene',
+    },
+    countryNames: {
+      en: 'Greece',
+      de: 'Griechenland',
+      fr: 'Grèce',
+      es: 'Grecia',
+      it: 'Grecia',
+    },
+  },
+  {
+    id: 'palma',
+    category: 'city',
+    code: 'PMI',
+    parentRegionId: 'mallorca',
+    airportCodes: ['PMI'],
+    countryCode: 'ES',
+    aliases: ['palma', 'palma de mallorca'],
+    names: {
+      en: 'Palma (Mallorca)',
+      de: 'Palma (Mallorca)',
+      fr: 'Palma (Majorque)',
+      es: 'Palma (Mallorca)',
+      it: 'Palma (Maiorca)',
+    },
+    countryNames: {
+      en: 'Spain',
+      de: 'Spanien',
+      fr: 'Espagne',
+      es: 'España',
+      it: 'Spagna',
+    },
+  },
+  {
+    id: 'hurghada_city',
+    category: 'city',
+    code: 'HRG',
+    parentRegionId: 'red_sea',
+    airportCodes: ['HRG'],
+    countryCode: 'EG',
+    aliases: ['hurghada', 'hurgada'],
+    names: {
+      en: 'Hurghada City',
+      de: 'Hurghada Stadt',
+      fr: 'Hurghada Ville',
+      es: 'Ciudad de Hurghada',
+      it: 'Città di Hurghada',
+    },
+    countryNames: {
+      en: 'Egypt',
+      de: 'Ägypten',
+      fr: 'Égypte',
+      es: 'Egipto',
+      it: 'Egitto',
+    },
+  },
+  {
+    id: 'antalya_city',
+    category: 'city',
+    code: 'AYT',
+    parentRegionId: 'turkish_riviera',
+    airportCodes: ['AYT'],
+    countryCode: 'TR',
+    aliases: ['antalya'],
+    names: {
+      en: 'Antalya City',
+      de: 'Antalya Stadt',
+      fr: 'Antalya Ville',
+      es: 'Ciudad de Antalya',
+      it: 'Città di Antalya',
+    },
+    countryNames: {
+      en: 'Turkey',
+      de: 'Türkei',
+      fr: 'Turquie',
+      es: 'Turquía',
+      it: 'Turchia',
+    },
+  },
+  {
+    id: 'heraklion_city',
+    category: 'city',
+    code: 'HER',
+    parentRegionId: 'crete',
+    airportCodes: ['HER'],
+    countryCode: 'GR',
+    aliases: ['heraklion', 'irakleio', 'iraklion'],
+    names: {
+      en: 'Heraklion (Crete)',
+      de: 'Heraklion (Kreta)',
+      fr: 'Héraklion (Crète)',
+      es: 'Heraclión (Creta)',
+      it: 'Heraklion (Creta)',
+    },
+    countryNames: {
+      en: 'Greece',
+      de: 'Griechenland',
+      fr: 'Grèce',
+      es: 'Grecia',
+      it: 'Grecia',
+    },
+  },
+  {
+    id: 'rhodes_city',
+    category: 'city',
+    code: 'RHO',
+    parentRegionId: 'rhodes',
+    airportCodes: ['RHO'],
+    countryCode: 'GR',
+    aliases: ['rhodos', 'rhodes', 'rodas', 'rodi'],
+    names: {
+      en: 'Rhodes City',
+      de: 'Rhodos Stadt',
+      fr: 'Rhodes Ville',
+      es: 'Ciudad de Rodas',
+      it: 'Città di Rodi',
+    },
+    countryNames: {
+      en: 'Greece',
+      de: 'Griechenland',
+      fr: 'Grèce',
+      es: 'Grecia',
+      it: 'Grecia',
+    },
+  },
+  {
+    id: 'lisbon',
+    category: 'city',
+    code: 'LIS',
+    airportCodes: ['LIS'],
+    countryCode: 'PT',
+    aliases: ['lisbon', 'lissabon', 'lisbonne', 'lisboa'],
+    names: {
+      en: 'Lisbon',
+      de: 'Lissabon',
+      fr: 'Lisbonne',
+      es: 'Lisboa',
+      it: 'Lisbona',
+    },
+    countryNames: {
+      en: 'Portugal',
+      de: 'Portugal',
+      fr: 'Portugal',
+      es: 'Portugal',
+      it: 'Portogallo',
+    },
+  },
+  {
+    id: 'vienna',
+    category: 'city',
+    code: 'VIE',
+    airportCodes: ['VIE'],
+    countryCode: 'AT',
+    aliases: ['vienna', 'wien', 'vienne'],
+    names: {
+      en: 'Vienna',
+      de: 'Wien',
+      fr: 'Vienne',
+      es: 'Viena',
+      it: 'Vienna',
+    },
+    countryNames: {
+      en: 'Austria',
+      de: 'Österreich',
+      fr: 'Autriche',
+      es: 'Austria',
+      it: 'Austria',
+    },
+  },
+  {
+    id: 'madrid',
+    category: 'city',
+    code: 'MAD',
+    airportCodes: ['MAD'],
+    countryCode: 'ES',
+    aliases: ['madrid'],
+    names: {
+      en: 'Madrid',
+      de: 'Madrid',
+      fr: 'Madrid',
+      es: 'Madrid',
+      it: 'Madrid',
+    },
+    countryNames: {
+      en: 'Spain',
+      de: 'Spanien',
+      fr: 'Espagne',
+      es: 'España',
+      it: 'Spagna',
+    },
+  },
+  {
+    id: 'tenerife',
+    category: 'region',
+    code: 'TFS',
+    parentRegionId: 'canary_islands',
+    airportCodes: ['TFS', 'TFN'],
+    countryCode: 'ES',
+    aliases: ['teneriffa', 'tenerife'],
+    names: {
+      en: 'Tenerife (Canary Islands)',
+      de: 'Teneriffa (Kanaren)',
+      fr: 'Ténérife (Canaries)',
+      es: 'Tenerife (Islas Canarias)',
+      it: 'Tenerife (Isole Canarie)',
+    },
+    countryNames: {
+      en: 'Spain',
+      de: 'Spanien',
+      fr: 'Espagne',
+      es: 'España',
+      it: 'Spagna',
+    },
+  },
+  {
+    id: 'gran_canaria',
+    category: 'region',
+    code: 'LPA',
+    parentRegionId: 'canary_islands',
+    airportCodes: ['LPA'],
+    countryCode: 'ES',
+    aliases: ['gran canaria'],
+    names: {
+      en: 'Gran Canaria (Canary Islands)',
+      de: 'Gran Canaria (Kanaren)',
+      fr: 'Grande Canarie (Canaries)',
+      es: 'Gran Canaria (Islas Canarias)',
+      it: 'Gran Canaria (Isole Canarie)',
+    },
+    countryNames: {
+      en: 'Spain',
+      de: 'Spanien',
+      fr: 'Espagne',
+      es: 'España',
+      it: 'Spagna',
+    },
+  },
   // Countries
   {
     id: 'egypt',
@@ -712,10 +963,17 @@ const DESTINATION_MAPPINGS: Record<string, string[]> = {
   barcelona: ['BCN'],
 
   // Greece & Islands
-  greece: ['HER', 'RHO', 'CFU', 'KGS'],
-  griechenland: ['HER', 'RHO', 'CFU', 'KGS'],
-  grèce: ['HER', 'RHO', 'CFU', 'KGS'],
-  grecia: ['HER', 'RHO', 'CFU', 'KGS'],
+  greece: ['HER', 'RHO', 'CFU', 'KGS', 'ATH'],
+  griechenland: ['HER', 'RHO', 'CFU', 'KGS', 'ATH'],
+  grèce: ['HER', 'RHO', 'CFU', 'KGS', 'ATH'],
+  grecia: ['HER', 'RHO', 'CFU', 'KGS', 'ATH'],
+  athens: ['ATH'],
+  athen: ['ATH'],
+  athènes: ['ATH'],
+  athenes: ['ATH'],
+  atenas: ['ATH'],
+  atene: ['ATH'],
+  athina: ['ATH'],
   crete: ['HER', 'CHQ'],
   kreta: ['HER', 'CHQ'],
   heraklion: ['HER'],
@@ -734,6 +992,19 @@ const DESTINATION_MAPPINGS: Record<string, string[]> = {
   rom: ['FCO'],
   venice: ['VCE'],
   venedig: ['VCE'],
+
+  // Austria
+  austria: ['VIE', 'SZG', 'INN'],
+  österreich: ['VIE', 'SZG', 'INN'],
+  oesterreich: ['VIE', 'SZG', 'INN'],
+  autriche: ['VIE', 'SZG', 'INN'],
+  vienna: ['VIE'],
+  wien: ['VIE'],
+  vienne: ['VIE'],
+  viena: ['VIE'],
+
+  // Spain & Madrid additions
+  madrid: ['MAD'],
 
   // Portugal
   portugal: ['FAO', 'LIS', 'FNC'],
@@ -837,10 +1108,22 @@ export function getDestinationEntity(
     }
   }
 
-  // 5. Mapping synonym match with word boundaries
+  // 5. Explicit alias match
+  for (const dest of CANONICAL_DESTINATIONS) {
+    if (dest.aliases) {
+      for (const alias of dest.aliases) {
+        const cleanAlias = normalizeDestinationString(alias);
+        if (clean === cleanAlias || isWordMatch(cleanAlias, clean)) {
+          return dest;
+        }
+      }
+    }
+  }
+
+  // 6. Mapping synonym match with word boundaries
   for (const [key, codes] of Object.entries(DESTINATION_MAPPINGS)) {
     const cleanKey = normalizeDestinationString(key);
-    if (isWordMatch(cleanKey, clean)) {
+    if (isWordMatch(cleanKey, clean) || cleanKey === clean) {
       const matched = CANONICAL_DESTINATIONS.find((d) =>
         d.airportCodes.some((ac) => codes.includes(ac))
       );
@@ -848,7 +1131,134 @@ export function getDestinationEntity(
     }
   }
 
+  // 7. Fuzzy match across all canonical destinations
+  const fuzzy = fuzzyMatchDestinationEntity(queryOrTag, locale);
+  if (fuzzy) return fuzzy;
+
   return null;
+}
+
+/**
+ * Calculates Levenshtein edit distance between two strings
+ */
+export function levenshteinDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+
+  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = i;
+    for (let j = 1; j <= b.length; j++) {
+      const val = a[i - 1] === b[j - 1] ? row[j - 1] : Math.min(row[j - 1], row[j], prev) + 1;
+      row[j - 1] = prev;
+      prev = val;
+    }
+    row[b.length] = prev;
+  }
+  return row[b.length];
+}
+
+/**
+ * Resilient fuzzy matching across canonical destination names and aliases
+ */
+export function fuzzyMatchDestinationEntity(
+  query: string,
+  locale: string = 'de'
+): LocalizedDestinationEntity | null {
+  const clean = normalizeDestinationString(query);
+  if (!clean || clean.length < 3) return null;
+
+  let bestMatch: LocalizedDestinationEntity | null = null;
+  let minDistance = Infinity;
+
+  for (const dest of CANONICAL_DESTINATIONS) {
+    const candidates = [
+      dest.id,
+      ...Object.values(dest.names),
+      ...(dest.aliases || []),
+      ...(dest.category === 'country' ? Object.values(dest.countryNames) : []),
+    ];
+
+    for (const cand of candidates) {
+      const candNorm = normalizeDestinationString(cand);
+      const dist = levenshteinDistance(clean, candNorm);
+      const maxAllowed = clean.length <= 4 ? 1 : 2;
+
+      if (dist <= maxAllowed && dist < minDistance) {
+        minDistance = dist;
+        bestMatch = dest;
+      }
+    }
+  }
+
+  return bestMatch;
+}
+
+export interface ContainmentCheckResult {
+  isContained: boolean;
+  parentTag?: string;
+  parentEntity?: LocalizedDestinationEntity;
+  childEntity?: LocalizedDestinationEntity;
+}
+
+/**
+ * Detects if a candidate destination entity is already encompassed by an active parent destination.
+ * e.g. "Palma" when "Mallorca" is already active, or "Hurghada City" when "Red Sea" is active.
+ */
+export function checkRegionalContainment(
+  candidateInputOrEntity: string | LocalizedDestinationEntity,
+  selectedDestinations: string[],
+  locale: string = 'de'
+): ContainmentCheckResult {
+  const child = typeof candidateInputOrEntity === 'string'
+    ? getDestinationEntity(candidateInputOrEntity, locale)
+    : candidateInputOrEntity;
+
+  if (!child || !selectedDestinations || selectedDestinations.length === 0) {
+    return { isContained: false };
+  }
+
+  for (const existingTag of selectedDestinations) {
+    const parent = getDestinationEntity(existingTag, locale);
+    if (!parent || parent.id === child.id) continue;
+
+    // 1. Explicit parentRegionId hierarchy
+    if (child.parentRegionId && child.parentRegionId === parent.id) {
+      return {
+        isContained: true,
+        parentTag: existingTag,
+        parentEntity: parent,
+        childEntity: child,
+      };
+    }
+
+    // 2. Airport codes containment: If all airport codes of child are encompassed by parent region
+    if (
+      (parent.category === 'region' || parent.category === 'country') &&
+      child.airportCodes.length > 0 &&
+      child.airportCodes.every((code) => parent.airportCodes.includes(code))
+    ) {
+      return {
+        isContained: true,
+        parentTag: existingTag,
+        parentEntity: parent,
+        childEntity: child,
+      };
+    }
+
+    // 3. Country-level containment
+    if (parent.category === 'country' && child.countryCode === parent.countryCode) {
+      return {
+        isContained: true,
+        parentTag: existingTag,
+        parentEntity: parent,
+        childEntity: child,
+      };
+    }
+  }
+
+  return { isContained: false };
 }
 
 /**
@@ -940,12 +1350,13 @@ export function resolveDestinationCodes(destinationTags?: string[]): string[] {
 }
 
 /**
- * Strict pre-validation for destination inputs.
+ * Strict pre-validation for destination inputs with regional containment detection.
  * Rejects fictitious/unknown inputs (e.g. "Mars") that cannot be mapped to any airport or recognized entity.
  */
 export async function validateDestinationInput(
   rawInput: string,
-  locale: string = 'de'
+  locale: string = 'de',
+  selectedDestinations: string[] = []
 ): Promise<{
   isValid: boolean;
   entity?: LocalizedDestinationEntity;
@@ -953,16 +1364,19 @@ export async function validateDestinationInput(
   category?: DestinationCategory;
   categoryLabel?: string;
   airportCodes?: string[];
+  isContained?: boolean;
+  containment?: ContainmentCheckResult;
 }> {
   const clean = rawInput.trim();
   if (!clean || clean.length < 2) {
     return { isValid: false };
   }
 
-  // 1. Check canonical destinations catalog
+  // 1. Check canonical destinations catalog (exact + alias + fuzzy)
   const entity = getDestinationEntity(clean, locale);
   if (entity) {
     const localizedName = getLocalizedDestinationName(entity, locale);
+    const containment = checkRegionalContainment(entity, selectedDestinations, locale);
     return {
       isValid: true,
       entity,
@@ -970,6 +1384,8 @@ export async function validateDestinationInput(
       category: entity.category,
       categoryLabel: getLocalizedCategoryName(entity.category, locale),
       airportCodes: entity.airportCodes,
+      isContained: containment.isContained,
+      containment,
     };
   }
 
@@ -978,12 +1394,15 @@ export async function validateDestinationInput(
   if (upper.length === 3) {
     const airport = getAirportByIata(upper);
     if (airport) {
+      const containment = checkRegionalContainment(upper, selectedDestinations, locale);
       return {
         isValid: true,
         resolvedName: `${airport.name} (${upper})`,
         category: 'airport',
         categoryLabel: getLocalizedCategoryName('airport', locale),
         airportCodes: [upper],
+        isContained: containment.isContained,
+        containment,
       };
     }
   }
@@ -992,7 +1411,7 @@ export async function validateDestinationInput(
   const cleanNorm = normalizeDestinationString(clean);
   for (const [key, codes] of Object.entries(DESTINATION_MAPPINGS)) {
     const cleanKey = normalizeDestinationString(key);
-    if (isWordMatch(cleanKey, cleanNorm)) {
+    if (isWordMatch(cleanKey, cleanNorm) || cleanKey === cleanNorm) {
       return {
         isValid: true,
         resolvedName: clean,

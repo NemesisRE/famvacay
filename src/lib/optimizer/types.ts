@@ -64,6 +64,11 @@ export interface WeatherAssessment {
   precipitationRiskPercent: number;
   isSuitable: boolean;
   reason?: string;
+  maxTempC?: number;
+  minTempC?: number;
+  waterTempC?: number | null;
+  rainyDays?: number;
+  sunshineHoursPerDay?: number;
 }
 
 export interface CandidateWindow {
@@ -83,6 +88,7 @@ export interface CandidateWindow {
   estimatedTotalCost: number;
   pricePerPerson: number;
   isCachedBenchmark: boolean;
+  pricingDetails?: import('../pricing/types').AggregatedTripPricing;
   
   // Weather metrics
   weather: WeatherAssessment;

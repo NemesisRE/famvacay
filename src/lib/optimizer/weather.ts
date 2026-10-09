@@ -40,6 +40,16 @@ export const POPULAR_DESTINATIONS: Record<string, DestinationProfile> = {
   HND: { code: 'HND', name: 'Tokyo Haneda', country: 'JP', type: 'CITY', lat: 35.5494, lon: 139.7798, idealMinTemp: 10, idealMaxTemp: 28, maxAcceptablePrecipRisk: 35 },
   CUN: { code: 'CUN', name: 'Cancun Riviera Maya', country: 'MX', type: 'BEACH', lat: 21.0365, lon: -86.8771, idealMinTemp: 22, idealMaxTemp: 33, maxAcceptablePrecipRisk: 35 },
   DXB: { code: 'DXB', name: 'Dubai', country: 'AE', type: 'CITY', lat: 25.2532, lon: 55.3657, idealMinTemp: 18, idealMaxTemp: 34, maxAcceptablePrecipRisk: 15 },
+  // Additional popular European and beach destinations
+  ATH: { code: 'ATH', name: 'Athens', country: 'GR', type: 'CITY', lat: 37.9364, lon: 23.9445, idealMinTemp: 16, idealMaxTemp: 34, maxAcceptablePrecipRisk: 25 },
+  HRG: { code: 'HRG', name: 'Hurghada Red Sea', country: 'EG', type: 'BEACH', lat: 27.1783, lon: 33.7994, idealMinTemp: 22, idealMaxTemp: 37, maxAcceptablePrecipRisk: 10 },
+  SSH: { code: 'SSH', name: 'Sharm el-Sheikh', country: 'EG', type: 'BEACH', lat: 27.9772, lon: 34.3949, idealMinTemp: 22, idealMaxTemp: 37, maxAcceptablePrecipRisk: 10 },
+  TFS: { code: 'TFS', name: 'Tenerife South', country: 'ES', type: 'BEACH', lat: 28.0445, lon: -16.5725, idealMinTemp: 20, idealMaxTemp: 29, maxAcceptablePrecipRisk: 20 },
+  LPA: { code: 'LPA', name: 'Gran Canaria', country: 'ES', type: 'BEACH', lat: 27.9319, lon: -15.3866, idealMinTemp: 20, idealMaxTemp: 29, maxAcceptablePrecipRisk: 20 },
+  IBZ: { code: 'IBZ', name: 'Ibiza', country: 'ES', type: 'BEACH', lat: 38.8729, lon: 1.3731, idealMinTemp: 20, idealMaxTemp: 32, maxAcceptablePrecipRisk: 25 },
+  RHO: { code: 'RHO', name: 'Rhodes', country: 'GR', type: 'BEACH', lat: 36.4054, lon: 28.0862, idealMinTemp: 21, idealMaxTemp: 33, maxAcceptablePrecipRisk: 20 },
+  DJE: { code: 'DJE', name: 'Djerba Zarzis', country: 'TN', type: 'BEACH', lat: 33.8750, lon: 10.7753, idealMinTemp: 21, idealMaxTemp: 34, maxAcceptablePrecipRisk: 20 },
+  MAD: { code: 'MAD', name: 'Madrid Barajas', country: 'ES', type: 'CITY', lat: 40.4983, lon: -3.5676, idealMinTemp: 14, idealMaxTemp: 32, maxAcceptablePrecipRisk: 30 },
 };
 
 export interface SeasonalConstraintWarning {
@@ -97,24 +107,40 @@ export function getEstimatedClimate(
 ): WeatherAssessment {
   const dest = POPULAR_DESTINATIONS[destinationCode];
   if (!dest) {
-    return { avgTempC: 22, precipitationRiskPercent: 20, isSuitable: true };
+    return {
+      avgTempC: 22,
+      maxTempC: 26,
+      minTempC: 17,
+      waterTempC: 21,
+      rainyDays: 3,
+      sunshineHoursPerDay: 9,
+      precipitationRiskPercent: 20,
+      isSuitable: true,
+      reason: 'Pleasant family weather expected.',
+    };
   }
 
   // Base seasonal temperatures based on latitude and destination type
   let tempBase = 20;
   let precipRisk = 20;
+  let waterTemp: number | null = null;
+  let sunshineHours = 8;
 
   // Midsummer (June-Aug)
   if (monthIndex >= 5 && monthIndex <= 7) {
     if (dest.type === 'BEACH') {
       tempBase = 27 + (dest.lat < 38 ? 3 : 0);
       precipRisk = 10;
+      waterTemp = 24 + (dest.lat < 38 ? 3 : 0);
+      sunshineHours = 11;
     } else if (dest.type === 'SKI') {
       tempBase = 18; // Not ski season
       precipRisk = 30;
+      sunshineHours = 7;
     } else {
       tempBase = 24;
       precipRisk = 25;
+      sunshineHours = 10;
     }
   } 
   // Winter (Dec-Feb)
@@ -122,19 +148,39 @@ export function getEstimatedClimate(
     if (dest.type === 'SKI') {
       tempBase = -2;
       precipRisk = 40;
+      sunshineHours = 4;
     } else if (dest.type === 'BEACH') {
-      tempBase = 14;
-      precipRisk = 40;
+      tempBase = dest.lat < 30 ? 20 : 14;
+      precipRisk = dest.lat < 30 ? 20 : 40;
+      waterTemp = dest.lat < 30 ? 20 : 15;
+      sunshineHours = dest.lat < 30 ? 6 : 5;
     } else {
-      tempBase = 5;
+      tempBase = 6;
       precipRisk = 45;
+      sunshineHours = 4;
     }
   }
   // Spring / Autumn
   else {
-    tempBase = 19;
-    precipRisk = 25;
+    if (dest.type === 'BEACH') {
+      tempBase = 22 + (dest.lat < 38 ? 2 : 0);
+      precipRisk = 20;
+      waterTemp = 20 + (dest.lat < 38 ? 2 : 0);
+      sunshineHours = 8;
+    } else if (dest.type === 'SKI') {
+      tempBase = 4;
+      precipRisk = 35;
+      sunshineHours = 5;
+    } else {
+      tempBase = 18;
+      precipRisk = 25;
+      sunshineHours = 7;
+    }
   }
+
+  const rainyDays = Math.max(1, Math.round((precipRisk / 100) * 15));
+  const maxTempC = Math.round(tempBase + 3.5);
+  const minTempC = Math.round(tempBase - 4.5);
 
   const isSuitable =
     tempBase >= dest.idealMinTemp - 4 &&
@@ -143,6 +189,11 @@ export function getEstimatedClimate(
 
   return {
     avgTempC: Math.round(tempBase),
+    maxTempC,
+    minTempC,
+    waterTempC: dest.type === 'BEACH' ? waterTemp : null,
+    rainyDays,
+    sunshineHoursPerDay: sunshineHours,
     precipitationRiskPercent: precipRisk,
     isSuitable,
     reason: isSuitable

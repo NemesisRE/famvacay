@@ -178,27 +178,89 @@ Departure hubs and distance metrics are managed by a unified airport service (`s
 
 ---
 
-## Multi-Destination Architecture & Entity Resolution
+## Multi-Destination Architecture, Fuzzy Search & Regional Containment
 
-The vacation planner enforces structured destination validation, localized entity resolution, and strict search filtering:
+The vacation planner enforces structured destination validation, localized entity resolution, resilient fuzzy matching, and hierarchical regional containment:
 
-1. **Strict Pre-Validation Pipeline (`validateDestinationInput`)**:
+1. **Strict Pre-Validation & Multilingual Fuzzy Matching (`validateDestinationInput`)**:
    - Destination tags are strictly pre-validated before they can be added as search filters.
-   - Inputs are matched against canonical holiday destinations (`CANONICAL_DESTINATIONS`), normalized synonyms across 5 languages, or commercial IATA airport records.
+   - Inputs are matched against canonical holiday destinations (`CANONICAL_DESTINATIONS`), multilingual aliases across 5 languages, normalized synonyms, or commercial IATA airport records.
+   - A resilient fuzzy matching engine using Levenshtein distance handles user typos and language-specific orthography (e.g., resolving "Athen", "Athens", "Athènes", or "Athene" to Athens with IATA `ATH`).
    - Invalid, ambiguous, or fictitious inputs (such as "Mars") that cannot be mapped to a recognized vacation entity or commercial airport corridor are rejected with inline validation feedback.
-2. **Resolved Entity Model & Category Metadata**:
+2. **Hierarchical Regional Containment Detection (`checkRegionalContainment`)**:
+   - When a user selects a destination that is already encompassed by an active parent selection (for example, attempting to add "Palma" when "Mallorca" is already active, or "Hurghada City" when "Hurghada & Red Sea" is active, or "Athens" when "Greece" is selected), the system identifies the hierarchical containment.
+   - The engine checks:
+     - Explicit `parentRegionId` references defined on child entities.
+     - Subset containment of IATA airport codes (`child.airportCodes.every(code => parent.airportCodes.includes(code))`).
+     - Sovereign country-level territorial inclusion (`child.countryCode === parent.countryCode`).
+   - Instead of inserting a duplicate or redundant tag, the user interface triggers immediate visual feedback (a temporary subtle green pulse highlight on the parent chip) and renders an informative notification explaining that the location is already covered.
+3. **Resolved Entity Model & Category Metadata**:
    - Every valid destination resolves to a structured entity (`LocalizedDestinationEntity`) with explicit categorization:
-     - `country`: Sovereign destination states (e.g., Egypt, Spain, Greece, Turkey, Italy, Portugal).
-     - `region`: Tourist resort corridors and archipelagos (e.g., "Hurghada & Red Sea", "Mallorca (Balearic Islands)", "Canary Islands", "Turkish Riviera & Antalya", "Crete & Greek Islands").
-     - `city`: Urban and cultural metropolitan destinations (e.g., Barcelona, Rome, Dubai).
+     - `country`: Sovereign destination states (e.g., Egypt, Spain, Greece, Turkey, Italy, Portugal, Austria).
+     - `region`: Tourist resort corridors and archipelagos (e.g., "Hurghada & Red Sea", "Mallorca (Balearic Islands)", "Canary Islands", "Turkish Riviera & Antalya", "Crete & Greek Islands", "Rhodes").
+     - `city`: Urban, coastal, and cultural metropolitan destinations (e.g., Athens, Palma, Barcelona, Rome, Lisbon, Vienna, Madrid, Dubai).
      - `airport`: Specific commercial airport hubs.
    - Destination chips clearly render the resolved entity name and category badge (e.g., "Mallorca (Balearen) [Region]", "Ägypten [Land]", "Barcelona [Stadt]").
-3. **End-to-End Localization Across Supported Locales**:
-   - Destination names, country labels, and entity categories dynamically adjust to the active user locale (`en`, `de`, `fr`, `es`, `it`). For example, selecting the Red Sea corridor displays as "Hurghada & Rotes Meer [Region]" in German, "Hurghada & Red Sea [Region]" in English, and "Hurghada et Mer Rouge [Région]" in French.
-4. **Destination-Bound Strict Matching & False Positive Elimination**:
+4. **End-to-End Localization Across Supported Locales**:
+   - Destination names, country labels, and entity categories dynamically adjust to the active user locale (`en`, `de`, `fr`, `es`, `it`).
+5. **Destination-Bound Strict Matching & False Positive Elimination**:
    - When user queries specify target destinations, candidate generation is strictly constrained to the corresponding destination airport codes (e.g., searching for "Rotes Meer" resolves strictly to `HRG`, `SSH`, and `RMF`).
    - The engine eliminates arbitrary fallbacks to unrequested destinations (such as `PMI`, `AYT`, or `HER`).
-   - If no candidate windows satisfy all duration, budget, or school constraints for the selected destination, the optimizer returns zero candidates, and the interface displays an explicit empty state ("No matching vacation periods found for the selected destination(s)"). Open exploration across all standard holiday hubs occurs solely when no destination filters are active.
+   - If no candidate windows satisfy all duration, budget, or school constraints for the selected destination, the optimizer returns zero candidates, and the interface displays an explicit empty state. Open exploration across all standard holiday hubs occurs solely when no destination filters are active.
+
+---
+
+## Commercial Airport Filtering & Reactive Recalculation
+
+1. **Commercial Passenger Status Filtering**:
+   - Airport suggestions and recommendations are strictly restricted to active commercial passenger hubs handling scheduled commercial flights or leisure charter operations.
+   - An exclusion filter (`EXCLUDED_NON_COMMERCIAL_AIRPORTS` and `NON_COMMERCIAL_KEYWORDS`) eliminates:
+     - Military air bases and naval air stations (e.g., Ramstein Air Base `RMS`, Spangdahlem `SPM`, Geilenkirchen `GKE`, Gütersloh `GUT`, Giebelstadt `GHF`, Hanau `ZNF`, Whiting Field `NDZ`, Istres `QMI`, Aviano `AVB`).
+     - Decommissioned commercial airports (e.g., Berlin Tegel `TXL`, Tempelhof `THF`, Schönefeld `SXF`).
+     - Small general aviation airfields, glider strips, and private airfields (e.g., Frankfurt-Egelsbach `QEF`, Mannheim `MHG`, Speyer `ZQC`, Trier-Föhren `ZQF`, Koblenz `ZNV`, Donaueschingen `ZQL`, Bayreuth `BYU`, Hof-Plauen `HOQ`, Lahr `LHA`, Cochstedt `CSO`, Peenemünde `PEF`, Bitburg `BBJ`, Freiburg `QFB`, Bielefeld `BFE`).
+   - Certified major passenger hubs (e.g., `FRA`, `MUC`, `STR`, `BER`, `HAM`, `DUS`, `CGN`, `FKB`, `NUE`, `BSL`, `CDG`, `ORY`, `VIE`, `ZRH`) are preserved with localized metadata.
+2. **Reactive Coordinate Recalculation**:
+   - When a user enters or modifies their departure location, the system performs reactive geocoding.
+   - Updating `departureCoords` reactively triggers the departure airport recommendation engine, dynamically ranking proximity hubs and high-speed rail connections without requiring page reloads.
+3. **Location Persistence & Scope Decoupling**:
+   - The user's home location resolves into a fully qualified, human-readable place name (`City, State, Country`) upon profile loading and selection, preventing inputs from reverting to raw postal codes or numeric identifiers.
+   - The residence country and administrative subdivision (Bundesland, Kanton, Région) are explicitly decoupled from departure travel distance, exclusively scoping school holiday calendar intervals and statutory public holiday calculations.
+
+---
+
+## Climate & Weather Assessment Architecture
+
+The weather model (`src/lib/optimizer/weather.ts`) provides multi-metric climate forecasting and seasonal constraint analysis:
+
+1. **Climate Metric Schema (`WeatherAssessment`)**:
+   - `avgTempC`: Expected mean daytime air temperature (Celsius).
+   - `maxTempC`: Expected daytime high temperature.
+   - `minTempC`: Expected nighttime low temperature.
+   - `waterTempC`: Coastal sea surface temperature for beach destinations (null for inland metropolitan or ski destinations).
+   - `rainyDays`: Estimated monthly precipitation days.
+   - `sunshineHoursPerDay`: Estimated daily sunshine duration.
+   - `precipitationRiskPercent`: Probability of measurable precipitation.
+   - `isSuitable`: Boolean flag evaluating family comfort boundaries.
+2. **Interactive UI Popover (`ClimateDetailsPopover`)**:
+   - Clicking or hovering over temperature badges in search result cards opens a dedicated climate popover displaying daytime highs/lows, sea water temperature, precipitation frequency, sunshine hours, and suitability rationales.
+
+---
+
+## Modular Travel Pricing & Booking Portal Architecture
+
+The pricing engine implements a decoupled provider pattern (`src/lib/pricing/`):
+
+1. **Provider Architecture (`TravelPricingProvider`)**:
+   - `TravelPricingProvider`: Defines standard contract for flight quotes, lodging estimates, total cost aggregation, and deep link generation.
+   - `PortalAggregatorProvider`: Evaluates seasonal market fare models, passenger age tier multipliers, cabin class factors, and arbitrage differentials.
+   - `AmadeusPricingProvider`: Extensible live GDS provider querying live airline fares when credentials (`AMADEUS_CLIENT_ID`, `AMADEUS_CLIENT_SECRET`) are present, with automatic fallback to `PortalAggregatorProvider`.
+2. **Dynamic Booking Portal Deep-Linking**:
+   - Each generated candidate window is equipped with deep-links populated with the specific travel dates, origin and destination airports, adult passenger counts, and child age arrays:
+     - **Google Flights**: Round-trip search deep link prefilling airports and exact travel interval.
+     - **Skyscanner**: Flight comparison deep link with parameterized party composition and cabin class.
+     - **Booking.com**: Accommodation search deep link prefilling destination locality, check-in/check-out dates, and children ages.
+3. **Actionable UI Integration (`BookingDealsPopover`)**:
+   - Result cards include an interactive portal deals popover providing itemized cost breakdowns (return flight share vs. lodging share) and one-click direct booking navigation.
 
 ---
 
@@ -233,7 +295,7 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
 7. **Weather Scoring vs. Hard Rejection**:
    Seasonal weather conditions (temperature, precipitation, hurricane risk) are factored into continuous scoring ($0.0 - 1.0$) rather than dropping valid vacation candidates outright.
 8. **Realistic Family Trip Cost Calculation**:
-   Aggregates return flights (with cabin class scaling) and duration-scaled family accommodation lodging:
+   Calculated via the modular pricing engine (`getSynchronousTripPricing`):
    $$\text{Total Cost} = \text{Flight Cost} + \text{Lodging Cost}$$
    $$\text{Flight Cost} = \text{Base Return Fare} \times \text{Cabin Multiplier} \times \text{Passenger Multiplier} \times (1 - \text{Arbitrage Discount})$$
    $$\text{Lodging Cost} = \text{Nightly Lodging Benchmark} \times (\text{Duration Days} - 1)$$
