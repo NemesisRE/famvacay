@@ -47,7 +47,14 @@ export interface TranslationDictionary {
     tierInfant: string;
     tierChild: string;
     tierTeen: string;
+    tierInfantBadge: string;
+    tierChildBadge: string;
+    tierTeenBadge: string;
     schoolAgeBadge: string;
+    schoolAgeBadgeShort: string;
+    locationUnverifiedWarning: string;
+    locationVerified: string;
+    requiresSchoolExemptionWarning: string;
     durationLabel: string;
     durationMinLabel: string;
     durationMaxLabel: string;

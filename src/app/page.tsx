@@ -83,6 +83,12 @@ export default function HomePage() {
     { startDate: string; endDate: string; reason?: string }[]
   >([]);
 
+  // Profile preferences & travel comfort state
+  const [maxDrivingHours, setMaxDrivingHours] = useState<number | undefined>(undefined);
+  const [preferredCabinClass, setPreferredCabinClass] = useState<string | undefined>(undefined);
+  const [climatePreference, setClimatePreference] = useState<string | undefined>(undefined);
+  const [travelModes, setTravelModes] = useState<string[] | undefined>(undefined);
+
   // Profile sync states
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -160,6 +166,19 @@ export default function HomePage() {
                 reason: b.reason || '',
               }))
             );
+          }
+
+          if (p.maxDrivingHours !== undefined && p.maxDrivingHours !== null) {
+            setMaxDrivingHours(Number(p.maxDrivingHours));
+          }
+          if (p.preferredCabinClass) {
+            setPreferredCabinClass(p.preferredCabinClass);
+          }
+          if (p.climatePreference) {
+            setClimatePreference(p.climatePreference);
+          }
+          if (Array.isArray(p.travelModes)) {
+            setTravelModes(p.travelModes);
           }
 
           setProfileLoaded(true);
@@ -279,6 +298,10 @@ export default function HomePage() {
           childrenAges: computedAges,
           childrenBirthDates,
           blackoutRanges: validBlackouts,
+          maxDrivingHours,
+          preferredCabinClass,
+          climatePreference,
+          travelModes,
         },
       };
 
@@ -838,6 +861,27 @@ export default function HomePage() {
                             </div>
                           </div>
                         </div>
+
+                        {/* School Holiday Exemption Warning */}
+                        {win.requiresSchoolExemption && (
+                          <div className="mt-3 p-2.5 rounded-lg bg-orange-50 border border-orange-300 flex items-start gap-2 text-xs text-orange-900">
+                            <AlertCircle className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <span className="font-bold block">
+                                {t.home.requiresSchoolExemptionWarning}
+                              </span>
+                              {win.schoolHolidayDaysOverlap !== undefined && win.schoolHolidayDaysOverlap > 0 ? (
+                                <span className="text-[11px] text-orange-800">
+                                  {win.schoolHolidayDaysOverlap} / {win.durationDays} {t.home.days} {t.home.schoolAgeBadge}
+                                </span>
+                              ) : (
+                                <span className="text-[11px] text-orange-800">
+                                  {t.home.schoolAgeBadge}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Localized Seasonal Warning Banner */}
                         {win.seasonalWarning && (() => {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Compass, Search, X, Plus, Sparkles, MapPin, Globe } from 'lucide-react';
+import { Compass, Search, X, Plus, Sparkles, MapPin, Globe, AlertCircle } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
 export interface DestinationSuggestion {
@@ -63,6 +63,7 @@ export function MultiDestinationInput({
   const [inputVal, setInputVal] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<DestinationSuggestion[]>([]);
+  const [destinationWarning, setDestinationWarning] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Filter recommendations based on input query
@@ -94,14 +95,58 @@ export function MultiDestinationInput({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const addDestination = (dest: string) => {
+  const addDestination = async (dest: string) => {
     const clean = dest.trim();
     if (!clean) return;
-    if (!selectedDestinations.includes(clean)) {
-      onChange([...selectedDestinations, clean]);
+
+    // Check if in popular catalog
+    const matched = POPULAR_FAMILY_DESTINATIONS.find(
+      (d) =>
+        d.name.toLowerCase() === clean.toLowerCase() ||
+        (d.code && d.code.toLowerCase() === clean.toLowerCase())
+    );
+
+    if (matched) {
+      if (!selectedDestinations.includes(matched.name)) {
+        onChange([...selectedDestinations, matched.name]);
+      }
+      setInputVal('');
+      setDestinationWarning(null);
+      setDropdownOpen(false);
+      return;
     }
-    setInputVal('');
-    setDropdownOpen(false);
+
+    // Validate against places / airport search API
+    try {
+      const [geoRes, apRes] = await Promise.all([
+        fetch(`/api/locations/geocode?q=${encodeURIComponent(clean)}`),
+        fetch(`/api/airports/search?q=${encodeURIComponent(clean)}`),
+      ]);
+
+      const geoData = geoRes.ok ? await geoRes.json() : null;
+      const apData = apRes.ok ? await apRes.json() : null;
+
+      const hasValidGeo = geoData?.locations && geoData.locations.length > 0;
+      const hasValidAp = apData?.airports && apData.airports.length > 0;
+
+      if (hasValidGeo || hasValidAp) {
+        const canonicalName = hasValidGeo
+          ? geoData.locations[0].city || geoData.locations[0].name
+          : apData.airports[0].city || apData.airports[0].name;
+
+        if (!selectedDestinations.includes(canonicalName)) {
+          onChange([...selectedDestinations, canonicalName]);
+        }
+        setInputVal('');
+        setDestinationWarning(null);
+        setDropdownOpen(false);
+        return;
+      }
+    } catch {
+      // Failed to validate
+    }
+
+    setDestinationWarning(`"${clean}" could not be verified as a recognized tourist destination, city, or airport.`);
   };
 
   const removeDestination = (dest: string) => {
@@ -232,6 +277,13 @@ export function MultiDestinationInput({
           </div>
         )}
       </div>
+
+      {destinationWarning && (
+        <div className="mt-1.5 p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-1.5 text-xs text-amber-800">
+          <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <span className="text-[11px] leading-tight">{destinationWarning}</span>
+        </div>
+      )}
     </div>
   );
 }

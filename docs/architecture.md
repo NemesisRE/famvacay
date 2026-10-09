@@ -148,18 +148,19 @@ The system coordinates jurisdictional school calendars across administrative sub
 
 ---
 
-## Dynamic Departure Coordinates & Airport Proximity Engine
+## Dynamic Departure Coordinates & Unified Airport Service
 
-Departure hubs are resolved dynamically to eliminate fixed lists and inaccurate state-centroid approximations (`src/lib/airports/airport-service.ts`):
+Departure hubs and distance metrics are managed by a unified airport service (`src/lib/airports/airport-service.ts`) utilized identically by both the Family Profile and Vacation Search:
 
-1. **Exact Coordinate Geocoding (`src/lib/geo/geocoding.ts`)**:
+1. **Exact Coordinate Geocoding & Postal Code Resolution (`src/lib/geo/geocoding.ts`)**:
    - Departure distances are calculated strictly from the user's specific starting coordinates (`departureLat`, `departureLon`), rather than regional capital centroids.
-   - Coordinates are resolved via OpenStreetMap Nominatim with a Redis caching layer and an offline European metropolitan index fallback.
+   - The geocoding service resolves postal codes (e.g., "76334" to "76334 Eggenstein-Leopoldshafen") and metropolitan locations via OpenStreetMap Nominatim with a Redis caching layer and an offline European postal code and city index fallback.
+   - Strict place verification ensures unverified free-text locations trigger validation warnings before submission.
 2. **Geodesic Distance Calculation (`geolib`)**:
    - Distance from departure coordinates to candidate hubs is calculated using the Great-Circle Haversine formula:
      $$d = 2r \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta\phi}{2}\right) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\Delta\lambda}{2}\right)}\right)$$
 3. **High-Speed Rail (HSR) Connectivity Heuristics**:
-   - Real-world travel options are not limited by national borders or road driving alone. Major high-speed rail corridors link cities directly to international mega-hubs:
+   - Real-world travel options account for high-speed rail corridors linking cities directly to international mega-hubs:
      - **Southwest Germany / Karlsruhe to Paris (`CDG` / `ORY`)**: Karlsruhe Hauptbahnhof connects directly to Paris Gare de l'Est via TGV / ICE in 2.5 hours. Paris Charles de Gaulle and Orly offer competitive long-haul and Caribbean fares that often undercut domestic hubs like Munich or Frankfurt.
      - **Frankfurt AIRail (`FRA`)**: Direct high-speed train connections terminating directly under the terminal building.
      - **Rhineland to Brussels (`BRU`)**: Direct Eurostar / ICE service in under 1.8 hours.
@@ -168,7 +169,11 @@ Departure hubs are resolved dynamically to eliminate fixed lists and inaccurate 
 4. **Flight Corridor & Destination-Aware Airport Recommendations**:
    - When users select target travel destinations (such as Egypt, Bali, Cancun, Dubai, or Thailand), the airport suggestion engine dynamically surfaces major long-haul gateways (`FRA`, `CDG`, `MUC`, `AMS`, `ZRH`) and high-frequency charter departure hubs.
    - Airports offering specialized non-stop routes for the chosen destinations are highlighted with dedicated flight corridor notes (`flightCorridorNote`).
-5. **Worldwide Custom Airport Search**:
+5. **Harmonized Naming and Localization Across Locales**:
+   - Airport names, metropolitan city labels, and regional hubs are fully localized across all 5 supported languages (`en`, `de`, `fr`, `es`, `it`).
+   - Binational and regional facilities display accurate nomenclature (for example, `BSL` displays as "EuroAirport Basel-Mulhouse-Freiburg / Basel-Mülhausen" rather than simply "Mulhouse").
+   - Batch lookup via `/api/airports/search?codes=...&locale=...` ensures airport chip badges and suggestion lists remain synchronized.
+6. **Worldwide Custom Airport Search**:
    - Full in-memory index of 5,600+ IATA airports worldwide via `airport-data`. Users can search and select any commercial airport by city name, airport name, or 3-letter IATA code.
 
 ---
@@ -179,6 +184,7 @@ The vacation planner supports flexible multi-destination search configurations:
 
 1. **Multi-Entry Tagging (`src/components/destination/MultiDestinationInput.tsx`)**:
    - Users can select or type multiple target countries, tourist regions, resort corridors, or cities (e.g., "Egypt", "Hurghada & Red Sea", "Turkish Riviera & Antalya", "Mallorca", "Bali", "Canary Islands").
+   - Strict validation verifies custom input tags against the destination catalog, geocoding API, and international airport dataset.
 2. **Destination Resolver Engine (`src/lib/optimizer/destinations.ts`)**:
    - Incoming destination tags are parsed against an extensive canonical destination catalog.
    - Tags are dynamically mapped to valid destination airport IATA codes (e.g., "Egypt" maps to `HRG` and `SSH`; "Turkish Riviera" maps to `AYT`; "Bali" maps to `DPS`; "Mallorca" maps to `PMI`).
@@ -192,38 +198,48 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
 
 1. **Flexible Duration Exploration**:
    Evaluates window spans across user-defined duration ranges $[\text{durationDaysMin}, \text{durationDaysMax}]$ (e.g. 10 to 14 days), computing Pareto-optimal configurations.
-2. **Multiple Blackout Periods (Sperrzeiten)**:
+2. **Multi-Year Holiday Querying & Weekend Expansion**:
+   - Holiday querying spans all calendar years intersected by the search window (e.g., spanning 2026 into 2027 for Christmas and New Year breaks).
+   - School holidays recorded in Monday-to-Friday schedules are automatically expanded to include the preceding Saturday and trailing Sunday (+4 days), reflecting the true contiguous school break available to families.
+3. **Two-Tier School Holiday Constraint & Graceful Fallback**:
+   - If a family includes school-aged children ($\ge 6$ years old on departure date), the engine first attempts to identify windows completely enclosed within valid school holidays.
+   - When user-specified trip duration exceeds the holiday break length (e.g., a 12-16 day vacation during a 9-day break) or falls outside official dates, the engine does not fail silently. Instead, it activates a fallback tier: candidate windows are scored by school holiday coverage ratio and tagged with `requiresSchoolExemption: true`, providing actionable choices with clear warnings.
+4. **Multiple Blackout Periods (Sperrzeiten)**:
    Merges persistent profile blackouts with ad-hoc search blackouts:
    $$\text{Blackouts} = \text{ProfileBlackouts} \cup \text{SearchBlackouts}$$
    Any candidate window overlapping any blackout range is pruned.
-3. **Dynamic Date-Relative Child Age Calculation**:
+5. **Dynamic Date-Relative Child Age & Fare Tier Calculation**:
    Child ages are computed dynamically relative to the candidate window's departure date:
    $$\text{Age at Trip} = \lfloor(\text{startDate} - \text{birthDate}) / \text{1 year}\rfloor$$
-   This prevents age classification errors when a child turns 2 (infant to child) or 6 (mandatory school age) between the search date and the planned trip date.
-4. **School Holiday Hard Constraint**:
-   If any child is $\ge 6$ years old on the departure date, the candidate window must fall completely inside the home jurisdiction's school break period.
-5. **Automatic Age Fare Tier Derivation**:
+   Fare tiers and school attendance requirements adjust dynamically:
    - Infant: $< 2$ years ($10\%$ base fare)
    - Child: $2 - 11$ years ($75\%$ base fare)
    - Teen / Adult: $\ge 12$ years ($100\%$ base fare)
-6. **Realistic Family Trip Cost Calculation**:
-   Aggregates both return flights and duration-scaled family accommodation lodging:
+6. **Travel Comfort & Profile Logistics Integration**:
+   Preferences defined in the Family Profile are integrated directly into scoring and cost calculation:
+   - **Cabin Class Multipliers**: `preferredCabinClass` scales flight base fares (`ECONOMY`: $1.0\times$, `PREMIUM_ECONOMY`: $1.4\times$, `BUSINESS`: $2.4\times$).
+   - **Max Driving Radius**: Airport surface distances exceeding `maxDrivingHours` (converted at 85 km/h driving baseline) incur escalating penalties in `travelFrictionIndex`.
+   - **Climate Preferences**: User preferences (`TROPICAL_WARM`, `MODERATE`, `MILD_COOL`) adjust the `weatherIndex` score bonus and tolerance curves.
+7. **Weather Scoring vs. Hard Rejection**:
+   Seasonal weather conditions (temperature, precipitation, hurricane risk) are factored into continuous scoring ($0.0 - 1.0$) rather than dropping valid vacation candidates outright.
+8. **Realistic Family Trip Cost Calculation**:
+   Aggregates return flights (with cabin class scaling) and duration-scaled family accommodation lodging:
    $$\text{Total Cost} = \text{Flight Cost} + \text{Lodging Cost}$$
-   $$\text{Flight Cost} = \text{Base Return Fare} \times \text{Passenger Multiplier} \times (1 - \text{Arbitrage Discount})$$
+   $$\text{Flight Cost} = \text{Base Return Fare} \times \text{Cabin Multiplier} \times \text{Passenger Multiplier} \times (1 - \text{Arbitrage Discount})$$
    $$\text{Lodging Cost} = \text{Nightly Lodging Benchmark} \times (\text{Duration Days} - 1)$$
    $$\text{Price Per Person} = \frac{\text{Total Cost}}{\text{Total Family Members}}$$
-7. **Destination Seasonality Warnings**:
+9. **Destination Seasonality Warnings**:
    Detects seasonal risks (`src/lib/optimizer/weather.ts`) for target destinations and exposes localized warning messages:
    - `MONSOON`: Tropical downpours and high humidity.
    - `EXTREME_HEAT`: Daytime temperatures exceeding safe family thresholds.
    - `TYPHOON_HURRICANE`: Tropical storm activity windows.
    - `OVERCROWDED_PEAK`: Peak surge crowds and inflated lodging.
-8. **Flight Arbitrage Detection**:
-   Evaluates departure airports located in neighboring jurisdictions where schools remain in session, factoring a $30\%$ price advantage.
-9. **Parental Leave Minimization**:
-   Calculates consumed PTO:
-   $$\text{PTO\_days} = \text{total\_weekdays} - \text{public\_holidays}$$
-10. **Multi-Objective Scoring**:
+10. **Flight Arbitrage Detection**:
+    Evaluates departure airports located in neighboring jurisdictions where schools remain in session, factoring a $30\%$ price advantage.
+11. **Parental Leave Minimization**:
+    Calculates consumed PTO:
+    $$\text{PTO\_days} = \text{total\_weekdays} - \text{public\_holidays}$$
+12. **Multi-Objective Scoring**:
     $$\text{Score} = (w_1 \cdot \text{Price}) + (w_2 \cdot \text{Weather}) + (w_3 \cdot \text{PTO}) - (w_4 \cdot \text{Friction})$$
 
 ---

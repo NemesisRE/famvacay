@@ -115,20 +115,20 @@ export function ChildrenSelector({
                   )}
 
                   {age !== null && age < 2 && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 whitespace-nowrap">
-                      Infant (10%)
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 whitespace-nowrap" title={t.home.tierInfant}>
+                      {t.home.tierInfantBadge}
                     </span>
                   )}
 
                   {age !== null && age >= 2 && age < 12 && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 whitespace-nowrap">
-                      Child (75%)
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 whitespace-nowrap" title={t.home.tierChild}>
+                      {t.home.tierChildBadge}
                     </span>
                   )}
 
                   {age !== null && age >= 12 && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 whitespace-nowrap">
-                      12+ (100%)
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 whitespace-nowrap" title={t.home.tierTeen}>
+                      {t.home.tierTeenBadge}
                     </span>
                   )}
 
@@ -138,7 +138,7 @@ export function ChildrenSelector({
                       title={t.home.schoolAgeBadge}
                     >
                       <Award className="w-2.5 h-2.5 text-amber-700" />
-                      School (6+)
+                      {t.home.schoolAgeBadgeShort}
                     </span>
                   )}
 

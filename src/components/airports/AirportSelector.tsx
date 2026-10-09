@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plane, Search, X, ChevronDown, ChevronUp, Train, Check } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
@@ -32,7 +32,7 @@ export function AirportSelector({
   targetDestinations,
   className = '',
 }: AirportSelectorProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   const [suggestions, setSuggestions] = useState<AirportItem[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -45,10 +45,31 @@ export function AirportSelector({
   const [showDropdown, setShowDropdown] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Airport details cache for selected chips
+  // Airport details cache for selected chips and suggestion synchronization
   const [airportDetails, setAirportDetails] = useState<Record<string, AirportItem>>({});
 
-  // Fetch recommended airports when coordinates change
+  // Ensure all selected airports have full localized metadata loaded
+  useEffect(() => {
+    const missing = selectedAirports.filter((code) => !airportDetails[code]);
+    if (missing.length === 0) return;
+
+    fetch(`/api/airports/search?codes=${encodeURIComponent(missing.join(','))}&locale=${locale}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.airports) {
+          setAirportDetails((prev) => {
+            const updated = { ...prev };
+            for (const ap of data.airports) {
+              updated[ap.code] = ap;
+            }
+            return updated;
+          });
+        }
+      })
+      .catch(() => {});
+  }, [selectedAirports, airportDetails, locale]);
+
+  // Fetch recommended airports when coordinates or destinations change
   useEffect(() => {
     let active = true;
 
@@ -60,8 +81,8 @@ export function AirportSelector({
             ? `&destinations=${encodeURIComponent(targetDestinations.join(','))}`
             : '';
         const url = coordinates
-          ? `/api/airports/search?lat=${coordinates.lat}&lon=${coordinates.lon}${destParam}`
-          : `/api/airports/search?${destParam}`;
+          ? `/api/airports/search?lat=${coordinates.lat}&lon=${coordinates.lon}&locale=${locale}${destParam}`
+          : `/api/airports/search?locale=${locale}${destParam}`;
 
         const res = await fetch(url);
         if (res.ok) {
@@ -91,7 +112,7 @@ export function AirportSelector({
     return () => {
       active = false;
     };
-  }, [coordinates?.lat, coordinates?.lon, JSON.stringify(targetDestinations)]);
+  }, [coordinates?.lat, coordinates?.lon, JSON.stringify(targetDestinations), locale]);
 
   // Debounced airport search
   useEffect(() => {
@@ -106,14 +127,13 @@ export function AirportSelector({
         setSearching(true);
         const coordsParam = coordinates ? `&lat=${coordinates.lat}&lon=${coordinates.lon}` : '';
         const res = await fetch(
-          `/api/airports/search?q=${encodeURIComponent(searchQuery.trim())}${coordsParam}`
+          `/api/airports/search?q=${encodeURIComponent(searchQuery.trim())}&locale=${locale}${coordsParam}`
         );
         if (res.ok) {
           const data = await res.json();
           setSearchResults(data.airports || []);
           setShowDropdown(true);
 
-          // Populate cache with results
           setAirportDetails((prev) => {
             const updated = { ...prev };
             for (const ap of data.airports || []) {
@@ -130,7 +150,7 @@ export function AirportSelector({
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, coordinates?.lat, coordinates?.lon]);
+  }, [searchQuery, coordinates?.lat, coordinates?.lon, locale]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -170,6 +190,18 @@ export function AirportSelector({
     }
   };
 
+  // Synchronized list of suggestion hubs: union of recommended hubs and any selected airport
+  const synchronizedHubs = useMemo(() => {
+    const map = new Map<string, AirportItem>();
+    suggestions.forEach((a) => map.set(a.code, a));
+    selectedAirports.forEach((code) => {
+      if (!map.has(code) && airportDetails[code]) {
+        map.set(code, airportDetails[code]);
+      }
+    });
+    return Array.from(map.values());
+  }, [suggestions, selectedAirports, airportDetails]);
+
   return (
     <div className={`space-y-3 ${className}`}>
       {/* Selected Airport Chips */}
@@ -199,7 +231,7 @@ export function AirportSelector({
                   <Plane className="w-3 h-3 text-blue-200" />
                   <span>{code}</span>
                   {details && (
-                    <span className="font-normal text-blue-100 text-[11px] max-w-[120px] truncate">
+                    <span className="font-normal text-blue-100 text-[11px] max-w-[160px] truncate">
                       · {details.city || details.name}
                     </span>
                   )}
@@ -252,45 +284,41 @@ export function AirportSelector({
         </div>
 
         {/* Search Results Dropdown */}
-        {showDropdown && (
-          <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100">
-            {searchResults.length === 0 ? (
-              <div className="p-3 text-center text-xs text-slate-500">
-                {t.home.noAirportsFound}
-              </div>
-            ) : (
-              searchResults.map((ap) => {
-                const isSelected = selectedAirports.includes(ap.code);
-                return (
-                  <button
-                    key={ap.code}
-                    type="button"
-                    onClick={() => handleSelectAirport(ap.code)}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition-colors flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded text-[11px]">
-                        {ap.code}
-                      </span>
-                      <div className="truncate">
-                        <span className="font-medium text-slate-800">{ap.city}</span>
-                        <span className="text-slate-400 ml-1">({ap.name})</span>
-                        <span className="text-slate-400 ml-1 text-[10px]">· {ap.country}</span>
-                      </div>
+        {showDropdown && searchResults.length > 0 && (
+          <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-56 overflow-y-auto divide-y divide-slate-100">
+            {searchResults.map((ap) => {
+              const isSelected = selectedAirports.includes(ap.code);
+              return (
+                <button
+                  key={ap.code}
+                  type="button"
+                  onClick={() => handleSelectAirport(ap.code)}
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition-colors flex items-center justify-between ${
+                    isSelected ? 'bg-blue-50/60 font-semibold' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded text-[11px]">
+                      {ap.code}
+                    </span>
+                    <div className="truncate">
+                      <span className="font-medium text-slate-800">{ap.city}</span>
+                      <span className="text-slate-400 ml-1">({ap.name})</span>
+                      <span className="text-slate-400 ml-1 text-[10px]">· {ap.country}</span>
                     </div>
-                    {isSelected ? (
-                      <span className="text-emerald-600 flex items-center gap-1 text-[11px] font-semibold flex-shrink-0">
-                        <Check className="w-3 h-3" /> Selected
-                      </span>
-                    ) : (
-                      <span className="text-blue-600 text-[11px] font-semibold flex-shrink-0">
-                        + Add
-                      </span>
-                    )}
-                  </button>
-                );
-              })
-            )}
+                  </div>
+                  {isSelected ? (
+                    <span className="text-emerald-600 flex items-center gap-1 text-[11px] font-semibold flex-shrink-0">
+                      <Check className="w-3 h-3" /> Selected
+                    </span>
+                  ) : (
+                    <span className="text-blue-600 text-[11px] font-semibold flex-shrink-0">
+                      + Add
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
@@ -310,7 +338,7 @@ export function AirportSelector({
           ) : (
             <>
               <ChevronDown className="w-3.5 h-3.5" />
-              {t.home.showSuggestions.replace('{count}', String(suggestions.length))}
+              {t.home.showSuggestions.replace('{count}', String(synchronizedHubs.length))}
             </>
           )}
         </button>
@@ -319,7 +347,7 @@ export function AirportSelector({
           <div className="mt-2 p-3 bg-slate-50/70 rounded-xl border border-slate-200 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-slate-600">
-                Nearby Hubs & Train-Connected Airports
+                Nearby Hubs &amp; Train-Connected Airports
               </span>
               {loadingSuggestions && (
                 <span className="text-[10px] text-slate-400 animate-pulse">Updating...</span>
@@ -327,7 +355,7 @@ export function AirportSelector({
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {suggestions.map((airport) => {
+              {synchronizedHubs.map((airport) => {
                 const isSelected = selectedAirports.includes(airport.code);
                 return (
                   <button
@@ -371,4 +399,3 @@ export function AirportSelector({
     </div>
   );
 }
-

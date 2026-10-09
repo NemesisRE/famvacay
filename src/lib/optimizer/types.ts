@@ -19,6 +19,10 @@ export interface UserProfileInput {
   childrenAges: number[];    // e.g. [1, 7, 14]
   childrenBirthDates?: string[]; // ISO date YYYY-MM-DD
   blackoutRanges: BlackoutRange[];
+  maxDrivingHours?: number;
+  preferredCabinClass?: string;
+  climatePreference?: string;
+  travelModes?: string[];
 }
 
 export interface BlackoutRange {
@@ -88,6 +92,10 @@ export interface CandidateWindow {
   isArbitrageOpportunity: boolean;
   arbitrageOriginState?: string;
   arbitrageNote?: string;
+
+  // School holiday match details
+  requiresSchoolExemption?: boolean;
+  schoolHolidayDaysOverlap?: number;
 
   // Normalized scores (0 - 100)
   scoreBreakdown: {

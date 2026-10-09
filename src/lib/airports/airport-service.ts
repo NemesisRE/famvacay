@@ -64,21 +64,298 @@ const AIRPORT_STATE_MAPPING: Record<string, string> = {
   MXP: 'IT-LOM', BGY: 'IT-LOM', LIN: 'IT-LOM', FCO: 'IT-LAZ', VCE: 'IT-VEN',
 };
 
+export const LOCALIZED_AIRPORT_METADATA: Record<
+  string,
+  {
+    name: Record<string, string>;
+    city: Record<string, string>;
+    state: string;
+    isMajorHub: boolean;
+  }
+> = {
+  BSL: {
+    name: {
+      de: 'EuroAirport Basel-Mulhouse-Freiburg (Basel-Mülhausen)',
+      en: 'EuroAirport Basel-Mulhouse-Freiburg',
+      fr: 'EuroAirport Bâle-Mulhouse-Fribourg',
+      es: 'EuroAirport Basilea-Mulhouse-Friburgo',
+      it: 'EuroAirport Basilea-Mulhouse-Friburgo',
+    },
+    city: {
+      de: 'Basel / Mülhausen / Freiburg',
+      en: 'Basel / Mulhouse / Freiburg',
+      fr: 'Bâle / Mulhouse',
+      es: 'Basilea / Mulhouse',
+      it: 'Basilea / Mulhouse',
+    },
+    state: 'CH-BS',
+    isMajorHub: true,
+  },
+  FRA: {
+    name: {
+      de: 'Flughafen Frankfurt am Main',
+      en: 'Frankfurt am Main Airport',
+      fr: 'Aéroport de Francfort-sur-le-Main',
+      es: 'Aeropuerto de Fráncfort del Meno',
+      it: 'Aeroporto di Francoforte sul Meno',
+    },
+    city: {
+      de: 'Frankfurt am Main',
+      en: 'Frankfurt',
+      fr: 'Francfort',
+      es: 'Fráncfort',
+      it: 'Francoforte',
+    },
+    state: 'DE-HE',
+    isMajorHub: true,
+  },
+  MUC: {
+    name: {
+      de: 'Flughafen München Franz Josef Strauß',
+      en: 'Munich Airport',
+      fr: 'Aéroport de Munich',
+      es: 'Aeropuerto de Múnich',
+      it: 'Aeroporto di Monaco di Baviera',
+    },
+    city: {
+      de: 'München',
+      en: 'Munich',
+      fr: 'Munich',
+      es: 'Múnich',
+      it: 'Monaco',
+    },
+    state: 'DE-BY',
+    isMajorHub: true,
+  },
+  STR: {
+    name: {
+      de: 'Flughafen Stuttgart Manfred Rommel',
+      en: 'Stuttgart Airport',
+      fr: 'Aéroport de Stuttgart',
+      es: 'Aeropuerto de Stuttgart',
+      it: 'Aeroporto di Stoccarda',
+    },
+    city: {
+      de: 'Stuttgart',
+      en: 'Stuttgart',
+      fr: 'Stuttgart',
+      es: 'Stuttgart',
+      it: 'Stoccarda',
+    },
+    state: 'DE-BW',
+    isMajorHub: true,
+  },
+  FKB: {
+    name: {
+      de: 'Flughafen Karlsruhe/Baden-Baden (Baden-Airpark)',
+      en: 'Karlsruhe/Baden-Baden Airport (Baden-Airpark)',
+      fr: 'Aéroport de Karlsruhe/Baden-Baden',
+      es: 'Aeropuerto de Karlsruhe/Baden-Baden',
+      it: 'Aeroporto di Karlsruhe/Baden-Baden',
+    },
+    city: {
+      de: 'Karlsruhe / Baden-Baden',
+      en: 'Karlsruhe / Baden-Baden',
+      fr: 'Karlsruhe / Baden-Baden',
+      es: 'Karlsruhe / Baden-Baden',
+      it: 'Karlsruhe / Baden-Baden',
+    },
+    state: 'DE-BW',
+    isMajorHub: true,
+  },
+  BER: {
+    name: {
+      de: 'Flughafen Berlin Brandenburg Willy Brandt',
+      en: 'Berlin Brandenburg Airport',
+      fr: 'Aéroport de Berlin-Brandebourg',
+      es: 'Aeropuerto de Berlín-Brandeburgo',
+      it: 'Aeroporto di Berlino-Brandeburgo',
+    },
+    city: {
+      de: 'Berlin',
+      en: 'Berlin',
+      fr: 'Berlin',
+      es: 'Berlín',
+      it: 'Berlino',
+    },
+    state: 'DE-BE',
+    isMajorHub: true,
+  },
+  HAM: {
+    name: {
+      de: 'Flughafen Hamburg Helmut Schmidt',
+      en: 'Hamburg Airport',
+      fr: 'Aéroport de Hambourg',
+      es: 'Aeropuerto de Hamburgo',
+      it: 'Aeroporto di Amburgo',
+    },
+    city: {
+      de: 'Hamburg',
+      en: 'Hamburg',
+      fr: 'Hambourg',
+      es: 'Hamburgo',
+      it: 'Amburgo',
+    },
+    state: 'DE-HH',
+    isMajorHub: true,
+  },
+  DUS: {
+    name: {
+      de: 'Flughafen Düsseldorf',
+      en: 'Düsseldorf Airport',
+      fr: 'Aéroport de Düsseldorf',
+      es: 'Aeropuerto de Düsseldorf',
+      it: 'Aeroporto di Düsseldorf',
+    },
+    city: {
+      de: 'Düsseldorf',
+      en: 'Düsseldorf',
+      fr: 'Düsseldorf',
+      es: 'Düsseldorf',
+      it: 'Düsseldorf',
+    },
+    state: 'DE-NW',
+    isMajorHub: true,
+  },
+  CGN: {
+    name: {
+      de: 'Flughafen Köln/Bonn Konrad Adenauer',
+      en: 'Cologne Bonn Airport',
+      fr: 'Aéroport de Cologne-Bonn',
+      es: 'Aeropuerto de Colonia/Bonn',
+      it: 'Aeroporto di Colonia-Bonn',
+    },
+    city: {
+      de: 'Köln / Bonn',
+      en: 'Cologne / Bonn',
+      fr: 'Cologne / Bonn',
+      es: 'Colonia / Bonn',
+      it: 'Colonia / Bonn',
+    },
+    state: 'DE-NW',
+    isMajorHub: true,
+  },
+  CDG: {
+    name: {
+      de: 'Flughafen Paris-Charles-de-Gaulle',
+      en: 'Paris Charles de Gaulle Airport',
+      fr: 'Aéroport de Paris-Charles-de-Gaulle',
+      es: 'Aeropuerto de París-Charles de Gaulle',
+      it: 'Aeroporto di Parigi Charles de Gaulle',
+    },
+    city: {
+      de: 'Paris',
+      en: 'Paris',
+      fr: 'Paris',
+      es: 'París',
+      it: 'Parigi',
+    },
+    state: 'FR-IDF',
+    isMajorHub: true,
+  },
+  ORY: {
+    name: {
+      de: 'Flughafen Paris-Orly',
+      en: 'Paris Orly Airport',
+      fr: 'Aéroport de Paris-Orly',
+      es: 'Aeropuerto de París-Orly',
+      it: 'Aeroporto di Parigi Orly',
+    },
+    city: {
+      de: 'Paris',
+      en: 'Paris',
+      fr: 'Paris',
+      es: 'París',
+      it: 'Parigi',
+    },
+    state: 'FR-IDF',
+    isMajorHub: true,
+  },
+  SXB: {
+    name: {
+      de: 'Flughafen Straßburg Entzheim',
+      en: 'Strasbourg Airport',
+      fr: 'Aéroport de Strasbourg-Entzheim',
+      es: 'Aeropuerto de Estrasburgo',
+      it: 'Aeroporto di Strasburgo',
+    },
+    city: {
+      de: 'Straßburg',
+      en: 'Strasbourg',
+      fr: 'Strasbourg',
+      es: 'Estrasburgo',
+      it: 'Strasburgo',
+    },
+    state: 'FR-GES',
+    isMajorHub: true,
+  },
+  ZRH: {
+    name: {
+      de: 'Flughafen Zürich Kloten',
+      en: 'Zurich Airport',
+      fr: 'Aéroport de Zurich',
+      es: 'Aeropuerto de Zúrich',
+      it: 'Aeroporto di Zurigo',
+    },
+    city: {
+      de: 'Zürich',
+      en: 'Zurich',
+      fr: 'Zurich',
+      es: 'Zúrich',
+      it: 'Zurigo',
+    },
+    state: 'CH-ZH',
+    isMajorHub: true,
+  },
+  VIE: {
+    name: {
+      de: 'Flughafen Wien-Schwechat',
+      en: 'Vienna International Airport',
+      fr: 'Aéroport de Vienne-Schwechat',
+      es: 'Aeropuerto de Viena-Schwechat',
+      it: 'Aeroporto di Vienna-Schwechat',
+    },
+    city: {
+      de: 'Wien',
+      en: 'Vienna',
+      fr: 'Vienne',
+      es: 'Viena',
+      it: 'Vienna',
+    },
+    state: 'AT-9',
+    isMajorHub: true,
+  },
+};
+
+export function getLocalizedAirportDetails(airport: DynamicAirport, locale: string = 'en'): DynamicAirport {
+  const meta = LOCALIZED_AIRPORT_METADATA[airport.code];
+  if (!meta) return airport;
+  const loc = (locale || 'en').toLowerCase().slice(0, 2);
+  return {
+    ...airport,
+    name: meta.name[loc] || meta.name.en || airport.name,
+    city: meta.city[loc] || meta.city.en || airport.city,
+    state: meta.state || airport.state,
+    isMajorHub: meta.isMajorHub ?? airport.isMajorHub,
+  };
+}
+
 // Index valid commercial IATA airports
 const indexedAirports: DynamicAirport[] = rawAirports
   .filter((a) => a.iata && a.iata.length === 3 && a.iata !== '\\N')
   .map((a) => {
     const code = a.iata.toUpperCase();
+    const meta = LOCALIZED_AIRPORT_METADATA[code];
     return {
       code,
       icao: a.icao || '',
-      name: a.name || '',
-      city: a.city || '',
+      name: meta?.name.en || a.name || '',
+      city: meta?.city.en || a.city || '',
       country: a.country || '',
       lat: Number(a.latitude),
       lon: Number(a.longitude),
-      state: AIRPORT_STATE_MAPPING[code] || (a.country === 'Germany' ? 'DE-BW' : undefined),
-      isMajorHub: KNOWN_MAJOR_HUBS.has(code),
+      state: meta?.state || AIRPORT_STATE_MAPPING[code] || (a.country === 'Germany' ? 'DE-BW' : undefined),
+      isMajorHub: meta?.isMajorHub ?? KNOWN_MAJOR_HUBS.has(code),
     };
   });
 
@@ -107,9 +384,11 @@ if (!airportByIataMap.has('BER')) {
 /**
  * Retrieve airport details by IATA code
  */
-export function getAirportByIata(code: string): DynamicAirport | undefined {
+export function getAirportByIata(code: string, locale?: string): DynamicAirport | undefined {
   if (!code) return undefined;
-  return airportByIataMap.get(code.toUpperCase());
+  const ap = airportByIataMap.get(code.toUpperCase());
+  if (!ap) return undefined;
+  return locale ? getLocalizedAirportDetails(ap, locale) : ap;
 }
 
 /**
@@ -130,8 +409,6 @@ export function calculateGeodesicDistanceKm(
 
 /**
  * Evaluate High-Speed Rail (HSR) connectivity from departure location
- * Special corridor: Karlsruhe / Southwest Germany / Alsace -> Paris hubs (CDG / ORY)
- * Direct TGV / ICE connects Karlsruhe to Paris in 2.5 hours, providing huge long-haul/Caribbean savings
  */
 function evaluateHighSpeedRailConnectivity(
   userLat: number,
@@ -140,12 +417,8 @@ function evaluateHighSpeedRailConnectivity(
 ): { isConnected: boolean; note?: string } {
   // Paris Hubs (CDG, ORY)
   if (airportCode === 'CDG' || airportCode === 'ORY') {
-    // Southwest Germany, Baden-Württemberg, Alsace, Saarland, Frankfurt/Rhine corridor
-    // Lat: ~47.5 to ~50.5, Lon: ~6.0 to ~9.5
     const isSwGermanyOrRhine =
       userLat >= 47.4 && userLat <= 50.5 && userLon >= 6.0 && userLon <= 9.5;
-    
-    // Or geodesic distance within 470km of Paris
     const distToParis = calculateGeodesicDistanceKm(userLat, userLon, 48.8566, 2.3522);
 
     if (isSwGermanyOrRhine || distToParis <= 470) {
@@ -158,33 +431,33 @@ function evaluateHighSpeedRailConnectivity(
 
   // Brussels Hub (BRU) for Rhineland / Cologne / Aachen
   if (airportCode === 'BRU') {
-    const isRhineland = userLat >= 50.4 && userLat <= 51.5 && userLon >= 5.8 && userLon <= 7.5;
-    if (isRhineland) {
+    const distToBrussels = calculateGeodesicDistanceKm(userLat, userLon, 50.8503, 4.3517);
+    if (distToBrussels <= 280) {
       return {
         isConnected: true,
-        note: 'Direct Eurostar / ICE (~1.8h) connection',
+        note: 'Direct Eurostar / ICE service (<2h)',
       };
     }
   }
 
-  // Amsterdam Hub (AMS) for Ruhr / Lower Rhine
-  if (airportCode === 'AMS') {
-    const isRuhr = userLat >= 51.1 && userLat <= 52.5 && userLon >= 5.8 && userLon <= 7.5;
-    if (isRuhr) {
-      return {
-        isConnected: true,
-        note: 'Direct ICE to Schiphol airport (~2.2h)',
-      };
-    }
-  }
-
-  // Frankfurt Hub (FRA) via AIRail
+  // Frankfurt Airport (FRA) AIRail
   if (airportCode === 'FRA') {
-    const distToFra = calculateGeodesicDistanceKm(userLat, userLon, 50.0379, 8.5622);
-    if (distToFra > 50 && distToFra <= 220) {
+    const distToFrankfurt = calculateGeodesicDistanceKm(userLat, userLon, 50.0379, 8.5622);
+    if (distToFrankfurt <= 200) {
       return {
         isConnected: true,
         note: 'Direct ICE AIRail straight to airport terminal (<1h)',
+      };
+    }
+  }
+
+  // Amsterdam Hub (AMS) for Lower Rhine / Ruhr area
+  if (airportCode === 'AMS') {
+    const distToAms = calculateGeodesicDistanceKm(userLat, userLon, 52.3105, 4.7683);
+    if (distToAms <= 260) {
+      return {
+        isConnected: true,
+        note: 'Direct ICE connection (<2.5h)',
       };
     }
   }
@@ -193,60 +466,89 @@ function evaluateHighSpeedRailConnectivity(
 }
 
 /**
- * Dynamically recommend departure airports based strictly on starting coordinates.
- * Includes proximity airports plus connected high-speed rail mega-hubs.
+ * Suggest optimal departure airports dynamically based on proximity, high-speed rail, and flight corridors.
  */
 export function getRecommendedAirportsForCoordinates(
   userLat: number,
   userLon: number,
-  maxDistanceKm: number = 380,
-  targetDestinations?: string[]
+  maxRadiusKm: number = 380,
+  targetDestinations?: string[],
+  locale?: string
 ): DynamicAirport[] {
-  const normalizedDestinations = (targetDestinations || []).map((d) => d.toLowerCase());
-  const hasLongHaulDestinations = normalizedDestinations.some((d) =>
-    ['egypt', 'hurghada', 'bali', 'thailand', 'phuket', 'cancun', 'dubai', 'caribbean', 'hrg', 'ssh', 'dps', 'hkt', 'cun', 'dxb', 'bkk'].some((kw) => d.includes(kw))
+  const scored: DynamicAirport[] = [];
+
+  // Check destination corridors
+  const destListLower = (targetDestinations || []).map((d) => d.toLowerCase());
+  const hasLongHaulDestinations = destListLower.some(
+    (d) =>
+      d.includes('bali') ||
+      d.includes('cancun') ||
+      d.includes('thailand') ||
+      d.includes('phuket') ||
+      d.includes('dubai') ||
+      d.includes('egypt') ||
+      d.includes('caribbean') ||
+      d.includes('dps') ||
+      d.includes('cun') ||
+      d.includes('dxb') ||
+      d.includes('hkt')
   );
 
-  // Score all major/known hubs
-  const candidateHubs = indexedAirports.filter(
-    (a) => a.isMajorHub || ['STR', 'FKB', 'FRA', 'MUC', 'BSL', 'ZRH', 'CDG', 'ORY', 'VIE', 'BER', 'HAM', 'DUS', 'CGN'].includes(a.code)
+  const hasEgyptOrTurkey = destListLower.some(
+    (d) =>
+      d.includes('egypt') ||
+      d.includes('hurghada') ||
+      d.includes('sharm') ||
+      d.includes('turkey') ||
+      d.includes('riviera') ||
+      d.includes('antalya') ||
+      d.includes('hrg') ||
+      d.includes('ayt')
   );
 
-  const scored: DynamicAirport[] = candidateHubs.map((airport) => {
+  for (const airport of indexedAirports) {
+    if (!airport.isMajorHub && airport.country !== 'Germany' && airport.country !== 'France' && airport.country !== 'Switzerland' && airport.country !== 'Austria') {
+      continue;
+    }
+
     const distanceKm = calculateGeodesicDistanceKm(userLat, userLon, airport.lat, airport.lon);
     const rail = evaluateHighSpeedRailConnectivity(userLat, userLon, airport.code);
 
-    let flightCorridorNote: string | undefined;
-    if (hasLongHaulDestinations && ['FRA', 'CDG', 'MUC', 'ZRH'].includes(airport.code)) {
-      flightCorridorNote = 'Direct intercontinental long-haul corridor';
-    } else if (normalizedDestinations.length > 0 && ['STR', 'FKB', 'BSL', 'NUE', 'DUS', 'CGN'].includes(airport.code)) {
-      flightCorridorNote = 'Direct holiday charter corridor';
+    let corridorNote: string | undefined;
+    if (hasLongHaulDestinations && (airport.code === 'FRA' || airport.code === 'CDG' || airport.code === 'MUC')) {
+      corridorNote = 'Direct intercontinental long-haul corridor';
+    } else if (hasEgyptOrTurkey && ['STR', 'FKB', 'BSL', 'DUS', 'FRA', 'MUC', 'NUE'].includes(airport.code)) {
+      corridorNote = 'Direct holiday charter corridor';
     }
 
-    return {
-      ...airport,
-      distanceKm,
-      isHighSpeedRailConnected: rail.isConnected,
-      railConnectivityNote: rail.note,
-      flightCorridorNote,
-    };
-  });
+    const localized = locale ? getLocalizedAirportDetails(airport, locale) : airport;
 
-  // Separate local proximity airports and HSR connected hubs
-  const nearby = scored
-    .filter((a) => (a.distanceKm ?? 99999) <= maxDistanceKm && !a.isHighSpeedRailConnected)
-    .sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
+    if (distanceKm <= maxRadiusKm || rail.isConnected) {
+      scored.push({
+        ...localized,
+        distanceKm,
+        isHighSpeedRailConnected: rail.isConnected,
+        railConnectivityNote: rail.note,
+        flightCorridorNote: corridorNote,
+      });
+    }
+  }
+
+  // Split into regional proximity hubs and HSR hubs
+  const proximityHubs = scored
+    .filter((a) => !a.isHighSpeedRailConnected)
+    .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
 
   const hsrHubs = scored
     .filter((a) => a.isHighSpeedRailConnected)
-    .sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
+    .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
 
-  // Combine: nearest local airports (up to 7) + high-speed rail hubs (e.g. CDG, ORY, FRA)
   const combined: DynamicAirport[] = [];
   const addedCodes = new Set<string>();
 
-  // Add top nearby local airports
-  for (const a of nearby.slice(0, 7)) {
+  // Add closest 7 regional proximity hubs
+  for (const a of proximityHubs) {
+    if (combined.length >= 7) break;
     if (!addedCodes.has(a.code)) {
       combined.push(a);
       addedCodes.add(a.code);
@@ -278,12 +580,12 @@ export function getRecommendedAirportsForCoordinates(
 
 /**
  * Free-text airport search across 5,600+ airports worldwide
- * Supports search by IATA code, city name, airport name, or country
  */
 export function searchAirports(
   query: string,
   userCoords?: { lat: number; lon: number },
-  limit: number = 10
+  limit: number = 10,
+  locale?: string
 ): DynamicAirport[] {
   const q = query.trim().toUpperCase();
   if (!q) return [];
@@ -297,22 +599,21 @@ export function searchAirports(
     return false;
   });
 
-  // If user coordinates provided, attach distances
   const enriched = matched.map((a) => {
+    const localized = locale ? getLocalizedAirportDetails(a, locale) : a;
     if (userCoords) {
       const distanceKm = calculateGeodesicDistanceKm(userCoords.lat, userCoords.lon, a.lat, a.lon);
       const rail = evaluateHighSpeedRailConnectivity(userCoords.lat, userCoords.lon, a.code);
       return {
-        ...a,
+        ...localized,
         distanceKm,
         isHighSpeedRailConnected: rail.isConnected,
         railConnectivityNote: rail.note,
       };
     }
-    return a;
+    return localized;
   });
 
-  // Sort: Exact IATA match first, then major hubs, then proximity if coords given
   enriched.sort((a, b) => {
     if (a.code === q) return -1;
     if (b.code === q) return 1;

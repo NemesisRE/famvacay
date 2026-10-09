@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRecommendedAirportsForCoordinates, searchAirports } from '@/lib/airports/airport-service';
+import {
+  getRecommendedAirportsForCoordinates,
+  searchAirports,
+  getAirportByIata,
+} from '@/lib/airports/airport-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +13,22 @@ export async function GET(req: NextRequest) {
     const query = searchParams.get('q');
     const latStr = searchParams.get('lat');
     const lonStr = searchParams.get('lon');
+    const locale = searchParams.get('locale') || 'en';
+    const codesParam = searchParams.get('codes');
+
+    // Batch lookup by codes (for chip synchronization)
+    if (codesParam) {
+      const codes = codesParam.split(',').map((c) => c.trim().toUpperCase()).filter(Boolean);
+      const airports = codes
+        .map((code) => getAirportByIata(code, locale))
+        .filter((a): a is NonNullable<typeof a> => Boolean(a));
+
+      return NextResponse.json({
+        success: true,
+        count: airports.length,
+        airports,
+      });
+    }
 
     let userCoords: { lat: number; lon: number } | undefined;
     if (latStr && lonStr) {
@@ -20,7 +40,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (query && query.trim().length >= 1) {
-      const results = searchAirports(query, userCoords, 15);
+      const results = searchAirports(query, userCoords, 15, locale);
       return NextResponse.json({
         success: true,
         count: results.length,
@@ -38,7 +58,8 @@ export async function GET(req: NextRequest) {
         userCoords.lat,
         userCoords.lon,
         380,
-        targetDestinations
+        targetDestinations,
+        locale
       );
       return NextResponse.json({
         success: true,
@@ -48,7 +69,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Default fallback to major central hubs if no coords or query
-    const defaultHubs = searchAirports('DE', undefined, 10);
+    const defaultHubs = searchAirports('DE', undefined, 10, locale);
     return NextResponse.json({
       success: true,
       count: defaultHubs.length,
@@ -62,4 +83,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

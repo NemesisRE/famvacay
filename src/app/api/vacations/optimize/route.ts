@@ -33,18 +33,40 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Parallel fetch school and public holidays for states
+    // Determine all calendar years spanned by search window
+    const startYear = parseInt(body.earliestDate.split('-')[0], 10) || 2026;
+    const endYear = parseInt(body.latestDate.split('-')[0], 10) || startYear;
+    const years: number[] = [];
+    for (let y = startYear; y <= endYear; y++) {
+      years.push(y);
+    }
+
+    // Parallel fetch school and public holidays for states across all spanned years
     const schoolHolidaysByState: Record<string, any> = {};
     const publicHolidaysByState: Record<string, any> = {};
 
     await Promise.all(
       Array.from(statesToFetch).map(async (state) => {
-        const [schools, publics] = await Promise.all([
-          getSchoolHolidays(state),
-          getPublicHolidays(state),
-        ]);
-        schoolHolidaysByState[state] = schools;
-        publicHolidaysByState[state] = publics;
+        const schoolLists = await Promise.all(years.map((y) => getSchoolHolidays(state, y)));
+        const publicLists = await Promise.all(years.map((y) => getPublicHolidays(state, y)));
+
+        // Flatten and deduplicate holidays by unique key
+        const schoolsMap = new Map<string, any>();
+        schoolLists.flat().forEach((h) => {
+          if (h && h.startDate && h.endDate) {
+            schoolsMap.set(`${h.startDate}_${h.endDate}_${h.name}`, h);
+          }
+        });
+
+        const publicsMap = new Map<string, any>();
+        publicLists.flat().forEach((p) => {
+          if (p && p.date && p.name) {
+            publicsMap.set(`${p.date}_${p.name}`, p);
+          }
+        });
+
+        schoolHolidaysByState[state] = Array.from(schoolsMap.values());
+        publicHolidaysByState[state] = Array.from(publicsMap.values());
       })
     );
 
