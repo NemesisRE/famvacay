@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Users, Plus, Trash2, Calendar, Award, Sparkles } from 'lucide-react';
+import { Users, Plus, Trash2, Award } from 'lucide-react';
 import { differenceInYears } from 'date-fns';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
@@ -13,7 +13,7 @@ export interface ChildItem {
 interface ChildrenSelectorProps {
   childrenList: ChildItem[];
   onChange: (items: ChildItem[]) => void;
-  travelDate: string; // The earliest departure date (e.g., '2026-07-25')
+  travelDate: string; // The earliest departure date (e.g., '2026-10-20')
   className?: string;
 }
 
@@ -26,7 +26,6 @@ export function ChildrenSelector({
   const { t } = useI18n();
 
   const handleAddChild = () => {
-    // Default new child birth date to ~6 years before current year
     const defaultYear = new Date().getFullYear() - 6;
     const newItem: ChildItem = {
       id: Math.random().toString(36).substring(2, 9),
@@ -54,7 +53,7 @@ export function ChildrenSelector({
   };
 
   return (
-    <div className={`space-y-3 ${className}`}>
+    <div className={`space-y-2.5 ${className}`}>
       <div className="flex items-center justify-between">
         <label className="block text-xs font-semibold text-slate-700 flex items-center gap-1.5">
           <Users className="w-3.5 h-3.5 text-blue-600" />
@@ -63,7 +62,7 @@ export function ChildrenSelector({
         <button
           type="button"
           onClick={handleAddChild}
-          className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors"
+          className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
           {t.home.addChild}
@@ -73,18 +72,18 @@ export function ChildrenSelector({
       <p className="text-[11px] text-slate-500">{t.home.childrenAgesHint}</p>
 
       {childrenList.length === 0 ? (
-        <div className="p-3 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center">
+        <div className="p-2.5 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center">
           <p className="text-xs text-slate-500">No children traveling (Adults only).</p>
           <button
             type="button"
             onClick={handleAddChild}
-            className="mt-1.5 text-xs font-semibold text-blue-600 hover:underline"
+            className="mt-1 text-xs font-semibold text-blue-600 hover:underline"
           >
             + {t.home.addChild}
           </button>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {childrenList.map((child, index) => {
             const age = calculateAgeAtTravel(child.birthDate);
             const isSchoolChild = age !== null && age >= 6;
@@ -92,65 +91,61 @@ export function ChildrenSelector({
             return (
               <div
                 key={child.id}
-                className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all"
+                className="px-2.5 py-1.5 bg-slate-50/90 rounded-lg border border-slate-200 flex items-center justify-between gap-2 text-xs transition-all hover:bg-white"
               >
-                <div className="flex items-center gap-2 flex-grow">
-                  <span className="text-xs font-bold text-slate-600 bg-white border border-slate-200 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0">
+                {/* Number & Date Input */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="text-[11px] font-bold text-slate-500 bg-white border border-slate-200 w-5 h-5 rounded-full flex items-center justify-center">
                     {index + 1}
                   </span>
-                  <div className="flex items-center gap-2 flex-grow">
-                    <label className="text-[11px] font-medium text-slate-500 flex-shrink-0">
-                      {t.home.childBirthDate}:
-                    </label>
-                    <input
-                      type="date"
-                      value={child.birthDate}
-                      onChange={(e) => handleDateChange(child.id, e.target.value)}
-                      className="text-xs rounded-lg border border-slate-300 px-2.5 py-1.5 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm outline-none"
-                    />
-                  </div>
+                  <input
+                    type="date"
+                    value={child.birthDate}
+                    onChange={(e) => handleDateChange(child.id, e.target.value)}
+                    className="text-xs rounded border border-slate-300 px-2 py-1 bg-white focus:ring-1 focus:ring-blue-500 outline-none w-32"
+                  />
                 </div>
 
-                {/* Age & Fare Tiers Badges */}
-                <div className="flex items-center gap-1.5 flex-wrap sm:justify-end">
+                {/* Single-line Badges: Age + Tier + School Status */}
+                <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto justify-end flex-grow">
                   {age !== null && (
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 border border-blue-200">
-                      {age} {age === 1 ? 'yr' : 'yrs'} ({t.home.ageAtTravel})
+                    <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 whitespace-nowrap">
+                      {age}y
                     </span>
                   )}
 
                   {age !== null && age < 2 && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 border border-teal-200">
-                      {t.home.tierInfant}
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 whitespace-nowrap">
+                      Infant (10%)
                     </span>
                   )}
 
                   {age !== null && age >= 2 && age < 12 && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 border border-indigo-200">
-                      {t.home.tierChild}
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 whitespace-nowrap">
+                      Child (75%)
                     </span>
                   )}
 
                   {age !== null && age >= 12 && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 border border-purple-200">
-                      {t.home.tierTeen}
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 whitespace-nowrap">
+                      12+ (100%)
                     </span>
                   )}
 
                   {isSchoolChild && (
                     <span
-                      className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1"
+                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-0.5 whitespace-nowrap"
                       title={t.home.schoolAgeBadge}
                     >
-                      <Award className="w-3 h-3 text-amber-700" />
-                      School Age (6+)
+                      <Award className="w-2.5 h-2.5 text-amber-700" />
+                      School (6+)
                     </span>
                   )}
 
                   <button
                     type="button"
                     onClick={() => handleRemoveChild(child.id)}
-                    className="p-1 text-slate-400 hover:text-red-600 rounded transition-colors ml-1"
+                    className="p-1 text-slate-400 hover:text-red-600 rounded transition-colors ml-1 flex-shrink-0"
                     title={t.home.removeChild}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -164,4 +159,3 @@ export function ChildrenSelector({
     </div>
   );
 }
-

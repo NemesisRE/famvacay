@@ -16,6 +16,7 @@ export interface DynamicAirport {
   distanceKm?: number;
   isHighSpeedRailConnected?: boolean;
   railConnectivityNote?: string;
+  flightCorridorNote?: string;
   isMajorHub?: boolean;
 }
 
@@ -198,8 +199,14 @@ function evaluateHighSpeedRailConnectivity(
 export function getRecommendedAirportsForCoordinates(
   userLat: number,
   userLon: number,
-  maxDistanceKm: number = 320
+  maxDistanceKm: number = 380,
+  targetDestinations?: string[]
 ): DynamicAirport[] {
+  const normalizedDestinations = (targetDestinations || []).map((d) => d.toLowerCase());
+  const hasLongHaulDestinations = normalizedDestinations.some((d) =>
+    ['egypt', 'hurghada', 'bali', 'thailand', 'phuket', 'cancun', 'dubai', 'caribbean', 'hrg', 'ssh', 'dps', 'hkt', 'cun', 'dxb', 'bkk'].some((kw) => d.includes(kw))
+  );
+
   // Score all major/known hubs
   const candidateHubs = indexedAirports.filter(
     (a) => a.isMajorHub || ['STR', 'FKB', 'FRA', 'MUC', 'BSL', 'ZRH', 'CDG', 'ORY', 'VIE', 'BER', 'HAM', 'DUS', 'CGN'].includes(a.code)
@@ -209,11 +216,19 @@ export function getRecommendedAirportsForCoordinates(
     const distanceKm = calculateGeodesicDistanceKm(userLat, userLon, airport.lat, airport.lon);
     const rail = evaluateHighSpeedRailConnectivity(userLat, userLon, airport.code);
 
+    let flightCorridorNote: string | undefined;
+    if (hasLongHaulDestinations && ['FRA', 'CDG', 'MUC', 'ZRH'].includes(airport.code)) {
+      flightCorridorNote = 'Direct intercontinental long-haul corridor';
+    } else if (normalizedDestinations.length > 0 && ['STR', 'FKB', 'BSL', 'NUE', 'DUS', 'CGN'].includes(airport.code)) {
+      flightCorridorNote = 'Direct holiday charter corridor';
+    }
+
     return {
       ...airport,
       distanceKm,
       isHighSpeedRailConnected: rail.isConnected,
       railConnectivityNote: rail.note,
+      flightCorridorNote,
     };
   });
 
@@ -243,6 +258,17 @@ export function getRecommendedAirportsForCoordinates(
     if (!addedCodes.has(a.code)) {
       combined.push(a);
       addedCodes.add(a.code);
+    }
+  }
+
+  // If long-haul destinations selected, ensure Frankfurt (FRA) or Paris (CDG) are included
+  if (hasLongHaulDestinations) {
+    for (const code of ['FRA', 'CDG', 'MUC']) {
+      const hub = scored.find((a) => a.code === code);
+      if (hub && !addedCodes.has(code)) {
+        combined.push(hub);
+        addedCodes.add(code);
+      }
     }
   }
 

@@ -29,13 +29,14 @@ export interface BlackoutRange {
 
 export interface TripPlanInput {
   id?: string;
-  destinationType: DestinationType;
-  targetRegion?: string;     // Specific airport code (e.g. "PMI") or null/empty for auto-discovery
-  durationDays: number;      // Fixed or base window length
-  durationDaysMin?: number;  // Flexible minimum duration
-  durationDaysMax?: number;  // Flexible maximum duration
-  earliestDate: string;      // YYYY-MM-DD
-  latestDate: string;        // YYYY-MM-DD
+  destinationType?: DestinationType;
+  targetDestinations?: string[];    // Flexible multiple destination tags (e.g. ['Egypt', 'Mallorca'])
+  targetRegion?: string;           // Optional single destination code
+  durationDays: number;            // Fixed or base window length
+  durationDaysMin?: number;        // Flexible minimum duration
+  durationDaysMax?: number;        // Flexible maximum duration
+  earliestDate: string;            // YYYY-MM-DD
+  latestDate: string;              // YYYY-MM-DD
   maxBudgetTotal?: number;
   userProfile: UserProfileInput;
   searchBlackouts?: BlackoutRange[]; // Additional search-specific blackouts

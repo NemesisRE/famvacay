@@ -81,9 +81,16 @@ export function LocationInput({
   }, []);
 
   const handleSelect = (loc: GeocodedLocation) => {
-    const formatted = loc.city
-      ? `${loc.city}, ${loc.country}`
-      : loc.displayName || loc.name;
+    const cityName = loc.city || loc.name;
+    const parts = [cityName];
+    if (loc.state && loc.state !== cityName) {
+      parts.push(loc.state);
+    }
+    if (loc.country) {
+      parts.push(loc.country);
+    }
+    const formatted = parts.join(', ');
+
     setQuery(formatted);
     onChange(formatted, { lat: loc.lat, lon: loc.lon });
     setShowDropdown(false);
@@ -152,8 +159,8 @@ export function LocationInput({
                   <span className="text-slate-400 ml-1">({loc.country})</span>
                 </div>
               </div>
-              <span className="text-[10px] text-slate-400 flex-shrink-0 ml-2">
-                {loc.lat.toFixed(2)}, {loc.lon.toFixed(2)}
+              <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded flex-shrink-0 ml-2">
+                {loc.countryCode.toUpperCase()}
               </span>
             </button>
           ))}
@@ -162,4 +169,3 @@ export function LocationInput({
     </div>
   );
 }
-

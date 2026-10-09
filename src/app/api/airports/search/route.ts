@@ -28,8 +28,18 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    const destinationsParam = searchParams.get('destinations');
+    const targetDestinations = destinationsParam
+      ? destinationsParam.split(',').map((d) => d.trim()).filter(Boolean)
+      : undefined;
+
     if (userCoords) {
-      const recommended = getRecommendedAirportsForCoordinates(userCoords.lat, userCoords.lon);
+      const recommended = getRecommendedAirportsForCoordinates(
+        userCoords.lat,
+        userCoords.lon,
+        380,
+        targetDestinations
+      );
       return NextResponse.json({
         success: true,
         count: recommended.length,

@@ -1,0 +1,580 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useSession, signOut } from 'next-auth/react';
+import { startRegistration } from '@simplewebauthn/browser';
+import {
+  Shield,
+  Mail,
+  KeyRound,
+  Fingerprint,
+  Share2,
+  Trash2,
+  AlertTriangle,
+  CheckCircle2,
+  AlertCircle,
+  Plus,
+  Unlink,
+} from 'lucide-react';
+import { useI18n } from '@/lib/i18n/i18n-context';
+
+export function AccountSettings() {
+  const { data: session } = useSession();
+  const { t } = useI18n();
+
+  const [loading, setLoading] = useState(true);
+  const [accountInfo, setAccountInfo] = useState<{
+    hasPassword: boolean;
+    linkedProviders: string[];
+    passkeysCount: number;
+  }>({
+    hasPassword: false,
+    linkedProviders: [],
+    passkeysCount: 0,
+  });
+
+  const [passkeys, setPasskeys] = useState<any[]>([]);
+
+  // Email form
+  const [email, setEmail] = useState('');
+  const [updatingEmail, setUpdatingEmail] = useState(false);
+  const [emailMsg, setEmailMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Password form
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Passkey state
+  const [registeringPasskey, setRegisteringPasskey] = useState(false);
+  const [passkeyMsg, setPasskeyMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const fetchAccountData = async () => {
+    try {
+      setLoading(true);
+      const [accRes, passRes] = await Promise.all([
+        fetch('/api/auth/linked-accounts'),
+        fetch('/api/account/passkeys'),
+      ]);
+
+      if (accRes.ok) {
+        const accData = await accRes.json();
+        setAccountInfo({
+          hasPassword: accData.hasPassword,
+          linkedProviders: accData.linkedProviders || [],
+          passkeysCount: accData.passkeysCount || 0,
+        });
+      }
+
+      if (passRes.ok) {
+        const passData = await passRes.json();
+        setPasskeys(passData.passkeys || []);
+      }
+    } catch (err) {
+      console.error('Error fetching account settings:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (session?.user?.email) {
+      setEmail(session.user.email);
+    }
+    fetchAccountData();
+  }, [session?.user?.email]);
+
+  const handleUpdateEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setUpdatingEmail(true);
+      setEmailMsg(null);
+
+      const res = await fetch('/api/account/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update email.');
+      }
+
+      setEmailMsg({ type: 'success', text: t.account.emailUpdateSuccess });
+    } catch (err: any) {
+      setEmailMsg({ type: 'error', text: err.message });
+    } finally {
+      setUpdatingEmail(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg({ type: 'error', text: 'Passwords do not match.' });
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordMsg({ type: 'error', text: 'New password must be at least 8 characters long.' });
+      return;
+    }
+
+    try {
+      setUpdatingPassword(true);
+      setPasswordMsg(null);
+
+      const res = await fetch('/api/account/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update password.');
+      }
+
+      setPasswordMsg({ type: 'success', text: t.account.passwordChangeSuccess });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      fetchAccountData();
+    } catch (err: any) {
+      setPasswordMsg({ type: 'error', text: err.message });
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
+
+  const handleRegisterPasskey = async () => {
+    try {
+      setRegisteringPasskey(true);
+      setPasskeyMsg(null);
+
+      const optRes = await fetch('/api/auth/passkeys/register-options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: session?.user?.email }),
+      });
+
+      const optData = await optRes.json();
+      if (!optRes.ok) {
+        throw new Error(optData.error || 'Failed to get passkey options.');
+      }
+
+      const attResp = await startRegistration(optData.options);
+
+      const verRes = await fetch('/api/auth/passkeys/verify-registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: session?.user?.email,
+          credential: attResp,
+        }),
+      });
+
+      const verData = await verRes.json();
+      if (!verRes.ok) {
+        throw new Error(verData.error || 'Passkey verification failed.');
+      }
+
+      setPasskeyMsg({ type: 'success', text: t.account.passkeyCreated });
+      fetchAccountData();
+    } catch (err: any) {
+      setPasskeyMsg({ type: 'error', text: err.message || 'Passkey enrollment cancelled.' });
+    } finally {
+      setRegisteringPasskey(false);
+    }
+  };
+
+  const handleDeletePasskey = async (credentialID: string) => {
+    try {
+      const res = await fetch('/api/account/passkeys', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credentialID }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete passkey.');
+      }
+
+      setPasskeyMsg({ type: 'success', text: t.account.passkeyDeleted });
+      fetchAccountData();
+    } catch (err: any) {
+      setPasskeyMsg({ type: 'error', text: err.message });
+    }
+  };
+
+  const handleUnlinkProvider = async (provider: string) => {
+    try {
+      const res = await fetch('/api/account/unlink', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to unlink provider.');
+      }
+
+      alert(t.account.unlinkedSuccess);
+      fetchAccountData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      setDeletingAccount(true);
+      const res = await fetch('/api/account', { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete account.');
+      }
+      signOut({ callbackUrl: '/' });
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete account');
+      setDeletingAccount(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="py-12 text-center text-xs text-slate-500">
+        <span className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin inline-block mb-2" />
+        <p>{t.common.loading}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* 1. Email Address */}
+      <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+          <Mail className="w-4 h-4 text-blue-600" />
+          <h3 className="text-sm font-bold text-slate-800">{t.account.emailSecTitle}</h3>
+        </div>
+
+        {emailMsg && (
+          <div
+            className={`p-3 rounded-lg text-xs flex items-center gap-2 ${
+              emailMsg.type === 'success'
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                : 'bg-red-50 text-red-800 border border-red-200'
+            }`}
+          >
+            {emailMsg.type === 'success' ? (
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <AlertCircle className="w-3.5 h-3.5 text-red-600" />
+            )}
+            <span>{emailMsg.text}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleUpdateEmail} className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              {t.account.emailLabel}
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <button
+              type="submit"
+              disabled={updatingEmail}
+              className="w-full text-xs font-bold py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition disabled:opacity-50"
+            >
+              {updatingEmail ? 'Saving...' : t.account.updateEmailBtn}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* 2. Password */}
+      <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+          <KeyRound className="w-4 h-4 text-blue-600" />
+          <h3 className="text-sm font-bold text-slate-800">{t.account.passwordSecTitle}</h3>
+        </div>
+
+        {passwordMsg && (
+          <div
+            className={`p-3 rounded-lg text-xs flex items-center gap-2 ${
+              passwordMsg.type === 'success'
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                : 'bg-red-50 text-red-800 border border-red-200'
+            }`}
+          >
+            {passwordMsg.type === 'success' ? (
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <AlertCircle className="w-3.5 h-3.5 text-red-600" />
+            )}
+            <span>{passwordMsg.text}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleUpdatePassword} className="space-y-3">
+          {accountInfo.hasPassword && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                {t.account.currentPasswordLabel}
+              </label>
+              <input
+                type="password"
+                required
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full sm:w-80 text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                {t.account.newPasswordLabel}
+              </label>
+              <input
+                type="password"
+                required
+                minLength={8}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                {t.account.confirmPasswordLabel}
+              </label>
+              <input
+                type="password"
+                required
+                minLength={8}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={updatingPassword}
+            className="text-xs font-bold py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition disabled:opacity-50"
+          >
+            {updatingPassword ? 'Updating...' : t.account.changePasswordBtn}
+          </button>
+        </form>
+      </div>
+
+      {/* 3. Passkeys & WebAuthn */}
+      <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <Fingerprint className="w-4 h-4 text-blue-600" />
+            <h3 className="text-sm font-bold text-slate-800">{t.account.passkeysSecTitle}</h3>
+          </div>
+          <button
+            type="button"
+            onClick={handleRegisterPasskey}
+            disabled={registeringPasskey}
+            className="text-xs font-bold py-1.5 px-3 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            {registeringPasskey ? 'Enrolling...' : t.account.registerPasskeyBtn}
+          </button>
+        </div>
+
+        <p className="text-xs text-slate-500">{t.account.passkeysDesc}</p>
+
+        {passkeyMsg && (
+          <div
+            className={`p-3 rounded-lg text-xs flex items-center gap-2 ${
+              passkeyMsg.type === 'success'
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                : 'bg-red-50 text-red-800 border border-red-200'
+            }`}
+          >
+            {passkeyMsg.type === 'success' ? (
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <AlertCircle className="w-3.5 h-3.5 text-red-600" />
+            )}
+            <span>{passkeyMsg.text}</span>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {passkeys.length === 0 ? (
+            <p className="text-xs text-slate-400 italic">{t.account.noPasskeys}</p>
+          ) : (
+            passkeys.map((p, idx) => (
+              <div
+                key={p.credentialID}
+                className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between text-xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Fingerprint className="w-4 h-4 text-blue-600" />
+                  <div>
+                    <span className="font-bold text-slate-800 block">
+                      Device #{idx + 1} ({p.credentialDeviceType || 'platform'})
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      ID: {p.credentialID.substring(0, 16)}...
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDeletePasskey(p.credentialID)}
+                  className="p-1.5 text-slate-400 hover:text-red-600 rounded transition"
+                  title={t.account.deletePasskey}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* 4. Connected Accounts (OAuth) */}
+      <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+          <Share2 className="w-4 h-4 text-blue-600" />
+          <h3 className="text-sm font-bold text-slate-800">{t.account.socialSecTitle}</h3>
+        </div>
+        <p className="text-xs text-slate-500">{t.account.socialDesc}</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Google */}
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="w-6 h-6 rounded-full bg-white border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">
+                G
+              </span>
+              <div>
+                <span className="text-xs font-bold text-slate-800 block">Google</span>
+                <span className="text-[10px] text-slate-500">
+                  {accountInfo.linkedProviders.includes('google')
+                    ? t.account.connectedBadge
+                    : 'Not linked'}
+                </span>
+              </div>
+            </div>
+            {accountInfo.linkedProviders.includes('google') && (
+              <button
+                type="button"
+                onClick={() => handleUnlinkProvider('google')}
+                className="text-[11px] font-semibold text-red-600 hover:text-red-800 flex items-center gap-1"
+              >
+                <Unlink className="w-3 h-3" />
+                {t.account.unlinkBtn}
+              </button>
+            )}
+          </div>
+
+          {/* Apple */}
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="w-6 h-6 rounded-full bg-white border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">
+                A
+              </span>
+              <div>
+                <span className="text-xs font-bold text-slate-800 block">Apple</span>
+                <span className="text-[10px] text-slate-500">
+                  {accountInfo.linkedProviders.includes('apple')
+                    ? t.account.connectedBadge
+                    : 'Not linked'}
+                </span>
+              </div>
+            </div>
+            {accountInfo.linkedProviders.includes('apple') && (
+              <button
+                type="button"
+                onClick={() => handleUnlinkProvider('apple')}
+                className="text-[11px] font-semibold text-red-600 hover:text-red-800 flex items-center gap-1"
+              >
+                <Unlink className="w-3 h-3" />
+                {t.account.unlinkBtn}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 5. Danger Zone */}
+      <div className="p-6 bg-red-50/50 rounded-xl border border-red-200 space-y-3">
+        <div className="flex items-center gap-2 border-b border-red-200/80 pb-2">
+          <AlertTriangle className="w-4 h-4 text-red-600" />
+          <h3 className="text-sm font-bold text-red-900">{t.account.dangerZoneTitle}</h3>
+        </div>
+        <p className="text-xs text-red-800">{t.account.dangerZoneDesc}</p>
+        <button
+          type="button"
+          onClick={() => setShowDeleteModal(true)}
+          className="text-xs font-bold py-2 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white transition flex items-center gap-1.5"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          {t.account.deleteAccountBtn}
+        </button>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4">
+            <div className="flex items-center gap-3 text-red-600">
+              <AlertTriangle className="w-6 h-6" />
+              <h3 className="font-extrabold text-base text-slate-900">
+                {t.account.deleteConfirmModalTitle}
+              </h3>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              {t.account.deleteConfirmModalDesc}
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                className="text-xs font-semibold px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
+              >
+                {t.account.cancelBtn}
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={deletingAccount}
+                className="text-xs font-bold px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition disabled:opacity-50 flex items-center gap-1"
+              >
+                {deletingAccount ? 'Deleting...' : t.account.confirmDeleteAccountBtn}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+

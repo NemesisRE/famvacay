@@ -25,6 +25,11 @@ export interface TranslationDictionary {
     departureLocationPlaceholder: string;
     countryLabel: string;
     homeStateLabel: string;
+    destinationsLabel: string;
+    destinationsPlaceholder: string;
+    destinationsHint: string;
+    allDestinationsOption: string;
+    addCustomDestination: string;
     airportsLabel: string;
     airportsHint: string;
     searchAirportsPlaceholder: string;
@@ -32,6 +37,7 @@ export interface TranslationDictionary {
     hideSuggestions: string;
     noAirportsFound: string;
     railConnected: string;
+    flightCorridorNote: string;
     childrenAgesLabel: string;
     childrenAgesHint: string;
     addChild: string;
@@ -42,14 +48,6 @@ export interface TranslationDictionary {
     tierChild: string;
     tierTeen: string;
     schoolAgeBadge: string;
-    tripTypeLabel: string;
-    beach: string;
-    city: string;
-    nature: string;
-    ski: string;
-    targetDestinationLabel: string;
-    allDestinations: string;
-    destinationSearchPlaceholder: string;
     durationLabel: string;
     durationMinLabel: string;
     durationMaxLabel: string;
@@ -76,6 +74,14 @@ export interface TranslationDictionary {
     arbitrageBadge: string;
     arbitrageSaving: string;
     seasonalWarningBadge: string;
+    seasonWarningMonsoonTitle: string;
+    seasonWarningMonsoonDesc: string;
+    seasonWarningExtremeHeatTitle: string;
+    seasonWarningExtremeHeatDesc: string;
+    seasonWarningHurricaneTitle: string;
+    seasonWarningHurricaneDesc: string;
+    seasonWarningCrowdedPeakTitle: string;
+    seasonWarningCrowdedPeakDesc: string;
     days: string;
     ptoConsumed: string;
     ptoSaved: string;
@@ -83,11 +89,28 @@ export interface TranslationDictionary {
     score: string;
     cachedBenchmark: string;
     estFamilyCost: string;
+    flightAndLodgingIncluded: string;
     perPerson: string;
+    filterByMonth: string;
+    allMonths: string;
+    filterByDuration: string;
+    filterByCost: string;
+    sortBy: string;
+    sortScore: string;
+    sortPrice: string;
+    sortPto: string;
+    sortDuration: string;
+    page: string;
+    of: string;
+    nextPage: string;
+    prevPage: string;
+    resultsPerPage: string;
   };
   profile: {
     title: string;
     subtitle: string;
+    profileTab: string;
+    accountTab: string;
     membersBadge: string;
     sec1Title: string;
     familyName: string;
@@ -134,6 +157,40 @@ export interface TranslationDictionary {
     saving: string;
     successSaved: string;
   };
+  account: {
+    title: string;
+    subtitle: string;
+    emailSecTitle: string;
+    emailLabel: string;
+    updateEmailBtn: string;
+    emailUpdateSuccess: string;
+    passwordSecTitle: string;
+    currentPasswordLabel: string;
+    newPasswordLabel: string;
+    confirmPasswordLabel: string;
+    changePasswordBtn: string;
+    passwordChangeSuccess: string;
+    passkeysSecTitle: string;
+    passkeysDesc: string;
+    registerPasskeyBtn: string;
+    noPasskeys: string;
+    passkeyCreated: string;
+    deletePasskey: string;
+    passkeyDeleted: string;
+    socialSecTitle: string;
+    socialDesc: string;
+    connectedBadge: string;
+    unlinkBtn: string;
+    unlinkedSuccess: string;
+    dangerZoneTitle: string;
+    dangerZoneDesc: string;
+    deleteAccountBtn: string;
+    deleteConfirmModalTitle: string;
+    deleteConfirmModalDesc: string;
+    confirmDeleteAccountBtn: string;
+    cancelBtn: string;
+    lockoutPreventionError: string;
+  };
   auth: {
     welcome: string;
     createAccount: string;
@@ -154,6 +211,7 @@ export interface TranslationDictionary {
   };
   common: {
     footer: string;
+    loading: string;
+    error: string;
   };
 }
-

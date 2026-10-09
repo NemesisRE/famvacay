@@ -10,8 +10,9 @@ import {
 import { calculatePtoDaysConsumed } from './pto-calculator';
 import { calculatePassengerCostMultiplier } from './child-tiers';
 import { NEIGHBORING_STATES, SUPPORTED_ORIGIN_AIRPORTS, calculateDistanceKm } from './arbitrage';
-import { getAirportByIata } from '@/lib/airports/airport-service';
 import { POPULAR_DESTINATIONS, getEstimatedClimate, getDestinationSeasonalWarning } from './weather';
+import { resolveDestinationCodes } from './destinations';
+import { getAirportByIata } from '../airports/airport-service';
 
 /**
  * Filter blackout dates: Checks if [candidateStart, candidateEnd] overlaps with any blackout range.
@@ -102,19 +103,14 @@ export function optimizeVacationWindows(
     ? userProfile.originAirports
     : ['STR', 'FRA'];
 
-  // Select destination codes
-  let candidateDestinations: string[] = [];
-  if (targetRegion && (POPULAR_DESTINATIONS[targetRegion] || getAirportByIata(targetRegion))) {
-    candidateDestinations = [targetRegion];
-  } else {
-    // Filter popular destinations matching destinationType
-    candidateDestinations = Object.values(POPULAR_DESTINATIONS)
-      .filter((d) => d.type === destinationType)
-      .map((d) => d.code);
-    if (candidateDestinations.length === 0) {
-      candidateDestinations = ['PMI', 'BCN', 'FAO'];
-    }
-  }
+  // Select candidate destination codes
+  const candidateDestinations = resolveDestinationCodes(
+    input.targetDestinations && input.targetDestinations.length > 0
+      ? input.targetDestinations
+      : input.targetRegion
+      ? [input.targetRegion]
+      : undefined
+  );
 
   const candidatePool: Omit<CandidateWindow, 'finalScore' | 'scoreBreakdown'>[] = [];
 
@@ -193,21 +189,37 @@ export function optimizeVacationWindows(
 
           const seasonalWarning = getDestinationSeasonalWarning(dest, monthIndex);
 
-          // Base price calculation with simulated pricing model & arbitrage discount
-          let baseFare = 140; // Base baseline per adult
-          if (monthIndex >= 6 && monthIndex <= 7) {
-            baseFare = 280; // Peak summer season
-          } else if (monthIndex === 3 || monthIndex === 4 || monthIndex === 9) {
-            baseFare = 190; // Shoulder season
+          // Return flight calculation per passenger multiplier
+          let baseFlightFare = 140; // Base return flight fare per adult
+          if (monthIndex >= 5 && monthIndex <= 7) {
+            baseFlightFare = 270; // Peak summer season
+          } else if (monthIndex === 3 || monthIndex === 4 || monthIndex === 8 || monthIndex === 9) {
+            baseFlightFare = 190; // Shoulder season
+          } else if (monthIndex === 11 || monthIndex <= 1) {
+            baseFlightFare = 210; // Winter holiday season
           }
 
           // Apply arbitrage discount if schools are NOT on holiday at departure airport
           if (isArbitrage && arbitrageNote) {
-            baseFare = Math.round(baseFare * 0.70); // 30% arbitrage discount
+            baseFlightFare = Math.round(baseFlightFare * 0.70); // 30% flight arbitrage discount
           }
 
-          const totalCost = Math.round(baseFare * pCostMultiplier);
-          const perPersonCost = Math.round(totalCost / (2 + currentChildrenAges.length));
+          const totalFlightCost = Math.round(baseFlightFare * pCostMultiplier);
+
+          // Accommodation lodging calculation for the family
+          let baseNightlyLodging = 100;
+          if (monthIndex >= 5 && monthIndex <= 7) {
+            baseNightlyLodging = 150; // Summer peak lodging
+          } else if (monthIndex === 3 || monthIndex === 4 || monthIndex === 8 || monthIndex === 9) {
+            baseNightlyLodging = 115;
+          }
+          const nights = Math.max(1, durationDays - 1);
+          const totalLodgingCost = baseNightlyLodging * nights;
+
+          // Realistic total trip cost (Flight + Lodging)
+          const totalCost = totalFlightCost + totalLodgingCost;
+          const totalPassengers = Math.max(1, 2 + currentChildrenAges.length);
+          const perPersonCost = Math.round(totalCost / totalPassengers);
 
           // Budget check
           if (input.maxBudgetTotal && totalCost > input.maxBudgetTotal) {

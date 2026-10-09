@@ -14,12 +14,14 @@ export interface AirportItem {
   distanceKm?: number;
   isHighSpeedRailConnected?: boolean;
   railConnectivityNote?: string;
+  flightCorridorNote?: string;
 }
 
 interface AirportSelectorProps {
   selectedAirports: string[];
   onChange: (airports: string[]) => void;
   coordinates?: { lat: number; lon: number } | null;
+  targetDestinations?: string[];
   className?: string;
 }
 
@@ -27,6 +29,7 @@ export function AirportSelector({
   selectedAirports,
   onChange,
   coordinates,
+  targetDestinations,
   className = '',
 }: AirportSelectorProps) {
   const { t } = useI18n();
@@ -52,9 +55,13 @@ export function AirportSelector({
     async function fetchRecommended() {
       try {
         setLoadingSuggestions(true);
+        const destParam =
+          targetDestinations && targetDestinations.length > 0
+            ? `&destinations=${encodeURIComponent(targetDestinations.join(','))}`
+            : '';
         const url = coordinates
-          ? `/api/airports/search?lat=${coordinates.lat}&lon=${coordinates.lon}`
-          : `/api/airports/search`;
+          ? `/api/airports/search?lat=${coordinates.lat}&lon=${coordinates.lon}${destParam}`
+          : `/api/airports/search?${destParam}`;
 
         const res = await fetch(url);
         if (res.ok) {
@@ -84,7 +91,7 @@ export function AirportSelector({
     return () => {
       active = false;
     };
-  }, [coordinates?.lat, coordinates?.lon]);
+  }, [coordinates?.lat, coordinates?.lon, JSON.stringify(targetDestinations)]);
 
   // Debounced airport search
   useEffect(() => {

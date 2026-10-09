@@ -15,11 +15,13 @@ import {
   Compass,
   Plane,
   Ban,
+  Shield,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { COUNTRIES, getCountryCodeFromSubdivision } from '@/lib/regions/subdivisions';
 import { AirportSelector } from '@/components/airports/AirportSelector';
 import { LocationInput } from '@/components/geo/LocationInput';
+import { AccountSettings } from '@/components/account/AccountSettings';
 
 interface FamilyMemberForm {
   firstName: string;
@@ -43,6 +45,7 @@ export default function FamilyProfilePage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<'profile' | 'account'>('profile');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [familyName, setFamilyName] = useState('');
@@ -289,24 +292,57 @@ export default function FamilyProfilePage() {
           </span>
         </div>
 
-        {message && (
-          <div
-            className={`my-4 p-3.5 rounded-xl text-xs flex items-center gap-2 border ${
-              message.type === 'success'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                : 'bg-red-50 text-red-800 border-red-200'
+        <div className="flex border-b border-slate-200 mt-6 gap-6">
+          <button
+            type="button"
+            onClick={() => setActiveTab('profile')}
+            className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition ${
+              activeTab === 'profile'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            {message.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-            ) : (
-              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-            )}
-            <span>{message.text}</span>
-          </div>
-        )}
+            <Users className="w-4 h-4" />
+            {t.profile.profileTab}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('account')}
+            className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition ${
+              activeTab === 'account'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Shield className="w-4 h-4" />
+            {t.profile.accountTab}
+          </button>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8 mt-6">
+        {activeTab === 'account' ? (
+          <div className="mt-6">
+            <AccountSettings />
+          </div>
+        ) : (
+          <>
+            {message && (
+              <div
+                className={`my-4 p-3.5 rounded-xl text-xs flex items-center gap-2 border ${
+                  message.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    : 'bg-red-50 text-red-800 border-red-200'
+                }`}
+              >
+                {message.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                )}
+                <span>{message.text}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-8 mt-6">
           {/* Section 1 */}
           <div className="space-y-4">
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
@@ -679,6 +715,8 @@ export default function FamilyProfilePage() {
             </button>
           </div>
         </form>
+        </>
+        )}
       </div>
     </div>
   );

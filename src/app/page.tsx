@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import {
   Plane,
@@ -14,25 +14,38 @@ import {
   Trash2,
   Calendar,
   Users,
-  Info,
-  BookmarkCheck,
   Save,
   Check,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown,
+  SlidersHorizontal,
 } from 'lucide-react';
-import { differenceInYears } from 'date-fns';
-import { CandidateWindow, DestinationType } from '@/lib/optimizer/types';
+import { differenceInYears, addDays } from 'date-fns';
+import { CandidateWindow } from '@/lib/optimizer/types';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { COUNTRIES, getCountryCodeFromSubdivision } from '@/lib/regions/subdivisions';
 import { AirportSelector } from '@/components/airports/AirportSelector';
 import { LocationInput } from '@/components/geo/LocationInput';
 import { ChildrenSelector, ChildItem } from '@/components/family/ChildrenSelector';
-import { DestinationInput } from '@/components/destination/DestinationInput';
+import { MultiDestinationInput } from '@/components/destination/MultiDestinationInput';
+import { getLocalizedSeasonalWarning } from '@/lib/optimizer/localized-warnings';
 
 export default function HomePage() {
   const { data: session } = useSession();
-  const { t, formatCurrency } = useI18n();
+  const { t, formatDate, formatCurrency } = useI18n();
 
-  // Location and School District State
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const defaultEarliest = useMemo(
+    () => addDays(new Date(), 14).toISOString().split('T')[0],
+    []
+  );
+  const defaultLatest = useMemo(
+    () => addDays(new Date(), 90).toISOString().split('T')[0],
+    []
+  );
+
+  // 1. Departure & School District State
   const [departureLocation, setDepartureLocation] = useState('Karlsruhe, Germany');
   const [departureCoords, setDepartureCoords] = useState<{ lat: number; lon: number } | null>({
     lat: 49.0069,
@@ -41,38 +54,50 @@ export default function HomePage() {
   const [country, setCountry] = useState('DE');
   const [federalState, setFederalState] = useState('DE-BW');
 
-  // Flight & Destination State
+  // 2. Travel Destinations State (Multi-Entry)
+  const [targetDestinations, setTargetDestinations] = useState<string[]>([
+    'Mallorca (Balearic Islands)',
+    'Hurghada & Red Sea',
+  ]);
+
+  // 3. Flight / Origin Airports State
   const [originAirports, setOriginAirports] = useState<string[]>(['FKB', 'STR', 'FRA']);
-  const [destinationType, setDestinationType] = useState<DestinationType>('BEACH');
-  const [targetRegion, setTargetRegion] = useState('');
 
-  // Duration & Date Boundaries
-  const [durationDaysMin, setDurationDaysMin] = useState(10);
-  const [durationDaysMax, setDurationDaysMax] = useState(14);
-  const [earliestDate, setEarliestDate] = useState('2026-07-25');
-  const [latestDate, setLatestDate] = useState('2026-09-15');
-  const [maxBudget, setMaxBudget] = useState<number | undefined>(undefined);
-
-  // Dynamic Children with Birth Dates
+  // 4. Dynamic Children with Birth Dates
   const [childrenList, setChildrenList] = useState<ChildItem[]>([
     { id: 'c1', birthDate: '2021-08-15' }, // ~5y
     { id: 'c2', birthDate: '2017-05-10' }, // ~9y
   ]);
 
-  // Blackout Dates
+  // 5. Duration Range
+  const [durationDaysMin, setDurationDaysMin] = useState(10);
+  const [durationDaysMax, setDurationDaysMax] = useState(14);
+
+  // 6. Date Boundaries
+  const [earliestDate, setEarliestDate] = useState(defaultEarliest);
+  const [latestDate, setLatestDate] = useState(defaultLatest);
+  const [maxBudget, setMaxBudget] = useState<number | undefined>(undefined);
+
+  // 7. Blackout Dates (Starts empty by default, loaded from profile if configured)
   const [searchBlackouts, setSearchBlackouts] = useState<
     { startDate: string; endDate: string; reason?: string }[]
-  >([
-    { startDate: '2026-08-10', endDate: '2026-08-15', reason: 'Work exam' },
-  ]);
+  >([]);
 
+  // Profile sync states
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [saveProfileSuccess, setSaveProfileSuccess] = useState(false);
 
+  // Search Results & Filter / Pagination State
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<CandidateWindow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
+  const [maxCostFilter, setMaxCostFilter] = useState<number | undefined>(undefined);
+  const [sortBy, setSortBy] = useState<'score' | 'price' | 'pto' | 'duration'>('score');
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   // Auto-prefill if family profile exists
   useEffect(() => {
@@ -86,7 +111,6 @@ export default function HomePage() {
           const p = data.profile;
           if (p.homeLocation) {
             setDepartureLocation(p.homeLocation);
-            // Geocode the saved home location to obtain precise coordinates
             try {
               const geoRes = await fetch(
                 `/api/locations/geocode?q=${encodeURIComponent(p.homeLocation)}`
@@ -218,13 +242,13 @@ export default function HomePage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setCurrentPage(1);
 
     try {
       const validBlackouts = searchBlackouts.filter((b) => b.startDate && b.endDate);
       const minDur = Number(durationDaysMin) || 7;
       const maxDur = Math.max(minDur, Number(durationDaysMax) || minDur);
 
-      // Compute dynamic child ages relative to planned earliest departure date
       const tripDate = earliestDate ? new Date(earliestDate) : new Date();
       const computedAges = childrenList
         .map((c) => {
@@ -238,8 +262,7 @@ export default function HomePage() {
         .filter(Boolean);
 
       const payload = {
-        destinationType,
-        targetRegion: targetRegion || undefined,
+        targetDestinations: targetDestinations.length > 0 ? targetDestinations : undefined,
         durationDays: minDur,
         durationDaysMin: minDur,
         durationDaysMax: maxDur,
@@ -279,6 +302,64 @@ export default function HomePage() {
     }
   };
 
+  // Filtered and Sorted Results
+  const filteredResults = useMemo(() => {
+    if (!results) return [];
+    let list = [...results];
+
+    if (selectedMonth !== 'ALL') {
+      list = list.filter((w) => {
+        const m = w.startDate.split('-')[1];
+        return m === selectedMonth;
+      });
+    }
+
+    if (maxCostFilter !== undefined && maxCostFilter > 0) {
+      list = list.filter((w) => w.estimatedTotalCost <= maxCostFilter);
+    }
+
+    list.sort((a, b) => {
+      switch (sortBy) {
+        case 'price':
+          return a.estimatedTotalCost - b.estimatedTotalCost;
+        case 'pto':
+          return b.ptoEfficiencyRatio - a.ptoEfficiencyRatio;
+        case 'duration':
+          return b.durationDays - a.durationDays;
+        case 'score':
+        default:
+          return b.finalScore - a.finalScore;
+      }
+    });
+
+    return list;
+  }, [results, selectedMonth, maxCostFilter, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredResults.length / pageSize));
+  const displayedResults = useMemo(() => {
+    const startIdx = (currentPage - 1) * pageSize;
+    return filteredResults.slice(startIdx, startIdx + pageSize);
+  }, [filteredResults, currentPage, pageSize]);
+
+  // Extract available months from search results
+  const availableMonths = useMemo(() => {
+    if (!results) return [];
+    const monthSet = new Set<string>();
+    results.forEach((w) => {
+      const m = w.startDate.split('-')[1];
+      if (m) monthSet.add(m);
+    });
+    return Array.from(monthSet).sort();
+  }, [results]);
+
+  const formatLocalizedDate = (dateStr: string) => {
+    try {
+      return formatDate(dateStr, { day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Intro hero banner */}
@@ -298,7 +379,7 @@ export default function HomePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Constraints Form */}
+        {/* Form Container */}
         <div className="lg:col-span-5 bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -306,107 +387,96 @@ export default function HomePage() {
               {t.home.constraintsTitle}
             </h2>
             {profileLoaded && (
-              <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 flex items-center gap-1">
-                <Users className="w-3 h-3 text-blue-600" />
+              <span
+                className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 flex items-center gap-1.5"
+                title={t.home.prefilledFromProfile}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
                 {t.home.prefilledFromProfile}
               </span>
             )}
           </div>
 
-          <form onSubmit={handleOptimize} className="space-y-5">
-            {/* Explicit Departure Location with Geocoding */}
-            <LocationInput
-              label={t.home.departureLocationLabel}
-              value={departureLocation}
-              onChange={handleLocationChange}
-              placeholder={t.home.departureLocationPlaceholder}
-            />
+          <form onSubmit={handleOptimize} className="space-y-6">
+            {/* Step 1: Departure Location & School District */}
+            <div className="space-y-3">
+              <LocationInput
+                label={t.home.departureLocationLabel}
+                value={departureLocation}
+                onChange={handleLocationChange}
+                placeholder={t.home.departureLocationPlaceholder}
+              />
 
-            {/* Country & Subdivision (School Break Rules) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  {t.home.countryLabel}
-                </label>
-                <select
-                  value={country}
-                  onChange={(e) => handleCountryChange(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                >
-                  {Object.values(COUNTRIES).map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    {t.home.countryLabel}
+                  </label>
+                  <select
+                    value={country}
+                    onChange={(e) => handleCountryChange(e.target.value)}
+                    className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                  >
+                    {Object.values(COUNTRIES).map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  {t.home.homeStateLabel}
-                </label>
-                <select
-                  value={federalState}
-                  onChange={(e) => setFederalState(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                >
-                  {(COUNTRIES[country]?.subdivisions || []).map((sub) => (
-                    <option key={sub.code} value={sub.code}>
-                      {sub.name} ({sub.code})
-                    </option>
-                  ))}
-                </select>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    {t.home.homeStateLabel}
+                  </label>
+                  <select
+                    value={federalState}
+                    onChange={(e) => setFederalState(e.target.value)}
+                    className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                  >
+                    {(COUNTRIES[country]?.subdivisions || []).map((sub) => (
+                      <option key={sub.code} value={sub.code}>
+                        {sub.name} ({sub.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
-            {/* Dynamic Airport Selector (Proximity, Worldwide Search, TGV Badges) */}
-            <AirportSelector
-              selectedAirports={originAirports}
-              onChange={setOriginAirports}
-              coordinates={departureCoords}
-            />
-
-            {/* Dynamic Children Management & Travel-Date Relative Ages */}
-            <ChildrenSelector
-              childrenList={childrenList}
-              onChange={setChildrenList}
-              travelDate={earliestDate}
-            />
-
-            {/* Trip Type & Dynamic Destination Input */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  {t.home.tripTypeLabel}
-                </label>
-                <select
-                  value={destinationType}
-                  onChange={(e) => {
-                    setDestinationType(e.target.value as DestinationType);
-                    setTargetRegion('');
-                  }}
-                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm"
-                >
-                  <option value="BEACH">{t.home.beach}</option>
-                  <option value="CITY">{t.home.city}</option>
-                  <option value="NATURE">{t.home.nature}</option>
-                  <option value="SKI">{t.home.ski}</option>
-                </select>
-              </div>
-
-              <DestinationInput
-                value={targetRegion}
-                onChange={setTargetRegion}
-                destinationType={destinationType}
+            {/* Step 2: Travel Destinations (Multi-Entry Input) */}
+            <div className="pt-2 border-t border-slate-100">
+              <MultiDestinationInput
+                selectedDestinations={targetDestinations}
+                onChange={setTargetDestinations}
               />
             </div>
 
-            {/* Flexible Duration Range (Min - Max Days) */}
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+            {/* Step 3: Departure Airports (Proximity, Destination Corridors, Direct TGV) */}
+            <div className="pt-2 border-t border-slate-100">
+              <AirportSelector
+                selectedAirports={originAirports}
+                onChange={setOriginAirports}
+                coordinates={departureCoords}
+                targetDestinations={targetDestinations}
+              />
+            </div>
+
+            {/* Step 4: Participating Children */}
+            <div className="pt-2 border-t border-slate-100">
+              <ChildrenSelector
+                childrenList={childrenList}
+                onChange={setChildrenList}
+                travelDate={earliestDate}
+              />
+            </div>
+
+            {/* Step 5: Flexible Vacation Duration */}
+            <div className="pt-2 border-t border-slate-100 space-y-2">
               <label className="block text-xs font-semibold text-slate-700">
                 {t.home.durationLabel}
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-2 gap-3">
                 <div>
                   <span className="block text-[10px] font-semibold text-slate-500 mb-1">
                     {t.home.durationMinLabel}
@@ -436,109 +506,114 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Search Window Range */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  {t.home.earliestDateLabel}
-                </label>
-                <input
-                  type="date"
-                  value={earliestDate}
-                  onChange={(e) => setEarliestDate(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 shadow-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  {t.home.latestDateLabel}
-                </label>
-                <input
-                  type="date"
-                  value={latestDate}
-                  onChange={(e) => setLatestDate(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 shadow-sm"
-                />
-              </div>
-            </div>
-
-            {/* Multiple Blackout Periods (Sperrzeiten) */}
-            <div className="p-3.5 bg-amber-50/70 rounded-xl border border-amber-200/90 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
-                  {t.home.blackoutFilterTitle}
-                </span>
-                <button
-                  type="button"
-                  onClick={addBlackout}
-                  className="text-xs font-semibold text-amber-800 hover:text-amber-950 flex items-center gap-1"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  {t.home.addBlackout}
-                </button>
-              </div>
-
-              {searchBlackouts.length === 0 ? (
-                <p className="text-[11px] text-amber-700 italic">{t.home.noBlackouts}</p>
-              ) : (
-                <div className="space-y-2">
-                  {searchBlackouts.map((b, idx) => (
-                    <div
-                      key={idx}
-                      className="p-2 rounded-lg bg-white/90 border border-amber-200 grid grid-cols-1 sm:grid-cols-12 gap-2 items-center shadow-xs"
-                    >
-                      <div className="sm:col-span-4">
-                        <label className="block text-[9px] font-semibold text-slate-500 uppercase">
-                          {t.home.blackoutStart}
-                        </label>
-                        <input
-                          type="date"
-                          value={b.startDate}
-                          onChange={(e) => updateBlackout(idx, 'startDate', e.target.value)}
-                          className="w-full text-[11px] rounded border border-slate-300 px-2 py-1 bg-white outline-none"
-                        />
-                      </div>
-                      <div className="sm:col-span-4">
-                        <label className="block text-[9px] font-semibold text-slate-500 uppercase">
-                          {t.home.blackoutEnd}
-                        </label>
-                        <input
-                          type="date"
-                          value={b.endDate}
-                          onChange={(e) => updateBlackout(idx, 'endDate', e.target.value)}
-                          className="w-full text-[11px] rounded border border-slate-300 px-2 py-1 bg-white outline-none"
-                        />
-                      </div>
-                      <div className="sm:col-span-3">
-                        <label className="block text-[9px] font-semibold text-slate-500 uppercase">
-                          Reason
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Optional"
-                          value={b.reason || ''}
-                          onChange={(e) => updateBlackout(idx, 'reason', e.target.value)}
-                          className="w-full text-[11px] rounded border border-slate-300 px-2 py-1 bg-white outline-none"
-                        />
-                      </div>
-                      <div className="sm:col-span-1 flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => removeBlackout(idx)}
-                          className="p-1 text-slate-400 hover:text-red-600 transition"
-                          title={t.home.removeBlackout}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+            {/* Step 6: Search Date Range (Strictly Future Dates) */}
+            <div className="pt-2 border-t border-slate-100 space-y-2">
+              <label className="block text-xs font-semibold text-slate-700">
+                {t.home.earliestDateLabel} &amp; {t.home.latestDateLabel}
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <input
+                    type="date"
+                    min={todayStr}
+                    value={earliestDate}
+                    onChange={(e) => setEarliestDate(e.target.value)}
+                    className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm"
+                  />
                 </div>
-              )}
+                <div>
+                  <input
+                    type="date"
+                    min={earliestDate || todayStr}
+                    value={latestDate}
+                    onChange={(e) => setLatestDate(e.target.value)}
+                    className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm"
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Two-Way Synchronization Action */}
+            {/* Step 7: Blackout Periods (Sperrzeiten) */}
+            <div className="pt-2 border-t border-slate-100">
+              <div className="p-3.5 bg-amber-50/70 rounded-xl border border-amber-200/90 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
+                    {t.home.blackoutFilterTitle}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={addBlackout}
+                    className="text-xs font-semibold text-amber-800 hover:text-amber-950 flex items-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {t.home.addBlackout}
+                  </button>
+                </div>
+
+                {searchBlackouts.length === 0 ? (
+                  <p className="text-[11px] text-amber-700 italic">{t.home.noBlackouts}</p>
+                ) : (
+                  <div className="space-y-2">
+                    {searchBlackouts.map((b, idx) => (
+                      <div
+                        key={idx}
+                        className="p-2 rounded-lg bg-white/90 border border-amber-200 grid grid-cols-1 sm:grid-cols-12 gap-2 items-center shadow-xs"
+                      >
+                        <div className="sm:col-span-4">
+                          <label className="block text-[9px] font-semibold text-slate-500 uppercase">
+                            {t.home.blackoutStart}
+                          </label>
+                          <input
+                            type="date"
+                            min={todayStr}
+                            value={b.startDate}
+                            onChange={(e) => updateBlackout(idx, 'startDate', e.target.value)}
+                            className="w-full text-[11px] rounded border border-slate-300 px-2 py-1 bg-white outline-none"
+                          />
+                        </div>
+                        <div className="sm:col-span-4">
+                          <label className="block text-[9px] font-semibold text-slate-500 uppercase">
+                            {t.home.blackoutEnd}
+                          </label>
+                          <input
+                            type="date"
+                            min={b.startDate || todayStr}
+                            value={b.endDate}
+                            onChange={(e) => updateBlackout(idx, 'endDate', e.target.value)}
+                            className="w-full text-[11px] rounded border border-slate-300 px-2 py-1 bg-white outline-none"
+                          />
+                        </div>
+                        <div className="sm:col-span-3">
+                          <label className="block text-[9px] font-semibold text-slate-500 uppercase">
+                            Reason
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Optional"
+                            value={b.reason || ''}
+                            onChange={(e) => updateBlackout(idx, 'reason', e.target.value)}
+                            className="w-full text-[11px] rounded border border-slate-300 px-2 py-1 bg-white outline-none"
+                          />
+                        </div>
+                        <div className="sm:col-span-1 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => removeBlackout(idx)}
+                            className="p-1 text-slate-400 hover:text-red-600 transition"
+                            title={t.home.removeBlackout}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Profile Sync Button */}
             {session && (
               <div className="flex items-center justify-between pt-1">
                 <button
@@ -567,11 +642,11 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Run Optimization Button */}
+            {/* Submit Optimization Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 rounded-xl font-bold text-sm bg-blue-600 hover:bg-blue-700 text-white shadow transition flex items-center justify-center gap-2 disabled:opacity-60"
+              className="w-full py-3 px-4 rounded-xl font-bold text-sm bg-blue-600 hover:bg-blue-700 text-white shadow transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
             >
               {loading ? (
                 <>
@@ -597,7 +672,7 @@ export default function HomePage() {
             </h2>
             {results && (
               <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-200 text-slate-700">
-                {results.length} {t.home.windowsFound}
+                {filteredResults.length} / {results.length} {t.home.windowsFound}
               </span>
             )}
           </div>
@@ -626,109 +701,266 @@ export default function HomePage() {
           )}
 
           {results && results.length > 0 && (
-            <div className="space-y-4">
-              {results.slice(0, 10).map((win, idx) => (
-                <div
-                  key={`${win.startDate}-${win.originAirport}-${win.destinationAirport}-${win.durationDays}`}
-                  className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
-                >
-                  {/* Arbitrage Banner */}
-                  {win.isArbitrageOpportunity && (
-                    <div className="bg-emerald-600 text-white text-[11px] font-bold px-3 py-1 flex items-center justify-between -mx-5 -mt-5 mb-4">
-                      <span className="flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-                        {t.home.arbitrageBadge} ({win.originAirport} in {win.arbitrageOriginState})
-                      </span>
-                      <span>{t.home.arbitrageSaving}</span>
-                    </div>
-                  )}
-
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-slate-900 text-lg">
-                          {win.startDate} → {win.endDate}
-                        </span>
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                          {win.durationDays} {t.home.days}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-slate-500">
-                        <span className="flex items-center gap-1">
-                          <Plane className="w-3.5 h-3.5 text-slate-400" />
-                          {win.originAirport} ➔ {win.destinationAirport}
-                        </span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1">
-                          <Sun className="w-3.5 h-3.5 text-amber-500" />
-                          {win.weather.avgTempC}°C
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="text-right flex sm:flex-col justify-between items-end">
-                      <div>
-                        <span className="text-xs text-slate-500 block">{t.home.estFamilyCost}</span>
-                        <span className="text-2xl font-black text-slate-900">
-                          {formatCurrency(win.estimatedTotalCost)}
-                        </span>
-                      </div>
-                      <span className="text-[11px] text-slate-400">
-                        ~{formatCurrency(win.pricePerPerson)} / {t.home.perPerson}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Seasonal Warning Banner */}
-                  {win.seasonalWarning && (
-                    <div className="mt-3 p-2.5 rounded-lg bg-amber-50 border border-amber-300 flex items-start gap-2 text-xs text-amber-900">
-                      <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold block">
-                          {t.home.seasonalWarningBadge}: {win.seasonalWarning.seasonType}
-                        </span>
-                        <span className="text-[11px] text-amber-800">
-                          {win.seasonalWarning.fallbackMessage}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Metrics bar */}
-                  <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2 text-center text-xs">
-                    <div className="bg-slate-50 rounded-lg p-2">
-                      <span className="text-slate-500 block text-[10px]">{t.home.ptoConsumed}</span>
-                      <span className="font-bold text-slate-800">
-                        {win.ptoDaysConsumed} {t.home.days}
-                      </span>
-                      <span className="text-[10px] text-emerald-600 font-medium block">
-                        ({win.publicHolidaysCount} {t.home.ptoSaved})
-                      </span>
-                    </div>
-                    <div className="bg-slate-50 rounded-lg p-2">
-                      <span className="text-slate-500 block text-[10px]">{t.home.ptoRatio}</span>
-                      <span className="font-bold text-slate-800">
-                        {win.ptoEfficiencyRatio}x
-                      </span>
-                    </div>
-                    <div className="bg-indigo-50 rounded-lg p-2">
-                      <span className="text-indigo-600 block text-[10px]">{t.home.score}</span>
-                      <span className="font-extrabold text-indigo-900 text-sm">
-                        {win.finalScore} / 100
-                      </span>
-                      <span className="text-[10px] text-indigo-700 block">#{idx + 1}</span>
-                    </div>
-                  </div>
-
-                  {win.isCachedBenchmark && (
-                    <div className="mt-2 text-[10px] text-slate-400 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-slate-400" />
-                      {t.home.cachedBenchmark}
-                    </div>
-                  )}
+            <>
+              {/* Filter and Sort Toolbar */}
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Filter &amp; Sort</span>
                 </div>
-              ))}
-            </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Month Filter */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                      {t.home.filterByMonth}
+                    </label>
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => {
+                        setSelectedMonth(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      className="w-full text-xs rounded-lg border border-slate-300 px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="ALL">{t.home.allMonths}</option>
+                      {availableMonths.map((m) => {
+                        const monthName = formatDate(new Date(2026, parseInt(m, 10) - 1, 1), {
+                          month: 'long',
+                        });
+                        return (
+                          <option key={m} value={m}>
+                            {monthName}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  {/* Max Cost Filter */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                      {t.home.filterByCost}
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 3500"
+                      value={maxCostFilter || ''}
+                      onChange={(e) => {
+                        setMaxCostFilter(e.target.value ? Number(e.target.value) : undefined);
+                        setCurrentPage(1);
+                      }}
+                      className="w-full text-xs rounded-lg border border-slate-300 px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Sort By */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      {t.home.sortBy}
+                    </label>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as any)}
+                      className="w-full text-xs rounded-lg border border-slate-300 px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="score">{t.home.sortScore}</option>
+                      <option value="price">{t.home.sortPrice}</option>
+                      <option value="pto">{t.home.sortPto}</option>
+                      <option value="duration">{t.home.sortDuration}</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {filteredResults.length === 0 ? (
+                <div className="bg-slate-50 rounded-xl border border-dashed border-slate-200 p-8 text-center text-slate-500 text-xs">
+                  No vacation windows match the active filters.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {displayedResults.map((win, idx) => {
+                    const globalRank = (currentPage - 1) * pageSize + idx + 1;
+                    return (
+                      <div
+                        key={`${win.startDate}-${win.originAirport}-${win.destinationAirport}-${win.durationDays}`}
+                        className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+                      >
+                        {/* Arbitrage Banner */}
+                        {win.isArbitrageOpportunity && (
+                          <div className="bg-emerald-600 text-white text-[11px] font-bold px-3 py-1 flex items-center justify-between -mx-5 -mt-5 mb-4">
+                            <span className="flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                              {t.home.arbitrageBadge} ({win.originAirport} in {win.arbitrageOriginState})
+                            </span>
+                            <span>{t.home.arbitrageSaving}</span>
+                          </div>
+                        )}
+
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-extrabold text-slate-900 text-base sm:text-lg">
+                                {formatLocalizedDate(win.startDate)} → {formatLocalizedDate(win.endDate)}
+                              </span>
+                              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                {win.durationDays} {t.home.days}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-slate-500">
+                              <span className="flex items-center gap-1 font-semibold text-slate-700">
+                                <Plane className="w-3.5 h-3.5 text-blue-600" />
+                                {win.originAirport} ➔ {win.destinationAirport}
+                              </span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <Sun className="w-3.5 h-3.5 text-amber-500" />
+                                {win.weather.avgTempC}°C
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="text-right flex sm:flex-col justify-between items-end">
+                            <div>
+                              <span className="text-[11px] text-slate-500 block">
+                                {t.home.estFamilyCost}
+                              </span>
+                              <span className="text-2xl font-black text-slate-900">
+                                {formatCurrency(win.estimatedTotalCost)}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-slate-400">
+                              <span>~{formatCurrency(win.pricePerPerson)} / {t.home.perPerson}</span>
+                              <span className="block text-[10px] text-slate-400">
+                                ({t.home.flightAndLodgingIncluded})
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Localized Seasonal Warning Banner */}
+                        {win.seasonalWarning && (() => {
+                          const localized = getLocalizedSeasonalWarning(win.seasonalWarning, t);
+                          return (
+                            <div className="mt-3 p-2.5 rounded-lg bg-amber-50 border border-amber-300 flex items-start gap-2 text-xs text-amber-900">
+                              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <span className="font-bold block">
+                                  {t.home.seasonalWarningBadge}: {localized.title}
+                                </span>
+                                <span className="text-[11px] text-amber-800">
+                                  {localized.description}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Metrics Bar */}
+                        <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2 text-center text-xs">
+                          <div className="bg-slate-50 rounded-lg p-2">
+                            <span className="text-slate-500 block text-[10px]">{t.home.ptoConsumed}</span>
+                            <span className="font-bold text-slate-800">
+                              {win.ptoDaysConsumed} {t.home.days}
+                            </span>
+                            <span className="text-[10px] text-emerald-600 font-medium block">
+                              ({win.publicHolidaysCount} {t.home.ptoSaved})
+                            </span>
+                          </div>
+                          <div className="bg-slate-50 rounded-lg p-2">
+                            <span className="text-slate-500 block text-[10px]">{t.home.ptoRatio}</span>
+                            <span className="font-bold text-slate-800">
+                              {win.ptoEfficiencyRatio}x
+                            </span>
+                          </div>
+                          <div className="bg-indigo-50 rounded-lg p-2">
+                            <span className="text-indigo-600 block text-[10px]">{t.home.score}</span>
+                            <span className="font-extrabold text-indigo-900 text-sm">
+                              {win.finalScore} / 100
+                            </span>
+                            <span className="text-[10px] text-indigo-700 block">#{globalRank}</span>
+                          </div>
+                        </div>
+
+                        {win.isCachedBenchmark && (
+                          <div className="mt-2 text-[10px] text-slate-400 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-slate-400" />
+                            {t.home.cachedBenchmark}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Pagination Controls */}
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 text-xs text-slate-600">
+                      <span>{t.home.resultsPerPage}:</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="rounded-lg border border-slate-300 px-2 py-1 text-xs bg-white outline-none"
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                      </select>
+                      <span className="text-slate-400 ml-2">
+                        {t.home.page} {currentPage} {t.home.of} {totalPages}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={currentPage <= 1}
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        {t.home.prevPage}
+                      </button>
+
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum = i + 1;
+                        if (totalPages > 5 && currentPage > 3) {
+                          pageNum = currentPage - 3 + i;
+                          if (pageNum > totalPages) pageNum = totalPages - (4 - i);
+                        }
+                        return (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`w-7 h-7 rounded-lg text-xs font-bold transition ${
+                              currentPage === pageNum
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'text-slate-700 hover:bg-slate-100'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+
+                      <button
+                        type="button"
+                        disabled={currentPage >= totalPages}
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                      >
+                        {t.home.nextPage}
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
