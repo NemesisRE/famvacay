@@ -351,7 +351,7 @@ export default function FamilyProfilePage() {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="h-5 flex items-center text-xs font-semibold text-slate-700 mb-1.5">
                   {t.profile.familyName}
                 </label>
                 <input
@@ -376,7 +376,7 @@ export default function FamilyProfilePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="h-5 flex items-center text-xs font-semibold text-slate-700 mb-1.5">
                   {t.profile.country}
                 </label>
                 <select
@@ -393,7 +393,7 @@ export default function FamilyProfilePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="h-5 flex items-center text-xs font-semibold text-slate-700 mb-1.5">
                   {t.profile.federalState}
                 </label>
                 <select

@@ -199,6 +199,10 @@ export function optimizeVacationWindows(
       : ['STR', 'FRA'];
 
   // Select candidate destination codes
+  const hasUserSelectedDestinations = Boolean(
+    (input.targetDestinations && input.targetDestinations.length > 0) || input.targetRegion
+  );
+
   let candidateDestinations = resolveDestinationCodes(
     input.targetDestinations && input.targetDestinations.length > 0
       ? input.targetDestinations
@@ -207,9 +211,19 @@ export function optimizeVacationWindows(
       : undefined
   );
 
-  // Safety fallback if no destination codes resolved
-  if (!candidateDestinations || candidateDestinations.length === 0) {
-    candidateDestinations = ['PMI', 'HER', 'AYT', 'HRG', 'BCN'];
+  // STRICT FILTERING:
+  // If the user explicitly filtered by destinations, results must be strictly bound to those destinations.
+  // Never fall back to arbitrary default airports (e.g. PMI, AYT) if the selected destinations have no matches.
+  if (hasUserSelectedDestinations && candidateDestinations.length === 0) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[Optimizer] 0 candidates found: Specified destinations could not be resolved to candidate flight corridors.');
+    }
+    return [];
+  }
+
+  // If user chose open discovery (no destination tags), default to family vacation hubs
+  if (!hasUserSelectedDestinations && (!candidateDestinations || candidateDestinations.length === 0)) {
+    candidateDestinations = ['PMI', 'HER', 'AYT', 'HRG', 'BCN', 'AGP', 'FAO', 'DJE'];
   }
 
   const rawCandidatePool: RawCandidate[] = [];

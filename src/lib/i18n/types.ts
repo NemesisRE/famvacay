@@ -30,6 +30,11 @@ export interface TranslationDictionary {
     destinationsHint: string;
     allDestinationsOption: string;
     addCustomDestination: string;
+    destinationUnverifiedWarning: string;
+    categoryCountry: string;
+    categoryRegion: string;
+    categoryCity: string;
+    categoryAirport: string;
     airportsLabel: string;
     airportsHint: string;
     searchAirportsPlaceholder: string;
@@ -78,6 +83,8 @@ export interface TranslationDictionary {
     readyDescription: string;
     noResultsTitle: string;
     noResultsHint: string;
+    noResultsForDestinationTitle: string;
+    noResultsForDestinationHint: string;
     arbitrageBadge: string;
     arbitrageSaving: string;
     seasonalWarningBadge: string;

@@ -310,5 +310,101 @@ describe('CSP Optimizer - Edge Cases & Core Engine', () => {
     // All dates between 08-01 and 08-20 are blocked
     expect(results).toHaveLength(0);
   });
+
+  it('strictly constrains results to user-selected destination and eliminates false positive fallbacks', () => {
+    const input: TripPlanInput = {
+      targetDestinations: ['Hurghada & Rotes Meer'],
+      durationDays: 7,
+      earliestDate: '2026-08-01',
+      latestDate: '2026-08-20',
+      userProfile: {
+        homeLocation: 'Karlsruhe',
+        federalState: 'DE-BW',
+        originAirports: ['STR', 'FRA'],
+        childrenAges: [7],
+        blackoutRanges: [],
+      },
+    };
+
+    const results = optimizeVacationWindows(input, { 'DE-BW': mockSchoolHolidaysBW }, {});
+    expect(results.length).toBeGreaterThan(0);
+    // Every single result MUST strictly be an airport belonging to the Red Sea (HRG, SSH, RMF)
+    for (const r of results) {
+      expect(['HRG', 'SSH', 'RMF']).toContain(r.destinationAirport);
+      // Strictly verify no unrelated destinations leak into results
+      expect(r.destinationAirport).not.toBe('PMI');
+      expect(r.destinationAirport).not.toBe('AYT');
+      expect(r.destinationAirport).not.toBe('HER');
+    }
+  });
+
+  it('returns empty results instead of falling back to default hubs when unresolvable destinations are provided', () => {
+    const input: TripPlanInput = {
+      targetDestinations: ['FictitiousUnknownPlace'],
+      durationDays: 7,
+      earliestDate: '2026-08-01',
+      latestDate: '2026-08-20',
+      userProfile: {
+        homeLocation: 'Karlsruhe',
+        federalState: 'DE-BW',
+        originAirports: ['STR'],
+        childrenAges: [7],
+        blackoutRanges: [],
+      },
+    };
+
+    const results = optimizeVacationWindows(input, { 'DE-BW': mockSchoolHolidaysBW }, {});
+    expect(results).toHaveLength(0);
+  });
+});
+
+describe('Destination Validation & Entity Resolution', () => {
+  it('strictly validates real destinations and rejects fictitious places like Mars', async () => {
+    const { validateDestinationInput } = await import('./destinations');
+
+    const validRedSea = await validateDestinationInput('Hurghada & Rotes Meer', 'de');
+    expect(validRedSea.isValid).toBe(true);
+    expect(validRedSea.category).toBe('region');
+    expect(validRedSea.resolvedName).toBe('Hurghada & Rotes Meer');
+    expect(validRedSea.airportCodes).toEqual(['HRG', 'SSH', 'RMF']);
+
+    const validMallorca = await validateDestinationInput('Mallorca', 'de');
+    expect(validMallorca.isValid).toBe(true);
+    expect(validMallorca.resolvedName).toBe('Mallorca (Balearen)');
+    expect(validMallorca.category).toBe('region');
+
+    const validEgypt = await validateDestinationInput('Ägypten', 'de');
+    expect(validEgypt.isValid).toBe(true);
+    expect(validEgypt.category).toBe('country');
+
+    const validDubai = await validateDestinationInput('Dubai', 'en');
+    expect(validDubai.isValid).toBe(true);
+    expect(validDubai.category).toBe('city');
+
+    // Rejection of invalid / fictitious places
+    const invalidMars = await validateDestinationInput('Mars', 'de');
+    expect(invalidMars.isValid).toBe(false);
+
+    const invalidAtlantis = await validateDestinationInput('Atlantis', 'en');
+    expect(invalidAtlantis.isValid).toBe(false);
+  });
+
+  it('resolves destination codes strictly without unrequested fallback hubs', async () => {
+    const { resolveDestinationCodes } = await import('./destinations');
+
+    const redSeaCodes = resolveDestinationCodes(['Rotes Meer']);
+    expect(redSeaCodes).toEqual(['HRG', 'SSH', 'RMF']);
+
+    const mallorcaCodes = resolveDestinationCodes(['Mallorca']);
+    expect(mallorcaCodes).toEqual(['PMI']);
+
+    const unknownCodes = resolveDestinationCodes(['Mars']);
+    expect(unknownCodes).toEqual([]);
+
+    // Open discovery when no destinations are passed
+    const defaultCodes = resolveDestinationCodes([]);
+    expect(defaultCodes.length).toBeGreaterThan(0);
+    expect(defaultCodes).toContain('PMI');
+  });
 });
 

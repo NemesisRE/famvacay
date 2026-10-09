@@ -718,8 +718,17 @@ export default function HomePage() {
 
           {results && results.length === 0 && (
             <div className="bg-amber-50 rounded-xl border border-amber-200 p-8 text-center space-y-2">
-              <p className="font-semibold text-amber-900 text-sm">{t.home.noResultsTitle}</p>
-              <p className="text-xs text-amber-700">{t.home.noResultsHint}</p>
+              <AlertCircle className="w-8 h-8 text-amber-600 mx-auto" />
+              <p className="font-semibold text-amber-900 text-sm">
+                {targetDestinations.length > 0
+                  ? t.home.noResultsForDestinationTitle
+                  : t.home.noResultsTitle}
+              </p>
+              <p className="text-xs text-amber-700">
+                {targetDestinations.length > 0
+                  ? t.home.noResultsForDestinationHint
+                  : t.home.noResultsHint}
+              </p>
             </div>
           )}
 

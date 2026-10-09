@@ -36,6 +36,8 @@ export function LocationInput({
   const [results, setResults] = useState<GeocodedLocation[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isVerified, setIsVerified] = useState<boolean>(true);
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -65,7 +67,8 @@ export function LocationInput({
           const data = await res.json();
           const list = data.locations || [];
           setResults(list);
-          if (list.length > 0) {
+          // Only auto-open if user is actively interacting with/focusing the input
+          if (list.length > 0 && isFocused) {
             setShowDropdown(true);
           }
         }
@@ -77,13 +80,14 @@ export function LocationInput({
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, isFocused]);
 
   // Handle outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
+        setIsFocused(false);
         // Validate upon clicking away
         validateCurrentQuery();
       }
@@ -158,6 +162,7 @@ export function LocationInput({
 
   const handleManualChange = (val: string) => {
     setQuery(val);
+    setHasUserInteracted(true);
     setIsVerified(false);
     setValidationWarning(null);
   };
@@ -165,18 +170,21 @@ export function LocationInput({
   return (
     <div ref={containerRef} className={`relative ${className}`}>
       {label && (
-        <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
-          <span className="flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-blue-600" />
-            {label}
+        <div className="h-5 flex items-center justify-between mb-1.5">
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 truncate min-w-0">
+            <MapPin className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+            <span className="truncate">{label}</span>
           </span>
-          {isVerified && query.trim() && (
-            <span className="text-[10px] text-emerald-600 flex items-center gap-1 font-semibold">
-              <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-              {t.home.locationVerified}
+          {isVerified && query.trim() ? (
+            <span
+              className="text-[10px] text-emerald-600 flex items-center gap-1 font-semibold flex-shrink-0 ml-1.5"
+              title={t.home.locationVerified}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+              <span className="hidden sm:inline truncate max-w-[120px]">{t.home.locationVerified}</span>
             </span>
-          )}
-        </label>
+          ) : null}
+        </div>
       )}
 
       <div className="relative">
@@ -185,12 +193,16 @@ export function LocationInput({
           value={query}
           onChange={(e) => handleManualChange(e.target.value)}
           onFocus={() => {
-            if (results.length > 0) setShowDropdown(true);
+            setIsFocused(true);
+            if (hasUserInteracted && results.length > 0) {
+              setShowDropdown(true);
+            }
           }}
           onBlur={() => {
             // Delay to allow clicking dropdown item
             setTimeout(() => {
               if (!showDropdown) {
+                setIsFocused(false);
                 validateCurrentQuery();
               }
             }, 200);

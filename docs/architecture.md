@@ -178,17 +178,27 @@ Departure hubs and distance metrics are managed by a unified airport service (`s
 
 ---
 
-## Multi-Destination Architecture & Destination Resolvers
+## Multi-Destination Architecture & Entity Resolution
 
-The vacation planner supports flexible multi-destination search configurations:
+The vacation planner enforces structured destination validation, localized entity resolution, and strict search filtering:
 
-1. **Multi-Entry Tagging (`src/components/destination/MultiDestinationInput.tsx`)**:
-   - Users can select or type multiple target countries, tourist regions, resort corridors, or cities (e.g., "Egypt", "Hurghada & Red Sea", "Turkish Riviera & Antalya", "Mallorca", "Bali", "Canary Islands").
-   - Strict validation verifies custom input tags against the destination catalog, geocoding API, and international airport dataset.
-2. **Destination Resolver Engine (`src/lib/optimizer/destinations.ts`)**:
-   - Incoming destination tags are parsed against an extensive canonical destination catalog.
-   - Tags are dynamically mapped to valid destination airport IATA codes (e.g., "Egypt" maps to `HRG` and `SSH`; "Turkish Riviera" maps to `AYT`; "Bali" maps to `DPS`; "Mallorca" maps to `PMI`).
-   - Unrecognized custom tags are matched against global airport IATA records or catalog entries.
+1. **Strict Pre-Validation Pipeline (`validateDestinationInput`)**:
+   - Destination tags are strictly pre-validated before they can be added as search filters.
+   - Inputs are matched against canonical holiday destinations (`CANONICAL_DESTINATIONS`), normalized synonyms across 5 languages, or commercial IATA airport records.
+   - Invalid, ambiguous, or fictitious inputs (such as "Mars") that cannot be mapped to a recognized vacation entity or commercial airport corridor are rejected with inline validation feedback.
+2. **Resolved Entity Model & Category Metadata**:
+   - Every valid destination resolves to a structured entity (`LocalizedDestinationEntity`) with explicit categorization:
+     - `country`: Sovereign destination states (e.g., Egypt, Spain, Greece, Turkey, Italy, Portugal).
+     - `region`: Tourist resort corridors and archipelagos (e.g., "Hurghada & Red Sea", "Mallorca (Balearic Islands)", "Canary Islands", "Turkish Riviera & Antalya", "Crete & Greek Islands").
+     - `city`: Urban and cultural metropolitan destinations (e.g., Barcelona, Rome, Dubai).
+     - `airport`: Specific commercial airport hubs.
+   - Destination chips clearly render the resolved entity name and category badge (e.g., "Mallorca (Balearen) [Region]", "Ägypten [Land]", "Barcelona [Stadt]").
+3. **End-to-End Localization Across Supported Locales**:
+   - Destination names, country labels, and entity categories dynamically adjust to the active user locale (`en`, `de`, `fr`, `es`, `it`). For example, selecting the Red Sea corridor displays as "Hurghada & Rotes Meer [Region]" in German, "Hurghada & Red Sea [Region]" in English, and "Hurghada et Mer Rouge [Région]" in French.
+4. **Destination-Bound Strict Matching & False Positive Elimination**:
+   - When user queries specify target destinations, candidate generation is strictly constrained to the corresponding destination airport codes (e.g., searching for "Rotes Meer" resolves strictly to `HRG`, `SSH`, and `RMF`).
+   - The engine eliminates arbitrary fallbacks to unrequested destinations (such as `PMI`, `AYT`, or `HER`).
+   - If no candidate windows satisfy all duration, budget, or school constraints for the selected destination, the optimizer returns zero candidates, and the interface displays an explicit empty state ("No matching vacation periods found for the selected destination(s)"). Open exploration across all standard holiday hubs occurs solely when no destination filters are active.
 
 ---
 
