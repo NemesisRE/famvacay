@@ -1,4 +1,4 @@
-import { calculateDistanceKm } from '@/lib/optimizer/arbitrage';
+import { calculateGeodesicDistanceKm, getAllCommercialAirports } from '@/lib/airports/airport-service';
 
 export interface AirportOption {
   code: string;
@@ -11,54 +11,16 @@ export interface AirportOption {
   isHub?: boolean;
 }
 
-export const AIRPORTS_DATABASE: AirportOption[] = [
-  // Germany
-  { code: 'STR', name: 'Stuttgart Airport', city: 'Stuttgart', state: 'DE-BW', country: 'DE', lat: 48.6899, lon: 9.2220, isHub: true },
-  { code: 'FKB', name: 'Karlsruhe/Baden-Baden', city: 'Baden-Baden', state: 'DE-BW', country: 'DE', lat: 48.7794, lon: 8.0805 },
-  { code: 'FDH', name: 'Friedrichshafen Airport', city: 'Friedrichshafen', state: 'DE-BW', country: 'DE', lat: 47.6713, lon: 9.5115 },
-  { code: 'FRA', name: 'Frankfurt Airport', city: 'Frankfurt', state: 'DE-HE', country: 'DE', lat: 50.0379, lon: 8.5622, isHub: true },
-  { code: 'HHN', name: 'Frankfurt-Hahn', city: 'Hahn', state: 'DE-RP', country: 'DE', lat: 49.9487, lon: 7.2639 },
-  { code: 'MUC', name: 'Munich Airport', city: 'Munich', state: 'DE-BY', country: 'DE', lat: 48.3537, lon: 11.7860, isHub: true },
-  { code: 'NUE', name: 'Nuremberg Airport', city: 'Nuremberg', state: 'DE-BY', country: 'DE', lat: 49.4987, lon: 11.0780 },
-  { code: 'FMM', name: 'Memmingen Airport', city: 'Memmingen', state: 'DE-BY', country: 'DE', lat: 47.9888, lon: 10.2395 },
-  { code: 'BER', name: 'Berlin Brandenburg', city: 'Berlin', state: 'DE-BE', country: 'DE', lat: 52.3667, lon: 13.5033, isHub: true },
-  { code: 'HAM', name: 'Hamburg Airport', city: 'Hamburg', state: 'DE-HH', country: 'DE', lat: 53.6304, lon: 9.9882, isHub: true },
-  { code: 'DUS', name: 'Düsseldorf Airport', city: 'Düsseldorf', state: 'DE-NW', country: 'DE', lat: 51.2895, lon: 6.7668, isHub: true },
-  { code: 'CGN', name: 'Cologne Bonn Airport', city: 'Cologne', state: 'DE-NW', country: 'DE', lat: 50.8659, lon: 7.1427 },
-  { code: 'DTM', name: 'Dortmund Airport', city: 'Dortmund', state: 'DE-NW', country: 'DE', lat: 51.5183, lon: 7.6122 },
-  { code: 'HAJ', name: 'Hannover Airport', city: 'Hannover', state: 'DE-NI', country: 'DE', lat: 52.4611, lon: 9.6850 },
-  { code: 'BRE', name: 'Bremen Airport', city: 'Bremen', state: 'DE-HB', country: 'DE', lat: 53.0475, lon: 8.7867 },
-  { code: 'LEJ', name: 'Leipzig/Halle Airport', city: 'Leipzig', state: 'DE-SN', country: 'DE', lat: 51.4239, lon: 12.2364 },
-  { code: 'DRS', name: 'Dresden Airport', city: 'Dresden', state: 'DE-SN', country: 'DE', lat: 51.1328, lon: 13.7672 },
-
-  // Switzerland & France Borders
-  { code: 'BSL', name: 'EuroAirport Basel-Mulhouse-Freiburg', city: 'Basel/Mulhouse', state: 'CH-BS', country: 'CH', lat: 47.5896, lon: 7.5299, isHub: true },
-  { code: 'ZRH', name: 'Zurich Airport', city: 'Zurich', state: 'CH-ZH', country: 'CH', lat: 47.4582, lon: 8.5555, isHub: true },
-  { code: 'GVA', name: 'Geneva Airport', city: 'Geneva', state: 'CH-GE', country: 'CH', lat: 46.2381, lon: 6.1089, isHub: true },
-  { code: 'SXB', name: 'Strasbourg Airport', city: 'Strasbourg', state: 'FR-GES', country: 'FR', lat: 48.5444, lon: 7.6282 },
-
-  // Austria
-  { code: 'VIE', name: 'Vienna International', city: 'Vienna', state: 'AT-9', country: 'AT', lat: 48.1103, lon: 16.5697, isHub: true },
-  { code: 'SZG', name: 'Salzburg Airport', city: 'Salzburg', state: 'AT-5', country: 'AT', lat: 47.7944, lon: 13.0044 },
-  { code: 'INN', name: 'Innsbruck Airport', city: 'Innsbruck', state: 'AT-7', country: 'AT', lat: 47.2602, lon: 11.3440 },
-
-  // France
-  { code: 'CDG', name: 'Paris Charles de Gaulle', city: 'Paris', state: 'FR-IDF', country: 'FR', lat: 49.0097, lon: 2.5479, isHub: true },
-  { code: 'ORY', name: 'Paris Orly', city: 'Paris', state: 'FR-IDF', country: 'FR', lat: 48.7262, lon: 2.3652, isHub: true },
-  { code: 'LYS', name: 'Lyon Saint-Exupéry', city: 'Lyon', state: 'FR-ARA', country: 'FR', lat: 45.7256, lon: 5.0811, isHub: true },
-  { code: 'NCE', name: 'Nice Côte d’Azur', city: 'Nice', state: 'FR-PAC', country: 'FR', lat: 43.6584, lon: 7.2159 },
-
-  // Spain
-  { code: 'MAD', name: 'Madrid-Barajas', city: 'Madrid', state: 'ES-MD', country: 'ES', lat: 40.4839, lon: -3.5680, isHub: true },
-  { code: 'BCN', name: 'Barcelona-El Prat', city: 'Barcelona', state: 'ES-CT', country: 'ES', lat: 41.2974, lon: 2.0833, isHub: true },
-  { code: 'VLC', name: 'Valencia Airport', city: 'Valencia', state: 'ES-VC', country: 'ES', lat: 39.4893, lon: -0.4816 },
-
-  // Italy
-  { code: 'MXP', name: 'Milan Malpensa', city: 'Milan', state: 'IT-LOM', country: 'IT', lat: 45.6301, lon: 8.7255, isHub: true },
-  { code: 'BGY', name: 'Milan Bergamo', city: 'Bergamo', state: 'IT-LOM', country: 'IT', lat: 45.6739, lon: 9.7042 },
-  { code: 'FCO', name: 'Rome Fiumicino', city: 'Rome', state: 'IT-LAZ', country: 'IT', lat: 41.8003, lon: 12.2389, isHub: true },
-  { code: 'VCE', name: 'Venice Marco Polo', city: 'Venice', state: 'IT-VEN', country: 'IT', lat: 45.5053, lon: 12.3519 },
-];
+export const AIRPORTS_DATABASE: AirportOption[] = getAllCommercialAirports().map((a) => ({
+  code: a.code,
+  name: a.name,
+  city: a.city,
+  state: a.state || '',
+  country: a.country,
+  lat: a.lat,
+  lon: a.lon,
+  isHub: a.isMajorHub,
+}));
 
 // Approximate geographical centers of administrative regions for distance sorting
 export const REGION_CENTERS: Record<string, { lat: number; lon: number }> = {
@@ -125,7 +87,7 @@ export function getRecommendedAirportsForRegion(
   const center = REGION_CENTERS[regionCode] || REGION_CENTERS['DE-BW'];
 
   const scored = AIRPORTS_DATABASE.map((airport) => {
-    const distanceKm = calculateDistanceKm(center.lat, center.lon, airport.lat, airport.lon);
+    const distanceKm = calculateGeodesicDistanceKm(center.lat, center.lon, airport.lat, airport.lon);
     return {
       ...airport,
       distanceKm,

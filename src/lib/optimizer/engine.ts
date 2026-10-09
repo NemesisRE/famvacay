@@ -9,7 +9,6 @@ import {
 } from './types';
 import { calculatePtoDaysConsumed } from './pto-calculator';
 import { calculatePassengerCostMultiplier } from './child-tiers';
-import { SUPPORTED_ORIGIN_AIRPORTS } from './arbitrage';
 import { POPULAR_DESTINATIONS, getEstimatedClimate, getDestinationSeasonalWarning } from './weather';
 import { resolveDestinationCodes } from './destinations';
 import { getAirportByIata, calculateGeodesicDistanceKm } from '../airports/airport-service';
@@ -275,7 +274,7 @@ export function optimizeVacationWindows(
 
       // 4. Test each origin airport and destination combination
       for (const origin of originAirports) {
-        const airportDetails = getAirportByIata(origin) || SUPPORTED_ORIGIN_AIRPORTS[origin];
+        const airportDetails = getAirportByIata(origin);
         const airportState = airportDetails?.state || homeState;
         const isArbitrage = airportState !== homeState;
 

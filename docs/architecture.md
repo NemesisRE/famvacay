@@ -198,6 +198,10 @@ The vacation planner provides universal global place resolution, entity taxonomy
 4. **Strict Destination-Bound Corridor Filtering**:
    - When destination filters are active, vacation window generation is strictly constrained to matching airport codes without fallback to unrequested regions.
    - Open discovery hubs are presented only when no destination constraints are supplied.
+5. **Elimination of Static Mapping Tables & Dynamic Derivation**:
+   - Large static constants such as `CANONICAL_DESTINATIONS`, `DESTINATION_MAPPINGS`, and `SUPPORTED_ORIGIN_AIRPORTS` have been eliminated in favor of dynamic derivation.
+   - Destination entities are derived directly from the unified `GLOBAL_PLACES_CATALOG` (`src/lib/geo/places-data.ts`) and dynamic geocoding.
+   - Origin airport resolution and arbitrage candidate detection are powered dynamically by the commercial passenger airport index in `src/lib/airports/airport-service.ts`.
 
 ---
 

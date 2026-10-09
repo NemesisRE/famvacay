@@ -459,6 +459,13 @@ export function getAirportByIata(code: string, locale?: string): DynamicAirport 
 }
 
 /**
+ * Returns all indexed commercial passenger airports
+ */
+export function getAllCommercialAirports(): DynamicAirport[] {
+  return indexedAirports;
+}
+
+/**
  * Calculate geodesic distance in kilometers between two coordinate pairs
  */
 export function calculateGeodesicDistanceKm(

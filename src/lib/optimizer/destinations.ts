@@ -1,6 +1,6 @@
-import { POPULAR_DESTINATIONS, DestinationProfile } from './weather';
+import { POPULAR_DESTINATIONS } from './weather';
 import { getAirportByIata } from '../airports/airport-service';
-import { GLOBAL_PLACES_CATALOG } from '../geo/places-data';
+import { GLOBAL_PLACES_CATALOG, GlobalPlaceEntity } from '../geo/places-data';
 
 export type DestinationCategory = 'country' | 'region' | 'island' | 'city' | 'airport';
 
@@ -28,1007 +28,45 @@ export interface LocalizedDestinationEntity {
   };
 }
 
-export const CANONICAL_DESTINATIONS: LocalizedDestinationEntity[] = [
-  // Regions & Resort Hubs
-  {
-    id: 'red_sea',
-    category: 'region',
-    code: 'HRG',
-    airportCodes: ['HRG', 'SSH', 'RMF'],
-    countryCode: 'EG',
-    names: {
-      en: 'Hurghada & Red Sea',
-      de: 'Hurghada & Rotes Meer',
-      fr: 'Hurghada et Mer Rouge',
-      es: 'Hurgada y Mar Rojo',
-      it: 'Hurghada e Mar Rosso',
-    },
-    countryNames: {
-      en: 'Egypt',
-      de: 'Ägypten',
-      fr: 'Égypte',
-      es: 'Egipto',
-      it: 'Egitto',
-    },
-  },
-  {
-    id: 'sharm_el_sheikh',
-    category: 'region',
-    code: 'SSH',
-    airportCodes: ['SSH'],
-    countryCode: 'EG',
-    names: {
-      en: 'Sharm el-Sheikh',
-      de: 'Scharm asch-Schaich',
-      fr: 'Charm el-Cheikh',
-      es: 'Sharm el-Sheij',
-      it: 'Sharm el-Sheikh',
-    },
-    countryNames: {
-      en: 'Egypt',
-      de: 'Ägypten',
-      fr: 'Égypte',
-      es: 'Egipto',
-      it: 'Egitto',
-    },
-  },
-  {
-    id: 'mallorca',
-    category: 'region',
-    code: 'PMI',
-    airportCodes: ['PMI'],
-    countryCode: 'ES',
-    names: {
-      en: 'Mallorca (Balearic Islands)',
-      de: 'Mallorca (Balearen)',
-      fr: 'Majorque (Îles Baléares)',
-      es: 'Mallorca (Islas Baleares)',
-      it: 'Maiorca (Isole Baleari)',
-    },
-    countryNames: {
-      en: 'Spain',
-      de: 'Spanien',
-      fr: 'Espagne',
-      es: 'España',
-      it: 'Spagna',
-    },
-  },
-  {
-    id: 'canary_islands',
-    category: 'region',
-    code: 'TFS',
-    airportCodes: ['TFS', 'LPA', 'ACE', 'FUE'],
-    countryCode: 'ES',
-    names: {
-      en: 'Canary Islands (Tenerife / Gran Canaria)',
-      de: 'Kanarische Inseln (Teneriffa / Gran Canaria)',
-      fr: 'Îles Canaries (Ténérife / Grande Canarie)',
-      es: 'Islas Canarias (Tenerife / Gran Canaria)',
-      it: 'Isole Canarie (Tenerife / Gran Canaria)',
-    },
-    countryNames: {
-      en: 'Spain',
-      de: 'Spanien',
-      fr: 'Espagne',
-      es: 'España',
-      it: 'Spagna',
-    },
-  },
-  {
-    id: 'turkish_riviera',
-    category: 'region',
-    code: 'AYT',
-    airportCodes: ['AYT', 'GZP', 'BJV', 'DLM'],
-    countryCode: 'TR',
-    names: {
-      en: 'Turkish Riviera & Antalya',
-      de: 'Türkische Riviera & Antalya',
-      fr: 'Riviera turque et Antalya',
-      es: 'Riviera Turca y Antalya',
-      it: 'Riviera Turca e Antalya',
-    },
-    countryNames: {
-      en: 'Turkey',
-      de: 'Türkei',
-      fr: 'Turquie',
-      es: 'Turquía',
-      it: 'Turchia',
-    },
-  },
-  {
-    id: 'crete',
-    category: 'region',
-    code: 'HER',
-    airportCodes: ['HER', 'CHQ'],
-    countryCode: 'GR',
-    names: {
-      en: 'Crete & Greek Islands',
-      de: 'Kreta & Griechische Inseln',
-      fr: 'Crète et Îles Grecques',
-      es: 'Creta e Islas Griegas',
-      it: 'Creta e Isole Greche',
-    },
-    countryNames: {
-      en: 'Greece',
-      de: 'Griechenland',
-      fr: 'Grèce',
-      es: 'Grecia',
-      it: 'Grecia',
-    },
-  },
-  {
-    id: 'rhodes',
-    category: 'region',
-    code: 'RHO',
-    airportCodes: ['RHO'],
-    countryCode: 'GR',
-    names: {
-      en: 'Rhodes',
-      de: 'Rhodos',
-      fr: 'Rhodes',
-      es: 'Rodas',
-      it: 'Rodi',
-    },
-    countryNames: {
-      en: 'Greece',
-      de: 'Griechenland',
-      fr: 'Grèce',
-      es: 'Grecia',
-      it: 'Grecia',
-    },
-  },
-  {
-    id: 'kos',
-    category: 'region',
-    code: 'KGS',
-    airportCodes: ['KGS'],
-    countryCode: 'GR',
-    names: {
-      en: 'Kos',
-      de: 'Kos',
-      fr: 'Kos',
-      es: 'Cos',
-      it: 'Kos',
-    },
-    countryNames: {
-      en: 'Greece',
-      de: 'Griechenland',
-      fr: 'Grèce',
-      es: 'Grecia',
-      it: 'Grecia',
-    },
-  },
-  {
-    id: 'djerba',
-    category: 'region',
-    code: 'DJE',
-    airportCodes: ['DJE', 'MIR'],
-    countryCode: 'TN',
-    names: {
-      en: 'Djerba',
-      de: 'Djerba',
-      fr: 'Djerba',
-      es: 'Djerba',
-      it: 'Gerba',
-    },
-    countryNames: {
-      en: 'Tunisia',
-      de: 'Tunesien',
-      fr: 'Tunisie',
-      es: 'Túnez',
-      it: 'Tunisia',
-    },
-  },
-  {
-    id: 'algarve',
-    category: 'region',
-    code: 'FAO',
-    airportCodes: ['FAO'],
-    countryCode: 'PT',
-    names: {
-      en: 'Algarve',
-      de: 'Algarve',
-      fr: 'Algarve',
-      es: 'Algarve',
-      it: 'Algarve',
-    },
-    countryNames: {
-      en: 'Portugal',
-      de: 'Portugal',
-      fr: 'Portugal',
-      es: 'Portugal',
-      it: 'Portogallo',
-    },
-  },
-  {
-    id: 'costa_del_sol',
-    category: 'region',
-    code: 'AGP',
-    airportCodes: ['AGP'],
-    countryCode: 'ES',
-    names: {
-      en: 'Costa del Sol (Málaga)',
-      de: 'Costa del Sol (Málaga)',
-      fr: 'Costa del Sol (Málaga)',
-      es: 'Costa del Sol (Málaga)',
-      it: 'Costa del Sol (Malaga)',
-    },
-    countryNames: {
-      en: 'Spain',
-      de: 'Spanien',
-      fr: 'Espagne',
-      es: 'España',
-      it: 'Spagna',
-    },
-  },
-  {
-    id: 'bali',
-    category: 'region',
-    code: 'DPS',
-    airportCodes: ['DPS'],
-    countryCode: 'ID',
-    names: {
-      en: 'Bali',
-      de: 'Bali',
-      fr: 'Bali',
-      es: 'Bali',
-      it: 'Bali',
-    },
-    countryNames: {
-      en: 'Indonesia',
-      de: 'Indonesien',
-      fr: 'Indonésie',
-      es: 'Indonesia',
-      it: 'Indonesia',
-    },
-  },
-  {
-    id: 'phuket',
-    category: 'region',
-    code: 'HKT',
-    airportCodes: ['HKT'],
-    countryCode: 'TH',
-    names: {
-      en: 'Phuket',
-      de: 'Phuket',
-      fr: 'Phuket',
-      es: 'Phuket',
-      it: 'Phuket',
-    },
-    countryNames: {
-      en: 'Thailand',
-      de: 'Thailand',
-      fr: 'Thaïlande',
-      es: 'Tailandia',
-      it: 'Thailandia',
-    },
-  },
-  {
-    id: 'cancun',
-    category: 'region',
-    code: 'CUN',
-    airportCodes: ['CUN'],
-    countryCode: 'MX',
-    names: {
-      en: 'Cancún & Riviera Maya',
-      de: 'Cancún & Riviera Maya',
-      fr: 'Cancún et Riviera Maya',
-      es: 'Cancún y Riviera Maya',
-      it: 'Cancún e Riviera Maya',
-    },
-    countryNames: {
-      en: 'Mexico',
-      de: 'Mexiko',
-      fr: 'Mexique',
-      es: 'México',
-      it: 'Messico',
-    },
-  },
-  // Cities
-  {
-    id: 'dubai',
-    category: 'city',
-    code: 'DXB',
-    airportCodes: ['DXB'],
-    countryCode: 'AE',
-    names: {
-      en: 'Dubai',
-      de: 'Dubai',
-      fr: 'Dubaï',
-      es: 'Dubái',
-      it: 'Dubai',
-    },
-    countryNames: {
-      en: 'UAE',
-      de: 'VAE',
-      fr: 'Émirats arabes unis',
-      es: 'EAU',
-      it: 'Emirati Arabi Uniti',
-    },
-  },
-  {
-    id: 'barcelona',
-    category: 'city',
-    code: 'BCN',
-    airportCodes: ['BCN'],
-    countryCode: 'ES',
-    names: {
-      en: 'Barcelona',
-      de: 'Barcelona',
-      fr: 'Barcelone',
-      es: 'Barcelona',
-      it: 'Barcellona',
-    },
-    countryNames: {
-      en: 'Spain',
-      de: 'Spanien',
-      fr: 'Espagne',
-      es: 'España',
-      it: 'Spagna',
-    },
-  },
-  {
-    id: 'rome',
-    category: 'city',
-    code: 'FCO',
-    airportCodes: ['FCO'],
-    countryCode: 'IT',
-    names: {
-      en: 'Rome',
-      de: 'Rom',
-      fr: 'Rome',
-      es: 'Roma',
-      it: 'Roma',
-    },
-    countryNames: {
-      en: 'Italy',
-      de: 'Italien',
-      fr: 'Italie',
-      es: 'Italia',
-      it: 'Italia',
-    },
-  },
-  {
-    id: 'athens',
-    category: 'city',
-    code: 'ATH',
-    airportCodes: ['ATH'],
-    countryCode: 'GR',
-    aliases: ['athen', 'athens', 'athènes', 'atenas', 'atene', 'athina'],
-    names: {
-      en: 'Athens',
-      de: 'Athen',
-      fr: 'Athènes',
-      es: 'Atenas',
-      it: 'Atene',
-    },
-    countryNames: {
-      en: 'Greece',
-      de: 'Griechenland',
-      fr: 'Grèce',
-      es: 'Grecia',
-      it: 'Grecia',
-    },
-  },
-  {
-    id: 'palma',
-    category: 'city',
-    code: 'PMI',
-    parentRegionId: 'mallorca',
-    airportCodes: ['PMI'],
-    countryCode: 'ES',
-    aliases: ['palma', 'palma de mallorca'],
-    names: {
-      en: 'Palma (Mallorca)',
-      de: 'Palma (Mallorca)',
-      fr: 'Palma (Majorque)',
-      es: 'Palma (Mallorca)',
-      it: 'Palma (Maiorca)',
-    },
-    countryNames: {
-      en: 'Spain',
-      de: 'Spanien',
-      fr: 'Espagne',
-      es: 'España',
-      it: 'Spagna',
-    },
-  },
-  {
-    id: 'hurghada_city',
-    category: 'city',
-    code: 'HRG',
-    parentRegionId: 'red_sea',
-    airportCodes: ['HRG'],
-    countryCode: 'EG',
-    aliases: ['hurghada', 'hurgada'],
-    names: {
-      en: 'Hurghada City',
-      de: 'Hurghada Stadt',
-      fr: 'Hurghada Ville',
-      es: 'Ciudad de Hurghada',
-      it: 'Città di Hurghada',
-    },
-    countryNames: {
-      en: 'Egypt',
-      de: 'Ägypten',
-      fr: 'Égypte',
-      es: 'Egipto',
-      it: 'Egitto',
-    },
-  },
-  {
-    id: 'antalya_city',
-    category: 'city',
-    code: 'AYT',
-    parentRegionId: 'turkish_riviera',
-    airportCodes: ['AYT'],
-    countryCode: 'TR',
-    aliases: ['antalya'],
-    names: {
-      en: 'Antalya City',
-      de: 'Antalya Stadt',
-      fr: 'Antalya Ville',
-      es: 'Ciudad de Antalya',
-      it: 'Città di Antalya',
-    },
-    countryNames: {
-      en: 'Turkey',
-      de: 'Türkei',
-      fr: 'Turquie',
-      es: 'Turquía',
-      it: 'Turchia',
-    },
-  },
-  {
-    id: 'heraklion_city',
-    category: 'city',
-    code: 'HER',
-    parentRegionId: 'crete',
-    airportCodes: ['HER'],
-    countryCode: 'GR',
-    aliases: ['heraklion', 'irakleio', 'iraklion'],
-    names: {
-      en: 'Heraklion (Crete)',
-      de: 'Heraklion (Kreta)',
-      fr: 'Héraklion (Crète)',
-      es: 'Heraclión (Creta)',
-      it: 'Heraklion (Creta)',
-    },
-    countryNames: {
-      en: 'Greece',
-      de: 'Griechenland',
-      fr: 'Grèce',
-      es: 'Grecia',
-      it: 'Grecia',
-    },
-  },
-  {
-    id: 'rhodes_city',
-    category: 'city',
-    code: 'RHO',
-    parentRegionId: 'rhodes',
-    airportCodes: ['RHO'],
-    countryCode: 'GR',
-    aliases: ['rhodos', 'rhodes', 'rodas', 'rodi'],
-    names: {
-      en: 'Rhodes City',
-      de: 'Rhodos Stadt',
-      fr: 'Rhodes Ville',
-      es: 'Ciudad de Rodas',
-      it: 'Città di Rodi',
-    },
-    countryNames: {
-      en: 'Greece',
-      de: 'Griechenland',
-      fr: 'Grèce',
-      es: 'Grecia',
-      it: 'Grecia',
-    },
-  },
-  {
-    id: 'lisbon',
-    category: 'city',
-    code: 'LIS',
-    airportCodes: ['LIS'],
-    countryCode: 'PT',
-    aliases: ['lisbon', 'lissabon', 'lisbonne', 'lisboa'],
-    names: {
-      en: 'Lisbon',
-      de: 'Lissabon',
-      fr: 'Lisbonne',
-      es: 'Lisboa',
-      it: 'Lisbona',
-    },
-    countryNames: {
-      en: 'Portugal',
-      de: 'Portugal',
-      fr: 'Portugal',
-      es: 'Portugal',
-      it: 'Portogallo',
-    },
-  },
-  {
-    id: 'vienna',
-    category: 'city',
-    code: 'VIE',
-    airportCodes: ['VIE'],
-    countryCode: 'AT',
-    aliases: ['vienna', 'wien', 'vienne'],
-    names: {
-      en: 'Vienna',
-      de: 'Wien',
-      fr: 'Vienne',
-      es: 'Viena',
-      it: 'Vienna',
-    },
-    countryNames: {
-      en: 'Austria',
-      de: 'Österreich',
-      fr: 'Autriche',
-      es: 'Austria',
-      it: 'Austria',
-    },
-  },
-  {
-    id: 'madrid',
-    category: 'city',
-    code: 'MAD',
-    airportCodes: ['MAD'],
-    countryCode: 'ES',
-    aliases: ['madrid'],
-    names: {
-      en: 'Madrid',
-      de: 'Madrid',
-      fr: 'Madrid',
-      es: 'Madrid',
-      it: 'Madrid',
-    },
-    countryNames: {
-      en: 'Spain',
-      de: 'Spanien',
-      fr: 'Espagne',
-      es: 'España',
-      it: 'Spagna',
-    },
-  },
-  {
-    id: 'tenerife',
-    category: 'region',
-    code: 'TFS',
-    parentRegionId: 'canary_islands',
-    airportCodes: ['TFS', 'TFN'],
-    countryCode: 'ES',
-    aliases: ['teneriffa', 'tenerife'],
-    names: {
-      en: 'Tenerife (Canary Islands)',
-      de: 'Teneriffa (Kanaren)',
-      fr: 'Ténérife (Canaries)',
-      es: 'Tenerife (Islas Canarias)',
-      it: 'Tenerife (Isole Canarie)',
-    },
-    countryNames: {
-      en: 'Spain',
-      de: 'Spanien',
-      fr: 'Espagne',
-      es: 'España',
-      it: 'Spagna',
-    },
-  },
-  {
-    id: 'gran_canaria',
-    category: 'region',
-    code: 'LPA',
-    parentRegionId: 'canary_islands',
-    airportCodes: ['LPA'],
-    countryCode: 'ES',
-    aliases: ['gran canaria'],
-    names: {
-      en: 'Gran Canaria (Canary Islands)',
-      de: 'Gran Canaria (Kanaren)',
-      fr: 'Grande Canarie (Canaries)',
-      es: 'Gran Canaria (Islas Canarias)',
-      it: 'Gran Canaria (Isole Canarie)',
-    },
-    countryNames: {
-      en: 'Spain',
-      de: 'Spanien',
-      fr: 'Espagne',
-      es: 'España',
-      it: 'Spagna',
-    },
-  },
-  // Countries
-  {
-    id: 'egypt',
-    category: 'country',
-    airportCodes: ['HRG', 'SSH', 'RMF'],
-    countryCode: 'EG',
-    names: {
-      en: 'Egypt',
-      de: 'Ägypten',
-      fr: 'Égypte',
-      es: 'Egipto',
-      it: 'Egitto',
-    },
-    countryNames: {
-      en: 'Egypt',
-      de: 'Ägypten',
-      fr: 'Égypte',
-      es: 'Egipto',
-      it: 'Egitto',
-    },
-  },
-  {
-    id: 'spain',
-    category: 'country',
-    airportCodes: ['PMI', 'AGP', 'BCN', 'TFS', 'LPA', 'IBZ'],
-    countryCode: 'ES',
-    names: {
-      en: 'Spain',
-      de: 'Spanien',
-      fr: 'Espagne',
-      es: 'España',
-      it: 'Spagna',
-    },
-    countryNames: {
-      en: 'Spain',
-      de: 'Spanien',
-      fr: 'Espagne',
-      es: 'España',
-      it: 'Spagna',
-    },
-  },
-  {
-    id: 'greece',
-    category: 'country',
-    airportCodes: ['HER', 'RHO', 'CFU', 'KGS', 'CHQ', 'ATH'],
-    countryCode: 'GR',
-    names: {
-      en: 'Greece',
-      de: 'Griechenland',
-      fr: 'Grèce',
-      es: 'Grecia',
-      it: 'Grecia',
-    },
-    countryNames: {
-      en: 'Greece',
-      de: 'Griechenland',
-      fr: 'Grèce',
-      es: 'Grecia',
-      it: 'Grecia',
-    },
-  },
-  {
-    id: 'turkey',
-    category: 'country',
-    airportCodes: ['AYT', 'GZP', 'BJV', 'DLM', 'IST'],
-    countryCode: 'TR',
-    names: {
-      en: 'Turkey',
-      de: 'Türkei',
-      fr: 'Turquie',
-      es: 'Turquía',
-      it: 'Turchia',
-    },
-    countryNames: {
-      en: 'Turkey',
-      de: 'Türkei',
-      fr: 'Turquie',
-      es: 'Turquía',
-      it: 'Turchia',
-    },
-  },
-  {
-    id: 'italy',
-    category: 'country',
-    airportCodes: ['FCO', 'VCE', 'NAP', 'CTA', 'PMO'],
-    countryCode: 'IT',
-    names: {
-      en: 'Italy',
-      de: 'Italien',
-      fr: 'Italie',
-      es: 'Italia',
-      it: 'Italia',
-    },
-    countryNames: {
-      en: 'Italy',
-      de: 'Italien',
-      fr: 'Italie',
-      es: 'Italia',
-      it: 'Italia',
-    },
-  },
-  {
-    id: 'portugal',
-    category: 'country',
-    airportCodes: ['FAO', 'LIS', 'OPO', 'FNC'],
-    countryCode: 'PT',
-    names: {
-      en: 'Portugal',
-      de: 'Portugal',
-      fr: 'Portugal',
-      es: 'Portugal',
-      it: 'Portogallo',
-    },
-    countryNames: {
-      en: 'Portugal',
-      de: 'Portugal',
-      fr: 'Portugal',
-      es: 'Portugal',
-      it: 'Portogallo',
-    },
-  },
-  {
-    id: 'tunisia',
-    category: 'country',
-    airportCodes: ['DJE', 'MIR', 'TUN'],
-    countryCode: 'TN',
-    names: {
-      en: 'Tunisia',
-      de: 'Tunesien',
-      fr: 'Tunisie',
-      es: 'Túnez',
-      it: 'Tunisia',
-    },
-    countryNames: {
-      en: 'Tunisia',
-      de: 'Tunesien',
-      fr: 'Tunisie',
-      es: 'Túnez',
-      it: 'Tunisia',
-    },
-  },
-  {
-    id: 'thailand',
-    category: 'country',
-    airportCodes: ['HKT', 'BKK', 'USM'],
-    countryCode: 'TH',
-    names: {
-      en: 'Thailand',
-      de: 'Thailand',
-      fr: 'Thaïlande',
-      es: 'Tailandia',
-      it: 'Thailandia',
-    },
-    countryNames: {
-      en: 'Thailand',
-      de: 'Thailand',
-      fr: 'Thaïlande',
-      es: 'Tailandia',
-      it: 'Thailandia',
-    },
-  },
-  {
-    id: 'croatia',
-    category: 'country',
-    airportCodes: ['DBV', 'SPU', 'ZAD', 'PUY'],
-    countryCode: 'HR',
-    names: {
-      en: 'Croatia',
-      de: 'Kroatien',
-      fr: 'Croatie',
-      es: 'Croacia',
-      it: 'Croazia',
-    },
-    countryNames: {
-      en: 'Croatia',
-      de: 'Kroatien',
-      fr: 'Croatie',
-      es: 'Croacia',
-      it: 'Croazia',
-    },
-  },
-  {
-    id: 'cyprus',
-    category: 'country',
-    airportCodes: ['LCA', 'PFO'],
-    countryCode: 'CY',
-    names: {
-      en: 'Cyprus',
-      de: 'Zypern',
-      fr: 'Chypre',
-      es: 'Chipre',
-      it: 'Cipro',
-    },
-    countryNames: {
-      en: 'Cyprus',
-      de: 'Zypern',
-      fr: 'Chypre',
-      es: 'Chipre',
-      it: 'Cipro',
-    },
-  },
-  {
-    id: 'austria',
-    category: 'country',
-    airportCodes: ['VIE', 'SZG', 'INN'],
-    countryCode: 'AT',
-    names: {
-      en: 'Austria',
-      de: 'Österreich',
-      fr: 'Autriche',
-      es: 'Austria',
-      it: 'Austria',
-    },
-    countryNames: {
-      en: 'Austria',
-      de: 'Österreich',
-      fr: 'Autriche',
-      es: 'Austria',
-      it: 'Austria',
-    },
-  },
-  {
-    id: 'france',
-    category: 'country',
-    airportCodes: ['CDG', 'ORY', 'NCE', 'MRS'],
-    countryCode: 'FR',
-    names: {
-      en: 'France',
-      de: 'Frankreich',
-      fr: 'France',
-      es: 'Francia',
-      it: 'Francia',
-    },
-    countryNames: {
-      en: 'France',
-      de: 'Frankreich',
-      fr: 'France',
-      es: 'Francia',
-      it: 'Francia',
-    },
-  },
-];
-
-// Ensure fallback profiles in POPULAR_DESTINATIONS
-const EXTRA_DEST_PROFILES: Record<string, DestinationProfile> = {
-  HRG: { code: 'HRG', name: 'Hurghada / Red Sea', country: 'EG', type: 'BEACH', lat: 27.1783, lon: 33.7994, idealMinTemp: 22, idealMaxTemp: 36, maxAcceptablePrecipRisk: 10 },
-  SSH: { code: 'SSH', name: 'Sharm el Sheikh', country: 'EG', type: 'BEACH', lat: 27.9774, lon: 34.3951, idealMinTemp: 22, idealMaxTemp: 36, maxAcceptablePrecipRisk: 10 },
-  RMF: { code: 'RMF', name: 'Marsa Alam', country: 'EG', type: 'BEACH', lat: 25.5569, lon: 34.5836, idealMinTemp: 22, idealMaxTemp: 36, maxAcceptablePrecipRisk: 10 },
-  DJE: { code: 'DJE', name: 'Djerba', country: 'TN', type: 'BEACH', lat: 33.8750, lon: 10.7753, idealMinTemp: 20, idealMaxTemp: 34, maxAcceptablePrecipRisk: 20 },
-  DPS: { code: 'DPS', name: 'Bali Denpasar', country: 'ID', type: 'BEACH', lat: -8.7482, lon: 115.1672, idealMinTemp: 24, idealMaxTemp: 32, maxAcceptablePrecipRisk: 35 },
-  HKT: { code: 'HKT', name: 'Phuket', country: 'TH', type: 'BEACH', lat: 8.1132, lon: 98.3169, idealMinTemp: 24, idealMaxTemp: 33, maxAcceptablePrecipRisk: 40 },
-  TFS: { code: 'TFS', name: 'Tenerife South', country: 'ES', type: 'BEACH', lat: 28.0445, lon: -16.5725, idealMinTemp: 21, idealMaxTemp: 30, maxAcceptablePrecipRisk: 15 },
-  LPA: { code: 'LPA', name: 'Gran Canaria', country: 'ES', type: 'BEACH', lat: 27.9319, lon: -15.3866, idealMinTemp: 21, idealMaxTemp: 30, maxAcceptablePrecipRisk: 15 },
-  ACE: { code: 'ACE', name: 'Lanzarote', country: 'ES', type: 'BEACH', lat: 28.9455, lon: -13.6052, idealMinTemp: 21, idealMaxTemp: 29, maxAcceptablePrecipRisk: 15 },
-  FUE: { code: 'FUE', name: 'Fuerteventura', country: 'ES', type: 'BEACH', lat: 28.4527, lon: -13.8638, idealMinTemp: 21, idealMaxTemp: 29, maxAcceptablePrecipRisk: 15 },
-  RHO: { code: 'RHO', name: 'Rhodes Diagoras', country: 'GR', type: 'BEACH', lat: 36.4054, lon: 28.0862, idealMinTemp: 21, idealMaxTemp: 33, maxAcceptablePrecipRisk: 20 },
-  KGS: { code: 'KGS', name: 'Kos Hippocrates', country: 'GR', type: 'BEACH', lat: 36.7933, lon: 27.0917, idealMinTemp: 21, idealMaxTemp: 33, maxAcceptablePrecipRisk: 20 },
-  CFU: { code: 'CFU', name: 'Corfu', country: 'GR', type: 'BEACH', lat: 39.6019, lon: 19.9117, idealMinTemp: 20, idealMaxTemp: 32, maxAcceptablePrecipRisk: 25 },
-};
-
-for (const [code, prof] of Object.entries(EXTRA_DEST_PROFILES)) {
-  if (!POPULAR_DESTINATIONS[code]) {
-    POPULAR_DESTINATIONS[code] = prof;
+// Build index of country localized names dynamically from GLOBAL_PLACES_CATALOG
+const COUNTRY_LOCALIZED_NAMES: Record<string, Record<string, string>> = {};
+for (const place of GLOBAL_PLACES_CATALOG) {
+  if (place.category === 'country') {
+    COUNTRY_LOCALIZED_NAMES[place.countryCode] = place.names;
   }
 }
 
-// Synonyms and normalization dictionary
-const DESTINATION_MAPPINGS: Record<string, string[]> = {
-  // Egypt & Red Sea
-  egypt: ['HRG', 'SSH', 'RMF'],
-  aegypten: ['HRG', 'SSH', 'RMF'],
-  ägypten: ['HRG', 'SSH', 'RMF'],
-  egypte: ['HRG', 'SSH', 'RMF'],
-  egipto: ['HRG', 'SSH', 'RMF'],
-  egitto: ['HRG', 'SSH', 'RMF'],
-  hurghada: ['HRG'],
-  'sharm el sheikh': ['SSH'],
-  'sharm el-sheikh': ['SSH'],
-  'marsa alam': ['RMF'],
-  'red sea': ['HRG', 'SSH', 'RMF'],
-  'rotes meer': ['HRG', 'SSH', 'RMF'],
-  rotes_meer: ['HRG', 'SSH', 'RMF'],
+/**
+ * Dynamically generated canonical destinations catalog derived from the unified global places taxonomy.
+ * Eliminates static, duplicative arrays while providing full backwards compatibility.
+ */
+export const CANONICAL_DESTINATIONS: LocalizedDestinationEntity[] = GLOBAL_PLACES_CATALOG.map((place: GlobalPlaceEntity) => {
+  const cNames = COUNTRY_LOCALIZED_NAMES[place.countryCode] || {
+    en: place.countryName,
+    de: place.countryName,
+    fr: place.countryName,
+    es: place.countryName,
+    it: place.countryName,
+  };
 
-  // Tunisia
-  tunisia: ['DJE'],
-  tunesien: ['DJE'],
-  tunisie: ['DJE'],
-  túnez: ['DJE'],
-  djerba: ['DJE'],
-
-  // Turkey & Riviera
-  turkey: ['AYT', 'GZP', 'BJV', 'DLM'],
-  türkei: ['AYT', 'GZP', 'BJV', 'DLM'],
-  tuerkei: ['AYT', 'GZP', 'BJV', 'DLM'],
-  turquie: ['AYT', 'GZP', 'BJV', 'DLM'],
-  turquía: ['AYT', 'GZP', 'BJV', 'DLM'],
-  turchia: ['AYT', 'GZP', 'BJV', 'DLM'],
-  antalya: ['AYT'],
-  'turkish riviera': ['AYT', 'GZP', 'BJV', 'DLM'],
-  'türkische riviera': ['AYT', 'GZP', 'BJV', 'DLM'],
-  tuerkische_riviera: ['AYT', 'GZP', 'BJV', 'DLM'],
-
-  // Spain & Islands
-  spain: ['PMI', 'AGP', 'BCN', 'TFS', 'LPA'],
-  spanien: ['PMI', 'AGP', 'BCN', 'TFS', 'LPA'],
-  espagne: ['PMI', 'AGP', 'BCN', 'TFS', 'LPA'],
-  españa: ['PMI', 'AGP', 'BCN', 'TFS', 'LPA'],
-  spagna: ['PMI', 'AGP', 'BCN', 'TFS', 'LPA'],
-  mallorca: ['PMI'],
-  majorca: ['PMI'],
-  palma: ['PMI'],
-  ibiza: ['IBZ'],
-  canaries: ['TFS', 'LPA', 'ACE', 'FUE'],
-  kanaren: ['TFS', 'LPA', 'ACE', 'FUE'],
-  'canary islands': ['TFS', 'LPA', 'ACE', 'FUE'],
-  'kanarische inseln': ['TFS', 'LPA', 'ACE', 'FUE'],
-  tenerife: ['TFS'],
-  teneriffa: ['TFS'],
-  'gran canaria': ['LPA'],
-  lanzarote: ['ACE'],
-  fuerteventura: ['FUE'],
-  malaga: ['AGP'],
-  málaga: ['AGP'],
-  'costa del sol': ['AGP'],
-  barcelona: ['BCN'],
-
-  // Greece & Islands
-  greece: ['HER', 'RHO', 'CFU', 'KGS', 'ATH'],
-  griechenland: ['HER', 'RHO', 'CFU', 'KGS', 'ATH'],
-  grèce: ['HER', 'RHO', 'CFU', 'KGS', 'ATH'],
-  grecia: ['HER', 'RHO', 'CFU', 'KGS', 'ATH'],
-  athens: ['ATH'],
-  athen: ['ATH'],
-  athènes: ['ATH'],
-  athenes: ['ATH'],
-  atenas: ['ATH'],
-  atene: ['ATH'],
-  athina: ['ATH'],
-  crete: ['HER', 'CHQ'],
-  kreta: ['HER', 'CHQ'],
-  heraklion: ['HER'],
-  rhodes: ['RHO'],
-  rhodos: ['RHO'],
-  corfu: ['CFU'],
-  korfu: ['CFU'],
-  kos: ['KGS'],
-
-  // Italy
-  italy: ['FCO', 'VCE'],
-  italien: ['FCO', 'VCE'],
-  italie: ['FCO', 'VCE'],
-  italia: ['FCO', 'VCE'],
-  rome: ['FCO'],
-  rom: ['FCO'],
-  venice: ['VCE'],
-  venedig: ['VCE'],
-
-  // Austria
-  austria: ['VIE', 'SZG', 'INN'],
-  österreich: ['VIE', 'SZG', 'INN'],
-  oesterreich: ['VIE', 'SZG', 'INN'],
-  autriche: ['VIE', 'SZG', 'INN'],
-  vienna: ['VIE'],
-  wien: ['VIE'],
-  vienne: ['VIE'],
-  viena: ['VIE'],
-
-  // Spain & Madrid additions
-  madrid: ['MAD'],
-
-  // Portugal
-  portugal: ['FAO', 'LIS', 'FNC'],
-  algarve: ['FAO'],
-  faro: ['FAO'],
-  lisbon: ['LIS'],
-  lissabon: ['LIS'],
-  madeira: ['FNC'],
-
-  // Long-haul & Exotic
-  bali: ['DPS'],
-  indonesia: ['DPS'],
-  thailand: ['HKT', 'BKK'],
-  phuket: ['HKT'],
-  bangkok: ['BKK'],
-  cancun: ['CUN'],
-  cancún: ['CUN'],
-  mexico: ['CUN'],
-  mexiko: ['CUN'],
-  dubai: ['DXB'],
-  uae: ['DXB'],
-  vae: ['DXB'],
-};
+  return {
+    id: place.id,
+    category: place.category as DestinationCategory,
+    code: place.airportCodes[0],
+    parentRegionId: place.parentRegionId,
+    aliases: place.aliases,
+    airportCodes: place.airportCodes,
+    countryCode: place.countryCode,
+    names: place.names,
+    countryNames: {
+      en: cNames.en || place.countryName,
+      de: cNames.de || place.countryName,
+      fr: cNames.fr || place.countryName,
+      es: cNames.es || place.countryName,
+      it: cNames.it || place.countryName,
+    },
+  };
+});
 
 /**
  * Normalizes query string for matching
@@ -1121,18 +159,7 @@ export function getDestinationEntity(
     }
   }
 
-  // 6. Mapping synonym match with word boundaries
-  for (const [key, codes] of Object.entries(DESTINATION_MAPPINGS)) {
-    const cleanKey = normalizeDestinationString(key);
-    if (isWordMatch(cleanKey, clean) || cleanKey === clean) {
-      const matched = CANONICAL_DESTINATIONS.find((d) =>
-        d.airportCodes.some((ac) => codes.includes(ac))
-      );
-      if (matched) return matched;
-    }
-  }
-
-  // 7. Fuzzy match across all canonical destinations
+  // 6. Fuzzy match across all canonical destinations
   const fuzzy = fuzzyMatchDestinationEntity(queryOrTag, locale);
   if (fuzzy) return fuzzy;
 
@@ -1165,7 +192,7 @@ export function levenshteinDistance(a: string, b: string): number {
  */
 export function fuzzyMatchDestinationEntity(
   query: string,
-  locale: string = 'de'
+  _locale: string = 'de'
 ): LocalizedDestinationEntity | null {
   const clean = normalizeDestinationString(query);
   if (!clean || clean.length < 3) return null;
@@ -1323,18 +350,7 @@ export function resolveDestinationCodes(destinationTags?: string[]): string[] {
       continue;
     }
 
-    // 3. Check mapping dictionary with word-boundary matching
-    let found = false;
-    for (const [key, codes] of Object.entries(DESTINATION_MAPPINGS)) {
-      const cleanKey = normalizeDestinationString(key);
-      if (isWordMatch(cleanKey, clean)) {
-        codes.forEach((c) => resolved.add(c));
-        found = true;
-      }
-    }
-    if (found) continue;
-
-    // 4. Check GLOBAL_PLACES_CATALOG
+    // 3. Check GLOBAL_PLACES_CATALOG
     for (const place of GLOBAL_PLACES_CATALOG) {
       const pName = normalizeDestinationString(place.name);
       const pId = place.id.toLowerCase();
@@ -1343,19 +359,7 @@ export function resolveDestinationCodes(destinationTags?: string[]): string[] {
 
       if (clean === pId || isWordMatch(pName, clean) || aliasMatches || nameMatches) {
         place.airportCodes.forEach((code) => resolved.add(code));
-        found = true;
         break;
-      }
-    }
-    if (found) continue;
-
-    // 5. Check POPULAR_DESTINATIONS by name or country with word-boundary matching
-    for (const [code, dest] of Object.entries(POPULAR_DESTINATIONS)) {
-      const destName = normalizeDestinationString(dest.name);
-      const destCountry = dest.country.toLowerCase();
-      if (isWordMatch(destName, clean) || destCountry === clean) {
-        resolved.add(code);
-        found = true;
       }
     }
   }
@@ -1422,23 +426,9 @@ export async function validateDestinationInput(
     }
   }
 
-  // 3. Check mapping dictionary with word matching
-  const cleanNorm = normalizeDestinationString(clean);
-  for (const [key, codes] of Object.entries(DESTINATION_MAPPINGS)) {
-    const cleanKey = normalizeDestinationString(key);
-    if (isWordMatch(cleanKey, cleanNorm) || cleanKey === cleanNorm) {
-      return {
-        isValid: true,
-        resolvedName: clean,
-        category: 'region',
-        categoryLabel: getLocalizedCategoryName('region', locale),
-        airportCodes: codes,
-      };
-    }
-  }
-
-  // 4. Check GLOBAL_PLACES_CATALOG
+  // 3. Check GLOBAL_PLACES_CATALOG directly
   const locKey = (locale.slice(0, 2) as 'en' | 'de' | 'fr' | 'es' | 'it') || 'en';
+  const cleanNorm = normalizeDestinationString(clean);
   for (const place of GLOBAL_PLACES_CATALOG) {
     const pName = normalizeDestinationString(place.name);
     const pId = place.id.toLowerCase();
@@ -1447,11 +437,10 @@ export async function validateDestinationInput(
 
     if (cleanNorm === pId || isWordMatch(pName, cleanNorm) || aliasMatches || nameMatches) {
       const localizedName = place.names[locKey] || place.name;
-      // Containment check for global place
       const containment = checkRegionalContainment(
         {
           id: place.id,
-          category: place.category,
+          category: place.category as DestinationCategory,
           code: place.airportCodes[0],
           parentRegionId: place.parentRegionId,
           airportCodes: place.airportCodes,
@@ -1472,8 +461,8 @@ export async function validateDestinationInput(
       return {
         isValid: true,
         resolvedName: localizedName,
-        category: place.category,
-        categoryLabel: getLocalizedCategoryName(place.category, locale),
+        category: place.category as DestinationCategory,
+        categoryLabel: getLocalizedCategoryName(place.category as DestinationCategory, locale),
         airportCodes: place.airportCodes,
         isContained: containment.isContained,
         containment,
@@ -1481,6 +470,6 @@ export async function validateDestinationInput(
     }
   }
 
-  // 5. Strict rejection for unknown or fictitious places (e.g. "Mars")
+  // 4. Strict rejection for unknown or fictitious places (e.g. "Mars")
   return { isValid: false };
 }

@@ -3,7 +3,6 @@ import { TripPlanInput } from '@/lib/optimizer/types';
 import { optimizeVacationWindows } from '@/lib/optimizer/engine';
 import { getSchoolHolidays, getPublicHolidays } from '@/lib/integrations/open-holidays';
 import { getAirportByIata } from '@/lib/airports/airport-service';
-import { SUPPORTED_ORIGIN_AIRPORTS } from '@/lib/optimizer/arbitrage';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     // Add states for all selected origin airports to enable arbitrage discovery
     for (const code of body.userProfile.originAirports || []) {
-      const airport = getAirportByIata(code) || SUPPORTED_ORIGIN_AIRPORTS[code];
+      const airport = getAirportByIata(code);
       if (airport && airport.state) {
         statesToFetch.add(airport.state);
       }
