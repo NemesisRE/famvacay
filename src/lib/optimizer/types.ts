@@ -12,9 +12,12 @@ export interface ChildPassenger {
 export interface UserProfileInput {
   id?: string;
   homeLocation: string;
-  originAirports: string[]; // e.g. ["STR", "FKB", "FRA"]
+  departureLat?: number;
+  departureLon?: number;
+  originAirports: string[]; // e.g. ["STR", "FKB", "FRA", "CDG"]
   federalState: string;     // e.g. "DE-BW"
   childrenAges: number[];    // e.g. [1, 7, 14]
+  childrenBirthDates?: string[]; // ISO date YYYY-MM-DD
   blackoutRanges: BlackoutRange[];
 }
 

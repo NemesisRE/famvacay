@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import {
   Plane,
   Sun,
@@ -14,34 +15,60 @@ import {
   Calendar,
   Users,
   Info,
+  BookmarkCheck,
+  Save,
+  Check,
 } from 'lucide-react';
+import { differenceInYears } from 'date-fns';
 import { CandidateWindow, DestinationType } from '@/lib/optimizer/types';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { COUNTRIES, getCountryCodeFromSubdivision } from '@/lib/regions/subdivisions';
-import { getRecommendedAirportsForRegion } from '@/lib/airports/airports-db';
-import { POPULAR_DESTINATIONS } from '@/lib/optimizer/weather';
+import { AirportSelector } from '@/components/airports/AirportSelector';
+import { LocationInput } from '@/components/geo/LocationInput';
+import { ChildrenSelector, ChildItem } from '@/components/family/ChildrenSelector';
+import { DestinationInput } from '@/components/destination/DestinationInput';
 
 export default function HomePage() {
+  const { data: session } = useSession();
   const { t, formatCurrency } = useI18n();
 
+  // Location and School District State
+  const [departureLocation, setDepartureLocation] = useState('Karlsruhe, Germany');
+  const [departureCoords, setDepartureCoords] = useState<{ lat: number; lon: number } | null>({
+    lat: 49.0069,
+    lon: 8.4037,
+  });
   const [country, setCountry] = useState('DE');
   const [federalState, setFederalState] = useState('DE-BW');
-  const [originAirports, setOriginAirports] = useState<string[]>(['STR', 'FRA', 'BSL']);
+
+  // Flight & Destination State
+  const [originAirports, setOriginAirports] = useState<string[]>(['FKB', 'STR', 'FRA']);
   const [destinationType, setDestinationType] = useState<DestinationType>('BEACH');
   const [targetRegion, setTargetRegion] = useState('');
+
+  // Duration & Date Boundaries
   const [durationDaysMin, setDurationDaysMin] = useState(10);
   const [durationDaysMax, setDurationDaysMax] = useState(14);
   const [earliestDate, setEarliestDate] = useState('2026-07-25');
   const [latestDate, setLatestDate] = useState('2026-09-15');
   const [maxBudget, setMaxBudget] = useState<number | undefined>(undefined);
-  const [childrenAges, setChildrenAges] = useState<number[]>([4, 8]);
+
+  // Dynamic Children with Birth Dates
+  const [childrenList, setChildrenList] = useState<ChildItem[]>([
+    { id: 'c1', birthDate: '2021-08-15' }, // ~5y
+    { id: 'c2', birthDate: '2017-05-10' }, // ~9y
+  ]);
+
+  // Blackout Dates
   const [searchBlackouts, setSearchBlackouts] = useState<
     { startDate: string; endDate: string; reason?: string }[]
   >([
     { startDate: '2026-08-10', endDate: '2026-08-15', reason: 'Work exam' },
   ]);
+
   const [profileLoaded, setProfileLoaded] = useState(false);
-  const [homeLocation, setHomeLocation] = useState('Stuttgart / Region');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [saveProfileSuccess, setSaveProfileSuccess] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<CandidateWindow[] | null>(null);
@@ -54,38 +81,53 @@ export default function HomePage() {
         if (res.ok) return res.json();
         return null;
       })
-      .then((data) => {
+      .then(async (data) => {
         if (data?.profile) {
           const p = data.profile;
+          if (p.homeLocation) {
+            setDepartureLocation(p.homeLocation);
+            // Geocode the saved home location to obtain precise coordinates
+            try {
+              const geoRes = await fetch(
+                `/api/locations/geocode?q=${encodeURIComponent(p.homeLocation)}`
+              );
+              if (geoRes.ok) {
+                const geoData = await geoRes.json();
+                if (geoData.locations && geoData.locations.length > 0) {
+                  setDepartureCoords({
+                    lat: geoData.locations[0].lat,
+                    lon: geoData.locations[0].lon,
+                  });
+                }
+              }
+            } catch (err) {
+              console.error('Failed to geocode saved home location:', err);
+            }
+          }
+
           if (p.federalState) {
             setFederalState(p.federalState);
             setCountry(getCountryCodeFromSubdivision(p.federalState));
           }
+
           if (Array.isArray(p.originAirports) && p.originAirports.length > 0) {
             setOriginAirports(p.originAirports);
           }
-          if (p.homeLocation) {
-            setHomeLocation(p.homeLocation);
-          }
+
           if (Array.isArray(p.members) && p.members.length > 0) {
-            const now = new Date();
-            const derivedAges: number[] = [];
-            for (const m of p.members) {
-              if (m.birthDate) {
-                const birth = new Date(m.birthDate);
-                const age = Math.max(
-                  0,
-                  Math.floor((now.getTime() - birth.getTime()) / (365.25 * 24 * 3600 * 1000))
-                );
-                if (m.role === 'CHILD' || m.role === 'INFANT' || age < 18) {
-                  derivedAges.push(age);
-                }
-              }
-            }
-            if (derivedAges.length > 0) {
-              setChildrenAges(derivedAges.sort((a, b) => a - b));
+            const childMembers = p.members.filter(
+              (m: any) => m.role === 'CHILD' || m.role === 'INFANT'
+            );
+            if (childMembers.length > 0) {
+              setChildrenList(
+                childMembers.map((m: any) => ({
+                  id: m.id || Math.random().toString(36).substring(2, 9),
+                  birthDate: m.birthDate ? m.birthDate.split('T')[0] : '2020-01-01',
+                }))
+              );
             }
           }
+
           if (Array.isArray(p.blackoutRanges) && p.blackoutRanges.length > 0) {
             setSearchBlackouts(
               p.blackoutRanges.map((b: any) => ({
@@ -95,6 +137,7 @@ export default function HomePage() {
               }))
             );
           }
+
           setProfileLoaded(true);
         }
       })
@@ -109,13 +152,10 @@ export default function HomePage() {
     }
   };
 
-  const toggleAirport = (code: string) => {
-    if (originAirports.includes(code)) {
-      if (originAirports.length > 1) {
-        setOriginAirports(originAirports.filter((c) => c !== code));
-      }
-    } else {
-      setOriginAirports([...originAirports, code]);
+  const handleLocationChange = (loc: string, coords?: { lat: number; lon: number }) => {
+    setDepartureLocation(loc);
+    if (coords) {
+      setDepartureCoords(coords);
     }
   };
 
@@ -133,6 +173,47 @@ export default function HomePage() {
     setSearchBlackouts(updated);
   };
 
+  // Two-way sync: Save current travel filters to Family Profile
+  const handleSaveToProfile = async () => {
+    try {
+      setSavingProfile(true);
+      setSaveProfileSuccess(false);
+
+      const validBlackouts = searchBlackouts.filter((b) => b.startDate && b.endDate);
+      const membersToSave = childrenList.map((c) => ({
+        role: 'CHILD',
+        birthDate: c.birthDate,
+        schoolRequired: true,
+      }));
+
+      const payload = {
+        homeLocation: departureLocation,
+        federalState,
+        originAirports,
+        blackoutRanges: validBlackouts,
+        members: membersToSave,
+      };
+
+      const res = await fetch('/api/family-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to update family profile');
+      }
+
+      setSaveProfileSuccess(true);
+      setTimeout(() => setSaveProfileSuccess(false), 3500);
+    } catch (err: any) {
+      console.error('Error saving to profile:', err);
+      alert(err.message || 'Error saving to family profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   const handleOptimize = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -142,6 +223,19 @@ export default function HomePage() {
       const validBlackouts = searchBlackouts.filter((b) => b.startDate && b.endDate);
       const minDur = Number(durationDaysMin) || 7;
       const maxDur = Math.max(minDur, Number(durationDaysMax) || minDur);
+
+      // Compute dynamic child ages relative to planned earliest departure date
+      const tripDate = earliestDate ? new Date(earliestDate) : new Date();
+      const computedAges = childrenList
+        .map((c) => {
+          const b = new Date(c.birthDate);
+          return isNaN(b.getTime()) ? 6 : Math.max(0, differenceInYears(tripDate, b));
+        })
+        .sort((a, b) => a - b);
+
+      const childrenBirthDates = childrenList
+        .map((c) => c.birthDate)
+        .filter(Boolean);
 
       const payload = {
         destinationType,
@@ -154,10 +248,13 @@ export default function HomePage() {
         maxBudgetTotal: maxBudget ? Number(maxBudget) : undefined,
         searchBlackouts: validBlackouts,
         userProfile: {
-          homeLocation,
+          homeLocation: departureLocation,
+          departureLat: departureCoords?.lat,
+          departureLon: departureCoords?.lon,
           federalState,
           originAirports,
-          childrenAges,
+          childrenAges: computedAges,
+          childrenBirthDates,
           blackoutRanges: validBlackouts,
         },
       };
@@ -181,13 +278,6 @@ export default function HomePage() {
       setLoading(false);
     }
   };
-
-  const recommendedAirports = getRecommendedAirportsForRegion(federalState, 450);
-
-  // Group destinations by type or show category destinations
-  const categoryDestinations = Object.values(POPULAR_DESTINATIONS).filter(
-    (d) => d.type === destinationType
-  );
 
   return (
     <div className="space-y-8">
@@ -224,7 +314,15 @@ export default function HomePage() {
           </div>
 
           <form onSubmit={handleOptimize} className="space-y-5">
-            {/* Country & Subdivision */}
+            {/* Explicit Departure Location with Geocoding */}
+            <LocationInput
+              label={t.home.departureLocationLabel}
+              value={departureLocation}
+              onChange={handleLocationChange}
+              placeholder={t.home.departureLocationPlaceholder}
+            />
+
+            {/* Country & Subdivision (School Break Rules) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -233,7 +331,7 @@ export default function HomePage() {
                 <select
                   value={country}
                   onChange={(e) => handleCountryChange(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                 >
                   {Object.values(COUNTRIES).map((c) => (
                     <option key={c.code} value={c.code}>
@@ -250,7 +348,7 @@ export default function HomePage() {
                 <select
                   value={federalState}
                   onChange={(e) => setFederalState(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                 >
                   {(COUNTRIES[country]?.subdivisions || []).map((sub) => (
                     <option key={sub.code} value={sub.code}>
@@ -261,66 +359,21 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Departure Airports (Dynamic Proximity Recommendations) */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-slate-700">
-                  {t.home.airportsLabel}
-                </label>
-                <span className="text-[10px] text-slate-400">Proximity sorted</span>
-              </div>
-              <p className="text-[11px] text-slate-500 mb-2">{t.home.airportsHint}</p>
-              <div className="flex flex-wrap gap-2">
-                {recommendedAirports.map((airport) => {
-                  const isSelected = originAirports.includes(airport.code);
-                  return (
-                    <button
-                      key={airport.code}
-                      type="button"
-                      onClick={() => toggleAirport(airport.code)}
-                      className={`text-xs px-2.5 py-1.5 rounded-lg border font-medium transition-colors ${
-                        isSelected
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {airport.code} · {airport.city} ({Math.round(airport.distanceKm)} km)
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            {/* Dynamic Airport Selector (Proximity, Worldwide Search, TGV Badges) */}
+            <AirportSelector
+              selectedAirports={originAirports}
+              onChange={setOriginAirports}
+              coordinates={departureCoords}
+            />
 
-            {/* Children Ages & Automatic Derivation */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-semibold text-slate-700">
-                  {t.home.childrenAgesLabel}
-                </label>
-                {profileLoaded && (
-                  <span className="text-[10px] text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded-full">
-                    Derived from Profile
-                  </span>
-                )}
-              </div>
-              <input
-                type="text"
-                value={childrenAges.join(', ')}
-                onChange={(e) =>
-                  setChildrenAges(
-                    e.target.value
-                      .split(',')
-                      .map((s) => parseInt(s.trim()))
-                      .filter((n) => !isNaN(n))
-                  )
-                }
-                placeholder="e.g. 1, 5, 10"
-                className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-[11px] text-slate-500 mt-1">{t.home.childrenAgesHint}</p>
-            </div>
+            {/* Dynamic Children Management & Travel-Date Relative Ages */}
+            <ChildrenSelector
+              childrenList={childrenList}
+              onChange={setChildrenList}
+              travelDate={earliestDate}
+            />
 
-            {/* Trip Type & Target Destination */}
+            {/* Trip Type & Dynamic Destination Input */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -332,7 +385,7 @@ export default function HomePage() {
                     setDestinationType(e.target.value as DestinationType);
                     setTargetRegion('');
                   }}
-                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm"
                 >
                   <option value="BEACH">{t.home.beach}</option>
                   <option value="CITY">{t.home.city}</option>
@@ -341,37 +394,17 @@ export default function HomePage() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  {t.home.targetDestinationLabel}
-                </label>
-                <select
-                  value={targetRegion}
-                  onChange={(e) => setTargetRegion(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">{t.home.allDestinations}</option>
-                  {categoryDestinations.map((d) => (
-                    <option key={d.code} value={d.code}>
-                      {d.name} ({d.code} - {d.country})
-                    </option>
-                  ))}
-                  {/* Also show global destinations if not already listed */}
-                  {Object.values(POPULAR_DESTINATIONS)
-                    .filter((d) => d.type !== destinationType)
-                    .map((d) => (
-                      <option key={d.code} value={d.code}>
-                        {d.name} ({d.code} - {d.country})
-                      </option>
-                    ))}
-                </select>
-              </div>
+              <DestinationInput
+                value={targetRegion}
+                onChange={setTargetRegion}
+                destinationType={destinationType}
+              />
             </div>
 
             {/* Flexible Duration Range (Min - Max Days) */}
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
               <label className="block text-xs font-semibold text-slate-700">
-                {t.home.durationLabel} (Flexible Range)
+                {t.home.durationLabel}
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -384,7 +417,7 @@ export default function HomePage() {
                     max="30"
                     value={durationDaysMin}
                     onChange={(e) => setDurationDaysMin(Number(e.target.value))}
-                    className="w-full text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white focus:ring-2 focus:ring-blue-500"
+                    className="w-full text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm"
                   />
                 </div>
                 <div>
@@ -397,7 +430,7 @@ export default function HomePage() {
                     max="30"
                     value={durationDaysMax}
                     onChange={(e) => setDurationDaysMax(Number(e.target.value))}
-                    className="w-full text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white focus:ring-2 focus:ring-blue-500"
+                    className="w-full text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm"
                   />
                 </div>
               </div>
@@ -413,7 +446,7 @@ export default function HomePage() {
                   type="date"
                   value={earliestDate}
                   onChange={(e) => setEarliestDate(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 shadow-sm"
                 />
               </div>
               <div>
@@ -424,7 +457,7 @@ export default function HomePage() {
                   type="date"
                   value={latestDate}
                   onChange={(e) => setLatestDate(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 shadow-sm"
                 />
               </div>
             </div>
@@ -453,7 +486,7 @@ export default function HomePage() {
                   {searchBlackouts.map((b, idx) => (
                     <div
                       key={idx}
-                      className="p-2 rounded-lg bg-white/90 border border-amber-200 grid grid-cols-1 sm:grid-cols-12 gap-2 items-center"
+                      className="p-2 rounded-lg bg-white/90 border border-amber-200 grid grid-cols-1 sm:grid-cols-12 gap-2 items-center shadow-xs"
                     >
                       <div className="sm:col-span-4">
                         <label className="block text-[9px] font-semibold text-slate-500 uppercase">
@@ -463,7 +496,7 @@ export default function HomePage() {
                           type="date"
                           value={b.startDate}
                           onChange={(e) => updateBlackout(idx, 'startDate', e.target.value)}
-                          className="w-full text-[11px] rounded border border-slate-300 px-2 py-1 bg-white"
+                          className="w-full text-[11px] rounded border border-slate-300 px-2 py-1 bg-white outline-none"
                         />
                       </div>
                       <div className="sm:col-span-4">
@@ -474,7 +507,7 @@ export default function HomePage() {
                           type="date"
                           value={b.endDate}
                           onChange={(e) => updateBlackout(idx, 'endDate', e.target.value)}
-                          className="w-full text-[11px] rounded border border-slate-300 px-2 py-1 bg-white"
+                          className="w-full text-[11px] rounded border border-slate-300 px-2 py-1 bg-white outline-none"
                         />
                       </div>
                       <div className="sm:col-span-3">
@@ -486,7 +519,7 @@ export default function HomePage() {
                           placeholder="Optional"
                           value={b.reason || ''}
                           onChange={(e) => updateBlackout(idx, 'reason', e.target.value)}
-                          className="w-full text-[11px] rounded border border-slate-300 px-2 py-1 bg-white"
+                          className="w-full text-[11px] rounded border border-slate-300 px-2 py-1 bg-white outline-none"
                         />
                       </div>
                       <div className="sm:col-span-1 flex justify-end">
@@ -505,6 +538,36 @@ export default function HomePage() {
               )}
             </div>
 
+            {/* Two-Way Synchronization Action */}
+            {session && (
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  type="button"
+                  onClick={handleSaveToProfile}
+                  disabled={savingProfile}
+                  className="text-xs font-semibold text-blue-700 hover:text-blue-900 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50/60 hover:bg-blue-100/80 transition-colors disabled:opacity-50"
+                >
+                  {saveProfileSuccess ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-emerald-700">{t.home.savedToProfileSuccess}</span>
+                    </>
+                  ) : savingProfile ? (
+                    <>
+                      <span className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                      <span>{t.home.savingToProfile}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-3.5 h-3.5 text-blue-600" />
+                      <span>{t.home.saveToProfile}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Run Optimization Button */}
             <button
               type="submit"
               disabled={loading}

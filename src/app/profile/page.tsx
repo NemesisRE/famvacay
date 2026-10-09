@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { COUNTRIES, getCountryCodeFromSubdivision } from '@/lib/regions/subdivisions';
-import { getRecommendedAirportsForRegion } from '@/lib/airports/airports-db';
+import { AirportSelector } from '@/components/airports/AirportSelector';
+import { LocationInput } from '@/components/geo/LocationInput';
 
 interface FamilyMemberForm {
   firstName: string;
@@ -46,6 +47,7 @@ export default function FamilyProfilePage() {
 
   const [familyName, setFamilyName] = useState('');
   const [homeLocation, setHomeLocation] = useState('Stuttgart, Germany');
+  const [departureCoords, setDepartureCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [country, setCountry] = useState('DE');
   const [federalState, setFederalState] = useState('DE-BW');
   const [originAirports, setOriginAirports] = useState<string[]>(['STR', 'FRA', 'BSL']);
@@ -114,7 +116,17 @@ export default function FamilyProfilePage() {
           if (data?.profile) {
             const p = data.profile;
             setFamilyName(p.familyName || '');
-            setHomeLocation(p.homeLocation || 'Stuttgart, Germany');
+            if (p.homeLocation) {
+              setHomeLocation(p.homeLocation);
+              fetch(`/api/locations/geocode?q=${encodeURIComponent(p.homeLocation)}`)
+                .then((r) => r.json())
+                .then((d) => {
+                  if (d.locations?.[0]) {
+                    setDepartureCoords({ lat: d.locations[0].lat, lon: d.locations[0].lon });
+                  }
+                })
+                .catch(() => {});
+            }
             if (p.federalState) {
               setFederalState(p.federalState);
               setCountry(getCountryCodeFromSubdivision(p.federalState));
@@ -252,8 +264,6 @@ export default function FamilyProfilePage() {
     }
   };
 
-  const recommendedAirports = getRecommendedAirportsForRegion(federalState, 450);
-
   if (loading) {
     return (
       <div className="py-20 text-center">
@@ -318,16 +328,14 @@ export default function FamilyProfilePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  {t.profile.homeLocation}
-                </label>
-                <input
-                  type="text"
-                  required
+                <LocationInput
+                  label={t.profile.homeLocation}
                   value={homeLocation}
-                  onChange={(e) => setHomeLocation(e.target.value)}
+                  onChange={(loc, coords) => {
+                    setHomeLocation(loc);
+                    if (coords) setDepartureCoords(coords);
+                  }}
                   placeholder="70173 Stuttgart"
-                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -367,31 +375,12 @@ export default function FamilyProfilePage() {
             </div>
 
             {/* Departure Airports Section */}
-            <div className="pt-3 border-t border-slate-100 space-y-2">
-              <label className="block text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                <Plane className="w-3.5 h-3.5 text-blue-600" />
-                {t.home.airportsLabel}
-              </label>
-              <p className="text-[11px] text-slate-500">{t.home.airportsHint}</p>
-              <div className="flex flex-wrap gap-2 pt-1">
-                {recommendedAirports.map((airport) => {
-                  const isSelected = originAirports.includes(airport.code);
-                  return (
-                    <button
-                      key={airport.code}
-                      type="button"
-                      onClick={() => toggleAirport(airport.code)}
-                      className={`text-xs px-3 py-1.5 rounded-xl border font-medium transition-all ${
-                        isSelected
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      {airport.code} · {airport.city} ({Math.round(airport.distanceKm)} km)
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="pt-3 border-t border-slate-100">
+              <AirportSelector
+                selectedAirports={originAirports}
+                onChange={setOriginAirports}
+                coordinates={departureCoords}
+              />
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 # Dependency Management & Repository Hygiene
 
-This document describes the automated dependency update strategy, Renovate configuration, and repository standards implemented in FamVacay.
+This document describes the automated dependency update strategy, Renovate configuration, repository standards, and key external geographical libraries integrated into FamVacay.
 
 ---
 
@@ -34,6 +34,25 @@ To keep packages up to date and reduce manual maintenance overhead, FamVacay use
 
 ---
 
+## External Geographical Datasets & Services
+
+To eliminate hardcoded airport arrays and fixed coordinates, FamVacay integrates open-source packages and geographical data providers:
+
+### 1. `airport-data`
+- Provides an indexed worldwide dataset of 7,100+ airports and 5,600+ valid commercial 3-letter IATA airports.
+- Enables instant in-memory lookup by IATA code, city, airport name, or country without third-party rate limits.
+
+### 2. `geolib`
+- Performs geodesic distance calculations using the Great-Circle Haversine and Vincenty formulas.
+- Used to compute exact straight-line kilometers from user home coordinates to departure airports and between airports.
+
+### 3. OpenStreetMap Nominatim Geocoding
+- Provides forward geocoding for departure cities and addresses via `https://nominatim.openstreetmap.org/search`.
+- Integrated with Redis caching (24-hour TTL) to comply with Nominatim usage policies and provide sub-millisecond response times for repeated queries.
+- Bundles an offline European metropolitan index fallback for reliable operation in isolated or air-gapped environments.
+
+---
+
 ## Continuous Integration & Schema Validation
 
 To ensure `renovate.json` syntax and schema remain valid:
@@ -60,4 +79,3 @@ FamVacay enforces strict cross-platform code formatting and normalization standa
 ### 2. `.gitattributes`
 - `* text=auto eol=lf`: Normalizes line endings to LF upon checkout and commit.
 - Binary flags explicitly configured for media formats (`.png`, `.jpg`, `.ico`, `.woff2`).
-

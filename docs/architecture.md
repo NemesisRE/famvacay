@@ -22,6 +22,8 @@ This document outlines the architectural patterns, data models, authentication f
 |   |                                                                           |   |
 |   |  * Proxy Header Resolver (src/lib/proxy/headers.ts)                       |   |
 |   |  * Multi-Provider NextAuth & WebAuthn / Passkeys (src/lib/auth/)          |   |
+|   |  * Dynamic Airport & Rail Engine (src/lib/airports/airport-service.ts)    |   |
+|   |  * Forward Geocoding Engine (src/lib/geo/geocoding.ts)                    |   |
 |   |  * CSP Vacation Optimizer Engine (src/lib/optimizer/)                     |   |
 |   |  * Internationalization Context & Catalogs (src/lib/i18n/)                |   |
 |   +-------------------------------------+-------------------------------------+   |
@@ -92,9 +94,9 @@ model FamilyProfile {
   userId                String         @unique
   user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   familyName            String?
-  homeLocation          String         // Postal code / City
+  homeLocation          String         // Postal code / City / Address
   federalState          String         // e.g. "DE-BW"
-  originAirports        String[]       // e.g. ["STR", "FRA", "BSL"]
+  originAirports        String[]       // e.g. ["STR", "FKB", "FRA", "CDG"]
   maxDrivingHours       Float?         @default(2.5)
   preferredCabinClass   String?        @default("ECONOMY")
   climatePreference     String?        @default("MODERATE")
@@ -134,13 +136,25 @@ The system coordinates jurisdictional school calendars across administrative sub
 
 ---
 
-## Dynamic Departure Airport Proximity Engine
+## Dynamic Departure Coordinates & Airport Proximity Engine
 
-Rather than static hardcoded airport lists, departure airports are resolved dynamically (`src/lib/airports/airports-db.ts`):
+To eliminate fixed lists and inaccurate state-centroid approximations, departure hubs are resolved dynamically (`src/lib/airports/airport-service.ts`):
 
-- **Geographical Distance**: Uses the Great-Circle Haversine distance from the centroid of the family's administrative region:
-  $$d = 2r \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta\phi}{2}\right) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\Delta\lambda}{2}\right)}\right)$$
-- **Proximity Filtering**: Intelligently ranks and suggests airports within reasonable driving reach (default $\le 380-450\text{ km}$), enabling cross-border and cross-state flight arbitrage.
+1. **Exact Coordinate Geocoding (`src/lib/geo/geocoding.ts`)**:
+   - Departure distances are calculated strictly from the user's specific starting coordinates (`departureLat`, `departureLon`), rather than falling back to regional capital centroids.
+   - Coordinates are resolved via OpenStreetMap Nominatim with a Redis caching layer and an offline European metropolitan index fallback.
+2. **Geodesic Distance Calculation (`geolib`)**:
+   - Distance from departure coordinates to all candidate hubs is calculated using the Great-Circle Haversine formula:
+     $$d = 2r \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta\phi}{2}\right) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\Delta\lambda}{2}\right)}\right)$$
+3. **High-Speed Rail (HSR) Connectivity Heuristics**:
+   - Real-world travel options are not limited by national borders or road driving alone. Major high-speed rail corridors link cities directly to international mega-hubs:
+     - **Southwest Germany / Karlsruhe to Paris (`CDG` / `ORY`)**: Karlsruhe Hauptbahnhof connects directly to Paris Gare de l'Est via TGV / ICE in 2.5 hours. Paris Charles de Gaulle and Orly offer competitive long-haul and Caribbean fares that often undercut domestic hubs like Munich or Frankfurt.
+     - **Frankfurt AIRail (`FRA`)**: Direct high-speed train connections terminating directly under the terminal building.
+     - **Rhineland to Brussels (`BRU`)**: Direct Eurostar / ICE service in under 1.8 hours.
+     - **Lower Rhine to Amsterdam (`AMS`)**: Direct ICE service in approximately 2.2 hours.
+   - Airports connected via high-speed rail corridors are tagged with `isHighSpeedRailConnected: true` and displayed with dedicated rail badges.
+4. **Worldwide Custom Airport Search**:
+   - Full in-memory index of 5,600+ IATA airports worldwide via `airport-data`. Users can search and select any commercial airport by city name, airport name, or 3-letter IATA code.
 
 ---
 
@@ -154,25 +168,28 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
    Merges persistent profile blackouts with ad-hoc search blackouts:
    $$\text{Blackouts} = \text{ProfileBlackouts} \cup \text{SearchBlackouts}$$
    Any candidate window overlapping any blackout range is pruned.
-3. **School Holiday Hard Constraint**:
-   If any child is $\ge 6$ years old, candidate windows must fall completely inside the state's school holiday interval.
-4. **Automatic Age Tier Derivation**:
-   Ages are derived directly from birthdates:
+3. **Dynamic Date-Relative Child Age Calculation**:
+   Child ages are computed dynamically relative to the candidate window's departure date:
+   $$\text{Age at Trip} = \lfloor(\text{startDate} - \text{birthDate}) / \text{1 year}\rfloor$$
+   This prevents age classification errors when a child turns 2 (infant to child) or 6 (mandatory school age) between the search date and the planned trip date.
+4. **School Holiday Hard Constraint**:
+   If any child is $\ge 6$ years old on the departure date, the candidate window must fall completely inside the home jurisdiction's school break period.
+5. **Automatic Age Fare Tier Derivation**:
    - Infant: $< 2$ years ($10\%$ base fare)
    - Child: $2 - 11$ years ($75\%$ base fare)
    - Teen / Adult: $\ge 12$ years ($100\%$ base fare)
-5. **Destination Seasonality Warnings**:
+6. **Destination Seasonality Warnings**:
    Detects seasonal risks (`src/lib/optimizer/weather.ts`) for target destinations:
-   - `MONSOON`: Tropical downpours and high humidity (e.g., Southeast Asia in summer).
-   - `EXTREME_HEAT`: Daytime temperatures exceeding safe family thresholds (e.g., Middle East in summer).
+   - `MONSOON`: Tropical downpours and high humidity.
+   - `EXTREME_HEAT`: Daytime temperatures exceeding safe family thresholds.
    - `TYPHOON_HURRICANE`: Tropical storm activity windows.
-   - `OVERCROWDED_PEAK`: Peak surge crowds and inflated lodging (e.g., Cherry blossom peak in Japan).
-6. **Flight Arbitrage Detection**:
-   Evaluates departure airports located in neighboring jurisdictions where schools remain in session, factoring a $30\%$ simulated price advantage.
-7. **Parental Leave Minimization**:
+   - `OVERCROWDED_PEAK`: Peak surge crowds and inflated lodging.
+7. **Flight Arbitrage Detection**:
+   Evaluates departure airports located in neighboring jurisdictions where schools remain in session, factoring a $30\%$ price advantage.
+8. **Parental Leave Minimization**:
    Calculates consumed PTO:
    $$\text{PTO\_days} = \text{total\_weekdays} - \text{public\_holidays}$$
-8. **Multi-Objective Scoring**:
+9. **Multi-Objective Scoring**:
    $$\text{Score} = (w_1 \cdot \text{Price}) + (w_2 \cdot \text{Weather}) + (w_3 \cdot \text{PTO}) - (w_4 \cdot \text{Friction})$$
 
 ---
@@ -188,7 +205,7 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
 | `GET` | `/api/auth/linked-accounts` | List linked authentication methods |
 | `GET` | `/api/family-profile` | Retrieve family profile and member roster |
 | `POST` | `/api/family-profile` | Create or update family profile |
+| `GET` | `/api/locations/geocode` | Autocomplete and geocode departure location |
+| `GET` | `/api/airports/search` | Search airports by query or proximity coordinates |
 | `POST` | `/api/vacations/optimize` | Execute CSP vacation optimization engine |
 | `GET` | `/api/health` | Application, database, and Redis health check |
-
-

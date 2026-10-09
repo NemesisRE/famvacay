@@ -1,4 +1,4 @@
-import { addDays, parseISO, format, isWithinInterval, isBefore, isAfter } from 'date-fns';
+import { addDays, parseISO, format, isWithinInterval, isBefore, isAfter, differenceInYears } from 'date-fns';
 import {
   TripPlanInput,
   CandidateWindow,
@@ -10,6 +10,7 @@ import {
 import { calculatePtoDaysConsumed } from './pto-calculator';
 import { calculatePassengerCostMultiplier } from './child-tiers';
 import { NEIGHBORING_STATES, SUPPORTED_ORIGIN_AIRPORTS, calculateDistanceKm } from './arbitrage';
+import { getAirportByIata } from '@/lib/airports/airport-service';
 import { POPULAR_DESTINATIONS, getEstimatedClimate, getDestinationSeasonalWarning } from './weather';
 
 /**
@@ -93,7 +94,6 @@ export function optimizeVacationWindows(
     ...(input.searchBlackouts || []),
   ];
 
-  const hasSchoolKids = userProfile.childrenAges.some((age) => age >= 6);
   const homeState = userProfile.federalState;
   const homeSchoolHolidays = schoolHolidaysByState[homeState] || [];
   const homePublicHolidays = publicHolidaysByState[homeState] || [];
@@ -104,7 +104,7 @@ export function optimizeVacationWindows(
 
   // Select destination codes
   let candidateDestinations: string[] = [];
-  if (targetRegion && POPULAR_DESTINATIONS[targetRegion]) {
+  if (targetRegion && (POPULAR_DESTINATIONS[targetRegion] || getAirportByIata(targetRegion))) {
     candidateDestinations = [targetRegion];
   } else {
     // Filter popular destinations matching destinationType
@@ -115,8 +115,6 @@ export function optimizeVacationWindows(
       candidateDestinations = ['PMI', 'BCN', 'FAO'];
     }
   }
-
-  const pCostMultiplier = calculatePassengerCostMultiplier(2, userProfile.childrenAges);
 
   const candidatePool: Omit<CandidateWindow, 'finalScore' | 'scoreBreakdown'>[] = [];
 
@@ -135,6 +133,17 @@ export function optimizeVacationWindows(
       const startStr = format(currentDate, 'yyyy-MM-dd');
       const endStr = format(windowEnd, 'yyyy-MM-dd');
       const monthIndex = currentDate.getMonth();
+
+      // Dynamic Age Calculation relative to window start date
+      let currentChildrenAges = userProfile.childrenAges || [];
+      if (Array.isArray(userProfile.childrenBirthDates) && userProfile.childrenBirthDates.length > 0) {
+        currentChildrenAges = userProfile.childrenBirthDates.map((bDate) => {
+          return Math.max(0, differenceInYears(currentDate, parseISO(bDate)));
+        });
+      }
+
+      const hasSchoolKids = currentChildrenAges.some((age) => age >= 6);
+      const pCostMultiplier = calculatePassengerCostMultiplier(2, currentChildrenAges);
 
       // 1. Blackout Filtering
       if (overlapsWithBlackout(startStr, endStr, allBlackouts)) {
@@ -157,11 +166,11 @@ export function optimizeVacationWindows(
 
       // 4. Test each origin airport and destination combination
       for (const origin of originAirports) {
-        const airportDetails = SUPPORTED_ORIGIN_AIRPORTS[origin];
+        const airportDetails = getAirportByIata(origin) || SUPPORTED_ORIGIN_AIRPORTS[origin];
         const airportState = airportDetails?.state || homeState;
         const isArbitrage = airportState !== homeState;
 
-        // Arbitrage check: If departing from an airport in neighboring state, check if that state is NOT on holiday
+        // Arbitrage check: If departing from an airport in neighboring state/country, check if that state is NOT on holiday
         let arbitrageNote: string | undefined;
         let arbitrageState: string | undefined;
 
@@ -198,7 +207,7 @@ export function optimizeVacationWindows(
           }
 
           const totalCost = Math.round(baseFare * pCostMultiplier);
-          const perPersonCost = Math.round(totalCost / (2 + userProfile.childrenAges.length));
+          const perPersonCost = Math.round(totalCost / (2 + currentChildrenAges.length));
 
           // Budget check
           if (input.maxBudgetTotal && totalCost > input.maxBudgetTotal) {
