@@ -154,18 +154,16 @@ Departure hubs and distance metrics are managed by a unified airport service (`s
 
 1. **Exact Coordinate Geocoding & Postal Code Resolution (`src/lib/geo/geocoding.ts`)**:
    - Departure distances are calculated strictly from the user's specific starting coordinates (`departureLat`, `departureLon`), rather than regional capital centroids.
-   - The geocoding service resolves postal codes (e.g., "76334" to "76334 Eggenstein-Leopoldshafen") and metropolitan locations via OpenStreetMap Nominatim with a Redis caching layer and an offline European postal code and city index fallback.
+   - The geocoding service resolves postal codes, municipalities, and metropolitan locations dynamically worldwide via OpenStreetMap Nominatim with a secondary Photon Komoot API fallback and a Redis caching layer.
+   - All static local dictionaries and mock example fixtures have been eliminated, ensuring location resolution handles any postal code, city, or territory dynamically worldwide.
    - Strict place verification ensures unverified free-text locations trigger validation warnings before submission.
 2. **Geodesic Distance Calculation (`geolib`)**:
    - Distance from departure coordinates to candidate hubs is calculated using the Great-Circle Haversine formula:
      $$d = 2r \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta\phi}{2}\right) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\Delta\lambda}{2}\right)}\right)$$
-3. **High-Speed Rail (HSR) Connectivity Heuristics**:
-   - Real-world travel options account for high-speed rail corridors linking cities directly to international mega-hubs:
-     - **Southwest Germany / Karlsruhe to Paris (`CDG` / `ORY`)**: Karlsruhe Hauptbahnhof connects directly to Paris Gare de l'Est via TGV / ICE in 2.5 hours. Paris Charles de Gaulle and Orly offer competitive long-haul and Caribbean fares that often undercut domestic hubs like Munich or Frankfurt.
-     - **Frankfurt AIRail (`FRA`)**: Direct high-speed train connections terminating directly under the terminal building.
-     - **Rhineland to Brussels (`BRU`)**: Direct Eurostar / ICE service in under 1.8 hours.
-     - **Lower Rhine to Amsterdam (`AMS`)**: Direct ICE service in approximately 2.2 hours.
-   - Airports connected via high-speed rail corridors are tagged with `isHighSpeedRailConnected: true` and displayed with dedicated rail badges.
+3. **Generalized Rail & Transit Connectivity Model (`evaluateHighSpeedRailConnectivity`)**:
+   - Real-world travel options account for high-speed rail and intercity rail corridors linking origins directly to major international passenger gateways.
+   - Airports equipped with integrated on-site mainline or high-speed rail passenger terminals (such as Frankfurt Fernbahnhof, Paris Charles de Gaulle 2, Amsterdam Schiphol, Zurich Airport, and Brussels Airport) are dynamically evaluated based on overland rail catchment radius ($d \le 460\text{ km}$).
+   - Connected hubs are modeled as an abstract transit property (`isHighSpeedRailConnected: true`) and rendered with generic rail indicators (`Train` icon) and descriptive notes without carrier or brand-specific assumptions.
 4. **Flight Corridor & Destination-Aware Airport Recommendations**:
    - When users select target travel destinations (such as Egypt, Bali, Cancun, Dubai, or Thailand), the airport suggestion engine dynamically surfaces major long-haul gateways (`FRA`, `CDG`, `MUC`, `AMS`, `ZRH`) and high-frequency charter departure hubs.
    - Airports offering specialized non-stop routes for the chosen destinations are highlighted with dedicated flight corridor notes (`flightCorridorNote`).

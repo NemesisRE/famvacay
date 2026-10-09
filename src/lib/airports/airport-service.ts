@@ -477,56 +477,35 @@ export function calculateGeodesicDistanceKm(
 /**
  * Evaluate High-Speed Rail (HSR) connectivity from departure location
  */
-function evaluateHighSpeedRailConnectivity(
+// Major international airports with directly integrated mainline/high-speed rail passenger terminals
+const INTEGRATED_RAIL_AIRPORT_HUBS = new Set([
+  'FRA', 'CDG', 'AMS', 'ZRH', 'BRU', 'DUS', 'LYS', 'LGW', 'LHR', 'FCO', 'VIE', 'BWI', 'HND'
+]);
+
+/**
+ * Evaluate High-Speed / Mainline Rail connectivity from departure location.
+ * Abstract transit model: identifies airports with integrated rail terminal within practical overland rail radius.
+ */
+export function evaluateHighSpeedRailConnectivity(
   userLat: number,
   userLon: number,
   airportCode: string
 ): { isConnected: boolean; note?: string } {
-  // Paris Hubs (CDG, ORY)
-  if (airportCode === 'CDG' || airportCode === 'ORY') {
-    const isSwGermanyOrRhine =
-      userLat >= 47.4 && userLat <= 50.5 && userLon >= 6.0 && userLon <= 9.5;
-    const distToParis = calculateGeodesicDistanceKm(userLat, userLon, 48.8566, 2.3522);
-
-    if (isSwGermanyOrRhine || distToParis <= 470) {
-      return {
-        isConnected: true,
-        note: 'Direct TGV / ICE (~2.5h) with direct Caribbean & long-haul flight savings',
-      };
-    }
+  if (!INTEGRATED_RAIL_AIRPORT_HUBS.has(airportCode)) {
+    return { isConnected: false };
   }
 
-  // Brussels Hub (BRU) for Rhineland / Cologne / Aachen
-  if (airportCode === 'BRU') {
-    const distToBrussels = calculateGeodesicDistanceKm(userLat, userLon, 50.8503, 4.3517);
-    if (distToBrussels <= 280) {
-      return {
-        isConnected: true,
-        note: 'Direct Eurostar / ICE service (<2h)',
-      };
-    }
-  }
+  const airport = getAirportByIata(airportCode);
+  if (!airport) return { isConnected: false };
 
-  // Frankfurt Airport (FRA) AIRail
-  if (airportCode === 'FRA') {
-    const distToFrankfurt = calculateGeodesicDistanceKm(userLat, userLon, 50.0379, 8.5622);
-    if (distToFrankfurt <= 200) {
-      return {
-        isConnected: true,
-        note: 'Direct ICE AIRail straight to airport terminal (<1h)',
-      };
-    }
-  }
+  const distToAirport = calculateGeodesicDistanceKm(userLat, userLon, airport.lat, airport.lon);
 
-  // Amsterdam Hub (AMS) for Lower Rhine / Ruhr area
-  if (airportCode === 'AMS') {
-    const distToAms = calculateGeodesicDistanceKm(userLat, userLon, 52.3105, 4.7683);
-    if (distToAms <= 260) {
-      return {
-        isConnected: true,
-        note: 'Direct ICE connection (<2.5h)',
-      };
-    }
+  // Overland rail transit catchment: between 40 km and 460 km
+  if (distToAirport <= 460 && distToAirport >= 40) {
+    return {
+      isConnected: true,
+      note: 'Direct intercity / high-speed rail connection to airport terminal',
+    };
   }
 
   return { isConnected: false };
@@ -609,9 +588,9 @@ export function getRecommendedAirportsForCoordinates(
   const combined: DynamicAirport[] = [];
   const addedCodes = new Set<string>();
 
-  // Add closest 7 regional proximity hubs
+  // Add closest 6 regional proximity hubs
   for (const a of proximityHubs) {
-    if (combined.length >= 7) break;
+    if (combined.length >= 6) break;
     if (!addedCodes.has(a.code)) {
       combined.push(a);
       addedCodes.add(a.code);
@@ -626,7 +605,7 @@ export function getRecommendedAirportsForCoordinates(
     }
   }
 
-  // If long-haul destinations selected, ensure Frankfurt (FRA) or Paris (CDG) are included if within catchment
+  // If long-haul destinations selected, ensure major intercontinental hubs are included if within catchment
   if (hasLongHaulDestinations) {
     for (const code of ['FRA', 'CDG', 'MUC']) {
       const hub = scored.find((a) => a.code === code);
@@ -637,8 +616,8 @@ export function getRecommendedAirportsForCoordinates(
     }
   }
 
-  // Sort final list by distance, keeping HSR hubs prominently displayed
-  return combined.slice(0, 10);
+  // Return up to 12 recommended departure hubs
+  return combined.slice(0, 12);
 }
 
 /**

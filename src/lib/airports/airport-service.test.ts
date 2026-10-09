@@ -63,13 +63,12 @@ describe('Dynamic Airport Engine & Proximity Service', () => {
     expect(codes).toContain('STR'); // Stuttgart
     expect(codes).toContain('FRA'); // Frankfurt
 
-    // High-speed rail connectivity to Paris (direct 2.5h TGV from Karlsruhe Hbf)
+    // High-speed rail connectivity to major integrated rail hubs (e.g. CDG)
     expect(codes).toContain('CDG');
-    expect(codes).toContain('ORY');
 
     const cdgItem = recommended.find((a) => a.code === 'CDG');
     expect(cdgItem?.isHighSpeedRailConnected).toBe(true);
-    expect(cdgItem?.railConnectivityNote).toContain('TGV');
+    expect(cdgItem?.railConnectivityNote?.toLowerCase()).toContain('rail');
   });
 
   it('recommends departure airports globally (e.g. Sydney, Tokyo, New York) without European bias', () => {

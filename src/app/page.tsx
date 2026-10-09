@@ -512,7 +512,7 @@ export default function HomePage() {
               />
             </div>
 
-            {/* Step 3: Departure Airports (Proximity, Destination Corridors, Direct TGV) */}
+            {/* Step 3: Departure Airports (Proximity, Destination Corridors, Direct Rail Link) */}
             <div className="pt-2 border-t border-slate-100">
               <AirportSelector
                 selectedAirports={originAirports}

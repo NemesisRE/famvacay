@@ -1,19 +1,19 @@
-import { describe, it, expect } from 'vitest';
-import { geocodeLocation } from './geocoding';
+import { describe, it, expect, vi } from 'vitest';
+import { geocodeLocation, resolveLocationCoordinates } from './geocoding';
 
-describe('Geocoding Service & Offline Index Fallback', () => {
-  it('geocodes European cities via fallback index when offline or uncached', async () => {
+// Mock Redis to test dynamic geocoder directly
+vi.mock('@/lib/cache/redis', () => ({
+  getCached: vi.fn().mockResolvedValue(null),
+  setCached: vi.fn().mockResolvedValue(true),
+}));
+
+describe('Universal Dynamic Geocoding Service', () => {
+  it('geocodes cities dynamically via live geocoding engines without static dictionaries', async () => {
     const karlsruhe = await geocodeLocation('Karlsruhe');
     expect(karlsruhe.length).toBeGreaterThan(0);
     expect(karlsruhe[0].name.toLowerCase()).toContain('karlsruhe');
     expect(karlsruhe[0].lat).toBeCloseTo(49.0069, 1);
     expect(karlsruhe[0].lon).toBeCloseTo(8.4037, 1);
-
-    const stuttgart = await geocodeLocation('Stuttgart');
-    expect(stuttgart.length).toBeGreaterThan(0);
-    expect(stuttgart[0].name.toLowerCase()).toContain('stuttgart');
-    expect(stuttgart[0].lat).toBeCloseTo(48.7758, 1);
-    expect(stuttgart[0].lon).toBeCloseTo(9.1829, 1);
 
     const paris = await geocodeLocation('Paris');
     expect(paris.length).toBeGreaterThan(0);
@@ -21,9 +21,21 @@ describe('Geocoding Service & Offline Index Fallback', () => {
     expect(paris[0].countryCode).toBe('FR');
   });
 
-  it('handles partial searches gracefully', async () => {
-    const munich = await geocodeLocation('München');
-    expect(munich.length).toBeGreaterThan(0);
-    expect(['Munich', 'München']).toContain(munich[0].name);
+  it('geocodes international destinations dynamically worldwide', async () => {
+    const sydney = await geocodeLocation('Sydney');
+    expect(sydney.length).toBeGreaterThan(0);
+    expect(sydney[0].countryCode).toBe('AU');
+
+    const tokyo = await geocodeLocation('Tokyo');
+    expect(tokyo.length).toBeGreaterThan(0);
+    expect(tokyo[0].lat).toBeCloseTo(35.6762, 1);
+  });
+
+  it('resolves location coordinates dynamically with resolvedName', async () => {
+    const coords = await resolveLocationCoordinates('Berlin');
+    expect(coords).not.toBeNull();
+    expect(coords?.lat).toBeCloseTo(52.5200, 1);
+    expect(coords?.lon).toBeCloseTo(13.4050, 1);
+    expect(coords?.resolvedName?.toLowerCase()).toContain('berlin');
   });
 });
