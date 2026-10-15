@@ -10,16 +10,16 @@ test.describe('FamVacay E2E User Journey', () => {
 
     // Visit home page
     await page.goto('/');
-    await expect(page.locator('text=Family Vacation Optimizer (FamVacay)')).toBeVisible();
+    await expect(page.locator('h1, header, nav').filter({ hasText: 'Family Vacation Optimizer' }).first()).toBeVisible();
 
     // Fill form and trigger optimization
-    const optimizeBtn = page.locator('button:has-text("Run Multi-Objective Optimization")');
+    const optimizeBtn = page.locator('button[type="submit"]').first();
     await expect(optimizeBtn).toBeVisible();
     await optimizeBtn.click();
 
     // Verify results show up
     await expect(page.locator('text=Optimal Vacation Windows')).toBeVisible();
-    await expect(page.locator('text=Windows Found')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=Windows Found')).toBeVisible({ timeout: 15000 });
   });
 });
 

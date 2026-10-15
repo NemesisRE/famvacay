@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: famvacay-web-pdb
+  namespace: default
+  labels:
+    app.kubernetes.io/name: famvacay-web
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: famvacay-web
+

@@ -16,6 +16,7 @@ export interface UserProfileInput {
   departureLon?: number;
   originAirports: string[]; // e.g. ["STR", "FKB", "FRA", "CDG"]
   federalState: string;     // e.g. "DE-BW"
+  workweekDays?: number[];  // [1, 2, 3, 4, 5] for Mon-Fri
   childrenAges: number[];    // e.g. [1, 7, 14]
   childrenBirthDates?: string[]; // ISO date YYYY-MM-DD
   blackoutRanges: BlackoutRange[];
@@ -83,6 +84,7 @@ export interface CandidateWindow {
   publicHolidaysCount: number;
   ptoDaysConsumed: number;
   ptoEfficiencyRatio: number; // (durationDays / ptoDaysConsumed) normalized
+  suggestedShifts?: import('./pto-calculator').AdjacentShiftSuggestion[];
   
   // Pricing metrics
   estimatedTotalCost: number;

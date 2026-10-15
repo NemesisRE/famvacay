@@ -221,9 +221,11 @@ export function optimizeVacationWindows(
     return [];
   }
 
-  // If user chose open discovery (no destination tags), default to family vacation hubs
+  // If user chose open discovery (no destination tags), dynamically select commercial major hubs
   if (!hasUserSelectedDestinations && (!candidateDestinations || candidateDestinations.length === 0)) {
-    candidateDestinations = ['PMI', 'HER', 'AYT', 'HRG', 'BCN', 'AGP', 'FAO', 'DJE'];
+    const { getAllCommercialAirports } = require('../airports/airport-service');
+    const majorAirports = getAllCommercialAirports().filter((a: any) => a.isMajorHub);
+    candidateDestinations = majorAirports.slice(0, 10).map((a: any) => a.iata);
   }
 
   const rawCandidatePool: RawCandidate[] = [];
@@ -257,7 +259,11 @@ export function optimizeVacationWindows(
       }
 
       const hasSchoolKids = currentChildrenAges.some((age) => age >= 6);
-      const pCostMultiplier = calculatePassengerCostMultiplier(2, currentChildrenAges);
+      const pCostMultiplier = calculatePassengerCostMultiplier(2, currentChildrenAges, {
+        birthDates: userProfile.childrenBirthDates,
+        outboundDate: startStr,
+        returnDate: endStr,
+      });
 
       // 1. Blackout Filtering
       if (overlapsWithBlackout(startStr, endStr, allBlackouts)) {
@@ -269,8 +275,13 @@ export function optimizeVacationWindows(
       // 2. School Holiday Coverage Evaluation
       const holidayCoverage = calculateHolidayCoverage(startStr, endStr, homeSchoolHolidays);
 
-      // 3. PTO consumption calculation
-      const ptoInfo = calculatePtoDaysConsumed(startStr, endStr, homePublicHolidays);
+      // 3. PTO consumption calculation with configurable workweek
+      const ptoInfo = calculatePtoDaysConsumed(
+        startStr,
+        endStr,
+        homePublicHolidays,
+        (userProfile as any).workweekDays
+      );
 
       // 4. Test each origin airport and destination combination
       for (const origin of originAirports) {
@@ -352,6 +363,7 @@ export function optimizeVacationWindows(
             publicHolidaysCount: ptoInfo.publicHolidaysCount,
             ptoDaysConsumed: ptoInfo.ptoDaysConsumed,
             ptoEfficiencyRatio,
+            suggestedShifts: ptoInfo.suggestedShifts,
             estimatedTotalCost: totalCost,
             pricePerPerson: perPersonCost,
             isCachedBenchmark: pricingDetails.isCachedBenchmark,

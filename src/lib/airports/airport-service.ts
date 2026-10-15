@@ -1,8 +1,10 @@
 import { getDistance } from 'geolib';
 
 // Import raw airport data (7,184 worldwide airports)
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const rawAirports: any[] = require('airport-data');
+// @ts-expect-error airport-data package lacks typescript definitions
+import rawAirportsData from 'airport-data';
+
+const rawAirports: any[] = rawAirportsData as any[];
 
 export interface DynamicAirport {
   code: string;       // 3-letter IATA code

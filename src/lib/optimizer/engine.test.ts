@@ -8,7 +8,7 @@ import {
 import { calculatePtoDaysConsumed } from './pto-calculator';
 import { getChildAgeTier, parseChildrenAges, calculatePassengerCostMultiplier } from './child-tiers';
 import { isArbitrageAirport, calculateDistanceKm } from './arbitrage';
-import { getEstimatedClimate } from './weather';
+import { getEstimatedClimate, getDestinationSeasonalWarning } from './weather';
 import { TripPlanInput, SchoolHoliday, PublicHoliday } from './types';
 
 describe('CSP Optimizer - Edge Cases & Core Engine', () => {
@@ -407,4 +407,162 @@ describe('Destination Validation & Entity Resolution', () => {
     expect(defaultCodes).toContain('PMI');
   });
 });
+
+describe('Dynamic Age Category Derivation & Segment-Aware Birthdays', () => {
+  it('correctly categorizes infant, child, and adult tiers', async () => {
+    const { deriveAgeCategory } = await import('./child-tiers');
+    // Infant (< 2)
+    expect(deriveAgeCategory('2025-05-10', '2026-08-01')).toBe('INFANT');
+    // Child (2–11)
+    expect(deriveAgeCategory('2020-05-10', '2026-08-01')).toBe('CHILD');
+    // Adult (12+)
+    expect(deriveAgeCategory('2010-05-10', '2026-08-01')).toBe('ADULT');
+  });
+
+  it('handles a child turning 2 during the trip (outbound infant, return child)', async () => {
+    const { deriveSegmentAgeCategories, calculatePassengerCostMultiplier } = await import('./child-tiers');
+    const birthDate = '2024-08-05';
+    const outboundDate = '2026-08-01'; // age 1 -> INFANT
+    const returnDate = '2026-08-10';   // turned 2 on Aug 5 -> CHILD
+
+    const segmentTiers = deriveSegmentAgeCategories(birthDate, outboundDate, returnDate);
+    expect(segmentTiers.outboundTier).toBe('INFANT');
+    expect(segmentTiers.returnTier).toBe('CHILD');
+    expect(segmentTiers.turnedTwoDuringTrip).toBe(true);
+
+    // Multiplier: 2 adults (2.0) + average of infant (0.10) and child (0.75) = 2.0 + 0.425 = 2.425
+    const multiplier = calculatePassengerCostMultiplier(2, [1], {
+      birthDates: [birthDate],
+      outboundDate,
+      returnDate,
+    });
+    expect(multiplier).toBeCloseTo(2.425, 2);
+  });
+});
+
+describe('PTO Calculation with Custom Workweeks & Adjacent Shifts', () => {
+  it('calculates PTO correctly for non-Mon–Fri workweeks (e.g. Sunday–Thursday)', async () => {
+    const { calculatePtoDaysConsumed } = await import('./pto-calculator');
+    // Middle Eastern workweek: Sunday (0) to Thursday (4)
+    const workweekSunThu = [0, 1, 2, 3, 4];
+    
+    // Sunday 2026-06-07 to Thursday 2026-06-11 (5 workdays)
+    const result = calculatePtoDaysConsumed('2026-06-07', '2026-06-11', [], workweekSunThu);
+    expect(result.totalWeekdays).toBe(5);
+    expect(result.ptoDaysConsumed).toBe(5);
+
+    // Friday 2026-06-12 to Saturday 2026-06-13 (weekend in Sun-Thu schedule)
+    const weekendResult = calculatePtoDaysConsumed('2026-06-12', '2026-06-13', [], workweekSunThu);
+    expect(weekendResult.totalWeekdays).toBe(0);
+    expect(weekendResult.ptoDaysConsumed).toBe(0);
+  });
+
+  it('suggests adjacent shifts (±1–3 days) that save PTO via public holidays', async () => {
+    const { suggestAdjacentPtoShifts } = await import('./pto-calculator');
+    const publicHolidays: PublicHoliday[] = [
+      { date: '2026-05-25', name: 'Pfingstmontag', state: 'DE-BW' }, // Monday
+    ];
+
+    // Starting on Tuesday 2026-05-26 to Friday 2026-05-29 (4 workdays PTO)
+    // Shifting -1 day starts on Monday 2026-05-25 (Holiday!) to Thursday 2026-05-28 (3 workdays PTO -> saves 1 PTO day)
+    const shifts = suggestAdjacentPtoShifts('2026-05-26', '2026-05-29', publicHolidays, [1, 2, 3, 4, 5], 4);
+    expect(shifts.length).toBeGreaterThan(0);
+    const minusOne = shifts.find((s) => s.shiftDays === -1);
+    expect(minusOne).toBeDefined();
+    expect(minusOne?.ptoSaved).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('Arbitrage Airport Info & Localized Seasonal Warnings', () => {
+  it('resolves airport info dynamically via getOriginAirportInfo and SUPPORTED_ORIGIN_AIRPORTS', async () => {
+    const { getOriginAirportInfo, SUPPORTED_ORIGIN_AIRPORTS } = await import('./arbitrage');
+    const fra = getOriginAirportInfo('FRA');
+    expect(fra).not.toBeNull();
+    expect(fra?.code).toBe('FRA');
+    expect(fra?.city.toLowerCase()).toContain('frankfurt');
+
+    expect('FRA' in SUPPORTED_ORIGIN_AIRPORTS).toBe(true);
+    expect(SUPPORTED_ORIGIN_AIRPORTS['FRA']?.code).toBe('FRA');
+
+    expect(getOriginAirportInfo('XYZINVALID')).toBeNull();
+    expect('XYZINVALID' in SUPPORTED_ORIGIN_AIRPORTS).toBe(false);
+  });
+
+  it('correctly localizes seasonal warnings across all enum types', async () => {
+    const { getLocalizedSeasonalWarning } = await import('./localized-warnings');
+    const { en } = await import('../i18n/locales/en');
+
+    const monsoon = getLocalizedSeasonalWarning(
+      { destinationCode: 'BKK', seasonType: 'MONSOON', monthRange: [6], messageKey: '', fallbackMessage: '' },
+      en
+    );
+    expect(monsoon.title).toBe(en.home.seasonWarningMonsoonTitle);
+
+    const heat = getLocalizedSeasonalWarning(
+      { destinationCode: 'DXB', seasonType: 'EXTREME_HEAT', monthRange: [6], messageKey: '', fallbackMessage: '' },
+      en
+    );
+    expect(heat.title).toBe(en.home.seasonWarningExtremeHeatTitle);
+
+    const hurricane = getLocalizedSeasonalWarning(
+      { destinationCode: 'CUN', seasonType: 'TYPHOON_HURRICANE', monthRange: [8], messageKey: '', fallbackMessage: '' },
+      en
+    );
+    expect(hurricane.title).toBe(en.home.seasonWarningHurricaneTitle);
+
+    const peak = getLocalizedSeasonalWarning(
+      { destinationCode: 'HND', seasonType: 'OVERCROWDED_PEAK', monthRange: [3], messageKey: '', fallbackMessage: '' },
+      en
+    );
+    expect(peak.title).toBe(en.home.seasonWarningCrowdedPeakTitle);
+
+    const fallback = getLocalizedSeasonalWarning(
+      { destinationCode: 'CUSTOM', seasonType: 'UNKNOWN' as any, monthRange: [], messageKey: '', fallbackMessage: 'Custom fallback' },
+      en
+    );
+    expect(fallback.description).toBe('Custom fallback');
+  });
+
+  it('tests climate preferences (WARM, COOL, MODERATE) and holiday weekend expansions', async () => {
+    const { expandSchoolHolidayWithWeekends, isWithinSchoolHoliday, normalizeScore } = await import('./engine');
+
+    // normalizeScore edge case
+    expect(normalizeScore(50, 50, 50)).toBe(80);
+
+    // empty holidays returns true
+    expect(isWithinSchoolHoliday('2026-06-01', '2026-06-08', [])).toBe(true);
+
+    // expandSchoolHolidayWithWeekends
+    // Holiday starting on Sunday
+    const sunHol = expandSchoolHolidayWithWeekends({
+      startDate: '2026-05-31', // Sunday
+      endDate: '2026-06-05',   // Friday
+      name: 'Test Hol',
+      state: 'TEST',
+    });
+    expect(sunHol.startDate).toBe('2026-05-30'); // Saturday
+    expect(sunHol.endDate).toBe('2026-06-07');   // Sunday
+
+    // Winter ski in Alps (Innsbruck in January)
+    const winterSki = getEstimatedClimate('INN', 0);
+    expect(winterSki.isSuitable).toBe(true);
+    expect(winterSki.avgTempC).toBeLessThanOrEqual(0);
+
+    // Southern hemisphere (Sydney in January: midsummer)
+    const sydSummer = getEstimatedClimate('SYD', 0, { lat: -33.86, lon: 151.2 });
+    expect(sydSummer.avgTempC).toBeGreaterThanOrEqual(25);
+
+    // Hurricane warning in Caribbean
+    const cunWarning = getDestinationSeasonalWarning('CUN', 8);
+    expect(cunWarning).not.toBeNull();
+    expect(cunWarning?.seasonType).toBe('TYPHOON_HURRICANE');
+
+    // Western Pacific typhoon warning
+    const tpeWarning = getDestinationSeasonalWarning('TPE', 7);
+    expect(tpeWarning).not.toBeNull();
+    expect(tpeWarning?.seasonType).toBe('TYPHOON_HURRICANE');
+  });
+});
+
+
 

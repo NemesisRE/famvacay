@@ -50,8 +50,11 @@ This document outlines the architectural patterns, data models, authentication f
 ## Reverse Proxy & Network Hardening
 
 1. **Protocol and Host Awareness (`src/lib/proxy/headers.ts`)**:
-   - The application expects plain HTTP internally on port `3000` and trusts standard forwarding headers (`X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host`).
-   - Absolute redirects and canonical URLs are generated from `APP_URL` to prevent internal port leakage (`3000`).
+   - The application expects plain HTTP internally on port `3000` behind an external TLS-terminating reverse proxy (Traefik, Nginx, Nginx Proxy Manager, Caddy, or Kubernetes Ingress/Gateway).
+   - Strict `TRUST_PROXY=true` gating: Forwarding headers are only evaluated when explicitly enabled via configuration.
+   - Standard RFC 7239 `Forwarded` header parsing is prioritized, with fallback to legacy `X-Forwarded-*` headers (`X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host`).
+   - Anti-spoofing client IP resolution: Evaluates the forwarding chain from the right-most untrusted entry using `TRUSTED_PROXY_HOPS` (default: 1) to prevent client IP spoofing attacks.
+   - Absolute redirects and canonical URLs are derived strictly from the configured public `APP_URL` to prevent internal port leakage (`3000`) or host header poisoning.
 2. **CSRF Protection in Next.js Server Actions**:
    - `next.config.js` sets `experimental.serverActions.allowedOrigins` dynamically based on `APP_URL` and `ALLOWED_ORIGINS`.
 3. **Database & Cache Isolation**:
@@ -76,48 +79,81 @@ The multi-user system is implemented via NextAuth with JWT sessions and Prisma A
   - `GET /api/account/passkeys`: Returns enrolled WebAuthn authenticators with counter and device metadata.
   - `DELETE /api/account/passkeys`: Removes selected authenticators while enforcing lockout protection.
   - `POST /api/account/unlink`: Unlinks third-party OAuth providers with lockout protection.
-  - `DELETE /api/account`: Executes cascading deletion of user account, sessions, authenticators, linked accounts, and family profile records pursuant to GDPR requirements.
+  - `DELETE /api/account`: Executes multi-user aware deletion. If other adult members remain in the shared family profile, the user's membership is removed without deleting the family profile. If the departing user is the final remaining member, a complete cascading purge is performed pursuant to GDPR requirements.
 - **Lockout Prevention Rules**:
   - A user cannot delete their last WebAuthn passkey if no password and no third-party OAuth accounts are connected.
   - A user cannot unlink an OAuth account if doing so would leave them without any valid login mechanism (neither password nor passkey).
 
 ---
 
-## Data Models (`prisma/schema.prisma`)
+## Flat Shared Family Data Model (`prisma/schema.prisma`)
+
+FamVacay employs a flat, shared family profile data model where all adult family members hold equal administrative rights:
 
 ```prisma
 model User {
-  id            String          @id @default(uuid())
+  id            String             @id @default(uuid())
   name          String?
-  email         String?         @unique
+  email         String?            @unique
   emailVerified DateTime?
   passwordHash  String?
   image         String?
   accounts      Account[]
   sessions      Session[]
   passkeys      Authenticator[]
-  familyProfile FamilyProfile?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  memberships   FamilyMembership[]
+  sentInvites   FamilyInvite[]     @relation("SentInvites")
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 }
 
 model FamilyProfile {
-  id                    String         @id @default(uuid())
-  userId                String         @unique
-  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                    String             @id @default(uuid())
   familyName            String?
-  homeLocation          String         // Postal code / City / Address
-  federalState          String         // e.g. "DE-BW"
-  originAirports        String[]       // e.g. ["STR", "FKB", "FRA", "CDG"]
-  maxDrivingHours       Float?         @default(2.5)
-  preferredCabinClass   String?        @default("ECONOMY")
-  climatePreference     String?        @default("MODERATE")
-  passportCheckRequired Boolean        @default(false)
-  travelModes           String[]       @default(["FLIGHT", "CAR"]) // e.g. ["CAR", "TRAIN", "FLIGHT", "CAMPER"]
-  membersCount          Int            @default(1)
+  homeLocation          String             // Postal code / City / Address
+  homeLat               Float?
+  homeLon               Float?
+  federalState          String             // e.g. "DE-BW"
+  originAirports        String[]           // e.g. ["STR", "FKB", "FRA", "CDG"]
+  maxDrivingHours       Float?             @default(2.5)
+  preferredCabinClass   String?            @default("ECONOMY")
+  climatePreference     String?            @default("MODERATE")
+  passportCheckRequired Boolean            @default(false)
+  travelModes           String[]           @default(["FLIGHT", "CAR"])
+  membersCount          Int                @default(1)
+  memberships           FamilyMembership[]
+  invites               FamilyInvite[]
   members               FamilyMember[]
-  blackoutRanges        BlackoutDate[]
-  trips                 TripPlan[]
+  blackoutPeriods       BlackoutPeriod[]
+  airports              FamilyAirport[]
+  searches              TripSearch[]
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+}
+
+model FamilyMembership {
+  id              String        @id @default(uuid())
+  userId          String
+  familyProfileId String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
+  role            String        @default("MEMBER") // Equal rights for all adult members
+  createdAt       DateTime      @default(now())
+
+  @@unique([userId, familyProfileId])
+}
+
+model FamilyInvite {
+  id              String        @id @default(uuid())
+  familyProfileId String
+  familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
+  email           String
+  token           String        @unique
+  senderId        String
+  sender          User          @relation("SentInvites", fields: [senderId], references: [id], onDelete: Cascade)
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  createdAt       DateTime      @default(now())
 }
 
 model FamilyMember {
@@ -126,10 +162,19 @@ model FamilyMember {
   familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
   firstName       String?
   role            String        // "PARENT", "CHILD", "INFANT", "OTHER"
-  birthDate       DateTime
+  birthDate       DateTime      @db.Date
   schoolRequired  Boolean       @default(false)
-  passportExpiry  DateTime?
   specialDiet     String?
+}
+
+model BlackoutPeriod {
+  id              String        @id @default(uuid())
+  familyProfileId String
+  familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
+  startDate       DateTime      @db.Date
+  endDate         DateTime      @db.Date
+  reason          String?
+  recurrence      String?       // "NONE", "YEARLY"
 }
 ```
 
@@ -279,10 +324,10 @@ The weather model (`src/lib/optimizer/weather.ts`) provides multi-metric climate
 
 The pricing engine implements a decoupled provider pattern (`src/lib/pricing/`):
 
-1. **Provider Architecture (`TravelPricingProvider`)**:
-   - `TravelPricingProvider`: Defines standard contract for flight quotes, lodging estimates, total cost aggregation, and deep link generation.
-   - `PortalAggregatorProvider`: Evaluates seasonal market fare models, passenger age tier multipliers, cabin class factors, and arbitrage differentials.
-   - `AmadeusPricingProvider`: Extensible live GDS provider querying live airline fares when credentials (`AMADEUS_CLIENT_ID`, `AMADEUS_CLIENT_SECRET`) are present, with automatic fallback to `PortalAggregatorProvider`.
+1. **Provider Architecture (`FlightPriceProvider`)**:
+   - `FlightPriceProvider`: Defines standard contract for flight quotes, lodging estimates, total cost aggregation, and deep link generation.
+   - Decommissioned Amadeus Deprecation (ADR 0002): Legacy Amadeus flight search APIs decommissioned on 17 July 2026 have been eliminated.
+   - `BenchmarkFlightProvider`: Dynamic pricing model computing seasonal market fares, passenger age tier multipliers, cabin class factors, and arbitrage differentials with 12-hour Redis caching.
 2. **Actionable UI Integration (`BookingDealsPopover`)**:
    - Result cards include an interactive portal deals popover providing itemized cost breakdowns and one-click direct booking navigation across active providers.
 
@@ -354,11 +399,13 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
 | `GET` | `/api/account/passkeys` | List enrolled WebAuthn authenticators |
 | `DELETE` | `/api/account/passkeys` | Delete WebAuthn passkey with lockout protection |
 | `POST` | `/api/account/unlink` | Unlink OAuth provider with lockout protection |
-| `DELETE` | `/api/account` | Cascade delete user account and associated profile (GDPR) |
-| `GET` | `/api/family-profile` | Retrieve family profile and member roster |
-| `POST` | `/api/family-profile` | Create or update family profile |
+| `GET` | `/api/account` | Export GDPR data portability payload for authenticated user |
+| `DELETE` | `/api/account` | Multi-user aware account and membership deletion (GDPR) |
+| `GET` | `/api/family-profile` | Retrieve shared family profile and member roster |
+| `POST` | `/api/family-profile` | Create or update shared family profile |
 | `GET` | `/api/locations/geocode` | Autocomplete and geocode departure location |
 | `GET` | `/api/destinations/search` | Dynamic global destination and place search with entity taxonomy |
 | `GET` | `/api/airports/search` | Search airports by query, proximity coordinates, or flight corridor destinations |
 | `POST` | `/api/vacations/optimize` | Execute CSP vacation optimization engine |
-| `GET` | `/api/health` | Application, database, and Redis health check |
+| `GET` | `/api/health` | Liveness probe: returns HTTP 200 without downstream dependency checks |
+| `GET` | `/api/ready` | Readiness probe: validates PostgreSQL and Redis cache connectivity |

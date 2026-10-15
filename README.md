@@ -60,9 +60,10 @@ FamVacay supports multiple languages with automatic browser language detection a
 
 Detailed technical guides, deployment blueprints, and dependency strategies are organized in the [`docs/`](docs/) directory:
 
-- [**Local Development & Setup Guide**](docs/development.md): Prerequisites, environment configuration, database migrations, and local execution.
+- [**Setup & Reverse Proxy Guide**](docs/setup.md): Prerequisites, local development, environment variables, and production reverse-proxy configurations (Traefik, Nginx, NPM, Caddy).
 - [**System Architecture & Technical Specifications**](docs/architecture.md): Topology diagrams, reverse proxy hardening, data models, authentication flows, and API reference.
 - [**Dependency Management & Repository Hygiene**](docs/dependencies.md): Renovate Bot update grouping, CI schema validation, and line-ending normalization rules.
+- [**Architecture Decision Records (ADRs)**](docs/adr/): Recorded technical decisions regarding auth, flight pricing, geocoding, and cache engine.
 
 ---
 

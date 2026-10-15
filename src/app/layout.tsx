@@ -40,7 +40,18 @@ export default function RootLayout({
               {children}
             </main>
             <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
-              FamVacay — Family Vacation & Holiday Arbitrage
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+                <span>FamVacay — Family Vacation &amp; Holiday Arbitrage Engine</span>
+                <span className="hidden sm:inline">•</span>
+                <a
+                  href="https://github.com/example/famvac"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-slate-800 transition-colors"
+                >
+                  Source code (AGPL-3.0)
+                </a>
+              </div>
             </footer>
           </I18nProvider>
         </AuthProvider>

@@ -5,6 +5,9 @@ metadata:
   namespace: default
   labels:
     app.kubernetes.io/name: famvacay-postgres
+  # NOTE: This StatefulSet is provided for standalone self-hosting on single-node clusters.
+  # For high-availability production Kubernetes clusters, a managed database (e.g. AWS RDS, GCP Cloud SQL)
+  # or a dedicated PostgreSQL operator (such as CloudNative-PG or Zalando Postgres Operator) is strongly preferred.
 spec:
   serviceName: famvacay-postgres
   replicas: 1

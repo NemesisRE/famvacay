@@ -1,44 +1,88 @@
+# ==============================================================================
 # Hardened Docker Compose Configuration for FamVacay
-# Strict network isolation: backend-internal has internal: true (no outbound internet or host exposure)
-# Only web joins proxy-network to be exposed via host reverse proxy (Traefik, Nginx, NPM, Caddy)
+# Architecture:
+# - backend-internal: bridge, internal: true (zero host exposure or unauthorized outbound)
+# - proxy-network: external reverse proxy network (only web joins)
+# - One-shot migration service running from migrator target
+# ==============================================================================
 
 services:
+  # One-shot database migration service
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+    image: famvacay:migrator
+    container_name: famvacay-migrate
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-famvacay}:${POSTGRES_PASSWORD:-supersecret123}@postgres:5432/${POSTGRES_DB:-famvacay_db}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend-internal
+    restart: "no"
+
+  # Application runtime service
   web:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runner
     image: famvacay:latest
     container_name: famvacay-web
     restart: unless-stopped
     expose:
       - "3000"
-    # Optional direct host port mapping if reverse proxy runs outside docker networks:
+    # Optional direct host port mapping if reverse proxy runs on host:
     # ports:
     #   - "${WEB_PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
       - APP_URL=${APP_URL:-http://localhost:3000}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-localhost:3000}
+      - TRUST_PROXY=${TRUST_PROXY:-true}
+      - TRUSTED_PROXY_HOPS=${TRUSTED_PROXY_HOPS:-1}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-famvacay}:${POSTGRES_PASSWORD:-supersecret123}@postgres:5432/${POSTGRES_DB:-famvacay_db}?schema=public
-      - REDIS_URL=redis://redis:6379
-      - AMADEUS_CLIENT_ID=${AMADEUS_CLIENT_ID:-}
-      - AMADEUS_CLIENT_SECRET=${AMADEUS_CLIENT_SECRET:-}
+      - REDIS_URL=redis://cache:6379
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-changeme-production-secret-min32chars}
+      - NEXTAUTH_URL=${APP_URL:-http://localhost:3000}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
+      - PHOTON_API_URL=${PHOTON_API_URL:-https://photon.komoot.io/api}
+      - OPEN_HOLIDAYS_API_URL=${OPEN_HOLIDAYS_API_URL:-https://openholidaysapi.org}
+      - NAGER_DATE_API_URL=${NAGER_DATE_API_URL:-https://date.nager.at/api/v3}
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
+      migrate:
+        condition: service_completed_successfully
+      cache:
         condition: service_healthy
     networks:
       - backend-internal
       - proxy-network
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1024M
+        reservations:
+          cpus: "0.2"
+          memory: 256M
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1));"]
       interval: 15s
       timeout: 5s
       retries: 3
       start_period: 15s
 
+  # Database store (PostgreSQL 16 Alpine)
   postgres:
     image: postgres:16-alpine
     container_name: famvacay-postgres
@@ -53,6 +97,16 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - backend-internal
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-famvacay} -d ${POSTGRES_DB:-famvacay_db}"]
       interval: 10s
@@ -60,17 +114,28 @@ services:
       retries: 5
       start_period: 10s
 
-  redis:
+  # Cache & Rate Limiting store (Redis / Valkey protocol compatible)
+  cache:
     image: redis:7-alpine
-    container_name: famvacay-redis
+    container_name: famvacay-cache
     restart: unless-stopped
     command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
     expose:
       - "6379" # STRICT: No host port binding
     volumes:
-      - redis_data:/data
+      - cache_data:/data
     networks:
       - backend-internal
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -81,17 +146,16 @@ services:
 volumes:
   postgres_data:
     driver: local
-  redis_data:
+  cache_data:
     driver: local
 
 networks:
-  # Internal bridge network strictly isolated from host and external networks
+  # Internal isolated bridge network for web <-> migrate <-> db <-> cache
   backend-internal:
     driver: bridge
     internal: true
 
-  # External network for your existing reverse proxy (Traefik, Nginx, Caddy, etc.)
-  # Run `docker network create proxy-network` if it does not yet exist.
+  # External network joined only by web to connect to reverse proxy
   proxy-network:
     external: true
-
+    name: ${PROXY_NETWORK_NAME:-proxy-network}

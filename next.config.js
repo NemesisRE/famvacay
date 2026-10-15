@@ -9,7 +9,6 @@ function getAllowedOrigins() {
         origins.push(parsed.host);
       }
     } catch {
-      // If it's a domain name without protocol
       const cleaned = appUrl.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
       if (cleaned && !origins.includes(cleaned)) {
         origins.push(cleaned);
@@ -17,7 +16,6 @@ function getAllowedOrigins() {
     }
   }
 
-  // Additional origins from comma-separated env if provided
   const extraOrigins = process.env.ALLOWED_ORIGINS;
   if (extraOrigins) {
     extraOrigins.split(',').forEach((o) => {
@@ -40,7 +38,43 @@ const nextConfig = {
       allowedOrigins: getAllowedOrigins(),
     },
   },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(self)',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: https: blob:",
+              "font-src 'self' data:",
+              "connect-src 'self' https:",
+              "frame-ancestors 'none'",
+            ].join('; '),
+          },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
-

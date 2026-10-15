@@ -3,17 +3,13 @@ kind: Ingress
 metadata:
   name: famvacay-ingress
   namespace: default
-  annotations:
-    kubernetes.io/ingress.class: "traefik" # or "nginx"
-    # Nginx Ingress annotations for proxy header forwarding and protocol preservation
-    nginx.ingress.kubernetes.io/proxy-body-size: "16m"
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      proxy_set_header X-Forwarded-Proto $scheme;
-      proxy_set_header X-Forwarded-Host $host;
-      proxy_set_header X-Forwarded-For $remote_addr;
-    # Traefik Ingress annotations
-    traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
-    traefik.ingress.kubernetes.io/router.tls: "true"
+  labels:
+    app.kubernetes.io/name: famvacay-web
+  # Optional: For Traefik Ingress Controller, uncomment the annotations below.
+  # Do not target ingress-nginx: it was retired in March 2026.
+  # annotations:
+  #   traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
+  #   traefik.ingress.kubernetes.io/router.tls: "true"
 spec:
   rules:
     - host: vacations.example.com
@@ -26,4 +22,3 @@ spec:
                 name: famvacay-service
                 port:
                   number: 80
-

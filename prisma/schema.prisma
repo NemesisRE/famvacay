@@ -13,18 +13,19 @@ generator client {
 // -------------------------------------------------------------
 
 model User {
-  id            String          @id @default(uuid())
+  id            String             @id @default(uuid())
   name          String?
-  email         String?         @unique
+  email         String?            @unique
   emailVerified DateTime?
-  passwordHash  String?         // For Email/Password credential login
+  passwordHash  String?
   image         String?
   accounts      Account[]
   sessions      Session[]
   passkeys      Authenticator[]
-  familyProfile FamilyProfile?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  familyProfile FamilyProfile?     // Optional primary link for backwards-compatibility
+  memberships   FamilyMembership[] // Flat shared family memberships
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 }
 
 model Account {
@@ -44,6 +45,7 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -52,6 +54,8 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model VerificationToken {
@@ -62,7 +66,6 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// WebAuthn / Passkey Authenticator credential
 model Authenticator {
   credentialID         String  @id
   userId               String
@@ -75,46 +78,177 @@ model Authenticator {
   user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, credentialID])
+  @@index([userId])
 }
 
 // -------------------------------------------------------------
-// Multi-User Family Profile Models
+// Flat Shared Family Profile & Travel Preferences
 // -------------------------------------------------------------
 
 model FamilyProfile {
-  id                    String         @id @default(uuid())
-  userId                String         @unique
-  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                    String             @id @default(uuid())
+  userId                String?            @unique // Optional primary link for backwards-compatibility
+  user                  User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
   familyName            String?
-  homeLocation          String         // Postal code / City / Address
-  federalState          String         // e.g., "DE-BW", "DE-BY", "DE-HE"
-  originAirports        String[]       // e.g., ["STR", "FKB", "FRA", "BSL"]
-  maxDrivingHours       Float?         @default(2.5) // Max acceptable drive to departure airport
-  preferredCabinClass   String?        @default("ECONOMY") // ECONOMY, PREMIUM_ECONOMY, BUSINESS
-  climatePreference     String?        @default("MODERATE") // WARM, MODERATE, COOL
-  passportCheckRequired Boolean        @default(false)
-  travelModes           String[]       @default(["FLIGHT", "CAR"]) // e.g. ["CAR", "TRAIN", "FLIGHT", "CAMPER"]
-  membersCount          Int            @default(1)
+  homeLocation          String             // Human-readable place name ("City, Region, Country")
+  homeLat               Float?
+  homeLon               Float?
+  homePlaceId           String?
+  federalState          String             // Holiday subdivision code (e.g., "DE-BW", "FR-IDF")
+  holidayCountry        String?            @default("DE")
+  holidaySubdivision    String?
+  workweekDays          Int[]              @default([1, 2, 3, 4, 5]) // Mon(1) - Fri(5)
+  originAirports        String[]           @default([])
+  maxDrivingHours       Float?             @default(2.5)
+  maxTravelHours        Float?
+  directFlightsOnly     Boolean            @default(false)
+  preferredCabinClass   String?            @default("ECONOMY")
+  climatePreference     String?            @default("MODERATE")
+  passportCheckRequired Boolean            @default(false)
+  travelModes           String[]           @default(["FLIGHT", "CAR"])
+  scoringWeights        Json?
+  preferredPortals      String[]           @default([])
+  locale                String             @default("en")
+  currency              String             @default("EUR")
+  membersCount          Int                @default(1)
+  
+  // Relations
+  memberships           FamilyMembership[]
+  invites               FamilyInvite[]
   members               FamilyMember[]
-  blackoutRanges        BlackoutDate[]
-  trips                 TripPlan[]
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
+  blackoutRanges        BlackoutDate[]     // Legacy table relation
+  blackoutPeriods       BlackoutPeriod[]   // Master prompt specification
+  preferredAirports     FamilyAirport[]
+  tripSearches          TripSearch[]
+  trips                 TripPlan[]         // Legacy table relation
+
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+}
+
+model FamilyMembership {
+  id              String        @id @default(uuid())
+  userId          String
+  familyProfileId String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+
+  @@unique([userId, familyProfileId])
+  @@index([userId])
+  @@index([familyProfileId])
+}
+
+model FamilyInvite {
+  id              String        @id @default(uuid())
+  familyProfileId String
+  tokenHash       String        @unique
+  expiresAt       DateTime
+  used            Boolean       @default(false)
+  familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+
+  @@index([familyProfileId])
 }
 
 model FamilyMember {
   id              String        @id @default(uuid())
   familyProfileId String
   familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
-  firstName       String?
-  role            String        // "PARENT", "CHILD", "INFANT", "OTHER"
-  birthDate       DateTime
+  displayName     String?
+  firstName       String?       // Legacy alias
+  role            String        @default("MEMBER")
+  birthDate       DateTime      @db.Date
   schoolRequired  Boolean       @default(false)
-  passportExpiry  DateTime?
+  passportExpiry  DateTime?     @db.Date
   specialDiet     String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+
+  @@index([familyProfileId])
 }
+
+model Place {
+  id              String       @id @default(uuid())
+  provider        String       // e.g. "photon", "nominatim"
+  providerId      String?
+  displayName     String
+  category        String       // "CITY", "ISLAND", "REGION", "COUNTRY", "OTHER"
+  lat             Float
+  lon             Float
+  countryCode     String?
+  subdivisionCode String?
+  tripSearches    TripSearch[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([countryCode])
+  @@index([category])
+}
+
+model Airport {
+  iata                   String          @id // 3-letter IATA code, e.g. "FRA", "CDG"
+  icao                   String?
+  name                   String
+  municipality           String?
+  country                String
+  subdivision            String?
+  lat                    Float
+  lon                    Float
+  type                   String          // "large_airport", "medium_airport"
+  scheduledService       Boolean         @default(true)
+  highSpeedRailConnected Boolean?
+  sourceUpdatedAt        DateTime        @default(now())
+  familyAirports         FamilyAirport[]
+
+  @@index([country])
+}
+
+model FamilyAirport {
+  id              String        @id @default(uuid())
+  familyProfileId String
+  airportIata     String
+  familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
+  airport         Airport       @relation(fields: [airportIata], references: [iata], onDelete: Cascade)
+
+  @@unique([familyProfileId, airportIata])
+  @@index([familyProfileId])
+  @@index([airportIata])
+}
+
+model BlackoutPeriod {
+  id              String        @id @default(uuid())
+  startDate       DateTime      @db.Date
+  endDate         DateTime      @db.Date
+  recurrence      String        @default("NONE") // "NONE" | "YEARLY"
+  reason          String?
+  familyProfileId String
+  familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
+
+  @@index([familyProfileId])
+}
+
+model TripSearch {
+  id               String        @id @default(uuid())
+  familyProfileId  String
+  durationMin      Int
+  durationMax      Int
+  earliestDate     DateTime      @db.Date
+  latestDate       DateTime      @db.Date
+  maxBudget        Decimal?      @db.Decimal(10, 2)
+  currency         String        @default("EUR")
+  selectedAirports String[]
+  destinations     Place[]
+  familyProfile    FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([familyProfileId])
+}
+
+// -------------------------------------------------------------
+// Legacy Models Preserved for Database Migration Compatibility
+// -------------------------------------------------------------
 
 model BlackoutDate {
   id              String        @id @default(uuid())
@@ -127,9 +261,9 @@ model BlackoutDate {
 
 model TripPlan {
   id              String        @id @default(uuid())
-  destinationType String        // "BEACH", "CITY", "NATURE", "SKI"
-  targetRegion    String?       // Specific airport/country or null for auto-discovery
-  durationDays    Int           // e.g. 10
+  destinationType String
+  targetRegion    String?
+  durationDays    Int
   earliestDate    DateTime
   latestDate      DateTime
   maxBudgetTotal  Float?

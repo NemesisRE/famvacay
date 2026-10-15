@@ -7,13 +7,15 @@ describe('Proxy Header Resolution & Network Hardening', () => {
   beforeEach(() => {
     process.env = { ...originalEnv };
     delete process.env.APP_URL;
+    process.env.TRUST_PROXY = 'true';
+    process.env.TRUSTED_PROXY_HOPS = '1';
   });
 
   afterEach(() => {
     process.env = originalEnv;
   });
 
-  it('correctly resolves X-Forwarded-* headers with comma-separated proxies', () => {
+  it('correctly resolves X-Forwarded-* headers when TRUST_PROXY=true', () => {
     const mockRequest = new Request('http://localhost:3000/api/vacation', {
       headers: {
         'x-forwarded-for': '203.0.113.195, 192.168.1.1',
@@ -23,22 +25,57 @@ describe('Proxy Header Resolution & Network Hardening', () => {
     });
 
     const resolved = resolveProxyHeaders(mockRequest);
-    expect(resolved.clientIp).toBe('203.0.113.195');
+    expect(resolved.clientIp).toBe('192.168.1.1'); // With TRUSTED_PROXY_HOPS=1, rightmost untrusted entry
     expect(resolved.protocol).toBe('https');
     expect(resolved.host).toBe('vacations.myfamily.org');
     expect(resolved.baseUrl).toBe('https://vacations.myfamily.org');
     expect(resolved.isSecure).toBe(true);
+    expect(resolved.isProxyTrusted).toBe(true);
   });
 
-  it('falls back to x-real-ip when x-forwarded-for is missing', () => {
+  it('correctly extracts client IP with TRUSTED_PROXY_HOPS=2', () => {
+    process.env.TRUSTED_PROXY_HOPS = '2';
     const mockRequest = new Request('http://localhost:3000/api/vacation', {
       headers: {
-        'x-real-ip': '198.51.100.22',
+        'x-forwarded-for': '203.0.113.195, 198.51.100.5, 10.0.0.1',
+      },
+    });
+
+    // Length = 3, Hops = 2 -> Index = max(0, 3 - 2) = 1 -> '198.51.100.5'
+    const resolved = resolveProxyHeaders(mockRequest);
+    expect(resolved.clientIp).toBe('198.51.100.5');
+  });
+
+  it('correctly parses RFC 7239 Forwarded header', () => {
+    const mockRequest = new Request('http://localhost:3000/api/vacation', {
+      headers: {
+        forwarded: 'for="[2001:db8:cafe::17]:4711";proto=https;host=vacay.example.org, for=198.51.100.4',
       },
     });
 
     const resolved = resolveProxyHeaders(mockRequest);
-    expect(resolved.clientIp).toBe('198.51.100.22');
+    expect(resolved.clientIp).toBe('198.51.100.4');
+    expect(resolved.protocol).toBe('https');
+    expect(resolved.host).toBe('vacay.example.org');
+    expect(resolved.baseUrl).toBe('https://vacay.example.org');
+  });
+
+  it('rejects forwarded headers when TRUST_PROXY is false or unset', () => {
+    process.env.TRUST_PROXY = 'false';
+    const mockRequest = new Request('http://localhost:3000/api/vacation', {
+      headers: {
+        'x-forwarded-for': '203.0.113.195',
+        'x-forwarded-proto': 'https',
+        'x-forwarded-host': 'malicious.attacker.com',
+        host: 'internal-host:3000',
+      },
+    });
+
+    const resolved = resolveProxyHeaders(mockRequest);
+    expect(resolved.isProxyTrusted).toBe(false);
+    expect(resolved.host).toBe('internal-host:3000');
+    expect(resolved.protocol).toBe('http');
+    expect(resolved.clientIp).toBe('127.0.0.1');
   });
 
   it('prevents internal port leaks by honoring configured APP_URL', () => {
@@ -67,24 +104,21 @@ describe('Proxy Header Resolution & Network Hardening', () => {
     expect(resolved.baseUrl).toBe('https://myvacay.internal.local');
   });
 
-  it('falls back gracefully when behind plain direct access without proxy headers or APP_URL', () => {
-    const mockRequest = new Request('http://localhost:3000/test', {
+  it('handles IPv4 with port in Forwarded header', () => {
+    const mockRequest = new Request('http://localhost:3000/api', {
       headers: {
-        host: 'localhost:3000',
+        forwarded: 'for=192.0.2.1:8080;proto=https;host=test.local',
       },
     });
-
     const resolved = resolveProxyHeaders(mockRequest);
-    expect(resolved.protocol).toBe('http');
-    expect(resolved.host).toBe('localhost:3000');
-    expect(resolved.baseUrl).toBe('http://localhost:3000');
-    expect(resolved.clientIp).toBe('127.0.0.1');
+    expect(resolved.clientIp).toBe('192.0.2.1');
+    expect(resolved.protocol).toBe('https');
+    expect(resolved.host).toBe('test.local');
+  });
 
-    const canonical = getCanonicalUrl('/dashboard', mockRequest);
-    expect(canonical).toBe('http://localhost:3000/dashboard');
-
-    const bareCanonical = getCanonicalUrl('/bare-path');
-    expect(bareCanonical).toBe('/bare-path');
+  it('returns bare path when getCanonicalUrl is called without APP_URL or request', () => {
+    delete process.env.APP_URL;
+    expect(getCanonicalUrl('/api/test')).toBe('/api/test');
+    expect(getCanonicalUrl('api/test')).toBe('/api/test');
   });
 });
-
