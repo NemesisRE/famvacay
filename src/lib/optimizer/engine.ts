@@ -322,9 +322,13 @@ export function optimizeVacationWindows(
         }
 
         for (const dest of candidateDestinations) {
-          // Weather assessment
+          // Dynamic weather assessment
           const weather = getEstimatedClimate(dest, monthIndex);
-          const seasonalWarning = getDestinationSeasonalWarning(dest, monthIndex);
+          const travelYear = parseInt(startStr.split('-')[0], 10) || 2026;
+          const seasonalWarning = getDestinationSeasonalWarning(dest, monthIndex, {
+            year: travelYear,
+            weatherAssessment: weather,
+          });
 
           // Modular Pricing Engine with deep-links and realistic quotes
           const pricingDetails = getSynchronousTripPricing({

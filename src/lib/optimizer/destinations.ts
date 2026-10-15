@@ -174,6 +174,37 @@ function resolveRegionalTravelCorridor(query: string, locale: string = 'de'): Lo
   return null;
 }
 
+const ISO_COUNTRY_CODES = [
+  'GR', 'ES', 'IT', 'FR', 'PT', 'TR', 'EG', 'HR', 'CY', 'AT', 'DE', 'CH', 'NL', 'BE', 'GB', 'IE',
+  'TH', 'ID', 'JP', 'VN', 'MY', 'PH', 'SG', 'AE', 'MV', 'LK', 'IN', 'AU', 'NZ', 'US', 'CA', 'MX',
+  'DO', 'CU', 'JM', 'BR', 'AR', 'CL', 'PE', 'CO', 'ZA', 'MA', 'TN', 'KE', 'TZ', 'MU', 'SC', 'NO',
+  'SE', 'DK', 'FI', 'IS', 'PL', 'CZ', 'HU', 'RO', 'BG', 'ME', 'AL', 'RS', 'SI', 'SK', 'EE', 'LV', 'LT'
+];
+
+/**
+ * Resolves any localized country name or English country name to its 2-letter ISO code
+ */
+export function resolveCountryCode(countryNameOrCode: string): string {
+  if (!countryNameOrCode) return 'XX';
+  const clean = countryNameOrCode.trim().toLowerCase();
+  if (clean.length === 2) return clean.toUpperCase();
+
+  for (const cCode of ISO_COUNTRY_CODES) {
+    for (const loc of ['en', 'de', 'fr', 'es', 'it']) {
+      try {
+        const name = new Intl.DisplayNames([loc], { type: 'region' }).of(cCode);
+        if (name && name.toLowerCase() === clean) {
+          return cCode;
+        }
+      } catch {
+        // Continue
+      }
+    }
+  }
+
+  return 'XX';
+}
+
 /**
  * Convert a commercial airport match into a localized destination entity
  */
@@ -184,7 +215,7 @@ function airportToDestinationEntity(
   locale: string = 'en'
 ): LocalizedDestinationEntity {
   const upper = code.toUpperCase();
-  const cCode = country.length === 2 ? country.toUpperCase() : 'XX';
+  const cCode = resolveCountryCode(country);
   return {
     id: city.toLowerCase().replace(/[^a-z0-9]/g, '_') || upper.toLowerCase(),
     category: 'city',
@@ -232,9 +263,8 @@ export function getDestinationEntity(
     }
   }
 
-  // 3. Country match via ECMAScript Intl
-  const commonCountryCodes = ['ES', 'GR', 'EG', 'IT', 'FR', 'PT', 'TR', 'HR', 'CY', 'AT', 'DE', 'TH', 'ID', 'JP', 'US', 'AU'];
-  for (const cCode of commonCountryCodes) {
+  // 3. Country match via ECMAScript Intl across worldwide countries
+  for (const cCode of ISO_COUNTRY_CODES) {
     try {
       const getIntl = (l: string) => new Intl.DisplayNames([l], { type: 'region' });
       const cNames = {

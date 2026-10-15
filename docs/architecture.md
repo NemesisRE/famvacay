@@ -304,18 +304,24 @@ The booking portal architecture (`src/lib/pricing/portals.ts`) provides a modula
 
 ## Climate & Weather Assessment Architecture
 
-The weather model (`src/lib/optimizer/weather.ts`) provides multi-metric climate forecasting and seasonal constraint analysis:
+The weather model (`src/lib/optimizer/weather.ts`) provides continuous physical climate estimation, dynamic per-location event analysis, and seasonal risk evaluation without hardcoded place dictionaries:
 
-1. **Climate Metric Schema (`WeatherAssessment`)**:
+1. **Continuous Solar & Radiative Climatological Model (`getEstimatedClimate`)**:
+   - Calculates solar declination and noon solar elevation angles as continuous functions of day-of-year and latitude.
+   - Computes baseline temperature, annual amplitude, and seasonal cycles from insolation physics without arbitrary geographic bounding boxes.
+   - Applies environmental lapse rate adjustments for high-altitude alpine and mountain ski destinations based on airport elevation data.
+   - Computes sea surface temperature with thermal lag for maritime and island destinations.
+   - Models tropical convective precipitation based on Intertropical Convergence Zone (ITCZ) migration and dry desert high-pressure belts.
+2. **Climate Metric Schema (`WeatherAssessment`)**:
    - `avgTempC`: Expected mean daytime air temperature (Celsius).
    - `maxTempC`: Expected daytime high temperature.
    - `minTempC`: Expected nighttime low temperature.
-   - `waterTempC`: Coastal sea surface temperature for beach destinations (null for inland destinations).
+   - `waterTempC`: Coastal sea surface temperature for maritime destinations (null for inland destinations).
    - `rainyDays`: Estimated monthly precipitation days.
-   - `sunshineHoursPerDay`: Estimated daily sunshine duration.
+   - `sunshineHoursPerDay`: Estimated daily sunshine duration derived from astronomical daylength.
    - `precipitationRiskPercent`: Probability of measurable precipitation.
    - `isSuitable`: Boolean flag evaluating family comfort boundaries.
-2. **Interactive UI Popover (`ClimateDetailsPopover`)**:
+3. **Interactive UI Popover (`ClimateDetailsPopover`)**:
    - Clicking temperature badges opens the portal popover displaying daytime highs/lows, sea water temperature, precipitation frequency, sunshine hours, and suitability rationales.
 
 ---
@@ -370,11 +376,16 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
    $$\text{Lodging Cost} = \text{Nightly Lodging Benchmark} \times (\text{Duration Days} - 1)$$
    $$\text{Price Per Person} = \frac{\text{Total Cost}}{\text{Total Family Members}}$$
 9. **Destination Seasonality Warnings**:
-   Detects seasonal risks (`src/lib/optimizer/weather.ts`) for target destinations and exposes localized warning messages:
-   - `MONSOON`: Tropical downpours and high humidity.
-   - `EXTREME_HEAT`: Daytime temperatures exceeding safe family thresholds.
-   - `TYPHOON_HURRICANE`: Tropical storm activity windows.
-   - `OVERCROWDED_PEAK`: Peak surge crowds and inflated lodging.
+   Detects seasonal risks and overcrowding hyper-peaks (`src/lib/optimizer/weather.ts`) dynamically without static place dictionaries:
+   - `EXTREME_HEAT`: Evaluated directly from meteorological temperatures ($\text{maxTempC} \ge 38^\circ\text{C}$ and $\text{precipitationRiskPercent} \le 25\%$) worldwide.
+   - `MONSOON`: Evaluated from tropical convective precipitation ($|\text{lat}| \le 26^\circ$, $\text{avgTempC} \ge 24^\circ\text{C}$, and $\text{precipRisk} \ge 45\%$ or $\text{rainyDays} \ge 14$).
+   - `TYPHOON_HURRICANE`: Evaluated from warm cyclogenesis sea surface temperatures ($\ge 26^\circ\text{C}$) in active oceanic basins during regional storm windows (North Atlantic/Caribbean, Northwest Pacific, South Pacific).
+   - `OVERCROWDED_PEAK`: Evaluated per destination dynamically via astronomical calendar Computus algorithms and individual cultural festival cycles:
+     - *Carnival / Mardi Gras*: Computed ~7 weeks prior to Gregorian Easter Sunday for carnival destinations (e.g. Rio de Janeiro, Venice, New Orleans, Cologne, Santa Cruz de Tenerife).
+     - *Spring Break & Easter / Holy Week*: Dynamically detected around Easter Sunday for beach resort areas and pilgrimage centers (e.g. Cancun, Miami, Rome, Seville, Jerusalem).
+     - *Cherry Blossom & Golden Week*: Spring bloom and national holiday surge in Japan.
+     - *Songkran Festival*: New Year nationwide water festival in Thailand (mid-April).
+     - *Oktoberfest*: Autumn festival peak in Munich / Bavaria (late September to early October).
 10. **Flight Arbitrage Detection**:
     Evaluates departure airports located in neighboring jurisdictions where schools remain in session, factoring a $30\%$ price advantage.
 11. **Parental Leave Minimization**:

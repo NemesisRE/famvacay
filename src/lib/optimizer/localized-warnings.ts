@@ -23,8 +23,10 @@ export function getLocalizedSeasonalWarning(
       };
     case 'OVERCROWDED_PEAK':
       return {
-        title: t.home.seasonWarningCrowdedPeakTitle,
-        description: t.home.seasonWarningCrowdedPeakDesc,
+        title: warning.eventName
+          ? `${t.home.seasonWarningCrowdedPeakTitle}: ${warning.eventName}`
+          : t.home.seasonWarningCrowdedPeakTitle,
+        description: warning.fallbackMessage || t.home.seasonWarningCrowdedPeakDesc,
       };
     default:
       return {

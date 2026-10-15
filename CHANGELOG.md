@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Comprehensive Codebase Audit Summary documenting architecture, gaps, and roadmap.
+- Dynamic astronomical Computus (`getEasterDate`) calculation determining Gregorian Easter Sunday, Ash Wednesday, Carnival / Mardi Gras, and Spring Break / Holy Week dates dynamically for any calendar year.
+- Dynamic per-destination event and overcrowding analyzer (`OVERCROWDED_PEAK`) evaluating Carnival, Spring Break, Cherry Blossom & Golden Week, Songkran Festival, and Oktoberfest with localized event badges and advisories.
+- Continuous insolation and atmospheric physics climate engine (`getEstimatedClimate`) incorporating solar declination, noon solar elevation, mountain environmental lapse rate based on airport elevation, and maritime thermal lag.
 - RFC 7239 `Forwarded` header parsing and hardened proxy resolution with `TRUST_PROXY` and `TRUSTED_PROXY_HOPS` support.
 - Dedicated readiness probe endpoint `GET /api/ready` with sanitized status responses.
 - Flat shared family data model with `FamilyMembership` and `FamilyInvite` support.
@@ -23,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - `GET /api/health` converted to a pure liveness check with zero database or cache dependencies.
+- Completely purged hardcoded destination arrays, static bounding boxes, and preset city strings from `src/lib/optimizer/weather.ts`.
+- Upgraded `getDestinationSeasonalWarning` to evaluate physical meteorological metrics (`EXTREME_HEAT`, `MONSOON`, `TYPHOON_HURRICANE`) dynamically for any location worldwide without hardcoded place dictionaries.
+- Enhanced `DynamicAirport` with physical elevation (`altitude`) data and dynamic ISO country code resolution (`resolveCountryCode`) for seamless regional containment detection.
 - Replaced static `POPULAR_DESTINATIONS`, `DESTINATION_SEASONAL_CONSTRAINTS`, and `FALLBACK_SCHOOL_HOLIDAYS` with dynamic data providers and honest coverage alerts.
 - Upgraded container base images to Node 22 Active LTS.
 - Removed deprecated `nginx.ingress.kubernetes.io` annotations from Kubernetes ingress configurations.

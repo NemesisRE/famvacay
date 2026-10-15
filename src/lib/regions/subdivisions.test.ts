@@ -73,12 +73,34 @@ describe('Regions, Subdivisions & Airport Proximity', () => {
     expect(dxbWarning).not.toBeNull();
     expect(dxbWarning?.seasonType).toBe('EXTREME_HEAT');
 
-    // Tokyo in April (monthIndex 3) has Overcrowded Peak warning
+    // Tokyo in April (monthIndex 3) has Overcrowded Peak warning (Cherry blossom / Golden Week)
     const hndWarning = getDestinationSeasonalWarning('HND', 3);
     expect(hndWarning).not.toBeNull();
     expect(hndWarning?.seasonType).toBe('OVERCROWDED_PEAK');
 
-    // Unknown or standard beach destinations like PMI return null
+    // Rio de Janeiro during Carnival (February, monthIndex 1) has Overcrowded Peak warning
+    const rioWarning = getDestinationSeasonalWarning('GIG', 1);
+    expect(rioWarning).not.toBeNull();
+    expect(rioWarning?.seasonType).toBe('OVERCROWDED_PEAK');
+    expect(rioWarning?.eventName).toContain('Carnival');
+
+    // Venice during Carnevale (February, monthIndex 1) has Overcrowded Peak warning
+    const vceWarning = getDestinationSeasonalWarning('VCE', 1);
+    expect(vceWarning).not.toBeNull();
+    expect(vceWarning?.seasonType).toBe('OVERCROWDED_PEAK');
+
+    // Munich during Oktoberfest (September, monthIndex 8) has Overcrowded Peak warning
+    const mucWarning = getDestinationSeasonalWarning('MUC', 8);
+    expect(mucWarning).not.toBeNull();
+    expect(mucWarning?.seasonType).toBe('OVERCROWDED_PEAK');
+    expect(mucWarning?.eventName).toContain('Oktoberfest');
+
+    // Bangkok during Songkran Festival (April, monthIndex 3) has Overcrowded Peak warning
+    const songkranWarning = getDestinationSeasonalWarning('BKK', 3);
+    expect(songkranWarning).not.toBeNull();
+    expect(songkranWarning?.seasonType).toBe('OVERCROWDED_PEAK');
+
+    // Standard Mediterranean beach destination in July like PMI returns null (normal family travel)
     expect(getDestinationSeasonalWarning('PMI', 6)).toBeNull();
   });
 });

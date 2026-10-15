@@ -14,6 +14,7 @@ export interface DynamicAirport {
   country: string;
   lat: number;
   lon: number;
+  altitude?: number;  // Elevation in feet above sea level
   state?: string;     // Administrative subdivision (e.g. DE-BW, FR-IDF, AT-9)
   distanceKm?: number;
   isHighSpeedRailConnected?: boolean;
@@ -423,6 +424,7 @@ const indexedAirports: DynamicAirport[] = rawAirports
       country: a.country || '',
       lat: Number(a.latitude),
       lon: Number(a.longitude),
+      altitude: Number(a.altitude) || 0,
       state: meta?.state || AIRPORT_STATE_MAPPING[code] || (a.country === 'Germany' ? 'DE-BW' : undefined),
       isMajorHub: meta?.isMajorHub ?? KNOWN_MAJOR_HUBS.has(code),
     };
