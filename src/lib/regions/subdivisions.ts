@@ -109,12 +109,11 @@ export const COUNTRIES: Record<string, CountryInfo> = {
 };
 
 export function getCountryCodeFromSubdivision(subdivisionCode: string): string {
-  if (subdivisionCode.startsWith('DE-')) return 'DE';
-  if (subdivisionCode.startsWith('AT-')) return 'AT';
-  if (subdivisionCode.startsWith('CH-')) return 'CH';
-  if (subdivisionCode.startsWith('FR-')) return 'FR';
-  if (subdivisionCode.startsWith('ES-')) return 'ES';
-  if (subdivisionCode.startsWith('IT-')) return 'IT';
-  return 'DE';
+  if (!subdivisionCode) return 'DE';
+  const prefix = subdivisionCode.split('-')[0]?.trim().toUpperCase();
+  if (prefix && prefix.length === 2) {
+    return prefix;
+  }
+  return subdivisionCode.slice(0, 2).toUpperCase() || 'DE';
 }
 

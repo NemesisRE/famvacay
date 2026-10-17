@@ -177,13 +177,13 @@ export function getEstimatedClimate(
     tempBase -= 14;
   }
 
-  // Arid subtropical desert amplification in summer (subtropical high pressure belt)
-  const isAridDesert =
-    ((lat >= 18 && lat <= 34 && lon >= 30 && lon <= 65) || // Middle East / Arabian Peninsula / Sahara
-      (lat >= 25 && lat <= 38 && lon >= -120 && lon <= -100)) && // Southwest North America / Sonoran
-    solarElevation > 75;
+  // Subtropical dry belt solar heating in high-summer (descending Hadley cell dry belt)
+  const isSubtropicalDryBelt =
+    Math.abs(lat) >= 15 &&
+    Math.abs(lat) <= 36 &&
+    solarElevation > 70;
 
-  if (isAridDesert) {
+  if (isSubtropicalDryBelt) {
     tempBase += 7;
   }
 
@@ -207,8 +207,8 @@ export function getEstimatedClimate(
     precipRisk = 65; // Monsoon rainy season
   } else if (isTropical && itczDist > 25) {
     precipRisk = 12; // Tropical dry season
-  } else if (isAridDesert) {
-    precipRisk = 5;  // Arid desert climate
+  } else if (isSubtropicalDryBelt) {
+    precipRisk = 8;  // Subtropical arid dry zone
   } else if (type === 'SKI' || (altitude >= 1500 && Math.abs(lat) >= 42)) {
     precipRisk = 35; // Alpine snow/precipitation
   } else if (Math.abs(lat) >= 35 && Math.abs(lat) <= 45 && solarElevation > 65) {
@@ -218,8 +218,8 @@ export function getEstimatedClimate(
   }
 
   const rainyDays = Math.max(1, Math.round((precipRisk / 100) * 22));
-  const maxTempC = Math.round(tempBase + (isAridDesert ? 5.5 : 3.5));
-  const minTempC = Math.round(tempBase - (isAridDesert ? 6.5 : 4.5));
+  const maxTempC = Math.round(tempBase + (isSubtropicalDryBelt ? 5.5 : 3.5));
+  const minTempC = Math.round(tempBase - (isSubtropicalDryBelt ? 6.5 : 4.5));
 
   // Sunshine hours: astronomical daylength scaled by clear sky factor
   const tanLat = Math.tan((lat * Math.PI) / 180);
@@ -310,10 +310,11 @@ export function getDestinationSeasonalWarning(
 
   // A) Carnival Hyper-Peak: Evaluates locations celebrating Carnival during carnival month
   const celebratesCarnival =
-    country === 'BR' || country === 'IT' || country === 'ES' || country === 'DE' || country === 'FR' || country === 'TT' ||
+    country === 'BR' || country === 'TT' ||
     cityLower.includes('rio') || cityLower.includes('venice') || cityLower.includes('venezia') ||
     cityLower.includes('new orleans') || cityLower.includes('orleans') ||
-    cityLower.includes('cologne') || cityLower.includes('köln') || cityLower.includes('tenerife');
+    cityLower.includes('cologne') || cityLower.includes('köln') || cityLower.includes('tenerife') ||
+    cityLower.includes('cadiz') || cityLower.includes('nice');
 
   if (celebratesCarnival && monthIndex === carnivalMonth) {
     return {
@@ -330,7 +331,8 @@ export function getDestinationSeasonalWarning(
   const isSpringBreakMonth = monthIndex === easter.month || (easter.day <= 7 && monthIndex === easter.month - 1);
   const isSpringBreakResort =
     weather.avgTempC >= 21 &&
-    (nameLower.includes('beach') || nameLower.includes('island') || cityLower.includes('cancun') || cityLower.includes('miami') || cityLower.includes('orlando') || country === 'MX' || country === 'DO');
+    (nameLower.includes('beach') || nameLower.includes('island') || nameLower.includes('costa') || nameLower.includes('playa') ||
+      cityLower.includes('cancun') || cityLower.includes('miami') || cityLower.includes('orlando') || country === 'MX' || country === 'DO');
   const isHolyWeekCenter =
     cityLower.includes('rome') || cityLower.includes('roma') || cityLower.includes('seville') || cityLower.includes('sevilla') || cityLower.includes('jerusalem');
 
@@ -345,8 +347,8 @@ export function getDestinationSeasonalWarning(
     };
   }
 
-  // C) Cultural Spring Bloom & Golden Week Peak (Japan, Korea, temperate spring festivals)
-  const isJapan = country === 'JP' || country === 'JAPAN' || code === 'HND' || code === 'NRT' || code === 'KIX';
+  // C) Cultural Spring Bloom & Golden Week Peak (Japan, temperate spring festivals)
+  const isJapan = country === 'JP' || country === 'JAPAN';
   if (isJapan && (monthIndex === 2 || monthIndex === 3)) {
     return {
       destinationCode,
@@ -359,7 +361,7 @@ export function getDestinationSeasonalWarning(
   }
 
   // D) Songkran Water Festival (Thailand, mid-April / month 3)
-  const isThailand = country === 'TH' || country === 'THAILAND' || code === 'BKK' || code === 'DMK' || code === 'HKT';
+  const isThailand = country === 'TH' || country === 'THAILAND';
   if (isThailand && monthIndex === 3) {
     return {
       destinationCode,

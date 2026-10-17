@@ -26,7 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - `GET /api/health` converted to a pure liveness check with zero database or cache dependencies.
-- Completely purged hardcoded destination arrays, static bounding boxes, and preset city strings from `src/lib/optimizer/weather.ts`.
+- Replaced prompt-example specific branches (`Athen`, `Mars`, `Atlantis`, `Tokyo`, `Dubai`, `Bali`) in `destinations.ts` and `places.ts` with generalized ontological categorization (OSM administrative hierarchy, population/rank thresholds, and universal linguistic descriptors) and resilient multi-destination Levenshtein matching.
+- Generalized `resolveCountryCode` to dynamically resolve all 249 ISO-3166-1 alpha-2 countries via `Intl.DisplayNames` and commercial airport catalogs across EN, DE, FR, ES, and IT without static country subsets.
+- Generalized `getCountryCodeFromSubdivision` to dynamically extract ISO-2 codes from standard ISO 3166-2 subdivision strings worldwide.
+- Eliminated hardcoded regional fallback defaults (`DE-BW`) from `airport-service.ts`.
+- Replaced geographic bounding boxes in `weather.ts` with continuous insolation physics and subtropical Hadley cell subsidence models.
 - Upgraded `getDestinationSeasonalWarning` to evaluate physical meteorological metrics (`EXTREME_HEAT`, `MONSOON`, `TYPHOON_HURRICANE`) dynamically for any location worldwide without hardcoded place dictionaries.
 - Enhanced `DynamicAirport` with physical elevation (`altitude`) data and dynamic ISO country code resolution (`resolveCountryCode`) for seamless regional containment detection.
 - Replaced static `POPULAR_DESTINATIONS`, `DESTINATION_SEASONAL_CONSTRAINTS`, and `FALLBACK_SCHOOL_HOLIDAYS` with dynamic data providers and honest coverage alerts.

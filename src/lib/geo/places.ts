@@ -165,54 +165,51 @@ export async function searchGlobalPlaces(
     const cleanLower = cleanName.toLowerCase();
     const qLower = q.toLowerCase();
 
-    // Reject known fictitious / non-travel prompts
-    if (qLower === 'mars' || cleanLower === 'mars' || qLower.includes('atlantis')) {
-      continue;
-    }
-
     let category: PlaceCategory = 'city';
     const placeType = (item.type || '').toLowerCase();
     const placeClass = (item.class || '').toLowerCase();
+    const adminLevel = item.admin_level ? String(item.admin_level) : '';
+
+    const isIsland =
+      placeType === 'island' ||
+      placeClass === 'island' ||
+      Boolean(item.address?.island) ||
+      /\b(island|islands|isle|isles|insel|inseln|île|îles|isla|islas|isola|isole|atoll|archipelago)\b/i.test(cleanName) ||
+      /^(ko|koh|pulau)\s+/i.test(cleanName) ||
+      /\b(island|islands|isle|isles|insel|inseln|île|îles|isla|islas|isola|isole|atoll|archipelago)\b/i.test(q);
+
+    const isCountry =
+      placeType === 'country' ||
+      (placeClass === 'boundary' && adminLevel === '2') ||
+      (Boolean(item.address?.country) &&
+        !item.address?.state &&
+        !item.address?.city &&
+        cleanName.toLowerCase() === (item.address?.country || '').toLowerCase());
+
+    const isMajorRegion =
+      placeType === 'state' ||
+      placeType === 'province' ||
+      placeType === 'region' ||
+      (placeClass === 'boundary' && (adminLevel === '3' || adminLevel === '4' || adminLevel === '5'));
 
     const isCity =
       placeType === 'city' ||
       placeType === 'town' ||
-      placeType === 'village' ||
       placeType === 'municipality' ||
       Boolean(item.address?.city) ||
       Boolean(item.address?.town) ||
-      qLower === 'dubai' ||
-      qLower === 'tokyo' ||
-      cleanLower.includes('dubai') ||
-      cleanLower.includes('tokyo');
+      (placeClass === 'boundary' && (adminLevel === '6' || adminLevel === '7'));
 
-    if (
-      placeType === 'island' ||
-      placeClass === 'island' ||
-      item.address?.island ||
-      cleanLower.includes('island') ||
-      cleanLower.includes('insel') ||
-      cleanLower.includes('bali') ||
-      cleanLower.includes('phuket') ||
-      cleanLower.includes('samui') ||
-      qLower.includes('bali')
-    ) {
+    if (isIsland) {
       category = 'island';
-    } else if (
-      placeType === 'country' ||
-      (placeClass === 'boundary' && item.admin_level === '2') ||
-      (item.address?.country && !item.address?.state && !item.address?.city && cleanName === item.address?.country)
-    ) {
+    } else if (isCountry) {
       category = 'country';
     } else if (isCity) {
       category = 'city';
-    } else if (
-      placeType === 'administrative' ||
-      placeType === 'state' ||
-      placeType === 'province' ||
-      placeType === 'region'
-    ) {
+    } else if (isMajorRegion) {
       category = 'region';
+    } else {
+      category = 'city';
     }
 
     const id = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '_');

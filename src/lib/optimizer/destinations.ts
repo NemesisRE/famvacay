@@ -83,126 +83,688 @@ export function levenshteinDistance(a: string, b: string): number {
 }
 
 /**
- * Resolves regional travel corridors that encompass multi-airport coasts or island archipelagos.
+ * Structured Global Destination Catalog & Multilingual Exonym Directory
+ * Provides standardized multilingual metadata, airport cluster mappings, and aliases
+ * for major world vacation regions, archipelagos, and international destination cities.
  */
-function resolveRegionalTravelCorridor(query: string, locale: string = 'de'): LocalizedDestinationEntity | null {
-  const clean = normalizeDestinationString(query);
+export const GLOBAL_DESTINATION_ENTITIES: LocalizedDestinationEntity[] = [
+  // --- Regional Travel Corridors & Archipelagos ---
+  {
+    id: 'red_sea',
+    category: 'region',
+    code: 'HRG',
+    airportCodes: ['HRG', 'SSH', 'RMF'],
+    countryCode: 'EG',
+    aliases: [
+      'hurghada', 'red sea', 'rotes meer', 'mer rouge', 'mar rojo', 'mar rosso',
+      'hurghada rotes meer', 'hurghada & rotes meer', 'hurghada red sea', 'hurghada & red sea'
+    ],
+    names: {
+      en: 'Hurghada & Red Sea',
+      de: 'Hurghada & Rotes Meer',
+      fr: 'Hurghada et Mer Rouge',
+      es: 'Hurgada y Mar Rojo',
+      it: 'Hurghada e Mar Rosso',
+    },
+    countryNames: {
+      en: 'Egypt',
+      de: 'Ägypten',
+      fr: 'Égypte',
+      es: 'Egipto',
+      it: 'Egitto',
+    },
+  },
+  {
+    id: 'mallorca',
+    category: 'region',
+    code: 'PMI',
+    airportCodes: ['PMI'],
+    countryCode: 'ES',
+    aliases: [
+      'mallorca', 'majorca', 'palma', 'palma de mallorca', 'balearen', 'balearic islands',
+      'mallorca balearen', 'mallorca balearic', 'mallorca (balearen)', 'majorque', 'maiorca'
+    ],
+    names: {
+      en: 'Mallorca (Balearic Islands)',
+      de: 'Mallorca (Balearen)',
+      fr: 'Majorque (Îles Baléares)',
+      es: 'Mallorca (Islas Baleares)',
+      it: 'Maiorca (Isole Baleari)',
+    },
+    countryNames: {
+      en: 'Spain',
+      de: 'Spanien',
+      fr: 'Espagne',
+      es: 'España',
+      it: 'Spagna',
+    },
+  },
+  {
+    id: 'canary_islands',
+    category: 'region',
+    code: 'TFS',
+    airportCodes: ['TFS', 'LPA', 'ACE', 'FUE'],
+    countryCode: 'ES',
+    aliases: [
+      'canary islands', 'kanarische inseln', 'kanaren', 'canaries', 'iles canaries',
+      'islas canarias', 'isole canarie', 'tenerife', 'gran canaria', 'fuerteventura', 'lanzarote'
+    ],
+    names: {
+      en: 'Canary Islands',
+      de: 'Kanarische Inseln',
+      fr: 'Îles Canaries',
+      es: 'Islas Canarias',
+      it: 'Isole Canarie',
+    },
+    countryNames: {
+      en: 'Spain',
+      de: 'Spanien',
+      fr: 'Espagne',
+      es: 'España',
+      it: 'Spagna',
+    },
+  },
+  {
+    id: 'crete',
+    category: 'island',
+    code: 'HER',
+    airportCodes: ['HER', 'CHQ'],
+    countryCode: 'GR',
+    aliases: ['crete', 'kreta', 'crete island', 'insel kreta', 'crète', 'creta', 'heraklion', 'chania'],
+    names: {
+      en: 'Crete',
+      de: 'Kreta',
+      fr: 'Crète',
+      es: 'Creta',
+      it: 'Creta',
+    },
+    countryNames: {
+      en: 'Greece',
+      de: 'Griechenland',
+      fr: 'Grèce',
+      es: 'Grecia',
+      it: 'Grecia',
+    },
+  },
+  {
+    id: 'algarve',
+    category: 'region',
+    code: 'FAO',
+    airportCodes: ['FAO'],
+    countryCode: 'PT',
+    aliases: ['algarve', 'faro', 'algarve coast', 'costa do algarve'],
+    names: {
+      en: 'Algarve',
+      de: 'Algarve',
+      fr: 'Algarve',
+      es: 'Algarve',
+      it: 'Algarve',
+    },
+    countryNames: {
+      en: 'Portugal',
+      de: 'Portugal',
+      fr: 'Portugal',
+      es: 'Portugal',
+      it: 'Portogallo',
+    },
+  },
+  {
+    id: 'costa_del_sol',
+    category: 'region',
+    code: 'AGP',
+    airportCodes: ['AGP'],
+    countryCode: 'ES',
+    aliases: ['costa del sol', 'malaga', 'málaga', 'sonnenküste'],
+    names: {
+      en: 'Costa del Sol (Málaga)',
+      de: 'Costa del Sol (Málaga)',
+      fr: 'Costa del Sol (Málaga)',
+      es: 'Costa del Sol (Málaga)',
+      it: 'Costa del Sol (Málaga)',
+    },
+    countryNames: {
+      en: 'Spain',
+      de: 'Spanien',
+      fr: 'Espagne',
+      es: 'España',
+      it: 'Spagna',
+    },
+  },
 
-  if (
-    clean.includes('rotes meer') ||
-    clean.includes('red sea') ||
-    clean.includes('mer rouge') ||
-    clean === 'hurghada rotes meer'
-  ) {
-    const isEn = locale.startsWith('en');
-    return {
-      id: 'red_sea',
-      category: 'region',
-      code: 'HRG',
-      airportCodes: ['HRG', 'SSH', 'RMF'],
-      countryCode: 'EG',
-      names: {
-        en: 'Hurghada & Red Sea',
-        de: 'Hurghada & Rotes Meer',
-        fr: 'Hurghada et Mer Rouge',
-        es: 'Hurgada y Mar Rojo',
-        it: 'Hurghada e Mar Rosso',
-      },
-      countryNames: {
-        en: 'Egypt',
-        de: 'Ägypten',
-        fr: 'Égypte',
-        es: 'Egipto',
-        it: 'Egitto',
-      },
-    };
-  }
-
-  if (
-    clean === 'mallorca' ||
-    clean.includes('mallorca balearen') ||
-    clean.includes('mallorca balearic') ||
-    clean.includes('majorca')
-  ) {
-    return {
-      id: 'mallorca',
-      category: 'region',
-      code: 'PMI',
-      airportCodes: ['PMI'],
-      countryCode: 'ES',
-      names: {
-        en: 'Mallorca (Balearic Islands)',
-        de: 'Mallorca (Balearen)',
-        fr: 'Majorque (Îles Baléares)',
-        es: 'Mallorca (Islas Baleares)',
-        it: 'Maiorca (Isole Baleari)',
-      },
-      countryNames: {
-        en: 'Spain',
-        de: 'Spanien',
-        fr: 'Espagne',
-        es: 'España',
-        it: 'Spagna',
-      },
-    };
-  }
-
-  if (clean.includes('kanar') || clean.includes('canar')) {
-    return {
-      id: 'canary_islands',
-      category: 'region',
-      code: 'TFS',
-      airportCodes: ['TFS', 'LPA', 'ACE', 'FUE'],
-      countryCode: 'ES',
-      names: {
-        en: 'Canary Islands',
-        de: 'Kanarische Inseln',
-        fr: 'Îles Canaries',
-        es: 'Islas Canarias',
-        it: 'Isole Canarie',
-      },
-      countryNames: {
-        en: 'Spain',
-        de: 'Spanien',
-        fr: 'Espagne',
-        es: 'España',
-        it: 'Spagna',
-      },
-    };
-  }
-
-  return null;
-}
-
-const ISO_COUNTRY_CODES = [
-  'GR', 'ES', 'IT', 'FR', 'PT', 'TR', 'EG', 'HR', 'CY', 'AT', 'DE', 'CH', 'NL', 'BE', 'GB', 'IE',
-  'TH', 'ID', 'JP', 'VN', 'MY', 'PH', 'SG', 'AE', 'MV', 'LK', 'IN', 'AU', 'NZ', 'US', 'CA', 'MX',
-  'DO', 'CU', 'JM', 'BR', 'AR', 'CL', 'PE', 'CO', 'ZA', 'MA', 'TN', 'KE', 'TZ', 'MU', 'SC', 'NO',
-  'SE', 'DK', 'FI', 'IS', 'PL', 'CZ', 'HU', 'RO', 'BG', 'ME', 'AL', 'RS', 'SI', 'SK', 'EE', 'LV', 'LT'
+  // --- Multilingual International Destination Cities & Exonyms ---
+  {
+    id: 'athens',
+    category: 'city',
+    code: 'ATH',
+    airportCodes: ['ATH'],
+    countryCode: 'GR',
+    aliases: ['athens', 'athen', 'athènes', 'atenas', 'atene', 'athene', 'aten'],
+    names: {
+      en: 'Athens',
+      de: 'Athen',
+      fr: 'Athènes',
+      es: 'Atenas',
+      it: 'Atene',
+    },
+    countryNames: {
+      en: 'Greece',
+      de: 'Griechenland',
+      fr: 'Grèce',
+      es: 'Grecia',
+      it: 'Grecia',
+    },
+  },
+  {
+    id: 'munich',
+    category: 'city',
+    code: 'MUC',
+    airportCodes: ['MUC'],
+    countryCode: 'DE',
+    aliases: ['munich', 'münchen', 'munchen', 'monaco di baviera', 'múnich'],
+    names: {
+      en: 'Munich',
+      de: 'München',
+      fr: 'Munich',
+      es: 'Múnich',
+      it: 'Monaco di Baviera',
+    },
+    countryNames: {
+      en: 'Germany',
+      de: 'Deutschland',
+      fr: 'Allemagne',
+      es: 'Alemania',
+      it: 'Germania',
+    },
+  },
+  {
+    id: 'rome',
+    category: 'city',
+    code: 'FCO',
+    airportCodes: ['FCO', 'CIA'],
+    countryCode: 'IT',
+    aliases: ['rome', 'rom', 'roma', 'romme'],
+    names: {
+      en: 'Rome',
+      de: 'Rom',
+      fr: 'Rome',
+      es: 'Roma',
+      it: 'Roma',
+    },
+    countryNames: {
+      en: 'Italy',
+      de: 'Italien',
+      fr: 'Italie',
+      es: 'Italia',
+      it: 'Italia',
+    },
+  },
+  {
+    id: 'vienna',
+    category: 'city',
+    code: 'VIE',
+    airportCodes: ['VIE'],
+    countryCode: 'AT',
+    aliases: ['vienna', 'wien', 'vienne', 'viena'],
+    names: {
+      en: 'Vienna',
+      de: 'Wien',
+      fr: 'Vienne',
+      es: 'Viena',
+      it: 'Vienna',
+    },
+    countryNames: {
+      en: 'Austria',
+      de: 'Österreich',
+      fr: 'Autriche',
+      es: 'Austria',
+      it: 'Austria',
+    },
+  },
+  {
+    id: 'venice',
+    category: 'city',
+    code: 'VCE',
+    airportCodes: ['VCE', 'TSF'],
+    countryCode: 'IT',
+    aliases: ['venice', 'venedig', 'venise', 'venecia', 'venezia'],
+    names: {
+      en: 'Venice',
+      de: 'Venedig',
+      fr: 'Venise',
+      es: 'Venecia',
+      it: 'Venezia',
+    },
+    countryNames: {
+      en: 'Italy',
+      de: 'Italien',
+      fr: 'Italie',
+      es: 'Italia',
+      it: 'Italia',
+    },
+  },
+  {
+    id: 'prague',
+    category: 'city',
+    code: 'PRG',
+    airportCodes: ['PRG'],
+    countryCode: 'CZ',
+    aliases: ['prague', 'prag', 'praha', 'praga'],
+    names: {
+      en: 'Prague',
+      de: 'Prag',
+      fr: 'Prague',
+      es: 'Praga',
+      it: 'Praga',
+    },
+    countryNames: {
+      en: 'Czechia',
+      de: 'Tschechien',
+      fr: 'Tchéquie',
+      es: 'Chequia',
+      it: 'Cechia',
+    },
+  },
+  {
+    id: 'warsaw',
+    category: 'city',
+    code: 'WAW',
+    airportCodes: ['WAW'],
+    countryCode: 'PL',
+    aliases: ['warsaw', 'warschau', 'varsovie', 'varsovia', 'varsavia', 'warszawa'],
+    names: {
+      en: 'Warsaw',
+      de: 'Warschau',
+      fr: 'Varsovie',
+      es: 'Varsovia',
+      it: 'Varsavia',
+    },
+    countryNames: {
+      en: 'Poland',
+      de: 'Polen',
+      fr: 'Pologne',
+      es: 'Polonia',
+      it: 'Polonia',
+    },
+  },
+  {
+    id: 'lisbon',
+    category: 'city',
+    code: 'LIS',
+    airportCodes: ['LIS'],
+    countryCode: 'PT',
+    aliases: ['lisbon', 'lissabon', 'lisbonne', 'lisboa'],
+    names: {
+      en: 'Lisbon',
+      de: 'Lissabon',
+      fr: 'Lisbonne',
+      es: 'Lisboa',
+      it: 'Lisbona',
+    },
+    countryNames: {
+      en: 'Portugal',
+      de: 'Portugal',
+      fr: 'Portugal',
+      es: 'Portugal',
+      it: 'Portogallo',
+    },
+  },
+  {
+    id: 'copenhagen',
+    category: 'city',
+    code: 'CPH',
+    airportCodes: ['CPH'],
+    countryCode: 'DK',
+    aliases: ['copenhagen', 'kopenhagen', 'copenhague', 'copenaghen', 'kobenhavn', 'københavn'],
+    names: {
+      en: 'Copenhagen',
+      de: 'Kopenhagen',
+      fr: 'Copenhague',
+      es: 'Copenhague',
+      it: 'Copenaghen',
+    },
+    countryNames: {
+      en: 'Denmark',
+      de: 'Dänemark',
+      fr: 'Danemark',
+      es: 'Dinamarca',
+      it: 'Danimarca',
+    },
+  },
+  {
+    id: 'brussels',
+    category: 'city',
+    code: 'BRU',
+    airportCodes: ['BRU', 'CRL'],
+    countryCode: 'BE',
+    aliases: ['brussels', 'brüssel', 'bruxelles', 'bruselas'],
+    names: {
+      en: 'Brussels',
+      de: 'Brüssel',
+      fr: 'Bruxelles',
+      es: 'Bruselas',
+      it: 'Bruxelles',
+    },
+    countryNames: {
+      en: 'Belgium',
+      de: 'Belgien',
+      fr: 'Belgique',
+      es: 'Bélgica',
+      it: 'Belgio',
+    },
+  },
+  {
+    id: 'florence',
+    category: 'city',
+    code: 'FLR',
+    airportCodes: ['FLR'],
+    countryCode: 'IT',
+    aliases: ['florence', 'florenz', 'firenze', 'florencia'],
+    names: {
+      en: 'Florence',
+      de: 'Florenz',
+      fr: 'Florence',
+      es: 'Florencia',
+      it: 'Firenze',
+    },
+    countryNames: {
+      en: 'Italy',
+      de: 'Italien',
+      fr: 'Italie',
+      es: 'Italia',
+      it: 'Italia',
+    },
+  },
+  {
+    id: 'naples',
+    category: 'city',
+    code: 'NAP',
+    airportCodes: ['NAP'],
+    countryCode: 'IT',
+    aliases: ['naples', 'neapel', 'napoli', 'nápoles'],
+    names: {
+      en: 'Naples',
+      de: 'Neapel',
+      fr: 'Naples',
+      es: 'Nápoles',
+      it: 'Napoli',
+    },
+    countryNames: {
+      en: 'Italy',
+      de: 'Italien',
+      fr: 'Italie',
+      es: 'Italia',
+      it: 'Italia',
+    },
+  },
+  {
+    id: 'geneva',
+    category: 'city',
+    code: 'GVA',
+    airportCodes: ['GVA'],
+    countryCode: 'CH',
+    aliases: ['geneva', 'genf', 'genève', 'ginebra', 'ginevra'],
+    names: {
+      en: 'Geneva',
+      de: 'Genf',
+      fr: 'Genève',
+      es: 'Ginebra',
+      it: 'Ginevra',
+    },
+    countryNames: {
+      en: 'Switzerland',
+      de: 'Schweiz',
+      fr: 'Suisse',
+      es: 'Suiza',
+      it: 'Svizzera',
+    },
+  },
+  {
+    id: 'zurich',
+    category: 'city',
+    code: 'ZRH',
+    airportCodes: ['ZRH'],
+    countryCode: 'CH',
+    aliases: ['zurich', 'zürich', 'zurigo'],
+    names: {
+      en: 'Zurich',
+      de: 'Zürich',
+      fr: 'Zurich',
+      es: 'Zúrich',
+      it: 'Zurigo',
+    },
+    countryNames: {
+      en: 'Switzerland',
+      de: 'Schweiz',
+      fr: 'Suisse',
+      es: 'Suiza',
+      it: 'Svizzera',
+    },
+  },
+  {
+    id: 'milan',
+    category: 'city',
+    code: 'MXP',
+    airportCodes: ['MXP', 'LIN', 'BGY'],
+    countryCode: 'IT',
+    aliases: ['milan', 'mailand', 'milano', 'milán'],
+    names: {
+      en: 'Milan',
+      de: 'Mailand',
+      fr: 'Milan',
+      es: 'Milán',
+      it: 'Milano',
+    },
+    countryNames: {
+      en: 'Italy',
+      de: 'Italien',
+      fr: 'Italie',
+      es: 'Italia',
+      it: 'Italia',
+    },
+  },
+  {
+    id: 'seville',
+    category: 'city',
+    code: 'SVQ',
+    airportCodes: ['SVQ'],
+    countryCode: 'ES',
+    aliases: ['seville', 'sevilla', 'séville', 'siviglia'],
+    names: {
+      en: 'Seville',
+      de: 'Sevilla',
+      fr: 'Séville',
+      es: 'Sevilla',
+      it: 'Siviglia',
+    },
+    countryNames: {
+      en: 'Spain',
+      de: 'Spanien',
+      fr: 'Espagne',
+      es: 'España',
+      it: 'Spagna',
+    },
+  },
+  {
+    id: 'dubai',
+    category: 'city',
+    code: 'DXB',
+    airportCodes: ['DXB', 'DWC'],
+    countryCode: 'AE',
+    aliases: ['dubai', 'dubaï', 'dubái'],
+    names: {
+      en: 'Dubai',
+      de: 'Dubai',
+      fr: 'Dubaï',
+      es: 'Dubái',
+      it: 'Dubai',
+    },
+    countryNames: {
+      en: 'United Arab Emirates',
+      de: 'Vereinigte Arabische Emirate',
+      fr: 'Émirats arabes unis',
+      es: 'Emiratos Árabes Unidos',
+      it: 'Emirati Arabi Uniti',
+    },
+  },
+  {
+    id: 'tokyo',
+    category: 'city',
+    code: 'HND',
+    airportCodes: ['HND', 'NRT'],
+    countryCode: 'JP',
+    aliases: ['tokyo', 'tokio'],
+    names: {
+      en: 'Tokyo',
+      de: 'Tokio',
+      fr: 'Tokyo',
+      es: 'Tokio',
+      it: 'Tokyo',
+    },
+    countryNames: {
+      en: 'Japan',
+      de: 'Japan',
+      fr: 'Japon',
+      es: 'Japón',
+      it: 'Giappone',
+    },
+  },
+  {
+    id: 'bangkok',
+    category: 'city',
+    code: 'BKK',
+    airportCodes: ['BKK', 'DMK'],
+    countryCode: 'TH',
+    aliases: ['bangkok', 'krung thep'],
+    names: {
+      en: 'Bangkok',
+      de: 'Bangkok',
+      fr: 'Bangkok',
+      es: 'Bangkok',
+      it: 'Bangkok',
+    },
+    countryNames: {
+      en: 'Thailand',
+      de: 'Thailand',
+      fr: 'Thaïlande',
+      es: 'Tailandia',
+      it: 'Thailandia',
+    },
+  },
+  {
+    id: 'bali',
+    category: 'island',
+    code: 'DPS',
+    airportCodes: ['DPS'],
+    countryCode: 'ID',
+    aliases: ['bali', 'denpasar', 'pulau bali', 'insel bali'],
+    names: {
+      en: 'Bali (Denpasar)',
+      de: 'Bali (Denpasar)',
+      fr: 'Bali (Denpasar)',
+      es: 'Bali (Denpasar)',
+      it: 'Bali (Denpasar)',
+    },
+    countryNames: {
+      en: 'Indonesia',
+      de: 'Indonesien',
+      fr: 'Indonésie',
+      es: 'Indonesia',
+      it: 'Indonesia',
+    },
+  },
+  {
+    id: 'cancun',
+    category: 'city',
+    code: 'CUN',
+    airportCodes: ['CUN'],
+    countryCode: 'MX',
+    aliases: ['cancun', 'cancún', 'riviera maya'],
+    names: {
+      en: 'Cancún',
+      de: 'Cancún',
+      fr: 'Cancún',
+      es: 'Cancún',
+      it: 'Cancún',
+    },
+    countryNames: {
+      en: 'Mexico',
+      de: 'Mexiko',
+      fr: 'Mexique',
+      es: 'México',
+      it: 'Messico',
+    },
+  },
 ];
 
-/**
- * Resolves any localized country name or English country name to its 2-letter ISO code
- */
-export function resolveCountryCode(countryNameOrCode: string): string {
-  if (!countryNameOrCode) return 'XX';
-  const clean = countryNameOrCode.trim().toLowerCase();
-  if (clean.length === 2) return clean.toUpperCase();
+let dynamicCountryMapCache: Map<string, string> | null = null;
 
-  for (const cCode of ISO_COUNTRY_CODES) {
-    for (const loc of ['en', 'de', 'fr', 'es', 'it']) {
-      try {
-        const name = new Intl.DisplayNames([loc], { type: 'region' }).of(cCode);
-        if (name && name.toLowerCase() === clean) {
-          return cCode;
+/**
+ * Builds a dynamic country name lookup map across standard ISO 3166-1 alpha-2 codes
+ * and commercial airport catalogs. Supports all worldwide jurisdictions without static subsets.
+ */
+function getDynamicCountryNameToCodeMap(): Map<string, string> {
+  if (dynamicCountryMapCache) return dynamicCountryMapCache;
+  const map = new Map<string, string>();
+
+  // Extract all official country names from airport catalog
+  const allAirports = getAllCommercialAirports();
+  const rawCountryNames = new Set<string>();
+  for (const a of allAirports) {
+    if (a.country) rawCountryNames.add(a.country);
+  }
+
+  // Populate localized names for all valid 2-letter ISO country codes using ECMAScript Intl
+  for (let c1 = 65; c1 <= 90; c1++) {
+    for (let c2 = 65; c2 <= 90; c2++) {
+      const code = String.fromCharCode(c1, c2);
+      for (const loc of ['en', 'de', 'fr', 'es', 'it']) {
+        try {
+          const name = new Intl.DisplayNames([loc], { type: 'region' }).of(code);
+          if (name && name !== code) {
+            map.set(normalizeDestinationString(name), code);
+          }
+        } catch {
+          // Unsupported country code
         }
-      } catch {
-        // Continue
       }
     }
   }
 
-  return 'XX';
+  // Associate English country names from airport database
+  for (const rc of rawCountryNames) {
+    const cleanRc = normalizeDestinationString(rc);
+    if (!map.has(cleanRc)) {
+      for (let c1 = 65; c1 <= 90; c1++) {
+        for (let c2 = 65; c2 <= 90; c2++) {
+          const code = String.fromCharCode(c1, c2);
+          try {
+            const enName = new Intl.DisplayNames(['en'], { type: 'region' }).of(code);
+            if (enName && normalizeDestinationString(enName) === cleanRc) {
+              map.set(cleanRc, code);
+              break;
+            }
+          } catch {
+            // Ignore
+          }
+        }
+      }
+    }
+  }
+
+  dynamicCountryMapCache = map;
+  return map;
+}
+
+/**
+ * Resolves any localized country name or English country name to its 2-letter ISO code dynamically.
+ */
+export function resolveCountryCode(countryNameOrCode: string): string {
+  if (!countryNameOrCode) return 'XX';
+  const clean = normalizeDestinationString(countryNameOrCode);
+  if (clean.length === 2) return clean.toUpperCase();
+
+  const map = getDynamicCountryNameToCodeMap();
+  return map.get(clean) || 'XX';
 }
 
 /**
@@ -240,7 +802,9 @@ function airportToDestinationEntity(
 }
 
 /**
- * Finds a destination entity dynamically by tag or query
+ * Finds a destination entity dynamically by tag or query.
+ * Resolves registered multi-airport corridors, direct commercial airports,
+ * dynamic ISO countries, or commercial airport passenger cities.
  */
 export function getDestinationEntity(
   queryOrTag: string,
@@ -249,9 +813,16 @@ export function getDestinationEntity(
   const clean = normalizeDestinationString(queryOrTag);
   if (!clean || clean.length < 2) return null;
 
-  // 1. Regional travel corridor
-  const corridor = resolveRegionalTravelCorridor(queryOrTag, locale);
-  if (corridor) return corridor;
+  // 1. Structured global destination registry match
+  for (const ent of GLOBAL_DESTINATION_ENTITIES) {
+    if (ent.id === clean || ent.code?.toLowerCase() === clean) return ent;
+    if (ent.aliases?.some((a) => normalizeDestinationString(a) === clean || isWordMatch(normalizeDestinationString(a), clean))) {
+      return ent;
+    }
+    if (Object.values(ent.names).some((n) => normalizeDestinationString(n) === clean)) {
+      return ent;
+    }
+  }
 
   const upper = queryOrTag.trim().toUpperCase();
 
@@ -263,34 +834,28 @@ export function getDestinationEntity(
     }
   }
 
-  // 3. Country match via ECMAScript Intl across worldwide countries
-  for (const cCode of ISO_COUNTRY_CODES) {
-    try {
-      const getIntl = (l: string) => new Intl.DisplayNames([l], { type: 'region' });
-      const cNames = {
-        en: getIntl('en').of(cCode) || '',
-        de: getIntl('de').of(cCode) || '',
-        fr: getIntl('fr').of(cCode) || '',
-        es: getIntl('es').of(cCode) || '',
-        it: getIntl('it').of(cCode) || '',
-      };
-
-      if (Object.values(cNames).some((cn) => normalizeDestinationString(cn) === clean)) {
-        return {
-          id: cCode.toLowerCase(),
-          category: 'country',
-          airportCodes: getMajorAirportsForCountry(cCode),
-          countryCode: cCode,
-          names: cNames,
-          countryNames: cNames,
-        };
-      }
-    } catch {
-      // Continue
-    }
+  // 3. Country match via dynamic ECMAScript Intl
+  const countryCode = resolveCountryCode(clean);
+  if (countryCode && countryCode !== 'XX') {
+    const getIntl = (l: string) => new Intl.DisplayNames([l], { type: 'region' });
+    const cNames = {
+      en: getIntl('en').of(countryCode) || countryCode,
+      de: getIntl('de').of(countryCode) || countryCode,
+      fr: getIntl('fr').of(countryCode) || countryCode,
+      es: getIntl('es').of(countryCode) || countryCode,
+      it: getIntl('it').of(countryCode) || countryCode,
+    };
+    return {
+      id: countryCode.toLowerCase(),
+      category: 'country',
+      airportCodes: getMajorAirportsForCountry(countryCode),
+      countryCode,
+      names: cNames,
+      countryNames: cNames,
+    };
   }
 
-  // 4. Commercial airport city matching (prioritizing exact city name and major commercial hubs)
+  // 4. Commercial airport city matching across all 7,184 worldwide airports
   const allAirports = getAllCommercialAirports();
   const candidates = [];
   for (const a of allAirports) {
@@ -319,7 +884,7 @@ export function getDestinationEntity(
 }
 
 /**
- * Resilient fuzzy matching across commercial airport destination cities
+ * Resilient fuzzy matching across destinations and commercial airport cities worldwide.
  */
 export function fuzzyMatchDestinationEntity(
   query: string,
@@ -328,37 +893,40 @@ export function fuzzyMatchDestinationEntity(
   const clean = normalizeDestinationString(query);
   if (!clean || clean.length < 3) return null;
 
-  // Direct corridor match
-  const corridor = resolveRegionalTravelCorridor(query, locale);
-  if (corridor) return corridor;
+  // Direct entity match first
+  const direct = getDestinationEntity(query, locale);
+  if (direct) return direct;
 
-  // Athens typo matching (Athen, Athene, Aten)
-  if (clean.startsWith('aten') || clean.startsWith('athen')) {
-    return {
-      id: 'athens',
-      category: 'city',
-      code: 'ATH',
-      airportCodes: ['ATH'],
-      countryCode: 'GR',
-      names: {
-        en: 'Athens',
-        de: 'Athen',
-        fr: 'Athènes',
-        es: 'Atenas',
-        it: 'Atene',
-      },
-      countryNames: {
-        en: 'Greece',
-        de: 'Griechenland',
-        fr: 'Grèce',
-        es: 'Grecia',
-        it: 'Grecia',
-      },
-    };
+  // 1. Resilient fuzzy match against global destination entities & aliases
+  let bestEntity: LocalizedDestinationEntity | null = null;
+  let minEntityDist = Infinity;
+
+  for (const ent of GLOBAL_DESTINATION_ENTITIES) {
+    const candidateStrings = [
+      ent.id,
+      ent.code?.toLowerCase(),
+      ...(ent.aliases || []),
+      ...Object.values(ent.names),
+    ].filter(Boolean) as string[];
+
+    for (const cand of candidateStrings) {
+      const normCand = normalizeDestinationString(cand);
+      const dist = levenshteinDistance(clean, normCand);
+      const maxAllowed = clean.length <= 4 ? 1 : 2;
+      if (dist <= maxAllowed && dist < minEntityDist) {
+        minEntityDist = dist;
+        bestEntity = ent;
+      }
+    }
   }
 
+  if (bestEntity && minEntityDist <= 2) {
+    return bestEntity;
+  }
+
+  // 2. Resilient fuzzy match against all commercial airport cities and names
   const allAirports = getAllCommercialAirports();
-  let bestMatch: LocalizedDestinationEntity | null = null;
+  let bestAirportMatch: LocalizedDestinationEntity | null = null;
   let minDistance = Infinity;
 
   for (const a of allAirports) {
@@ -370,12 +938,12 @@ export function fuzzyMatchDestinationEntity(
 
       if (dist <= maxAllowed && dist < minDistance) {
         minDistance = dist;
-        bestMatch = airportToDestinationEntity(a.code, a.city, a.country, locale);
+        bestAirportMatch = airportToDestinationEntity(a.code, a.city, a.country, locale);
       }
     }
   }
 
-  return bestMatch;
+  return bestAirportMatch;
 }
 
 export interface ContainmentCheckResult {
@@ -499,21 +1067,25 @@ export function getLocalizedCategoryName(
  * STRICT: If destination tags are provided, returns ONLY the matching airports.
  */
 export function resolveDestinationCodes(destinationTags?: string[]): string[] {
-  // If no destination filter was set by user, provide open discovery hubs
+  // If no destination filter was set by user, provide open discovery hubs dynamically
   if (!destinationTags || destinationTags.length === 0) {
-    return ['PMI', 'AYT', 'HRG', 'HER', 'AGP', 'FAO', 'BCN', 'DJE'];
+    const commercialAirports = getAllCommercialAirports();
+    const hubs = commercialAirports.filter((a) => a.isMajorHub);
+    const popularLeisure = ['PMI', 'AYT', 'HRG', 'HER', 'AGP', 'FAO', 'BCN', 'DJE'];
+    const codes = Array.from(new Set([...popularLeisure, ...hubs.map((a) => a.code)]));
+    return codes.slice(0, 10);
   }
 
   const resolved = new Set<string>();
 
   for (const tag of destinationTags) {
     const clean = normalizeDestinationString(tag);
-    if (clean === 'mars' || clean === 'atlantis') continue;
+    if (!clean) continue;
 
-    // 1. Regional travel corridor
-    const corridor = resolveRegionalTravelCorridor(tag);
-    if (corridor) {
-      corridor.airportCodes.forEach((c) => resolved.add(c));
+    // 1. Destination entity (region, island, or city)
+    const entity = getDestinationEntity(tag);
+    if (entity && entity.airportCodes.length > 0) {
+      entity.airportCodes.forEach((c) => resolved.add(c));
       continue;
     }
 
@@ -550,7 +1122,7 @@ export function resolveDestinationCodes(destinationTags?: string[]): string[] {
 /**
  * Strict pre-validation for destination inputs with regional containment detection.
  * Validates dynamically against live geocoding services and commercial airport indices.
- * Rejects fictitious/unknown inputs (e.g. "Mars") that cannot be mapped to any airport or recognized entity.
+ * Rejects fictitious or unserviceable inputs that cannot be mapped to any airport or recognized entity.
  */
 export async function validateDestinationInput(
   rawInput: string,
@@ -571,23 +1143,18 @@ export async function validateDestinationInput(
     return { isValid: false };
   }
 
-  const cleanLower = clean.toLowerCase();
-  if (cleanLower === 'mars' || cleanLower.includes('atlantis')) {
-    return { isValid: false };
-  }
-
-  // 1. Regional travel corridor (e.g. Hurghada & Red Sea, Mallorca)
-  const corridor = resolveRegionalTravelCorridor(clean, locale);
-  if (corridor) {
-    const localizedName = getLocalizedDestinationName(corridor, locale);
-    const containment = checkRegionalContainment(corridor, selectedDestinations, locale);
+  // 1. Destination entity match (regions, islands, cities, exonyms)
+  const entity = getDestinationEntity(clean, locale);
+  if (entity) {
+    const localizedName = getLocalizedDestinationName(entity, locale);
+    const containment = checkRegionalContainment(entity, selectedDestinations, locale);
     return {
       isValid: true,
-      entity: corridor,
+      entity,
       resolvedName: localizedName,
-      category: corridor.category,
-      categoryLabel: getLocalizedCategoryName(corridor.category, locale),
-      airportCodes: corridor.airportCodes,
+      category: entity.category,
+      categoryLabel: getLocalizedCategoryName(entity.category, locale),
+      airportCodes: entity.airportCodes,
       isContained: containment.isContained,
       containment,
     };
@@ -621,7 +1188,7 @@ export async function validateDestinationInput(
         const locKey = ((locale.slice(0, 2) as 'en' | 'de' | 'fr' | 'es' | 'it') || 'en');
         const localizedName = place.names?.[locKey] || place.name;
 
-        const entity: LocalizedDestinationEntity = {
+        const resolvedEntity: LocalizedDestinationEntity = {
           id: place.id,
           category: place.category as DestinationCategory,
           code: place.airportCodes[0],
@@ -639,11 +1206,11 @@ export async function validateDestinationInput(
           },
         };
 
-        const containment = checkRegionalContainment(entity, selectedDestinations, locale);
+        const containment = checkRegionalContainment(resolvedEntity, selectedDestinations, locale);
 
         return {
           isValid: true,
-          entity,
+          entity: resolvedEntity,
           resolvedName: localizedName,
           category: place.category as DestinationCategory,
           categoryLabel: getLocalizedCategoryName(place.category as DestinationCategory, locale),
@@ -657,6 +1224,7 @@ export async function validateDestinationInput(
     // Fall through
   }
 
-  // 4. Strict rejection for unknown or fictitious places
+  // 4. Strict rejection for unknown, non-flight, or fictitious places
   return { isValid: false };
 }
+

@@ -35,10 +35,74 @@ describe('Destination Fuzzy Search, Recognition & Containment', () => {
     expect(resFr.airportCodes).toContain('ATH');
   });
 
-  it('performs resilient fuzzy matching for minor typos (e.g. Aten, Athene)', async () => {
-    const fuzzy = fuzzyMatchDestinationEntity('Athene', 'de');
-    expect(fuzzy).not.toBeNull();
-    expect(fuzzy?.id).toBe('athens');
+  it('resolves multilingual international cities and vacation corridors generally', async () => {
+    // Munich across German, English, Italian
+    const munichDe = await validateDestinationInput('München', 'de');
+    expect(munichDe.isValid).toBe(true);
+    expect(munichDe.category).toBe('city');
+    expect(munichDe.airportCodes).toContain('MUC');
+
+    const munichEn = await validateDestinationInput('Munich', 'en');
+    expect(munichEn.isValid).toBe(true);
+    expect(munichEn.airportCodes).toContain('MUC');
+
+    // Vienna across German and English
+    const viennaDe = await validateDestinationInput('Wien', 'de');
+    expect(viennaDe.isValid).toBe(true);
+    expect(viennaDe.airportCodes).toContain('VIE');
+
+    // Rome across German, English, Italian
+    const romeDe = await validateDestinationInput('Rom', 'de');
+    expect(romeDe.isValid).toBe(true);
+    expect(romeDe.airportCodes).toContain('FCO');
+
+    // Prague across German, English, Czech
+    const pragueDe = await validateDestinationInput('Prag', 'de');
+    expect(pragueDe.isValid).toBe(true);
+    expect(pragueDe.airportCodes).toContain('PRG');
+
+    // Crete across German, English, French
+    const creteDe = await validateDestinationInput('Kreta', 'de');
+    expect(creteDe.isValid).toBe(true);
+    expect(creteDe.category).toBe('island');
+    expect(creteDe.airportCodes).toContain('HER');
+
+    // Algarve
+    const algarveRes = await validateDestinationInput('Algarve', 'de');
+    expect(algarveRes.isValid).toBe(true);
+    expect(algarveRes.category).toBe('region');
+    expect(algarveRes.airportCodes).toContain('FAO');
+  });
+
+  it('performs resilient fuzzy matching for minor typos across world destinations generally', async () => {
+    // Athens typos
+    const fuzzyAthens = fuzzyMatchDestinationEntity('Athene', 'de');
+    expect(fuzzyAthens).not.toBeNull();
+    expect(fuzzyAthens?.id).toBe('athens');
+
+    const fuzzyAten = fuzzyMatchDestinationEntity('Aten', 'de');
+    expect(fuzzyAten).not.toBeNull();
+    expect(fuzzyAten?.id).toBe('athens');
+
+    // Munich typo (Munchen without umlaut)
+    const fuzzyMunich = fuzzyMatchDestinationEntity('Munchen', 'de');
+    expect(fuzzyMunich).not.toBeNull();
+    expect(fuzzyMunich?.id).toBe('munich');
+
+    // Vienna typo (Viena)
+    const fuzzyVienna = fuzzyMatchDestinationEntity('Viena', 'de');
+    expect(fuzzyVienna).not.toBeNull();
+    expect(fuzzyVienna?.id).toBe('vienna');
+
+    // Rome typo (Romme)
+    const fuzzyRome = fuzzyMatchDestinationEntity('Romme', 'de');
+    expect(fuzzyRome).not.toBeNull();
+    expect(fuzzyRome?.id).toBe('rome');
+
+    // Lisbon (Lissabon)
+    const fuzzyLisbon = fuzzyMatchDestinationEntity('Lissabon', 'de');
+    expect(fuzzyLisbon).not.toBeNull();
+    expect(fuzzyLisbon?.id).toBe('lisbon');
   });
 
   it('detects regional containment when child city is added while parent region is selected', async () => {

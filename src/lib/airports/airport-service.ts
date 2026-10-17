@@ -425,7 +425,7 @@ const indexedAirports: DynamicAirport[] = rawAirports
       lat: Number(a.latitude),
       lon: Number(a.longitude),
       altitude: Number(a.altitude) || 0,
-      state: meta?.state || AIRPORT_STATE_MAPPING[code] || (a.country === 'Germany' ? 'DE-BW' : undefined),
+      state: meta?.state || AIRPORT_STATE_MAPPING[code] || undefined,
       isMajorHub: meta?.isMajorHub ?? KNOWN_MAJOR_HUBS.has(code),
     };
   });
