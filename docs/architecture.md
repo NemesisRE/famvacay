@@ -234,8 +234,8 @@ The vacation planner provides universal global place resolution, entity taxonomy
      - `airport`: Specific commercial passenger airports.
 2. **Dynamic Debounced Typeahead Suggestions (`GET /api/destinations/search`)**:
    - The destination selector replaces static dropdown presets with active debounced typeahead search (250ms debounce threshold, triggering from 2 keystrokes).
-   - Queries query a curated catalog of global holiday hubs, with multi-stage matching across localized names (`en`, `de`, `fr`, `es`, `it`), aliases, and fuzzy tokens, backed by Redis caching.
-   - For uncataloged locations worldwide, dynamic OpenStreetMap Nominatim geocoding resolves coordinates and automatically maps closest commercial passenger airports within a 350 km radius.
+   - Queries dynamically resolve destinations worldwide via multi-stage matching across official ISO-3166 datasets, global commercial passenger airports, and OpenStreetMap Nominatim/Photon geocoding with localized names (`en`, `de`, `fr`, `es`, `it`), aliases, and fuzzy tokens, backed by Redis caching.
+   - Dynamic geocoding resolves coordinates and automatically maps closest commercial passenger airports within a 350 km radius for any location on Earth.
    - Suggestions render with categorized badge metadata (Island, Country, City, Region, Airport).
 3. **Hierarchical Regional Containment Detection (`checkRegionalContainment`)**:
    - When a user adds a destination encompassed by an existing selection (e.g., adding "Denpasar" when "Bali" is selected, "Palma" when "Mallorca" is selected, or "Rome" when "Italy" is selected), containment is identified via explicit parent IDs, airport code subsets, or country inclusion.
@@ -244,8 +244,8 @@ The vacation planner provides universal global place resolution, entity taxonomy
    - When destination filters are active, vacation window generation is strictly constrained to matching airport codes without fallback to unrequested regions.
    - Open discovery hubs are presented only when no destination constraints are supplied.
 5. **Complete Elimination of Hardcoded Place & Destination Catalogs**:
-   - Massive static constants such as `GLOBAL_PLACES_CATALOG`, `CANONICAL_DESTINATIONS`, `DESTINATION_MAPPINGS`, and `SUPPORTED_ORIGIN_AIRPORTS` have been completely eliminated from the codebase.
-   - All place resolution, destination autocompletion, entity category classification, and airport corridor mapping are performed dynamically via runtime OpenStreetMap Nominatim/Photon geocoding and the global commercial passenger airport dataset in `src/lib/airports/airport-service.ts`.
+   - Massive static constants such as `GLOBAL_DESTINATION_ENTITIES`, `GLOBAL_PLACES_CATALOG`, `CANONICAL_DESTINATIONS`, `DESTINATION_MAPPINGS`, `LOCALIZED_AIRPORT_METADATA`, and `SUPPORTED_ORIGIN_AIRPORTS` have been completely eliminated from the codebase.
+   - All place resolution, destination autocompletion, entity category classification, and airport corridor mapping are performed dynamically via runtime OpenStreetMap Nominatim/Photon geocoding, official ISO-3166-1/2 registries (`i18n-iso-countries`, `iso-3166-2`), and the global commercial passenger airport dataset in `src/lib/airports/airport-service.ts`.
    - Dynamic query results are cached in Redis with a 7-day TTL for fast response times and rate-limit compliance.
 
 ---
@@ -380,12 +380,12 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
    - `EXTREME_HEAT`: Evaluated directly from meteorological temperatures ($\text{maxTempC} \ge 38^\circ\text{C}$ and $\text{precipitationRiskPercent} \le 25\%$) worldwide.
    - `MONSOON`: Evaluated from tropical convective precipitation ($|\text{lat}| \le 26^\circ$, $\text{avgTempC} \ge 24^\circ\text{C}$, and $\text{precipRisk} \ge 45\%$ or $\text{rainyDays} \ge 14$).
    - `TYPHOON_HURRICANE`: Evaluated from warm cyclogenesis sea surface temperatures ($\ge 26^\circ\text{C}$) in active oceanic basins during regional storm windows (North Atlantic/Caribbean, Northwest Pacific, South Pacific).
-   - `OVERCROWDED_PEAK`: Evaluated per destination dynamically via astronomical calendar Computus algorithms and individual cultural festival cycles:
-     - *Carnival / Mardi Gras*: Computed ~7 weeks prior to Gregorian Easter Sunday for carnival destinations (e.g. Rio de Janeiro, Venice, New Orleans, Cologne, Santa Cruz de Tenerife).
-     - *Spring Break & Easter / Holy Week*: Dynamically detected around Easter Sunday for beach resort areas and pilgrimage centers (e.g. Cancun, Miami, Rome, Seville, Jerusalem).
-     - *Cherry Blossom & Golden Week*: Spring bloom and national holiday surge in Japan.
-     - *Songkran Festival*: New Year nationwide water festival in Thailand (mid-April).
-     - *Oktoberfest*: Autumn festival peak in Munich / Bavaria (late September to early October).
+   - `OVERCROWDED_PEAK`: Evaluated per destination dynamically via astronomical calendar Computus algorithms, the `date-holidays` public holiday engine, and physical climate normals:
+     - *Carnival / Mardi Gras*: Computed ~7 weeks prior to Gregorian Easter Sunday and matched against regional pre-Lenten public holidays from `date-holidays`.
+     - *Spring Break & Easter / Holy Week*: Dynamically detected around Easter Sunday for warm beach destinations ($T_{\text{avg}} \ge 21^\circ\text{C}$).
+     - *Cherry Blossom & Golden Week*: National multi-holiday clusters in spring evaluated via official public holiday calendars.
+     - *Songkran Festival*: New Year nationwide water festival evaluated via official public holiday calendars (mid-April).
+     - *Oktoberfest*: Regional autumn festival peak evaluated dynamically for administrative subdivisions (e.g. Bavaria `DE-BY`).
 10. **Flight Arbitrage Detection**:
     Evaluates departure airports located in neighboring jurisdictions where schools remain in session, factoring a $30\%$ price advantage.
 11. **Parental Leave Minimization**:

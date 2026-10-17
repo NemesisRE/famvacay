@@ -185,6 +185,40 @@ beforeAll(() => {
             },
           },
         ];
+      } else if (q.includes('kreta') || q.includes('crete')) {
+        mockData = [
+          {
+            name: 'Kreta',
+            display_name: 'Kreta, Region Kreta, Griechenland',
+            lat: '35.3084',
+            lon: '24.4633',
+            type: 'island',
+            address: {
+              island: 'Kreta',
+              state: 'Region Kreta',
+              country: 'Griechenland',
+              country_code: 'gr',
+              'ISO3166-2-lvl5': 'GR-M',
+            },
+          },
+        ];
+      } else if (q.includes('algarve') || q.includes('faro')) {
+        mockData = [
+          {
+            name: 'Algarve',
+            display_name: 'Algarve, Faro, Portugal',
+            lat: '37.1928',
+            lon: '-8.2632',
+            type: 'region',
+            class: 'boundary',
+            address: {
+              state: 'Algarve',
+              country: 'Portugal',
+              country_code: 'pt',
+              'ISO3166-2-lvl4': 'PT-08',
+            },
+          },
+        ];
       }
 
       return new Response(JSON.stringify(mockData), {
@@ -219,6 +253,14 @@ beforeAll(() => {
           coords = [23.7275, 37.9838];
           country = 'Greece';
           countryCode = 'GR';
+        } else if (q.includes('kreta') || q.includes('crete')) {
+          coords = [24.4633, 35.3084];
+          country = 'Greece';
+          countryCode = 'GR';
+        } else if (q.includes('algarve')) {
+          coords = [-8.2632, 37.1928];
+          country = 'Portugal';
+          countryCode = 'PT';
         }
 
         features = [

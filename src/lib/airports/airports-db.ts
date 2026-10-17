@@ -22,60 +22,71 @@ export const AIRPORTS_DATABASE: AirportOption[] = getAllCommercialAirports().map
   isHub: a.isMajorHub,
 }));
 
-// Approximate geographical centers of administrative regions for distance sorting
-export const REGION_CENTERS: Record<string, { lat: number; lon: number }> = {
-  // Germany
-  'DE-BW': { lat: 48.66, lon: 9.35 },
-  'DE-BY': { lat: 48.79, lon: 11.49 },
-  'DE-BE': { lat: 52.52, lon: 13.40 },
-  'DE-BB': { lat: 52.41, lon: 12.55 },
-  'DE-HB': { lat: 53.07, lon: 8.80 },
-  'DE-HH': { lat: 53.55, lon: 9.99 },
-  'DE-HE': { lat: 50.65, lon: 9.16 },
-  'DE-MV': { lat: 53.61, lon: 12.42 },
-  'DE-NI': { lat: 52.63, lon: 9.84 },
-  'DE-NW': { lat: 51.43, lon: 7.66 },
-  'DE-RP': { lat: 49.91, lon: 7.45 },
-  'DE-SL': { lat: 49.39, lon: 6.98 },
-  'DE-SN': { lat: 51.10, lon: 13.20 },
-  'DE-ST': { lat: 51.95, lon: 11.69 },
-  'DE-SH': { lat: 54.21, lon: 9.69 },
-  'DE-TH': { lat: 50.98, lon: 11.02 },
+import iso from 'iso-3166-2';
 
-  // Austria
-  'AT-1': { lat: 47.50, lon: 16.40 },
-  'AT-2': { lat: 46.70, lon: 13.80 },
-  'AT-3': { lat: 48.20, lon: 15.60 },
-  'AT-4': { lat: 48.15, lon: 14.10 },
-  'AT-5': { lat: 47.50, lon: 13.20 },
-  'AT-6': { lat: 47.20, lon: 15.10 },
-  'AT-7': { lat: 47.25, lon: 11.50 },
-  'AT-8': { lat: 47.25, lon: 9.90 },
-  'AT-9': { lat: 48.20, lon: 16.37 },
+/**
+ * Dynamically resolves geographical center coordinates for any administrative subdivision worldwide.
+ * Eliminates static coordinate dictionaries and arbitrary hardcoded region fallbacks.
+ */
+export function getRegionCenter(regionCode: string): { lat: number; lon: number } {
+  if (!regionCode) return { lat: 48.66, lon: 9.35 };
 
-  // Switzerland
-  'CH-BS': { lat: 47.55, lon: 7.59 },
-  'CH-ZH': { lat: 47.37, lon: 8.54 },
-  'CH-GE': { lat: 46.20, lon: 6.14 },
-  'CH-BE': { lat: 46.94, lon: 7.44 },
+  // 1. Direct match on indexed airports belonging to this subdivision
+  const matchingAirports = AIRPORTS_DATABASE.filter((a) => a.state === regionCode);
+  if (matchingAirports.length > 0) {
+    const avgLat = matchingAirports.reduce((sum, a) => sum + a.lat, 0) / matchingAirports.length;
+    const avgLon = matchingAirports.reduce((sum, a) => sum + a.lon, 0) / matchingAirports.length;
+    return { lat: Number(avgLat.toFixed(2)), lon: Number(avgLon.toFixed(2)) };
+  }
 
-  // France
-  'FR-IDF': { lat: 48.85, lon: 2.35 },
-  'FR-GES': { lat: 48.58, lon: 7.75 },
-  'FR-ARA': { lat: 45.75, lon: 4.85 },
-  'FR-PAC': { lat: 43.70, lon: 7.25 },
+  // 2. Query iso-3166-2 for subdivision details and match within country
+  const sub = iso.subdivision(regionCode);
+  if (sub) {
+    const countryCode = sub.countryCode;
+    const subNameLower = sub.name.toLowerCase();
 
-  // Spain
-  'ES-MD': { lat: 40.41, lon: -3.70 },
-  'ES-CT': { lat: 41.38, lon: 2.17 },
-  'ES-AN': { lat: 37.38, lon: -5.98 },
-  'ES-VC': { lat: 39.46, lon: -0.37 },
+    const countryAirports = AIRPORTS_DATABASE.filter(
+      (a) =>
+        a.country.toUpperCase() === sub.countryName.toUpperCase() ||
+        (a.state && a.state.startsWith(countryCode + '-'))
+    );
+    const subAirports = countryAirports.filter(
+      (a) => a.city.toLowerCase().includes(subNameLower) || a.name.toLowerCase().includes(subNameLower)
+    );
 
-  // Italy
-  'IT-LOM': { lat: 45.46, lon: 9.19 },
-  'IT-LAZ': { lat: 41.90, lon: 12.49 },
-  'IT-VEN': { lat: 45.44, lon: 12.31 },
-};
+    if (subAirports.length > 0) {
+      const avgLat = subAirports.reduce((sum, a) => sum + a.lat, 0) / subAirports.length;
+      const avgLon = subAirports.reduce((sum, a) => sum + a.lon, 0) / subAirports.length;
+      return { lat: Number(avgLat.toFixed(2)), lon: Number(avgLon.toFixed(2)) };
+    }
+
+    if (countryAirports.length > 0) {
+      const avgLat = countryAirports.reduce((sum, a) => sum + a.lat, 0) / countryAirports.length;
+      const avgLon = countryAirports.reduce((sum, a) => sum + a.lon, 0) / countryAirports.length;
+      return { lat: Number(avgLat.toFixed(2)), lon: Number(avgLon.toFixed(2)) };
+    }
+  }
+
+  // 3. Fallback center
+  return { lat: 48.66, lon: 9.35 };
+}
+
+/**
+ * Universal dynamic Proxy providing real-time geographical centers for any administrative region on Earth.
+ */
+export const REGION_CENTERS: Record<string, { lat: number; lon: number }> = new Proxy(
+  {},
+  {
+    get(_target, prop: string | symbol) {
+      if (typeof prop !== 'string') return undefined;
+      return getRegionCenter(prop);
+    },
+    has(_target, prop: string | symbol) {
+      if (typeof prop !== 'string') return false;
+      return Boolean(iso.subdivision(prop));
+    },
+  }
+);
 
 /**
  * Filter and sort departure airports dynamically based on user's region

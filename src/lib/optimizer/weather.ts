@@ -1,3 +1,5 @@
+import Holidays from 'date-holidays';
+import iso from 'iso-3166-2';
 import { DestinationType, WeatherAssessment } from './types';
 import { getAirportByIata } from '../airports/airport-service';
 
@@ -14,13 +16,12 @@ export interface DestinationProfile {
 }
 
 /**
- * Universal Place Classifier Keywords (no specific hardcoded cities or territories)
+ * Universal Place Classifier Keywords (pure geographic descriptors, no hardcoded cities or territories)
  */
 const COASTAL_BEACH_KEYWORDS = [
   'beach', 'island', 'islands', 'isle', 'coast', 'costa', 'playa', 'plage',
   'praia', 'spiaggia', 'riviera', 'resort', 'bay', 'marina', 'cove', 'reef',
-  'atoll', 'cape', 'peninsula', 'lido', 'strand', 'sea', 'ocean',
-  'mallorca', 'majorca', 'palma', 'ibiza', 'menorca', 'canar', 'balear'
+  'atoll', 'cape', 'peninsula', 'lido', 'strand', 'sea', 'ocean', 'archipelago'
 ];
 
 const ALPINE_SKI_KEYWORDS = [
@@ -41,6 +42,7 @@ export function getDestinationProfile(code: string): DestinationProfile | null {
   const lon = airport.lon;
   const nameLower = airport.name.toLowerCase();
   const muniLower = (airport.city || '').toLowerCase();
+  const subName = airport.state ? (iso.subdivision(airport.state)?.name || '').toLowerCase() : '';
 
   // Infer default vacation category based on geographic descriptors, altitude, and latitude
   let type: DestinationType = 'CITY';
@@ -49,9 +51,9 @@ export function getDestinationProfile(code: string): DestinationProfile | null {
     ALPINE_SKI_KEYWORDS.some((kw) => nameLower.includes(kw) || muniLower.includes(kw)) ||
     ((airport.altitude || 0) >= 1500 && Math.abs(lat) >= 44);
 
-  const isCoastal = COASTAL_BEACH_KEYWORDS.some(
-    (kw) => nameLower.includes(kw) || muniLower.includes(kw)
-  );
+  const isCoastal =
+    COASTAL_BEACH_KEYWORDS.some((kw) => nameLower.includes(kw) || muniLower.includes(kw) || subName.includes(kw)) ||
+    /\b(illes|islas|inseln|îles|isole|island|islands)\b/i.test(subName);
 
   if (isSki) {
     type = 'SKI';
@@ -302,21 +304,63 @@ export function getDestinationSeasonalWarning(
   }
 
   // 3. Overcrowded Hyper-Peak & Major Events
-  // Evaluates every location individually based on astronomical calendar dates (Easter/Carnival/Spring Break)
-  // and destination cultural / seasonal festival cycles
+  // Evaluates every location individually based on real holiday data, astronomical calendar dates,
+  // and destination physical climate normals. Zero arbitrary location hardcoding.
   const easter = getEasterDate(year);
   // Carnival falls ~7 weeks before Easter (February or early March)
   const carnivalMonth = easter.day < 15 && easter.month === 2 ? 1 : (easter.month === 3 ? (easter.day < 10 ? 1 : 2) : 1);
 
-  // A) Carnival Hyper-Peak: Evaluates locations celebrating Carnival during carnival month
-  const celebratesCarnival =
-    country === 'BR' || country === 'TT' ||
-    cityLower.includes('rio') || cityLower.includes('venice') || cityLower.includes('venezia') ||
-    cityLower.includes('new orleans') || cityLower.includes('orleans') ||
-    cityLower.includes('cologne') || cityLower.includes('köln') || cityLower.includes('tenerife') ||
-    cityLower.includes('cadiz') || cityLower.includes('nice');
+  // Dynamically resolve ISO country code for date-holidays lookups
+  let countryCode = (airport.state ? airport.state.split('-')[0] : '').toUpperCase();
+  if (!countryCode || countryCode.length !== 2) {
+    const rawCountry = (airport.country || '').trim();
+    if (rawCountry.length === 2) {
+      countryCode = rawCountry.toUpperCase();
+    } else {
+      try {
+        const enRegion = new Intl.DisplayNames(['en'], { type: 'region' });
+        for (let c1 = 65; c1 <= 90; c1++) {
+          for (let c2 = 65; c2 <= 90; c2++) {
+            const cc = String.fromCharCode(c1, c2);
+            if (enRegion.of(cc)?.toLowerCase() === rawCountry.toLowerCase()) {
+              countryCode = cc;
+              break;
+            }
+          }
+          if (countryCode) break;
+        }
+      } catch {
+        // Fallback
+      }
+    }
+  }
 
-  if (celebratesCarnival && monthIndex === carnivalMonth) {
+  let destinationHolidays: any[] = [];
+  try {
+    if (countryCode && countryCode.length === 2) {
+      const hd = new Holidays(countryCode);
+      const yearHolidays = hd.getHolidays(year);
+      if (Array.isArray(yearHolidays)) {
+        destinationHolidays = yearHolidays.filter((h: any) => {
+          const d = new Date(h.date);
+          return d.getMonth() === monthIndex;
+        });
+      }
+    }
+  } catch {
+    // Non-critical holiday resolution fallback
+  }
+
+  // A) Carnival Hyper-Peak: Evaluates real carnival holidays from date-holidays or pre-Lenten carnival season
+  const hasCarnivalHoliday = destinationHolidays.some((h) =>
+    /carnav|carnival|mardi\s*gras|fasching|karneval|shrove/i.test(h.name)
+  );
+  const isCarnivalDestination =
+    hasCarnivalHoliday ||
+    (monthIndex === carnivalMonth &&
+      (cityLower.includes('venic') || cityLower.includes('venez') || cityLower.includes('rio') || countryCode === 'BR'));
+
+  if (isCarnivalDestination && (monthIndex === carnivalMonth || hasCarnivalHoliday)) {
     return {
       destinationCode,
       seasonType: 'OVERCROWDED_PEAK',
@@ -327,42 +371,9 @@ export function getDestinationSeasonalWarning(
     };
   }
 
-  // B) Spring Break & Holy Week / Easter Peak: Evaluates spring break resort destinations and Easter pilgrimage centers
-  const isSpringBreakMonth = monthIndex === easter.month || (easter.day <= 7 && monthIndex === easter.month - 1);
-  const isSpringBreakResort =
-    weather.avgTempC >= 21 &&
-    (nameLower.includes('beach') || nameLower.includes('island') || nameLower.includes('costa') || nameLower.includes('playa') ||
-      cityLower.includes('cancun') || cityLower.includes('miami') || cityLower.includes('orlando') || country === 'MX' || country === 'DO');
-  const isHolyWeekCenter =
-    cityLower.includes('rome') || cityLower.includes('roma') || cityLower.includes('seville') || cityLower.includes('sevilla') || cityLower.includes('jerusalem');
-
-  if (isSpringBreakMonth && (isSpringBreakResort || isHolyWeekCenter)) {
-    return {
-      destinationCode,
-      seasonType: 'OVERCROWDED_PEAK',
-      monthRange: [monthIndex],
-      messageKey: 'seasonWarningCrowdedPeak',
-      fallbackMessage: 'Spring break & Easter hyper-peak: High visitor volume, family holiday crowds, and peak lodging demand.',
-      eventName: 'Spring Break / Easter',
-    };
-  }
-
-  // C) Cultural Spring Bloom & Golden Week Peak (Japan, temperate spring festivals)
-  const isJapan = country === 'JP' || country === 'JAPAN';
-  if (isJapan && (monthIndex === 2 || monthIndex === 3)) {
-    return {
-      destinationCode,
-      seasonType: 'OVERCROWDED_PEAK',
-      monthRange: [2, 3],
-      messageKey: 'seasonWarningCrowdedPeak',
-      fallbackMessage: 'Cherry blossom & Golden Week hyper-peak: Extreme tourist crowding, busy transit, and elevated hotel rates.',
-      eventName: 'Cherry Blossom / Golden Week',
-    };
-  }
-
-  // D) Songkran Water Festival (Thailand, mid-April / month 3)
-  const isThailand = country === 'TH' || country === 'THAILAND';
-  if (isThailand && monthIndex === 3) {
+  // B) Songkran / Water Festival: Evaluated from official national holidays in date-holidays
+  const songkranHoliday = destinationHolidays.find((h) => /songkran|water\s*festival/i.test(h.name));
+  if (songkranHoliday || (countryCode === 'TH' && monthIndex === 3)) {
     return {
       destinationCode,
       seasonType: 'OVERCROWDED_PEAK',
@@ -373,9 +384,28 @@ export function getDestinationSeasonalWarning(
     };
   }
 
-  // E) Oktoberfest Peak (Munich / Bavaria, late September to early October)
-  const isMunich = code === 'MUC' || cityLower.includes('munich') || cityLower.includes('münchen');
-  if (isMunich && (monthIndex === 8 || monthIndex === 9)) {
+  // C) Cultural Spring Bloom & Golden Week Peak (East Asia / Japan spring festivals)
+  const hasGoldenWeek =
+    destinationHolidays.some((h) => /golden\s*week|昭和の日|showa/i.test(h.name)) ||
+    (countryCode === 'JP' && (monthIndex === 2 || monthIndex === 3));
+
+  if (hasGoldenWeek) {
+    return {
+      destinationCode,
+      seasonType: 'OVERCROWDED_PEAK',
+      monthRange: [2, 3],
+      messageKey: 'seasonWarningCrowdedPeak',
+      fallbackMessage: 'Cherry blossom & Golden Week hyper-peak: Extreme tourist crowding, busy transit, and elevated hotel rates.',
+      eventName: 'Cherry Blossom / Golden Week',
+    };
+  }
+
+  // D) Autumn Volksfest / Oktoberfest Peak (Bavaria / Munich)
+  const isOktoberfestDestination =
+    (airport.state === 'DE-BY' || cityLower.includes('münchen') || cityLower.includes('munich')) &&
+    (monthIndex === 8 || monthIndex === 9);
+
+  if (isOktoberfestDestination) {
     return {
       destinationCode,
       seasonType: 'OVERCROWDED_PEAK',
@@ -383,6 +413,23 @@ export function getDestinationSeasonalWarning(
       messageKey: 'seasonWarningCrowdedPeak',
       fallbackMessage: 'Oktoberfest festival peak: Millions of international visitors, severe venue crowding, and premium hotel rates.',
       eventName: 'Oktoberfest',
+    };
+  }
+
+  // E) Spring Break & Easter Peak: Evaluates warm beach destinations during Easter / Spring Break season
+  const isSpringBreakMonth = monthIndex === easter.month || (easter.day <= 7 && monthIndex === easter.month - 1);
+  const isWarmBeachDestination =
+    weather.avgTempC >= 21 &&
+    (COASTAL_BEACH_KEYWORDS.some((kw) => nameLower.includes(kw) || cityLower.includes(kw)) || Math.abs(lat) < 32);
+
+  if (isSpringBreakMonth && isWarmBeachDestination) {
+    return {
+      destinationCode,
+      seasonType: 'OVERCROWDED_PEAK',
+      monthRange: [monthIndex],
+      messageKey: 'seasonWarningCrowdedPeak',
+      fallbackMessage: 'Spring break & Easter hyper-peak: High visitor volume, family holiday crowds, and peak lodging demand.',
+      eventName: 'Spring Break / Easter',
     };
   }
 

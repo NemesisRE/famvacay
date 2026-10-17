@@ -67,279 +67,48 @@ const AIRPORT_STATE_MAPPING: Record<string, string> = {
   MXP: 'IT-LOM', BGY: 'IT-LOM', LIN: 'IT-LOM', FCO: 'IT-LAZ', VCE: 'IT-VEN',
 };
 
+/**
+ * Backward compatibility export. All airport operations are purely dynamic.
+ */
 export const LOCALIZED_AIRPORT_METADATA: Record<
   string,
   {
-    name: Record<string, string>;
-    city: Record<string, string>;
-    state: string;
-    isMajorHub: boolean;
+    name?: Record<string, string>;
+    city?: Record<string, string>;
+    state?: string;
+    isMajorHub?: boolean;
   }
-> = {
-  BSL: {
-    name: {
-      de: 'EuroAirport Basel-Mulhouse-Freiburg (Basel-Mülhausen)',
-      en: 'EuroAirport Basel-Mulhouse-Freiburg',
-      fr: 'EuroAirport Bâle-Mulhouse-Fribourg',
-      es: 'EuroAirport Basilea-Mulhouse-Friburgo',
-      it: 'EuroAirport Basilea-Mulhouse-Friburgo',
-    },
-    city: {
-      de: 'Basel / Mülhausen / Freiburg',
-      en: 'Basel / Mulhouse / Freiburg',
-      fr: 'Bâle / Mulhouse',
-      es: 'Basilea / Mulhouse',
-      it: 'Basilea / Mulhouse',
-    },
-    state: 'CH-BS',
-    isMajorHub: true,
-  },
-  FRA: {
-    name: {
-      de: 'Flughafen Frankfurt am Main',
-      en: 'Frankfurt am Main Airport',
-      fr: 'Aéroport de Francfort-sur-le-Main',
-      es: 'Aeropuerto de Fráncfort del Meno',
-      it: 'Aeroporto di Francoforte sul Meno',
-    },
-    city: {
-      de: 'Frankfurt am Main',
-      en: 'Frankfurt',
-      fr: 'Francfort',
-      es: 'Fráncfort',
-      it: 'Francoforte',
-    },
-    state: 'DE-HE',
-    isMajorHub: true,
-  },
-  MUC: {
-    name: {
-      de: 'Flughafen München Franz Josef Strauß',
-      en: 'Munich Airport',
-      fr: 'Aéroport de Munich',
-      es: 'Aeropuerto de Múnich',
-      it: 'Aeroporto di Monaco di Baviera',
-    },
-    city: {
-      de: 'München',
-      en: 'Munich',
-      fr: 'Munich',
-      es: 'Múnich',
-      it: 'Monaco',
-    },
-    state: 'DE-BY',
-    isMajorHub: true,
-  },
-  STR: {
-    name: {
-      de: 'Flughafen Stuttgart Manfred Rommel',
-      en: 'Stuttgart Airport',
-      fr: 'Aéroport de Stuttgart',
-      es: 'Aeropuerto de Stuttgart',
-      it: 'Aeroporto di Stoccarda',
-    },
-    city: {
-      de: 'Stuttgart',
-      en: 'Stuttgart',
-      fr: 'Stuttgart',
-      es: 'Stuttgart',
-      it: 'Stoccarda',
-    },
-    state: 'DE-BW',
-    isMajorHub: true,
-  },
-  FKB: {
-    name: {
-      de: 'Flughafen Karlsruhe/Baden-Baden (Baden-Airpark)',
-      en: 'Karlsruhe/Baden-Baden Airport (Baden-Airpark)',
-      fr: 'Aéroport de Karlsruhe/Baden-Baden',
-      es: 'Aeropuerto de Karlsruhe/Baden-Baden',
-      it: 'Aeroporto di Karlsruhe/Baden-Baden',
-    },
-    city: {
-      de: 'Karlsruhe / Baden-Baden',
-      en: 'Karlsruhe / Baden-Baden',
-      fr: 'Karlsruhe / Baden-Baden',
-      es: 'Karlsruhe / Baden-Baden',
-      it: 'Karlsruhe / Baden-Baden',
-    },
-    state: 'DE-BW',
-    isMajorHub: true,
-  },
-  BER: {
-    name: {
-      de: 'Flughafen Berlin Brandenburg Willy Brandt',
-      en: 'Berlin Brandenburg Airport',
-      fr: 'Aéroport de Berlin-Brandebourg',
-      es: 'Aeropuerto de Berlín-Brandeburgo',
-      it: 'Aeroporto di Berlino-Brandeburgo',
-    },
-    city: {
-      de: 'Berlin',
-      en: 'Berlin',
-      fr: 'Berlin',
-      es: 'Berlín',
-      it: 'Berlino',
-    },
-    state: 'DE-BE',
-    isMajorHub: true,
-  },
-  HAM: {
-    name: {
-      de: 'Flughafen Hamburg Helmut Schmidt',
-      en: 'Hamburg Airport',
-      fr: 'Aéroport de Hambourg',
-      es: 'Aeropuerto de Hamburgo',
-      it: 'Aeroporto di Amburgo',
-    },
-    city: {
-      de: 'Hamburg',
-      en: 'Hamburg',
-      fr: 'Hambourg',
-      es: 'Hamburgo',
-      it: 'Amburgo',
-    },
-    state: 'DE-HH',
-    isMajorHub: true,
-  },
-  DUS: {
-    name: {
-      de: 'Flughafen Düsseldorf',
-      en: 'Düsseldorf Airport',
-      fr: 'Aéroport de Düsseldorf',
-      es: 'Aeropuerto de Düsseldorf',
-      it: 'Aeroporto di Düsseldorf',
-    },
-    city: {
-      de: 'Düsseldorf',
-      en: 'Düsseldorf',
-      fr: 'Düsseldorf',
-      es: 'Düsseldorf',
-      it: 'Düsseldorf',
-    },
-    state: 'DE-NW',
-    isMajorHub: true,
-  },
-  CGN: {
-    name: {
-      de: 'Flughafen Köln/Bonn Konrad Adenauer',
-      en: 'Cologne Bonn Airport',
-      fr: 'Aéroport de Cologne-Bonn',
-      es: 'Aeropuerto de Colonia/Bonn',
-      it: 'Aeroporto di Colonia-Bonn',
-    },
-    city: {
-      de: 'Köln / Bonn',
-      en: 'Cologne / Bonn',
-      fr: 'Cologne / Bonn',
-      es: 'Colonia / Bonn',
-      it: 'Colonia / Bonn',
-    },
-    state: 'DE-NW',
-    isMajorHub: true,
-  },
-  CDG: {
-    name: {
-      de: 'Flughafen Paris-Charles-de-Gaulle',
-      en: 'Paris Charles de Gaulle Airport',
-      fr: 'Aéroport de Paris-Charles-de-Gaulle',
-      es: 'Aeropuerto de París-Charles de Gaulle',
-      it: 'Aeroporto di Parigi Charles de Gaulle',
-    },
-    city: {
-      de: 'Paris',
-      en: 'Paris',
-      fr: 'Paris',
-      es: 'París',
-      it: 'Parigi',
-    },
-    state: 'FR-IDF',
-    isMajorHub: true,
-  },
-  ORY: {
-    name: {
-      de: 'Flughafen Paris-Orly',
-      en: 'Paris Orly Airport',
-      fr: 'Aéroport de Paris-Orly',
-      es: 'Aeropuerto de París-Orly',
-      it: 'Aeroporto di Parigi Orly',
-    },
-    city: {
-      de: 'Paris',
-      en: 'Paris',
-      fr: 'Paris',
-      es: 'París',
-      it: 'Parigi',
-    },
-    state: 'FR-IDF',
-    isMajorHub: true,
-  },
-  SXB: {
-    name: {
-      de: 'Flughafen Straßburg Entzheim',
-      en: 'Strasbourg Airport',
-      fr: 'Aéroport de Strasbourg-Entzheim',
-      es: 'Aeropuerto de Estrasburgo',
-      it: 'Aeroporto di Strasburgo',
-    },
-    city: {
-      de: 'Straßburg',
-      en: 'Strasbourg',
-      fr: 'Strasbourg',
-      es: 'Estrasburgo',
-      it: 'Strasburgo',
-    },
-    state: 'FR-GES',
-    isMajorHub: true,
-  },
-  ZRH: {
-    name: {
-      de: 'Flughafen Zürich Kloten',
-      en: 'Zurich Airport',
-      fr: 'Aéroport de Zurich',
-      es: 'Aeropuerto de Zúrich',
-      it: 'Aeroporto di Zurigo',
-    },
-    city: {
-      de: 'Zürich',
-      en: 'Zurich',
-      fr: 'Zurich',
-      es: 'Zúrich',
-      it: 'Zurigo',
-    },
-    state: 'CH-ZH',
-    isMajorHub: true,
-  },
-  VIE: {
-    name: {
-      de: 'Flughafen Wien-Schwechat',
-      en: 'Vienna International Airport',
-      fr: 'Aéroport de Vienne-Schwechat',
-      es: 'Aeropuerto de Viena-Schwechat',
-      it: 'Aeroporto di Vienna-Schwechat',
-    },
-    city: {
-      de: 'Wien',
-      en: 'Vienna',
-      fr: 'Vienne',
-      es: 'Viena',
-      it: 'Vienna',
-    },
-    state: 'AT-9',
-    isMajorHub: true,
-  },
-};
+> = {};
 
 export function getLocalizedAirportDetails(airport: DynamicAirport, locale: string = 'en'): DynamicAirport {
-  const meta = LOCALIZED_AIRPORT_METADATA[airport.code];
-  if (!meta) return airport;
   const loc = (locale || 'en').toLowerCase().slice(0, 2);
+  let localizedCountry = airport.country;
+  if (airport.state) {
+    try {
+      const cCode = airport.state.split('-')[0];
+      const enRegion = new Intl.DisplayNames([loc], { type: 'region' });
+      const cName = enRegion.of(cCode);
+      if (cName) localizedCountry = cName;
+    } catch {
+      // Non-critical localization fallback
+    }
+  }
+
+  const meta = LOCALIZED_AIRPORT_METADATA[airport.code];
+  if (!meta) {
+    return {
+      ...airport,
+      country: localizedCountry,
+    };
+  }
+
   return {
     ...airport,
-    name: meta.name[loc] || meta.name.en || airport.name,
-    city: meta.city[loc] || meta.city.en || airport.city,
+    name: meta.name?.[loc] || meta.name?.en || airport.name,
+    city: meta.city?.[loc] || meta.city?.en || airport.city,
     state: meta.state || airport.state,
     isMajorHub: meta.isMajorHub ?? airport.isMajorHub,
+    country: localizedCountry,
   };
 }
 
@@ -419,8 +188,8 @@ const indexedAirports: DynamicAirport[] = rawAirports
     return {
       code,
       icao: a.icao || '',
-      name: meta?.name.en || a.name || '',
-      city: meta?.city.en || a.city || '',
+      name: meta?.name?.en || a.name || '',
+      city: meta?.city?.en || a.city || '',
       country: a.country || '',
       lat: Number(a.latitude),
       lon: Number(a.longitude),
@@ -598,9 +367,9 @@ export function getRecommendedAirportsForCoordinates(
     const rail = evaluateHighSpeedRailConnectivity(userLat, userLon, airport.code);
 
     let corridorNote: string | undefined;
-    if (hasLongHaulDestinations && (airport.code === 'FRA' || airport.code === 'CDG' || airport.code === 'MUC')) {
+    if (hasLongHaulDestinations && airport.isMajorHub) {
       corridorNote = 'Direct intercontinental long-haul corridor';
-    } else if (hasEgyptOrTurkey && ['STR', 'FKB', 'BSL', 'DUS', 'FRA', 'MUC', 'NUE'].includes(airport.code)) {
+    } else if (hasEgyptOrTurkey && (airport.isMajorHub || distanceKm <= 180)) {
       corridorNote = 'Direct holiday charter corridor';
     }
 
@@ -646,13 +415,13 @@ export function getRecommendedAirportsForCoordinates(
     }
   }
 
-  // If long-haul destinations selected, ensure major intercontinental hubs are included if within catchment
+  // If long-haul destinations selected, ensure major intercontinental hubs within catchment are prioritized
   if (hasLongHaulDestinations) {
-    for (const code of ['FRA', 'CDG', 'MUC']) {
-      const hub = scored.find((a) => a.code === code);
-      if (hub && !addedCodes.has(code)) {
+    const intercontinentalHubs = scored.filter((a) => a.isMajorHub);
+    for (const hub of intercontinentalHubs) {
+      if (!addedCodes.has(hub.code)) {
         combined.push(hub);
-        addedCodes.add(code);
+        addedCodes.add(hub.code);
       }
     }
   }

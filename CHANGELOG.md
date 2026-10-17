@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Integrated `iso-3166-2`, `i18n-iso-countries`, and `date-holidays` packages for universal administrative subdivisions, multilingual country name resolution (en, de, fr, es, it), and real-time public holiday schedules for any nation or territory on Earth.
+- Dynamic global administrative centroid calculator (`REGION_CENTERS`) computing geographic midpoints on demand from `airport-data` and `iso-3166-2` subdivision records.
 - Comprehensive Codebase Audit Summary documenting architecture, gaps, and roadmap.
 - Dynamic astronomical Computus (`getEasterDate`) calculation determining Gregorian Easter Sunday, Ash Wednesday, Carnival / Mardi Gras, and Spring Break / Holy Week dates dynamically for any calendar year.
 - Dynamic per-destination event and overcrowding analyzer (`OVERCROWDED_PEAK`) evaluating Carnival, Spring Break, Cherry Blossom & Golden Week, Songkran Festival, and Oktoberfest with localized event badges and advisories.
@@ -25,6 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SECURITY.md` vulnerability reporting policy and `docs/setup.md`.
 
 ### Changed
+- Completely eradicated massive static constants and hardcoded catalogs across the codebase: `GLOBAL_DESTINATION_ENTITIES` (600+ lines), `LOCALIZED_AIRPORT_METADATA` (260+ lines), and static `REGION_CENTERS` dictionaries.
+- Replaced the static 6-country list (`COUNTRIES` in `src/lib/regions/subdivisions.ts`) with a dynamic Proxy over all 249 ISO-3166-1/2 countries and subdivisions via `iso-3166-2`.
+- Replaced hardcoded intercontinental airport hub corridors (`FRA`, `CDG`, `MUC`) with dynamic passenger hub classification within catchment zones.
+- Upgraded `OVERCROWDED_PEAK` in `src/lib/optimizer/weather.ts` to evaluate official public holiday calendars from `date-holidays` (Carnival/Mardi Gras, Songkran, Golden Week) alongside astronomical Computus and thermal beach indices without static destination lists.
+- Dynamically localized airport countries in `airport-service.ts` using `Intl.DisplayNames`.
 - `GET /api/health` converted to a pure liveness check with zero database or cache dependencies.
 - Replaced prompt-example specific branches (`Athen`, `Mars`, `Atlantis`, `Tokyo`, `Dubai`, `Bali`) in `destinations.ts` and `places.ts` with generalized ontological categorization (OSM administrative hierarchy, population/rank thresholds, and universal linguistic descriptors) and resilient multi-destination Levenshtein matching.
 - Generalized `resolveCountryCode` to dynamically resolve all 249 ISO-3166-1 alpha-2 countries via `Intl.DisplayNames` and commercial airport catalogs across EN, DE, FR, ES, and IT without static country subsets.
