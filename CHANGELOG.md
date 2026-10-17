@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Generated canonical commercial passenger airports database (`src/lib/airports/data/airports.json`) containing 4,008 active commercial airports worldwide derived from the OurAirports open aviation dataset and scheduled passenger service validation, featuring official IATA/ICAO codes, municipality, country, ISO 3166-2 subdivisions, physical elevation, and mainline high-speed rail passenger terminal connectivity.
+- Build-time aviation database generator script (`scripts/generate-airports-db.js`) maintaining the canonical scheduled passenger airports database.
 - Integrated `iso-3166-2`, `i18n-iso-countries`, and `date-holidays` packages for universal administrative subdivisions, multilingual country name resolution (en, de, fr, es, it), and real-time public holiday schedules for any nation or territory on Earth.
 - Dynamic global administrative centroid calculator (`REGION_CENTERS`) computing geographic midpoints on demand from `airport-data` and `iso-3166-2` subdivision records.
 - Comprehensive Codebase Audit Summary documenting architecture, gaps, and roadmap.
@@ -27,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SECURITY.md` vulnerability reporting policy and `docs/setup.md`.
 
 ### Changed
+- Completely eradicated `COASTAL_BEACH_KEYWORDS` and `ALPINE_SKI_KEYWORDS` in `src/lib/optimizer/weather.ts`; replaced keyword-based place and condition heuristics with physical elevation (`altitudeMeters >= 550`), latitude, and continuous climatological modeling (sub-freezing winter temps for ski, ocean surface temperature >= 19°C and ambient warmth >= 22°C for beach).
+- Completely eliminated `KNOWN_MAJOR_HUBS`, `AIRPORT_STATE_MAPPING`, `EXCLUDED_NON_COMMERCIAL_AIRPORTS`, `NON_COMMERCIAL_KEYWORDS`, and `INTEGRATED_RAIL_AIRPORT_HUBS` from `src/lib/airports/airport-service.ts`; airport status, subdivisions, major hub classification, and mainline rail connections are now intrinsic database properties matching Prisma `model Airport`.
+- Enhanced `fuzzyMatchDestinationEntity` and `isWordMatch` in `src/lib/optimizer/destinations.ts` with generic geographic stop-word filtering, suffix stemming for international language variants, and OurAirports multi-lingual keywords.
 - Completely eradicated `MAJOR_CITY_EXONYMS`, hardcoded special region corridors ("Hurghada & Rotes Meer"), and special island checks from `src/lib/optimizer/destinations.ts` in favor of universal word-based Levenshtein matching (`wordLevenshtein`) and runtime geocoding place resolution via `searchGlobalPlaces`.
 - Replaced hardcoded destination names for long-haul and charter corridors in `src/lib/airports/airport-service.ts` with dynamic geodesic distance thresholds (>= 3,500 km for intercontinental corridors, 1,500 - 3,500 km for medium-haul charter corridors).
 - Eliminated hardcoded country/state fallbacks (`DE-BW`, `['STR', 'FRA']`, `'DE'`) across `engine.ts`, `subdivisions.ts`, `airports-db.ts`, and `portals.ts`.

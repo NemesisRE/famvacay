@@ -33,9 +33,12 @@ export function getRegionCenter(regionCode: string): { lat: number; lon: number 
 
   // 1. Direct match on indexed airports belonging to this subdivision
   const matchingAirports = AIRPORTS_DATABASE.filter((a) => a.state === regionCode);
-  if (matchingAirports.length > 0) {
-    const avgLat = matchingAirports.reduce((sum, a) => sum + a.lat, 0) / matchingAirports.length;
-    const avgLon = matchingAirports.reduce((sum, a) => sum + a.lon, 0) / matchingAirports.length;
+  const hubAirports = matchingAirports.filter((a) => a.isHub);
+  const targetAirports = hubAirports.length > 0 ? hubAirports : matchingAirports;
+
+  if (targetAirports.length > 0) {
+    const avgLat = targetAirports.reduce((sum, a) => sum + a.lat, 0) / targetAirports.length;
+    const avgLon = targetAirports.reduce((sum, a) => sum + a.lon, 0) / targetAirports.length;
     return { lat: Number(avgLat.toFixed(2)), lon: Number(avgLon.toFixed(2)) };
   }
 

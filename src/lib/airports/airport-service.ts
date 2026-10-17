@@ -1,10 +1,5 @@
 import { getDistance } from 'geolib';
-
-// Import raw airport data (7,184 worldwide airports)
-// @ts-expect-error airport-data package lacks typescript definitions
-import rawAirportsData from 'airport-data';
-
-const rawAirports: any[] = rawAirportsData as any[];
+import airportsData from './data/airports.json';
 
 export interface DynamicAirport {
   code: string;       // 3-letter IATA code
@@ -21,51 +16,8 @@ export interface DynamicAirport {
   railConnectivityNote?: string;
   flightCorridorNote?: string;
   isMajorHub?: boolean;
+  keywords?: string;
 }
-
-// Major commercial airline hubs in Europe and globally
-const KNOWN_MAJOR_HUBS = new Set([
-  'FRA', 'MUC', 'STR', 'BER', 'HAM', 'DUS', 'CGN', 'FKB', 'NUE', 'HAJ', 'BRE', 'LEJ', 'DRS', 'FMM', 'FDH', 'HHN', 'SCN',
-  'CDG', 'ORY', 'LYS', 'NCE', 'MRS', 'SXB', 'TLS', 'BOD', 'NTE',
-  'AMS', 'BRU', 'LUX',
-  'ZRH', 'GVA', 'BSL',
-  'VIE', 'SZG', 'INN', 'GRZ', 'LNZ', 'KLU',
-  'LHR', 'LGW', 'STN', 'MAN', 'EDI',
-  'MAD', 'BCN', 'AGP', 'VLC', 'ALC', 'SVQ', 'PMI', 'IBZ',
-  'FCO', 'MXP', 'BGY', 'LIN', 'VCE', 'BLQ', 'NAP', 'CTA', 'PMO',
-  'LIS', 'OPO', 'FAO',
-  'CPH', 'OSL', 'ARN', 'HEL',
-  'WAW', 'KRK', 'PRG', 'BUD',
-  'ATH', 'HER', 'SKG', 'RHO', 'CFU',
-  'IST', 'SAW', 'AYT',
-  'DXB', 'DOH', 'BKK', 'HND', 'NRT', 'SIN', 'JFK', 'ORD', 'LAX', 'MIA', 'CUN'
-]);
-
-// Administrative subdivision mapping for key European airports
-const AIRPORT_STATE_MAPPING: Record<string, string> = {
-  // Germany
-  STR: 'DE-BW', FKB: 'DE-BW', FDH: 'DE-BW',
-  MUC: 'DE-BY', NUE: 'DE-BY', FMM: 'DE-BY',
-  FRA: 'DE-HE', KSF: 'DE-HE',
-  HHN: 'DE-RP',
-  BER: 'DE-BE',
-  HAM: 'DE-HH',
-  DUS: 'DE-NW', CGN: 'DE-NW', DTM: 'DE-NW', FMO: 'DE-NW',
-  HAJ: 'DE-NI', BRE: 'DE-HB',
-  LEJ: 'DE-SN', DRS: 'DE-SN',
-  SCN: 'DE-SL', RLG: 'DE-MV',
-  // France
-  CDG: 'FR-IDF', ORY: 'FR-IDF', BVA: 'FR-HDF',
-  SXB: 'FR-GES', LYS: 'FR-ARA', NCE: 'FR-PAC', MRS: 'FR-PAC',
-  // Switzerland
-  BSL: 'CH-BS', ZRH: 'CH-ZH', GVA: 'CH-GE', BRN: 'CH-BE',
-  // Austria
-  VIE: 'AT-9', SZG: 'AT-5', INN: 'AT-7', GRZ: 'AT-6', LNZ: 'AT-4', KLU: 'AT-2',
-  // Spain
-  MAD: 'ES-MD', BCN: 'ES-CT', VLC: 'ES-VC', AGP: 'ES-AN', SVQ: 'ES-AN', PMI: 'ES-IB',
-  // Italy
-  MXP: 'IT-LOM', BGY: 'IT-LOM', LIN: 'IT-LOM', FCO: 'IT-LAZ', VCE: 'IT-VEN',
-};
 
 /**
  * Backward compatibility export. All airport operations are purely dynamic.
@@ -112,42 +64,41 @@ export function getLocalizedAirportDetails(airport: DynamicAirport, locale: stri
   };
 }
 
-// Excluded non-commercial, military, or decommissioned airfields
-export const EXCLUDED_NON_COMMERCIAL_AIRPORTS = new Set([
-  // Military Air Bases & Air Stations
-  'RMS', 'SPM', 'GKE', 'GUT', 'GHF', 'ZNF', 'NDZ', 'QMI', 'AVB', 'VVI',
-  // Decommissioned / closed airports
-  'TXL', 'THF', 'SXF', 'BBS', 'HEW',
-  // Small general aviation, private airstrips, glider fields
-  'QEF', 'MHG', 'ZQC', 'ZQF', 'ZNV', 'ZQL', 'ZQW', 'BYU', 'HOQ', 'AAH', 'LHA',
-  'CSO', 'PEF', 'BBJ', 'EUM', 'FNB', 'ZCA', 'ESS', 'MGL', 'OBF', 'RBM', 'SZW',
-  'ZSN', 'BWE', 'BRV', 'FLF', 'BBH', 'AOC', 'KEL', 'EBE', 'EMP', 'ESX', 'LND',
-  'QFB', 'BFE', 'QFD', 'ELT', 'SKV',
-]);
+/**
+ * Backward compatibility stubs. All exclusions and non-commercial classifications
+ * are pre-filtered in the open dataset and Prisma models.
+ */
+export const EXCLUDED_NON_COMMERCIAL_AIRPORTS = new Set<string>();
+export const NON_COMMERCIAL_KEYWORDS: string[] = [];
 
-export const NON_COMMERCIAL_KEYWORDS = [
-  'air base',
-  'airbase',
-  ' afb',
-  'army air',
-  'naval air',
-  'militär',
-  'military',
-  'heliport',
-  'helipad',
-  'glider',
-  'segelflug',
-  'segelflugplatz',
-  'sportflug',
-  'ultralight',
-  'airstrip',
-  '[duplicate]',
-];
+// Index active commercial passenger airports worldwide
+const indexedAirports: DynamicAirport[] = (airportsData as DynamicAirport[]).map((a) => {
+  const meta = LOCALIZED_AIRPORT_METADATA[a.code];
+  return {
+    code: a.code,
+    icao: a.icao || '',
+    name: meta?.name?.en || a.name || '',
+    city: meta?.city?.en || a.city || '',
+    country: a.country || '',
+    lat: Number(a.lat),
+    lon: Number(a.lon),
+    altitude: Number(a.altitude) || 0,
+    state: meta?.state || a.state || undefined,
+    isMajorHub: meta?.isMajorHub ?? Boolean(a.isMajorHub),
+    isHighSpeedRailConnected: Boolean(a.isHighSpeedRailConnected),
+    keywords: (a as any).keywords || undefined,
+  };
+});
+
+const airportByIataMap = new Map<string, DynamicAirport>();
+for (const a of indexedAirports) {
+  airportByIataMap.set(a.code, a);
+}
 
 export function isCommercialPassengerAirport(airport: {
   iata?: string;
   code?: string;
-  name: string;
+  name?: string;
   city?: string;
   isMajorHub?: boolean;
 }): boolean {
@@ -155,70 +106,7 @@ export function isCommercialPassengerAirport(airport: {
   if (!code || code.length !== 3 || code === '\\N') {
     return false;
   }
-
-  // Explicit military / non-commercial exclusion set
-  if (EXCLUDED_NON_COMMERCIAL_AIRPORTS.has(code)) {
-    return false;
-  }
-
-  // If designated as a known major commercial hub or metadata major hub, preserve
-  if (KNOWN_MAJOR_HUBS.has(code) || airport.isMajorHub) {
-    return true;
-  }
-
-  const nameLower = (airport.name || '').toLowerCase();
-  const cityLower = (airport.city || '').toLowerCase();
-
-  // Keyword check for military, gliders, heliports
-  for (const kw of NON_COMMERCIAL_KEYWORDS) {
-    if (nameLower.includes(kw) || cityLower.includes(kw)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-// Index valid commercial IATA airports
-const indexedAirports: DynamicAirport[] = rawAirports
-  .filter((a) => a.iata && a.iata.length === 3 && a.iata !== '\\N' && isCommercialPassengerAirport(a))
-  .map((a) => {
-    const code = a.iata.toUpperCase();
-    const meta = LOCALIZED_AIRPORT_METADATA[code];
-    return {
-      code,
-      icao: a.icao || '',
-      name: meta?.name?.en || a.name || '',
-      city: meta?.city?.en || a.city || '',
-      country: a.country || '',
-      lat: Number(a.latitude),
-      lon: Number(a.longitude),
-      altitude: Number(a.altitude) || 0,
-      state: meta?.state || AIRPORT_STATE_MAPPING[code] || undefined,
-      isMajorHub: meta?.isMajorHub ?? KNOWN_MAJOR_HUBS.has(code),
-    };
-  });
-
-const airportByIataMap = new Map<string, DynamicAirport>();
-for (const a of indexedAirports) {
-  airportByIataMap.set(a.code, a);
-}
-
-// Add modern Berlin Brandenburg (BER) if missing from older airport-data dumps
-if (!airportByIataMap.has('BER')) {
-  const berAirport: DynamicAirport = {
-    code: 'BER',
-    icao: 'EDDB',
-    name: 'Berlin Brandenburg Airport Willy Brandt',
-    city: 'Berlin',
-    country: 'Germany',
-    lat: 52.3667,
-    lon: 13.5033,
-    state: 'DE-BE',
-    isMajorHub: true,
-  };
-  indexedAirports.unshift(berAirport);
-  airportByIataMap.set('BER', berAirport);
+  return airportByIataMap.has(code);
 }
 
 /**
@@ -262,8 +150,14 @@ export function getMajorAirportsForCountry(countryCodeOrName: string): string[] 
     return c === targetCountryName || (clean.length === 2 && st.startsWith(clean.toLowerCase() + '-'));
   });
 
-  // Prioritize major airline hubs first
-  matched.sort((a, b) => (b.isMajorHub ? 1 : 0) - (a.isMajorHub ? 1 : 0));
+  // Prioritize high-speed rail connected hubs and major international gateways
+  matched.sort((a, b) => {
+    if (a.isHighSpeedRailConnected && !b.isHighSpeedRailConnected) return -1;
+    if (!a.isHighSpeedRailConnected && b.isHighSpeedRailConnected) return 1;
+    if (a.isMajorHub && !b.isMajorHub) return -1;
+    if (!a.isMajorHub && b.isMajorHub) return 1;
+    return a.code.localeCompare(b.code);
+  });
   const unique = Array.from(new Set(matched.map((a) => a.code)));
   return unique.slice(0, 8);
 }
@@ -285,14 +179,6 @@ export function calculateGeodesicDistanceKm(
 }
 
 /**
- * Evaluate High-Speed Rail (HSR) connectivity from departure location
- */
-// Major international airports with directly integrated mainline/high-speed rail passenger terminals
-const INTEGRATED_RAIL_AIRPORT_HUBS = new Set([
-  'FRA', 'CDG', 'AMS', 'ZRH', 'BRU', 'DUS', 'LYS', 'LGW', 'LHR', 'FCO', 'VIE', 'BWI', 'HND'
-]);
-
-/**
  * Evaluate High-Speed / Mainline Rail connectivity from departure location.
  * Abstract transit model: identifies airports with integrated rail terminal within practical overland rail radius.
  */
@@ -301,12 +187,10 @@ export function evaluateHighSpeedRailConnectivity(
   userLon: number,
   airportCode: string
 ): { isConnected: boolean; note?: string } {
-  if (!INTEGRATED_RAIL_AIRPORT_HUBS.has(airportCode)) {
+  const airport = getAirportByIata(airportCode);
+  if (!airport || !airport.isHighSpeedRailConnected) {
     return { isConnected: false };
   }
-
-  const airport = getAirportByIata(airportCode);
-  if (!airport) return { isConnected: false };
 
   const distToAirport = calculateGeodesicDistanceKm(userLat, userLon, airport.lat, airport.lon);
 

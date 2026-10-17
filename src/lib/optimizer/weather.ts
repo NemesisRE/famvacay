@@ -16,23 +16,10 @@ export interface DestinationProfile {
 }
 
 /**
- * Universal Place Classifier Keywords (pure geographic descriptors, no hardcoded cities or territories)
- */
-const COASTAL_BEACH_KEYWORDS = [
-  'beach', 'island', 'islands', 'isle', 'coast', 'costa', 'playa', 'plage',
-  'praia', 'spiaggia', 'riviera', 'resort', 'bay', 'marina', 'cove', 'reef',
-  'atoll', 'cape', 'peninsula', 'lido', 'strand', 'sea', 'ocean', 'archipelago'
-];
-
-const ALPINE_SKI_KEYWORDS = [
-  'ski', 'alps', 'alpen', 'alpi', 'alpes', 'glacier', 'dolomiti', 'dolomites',
-  'pyrenees', 'mountain', 'peak', 'snow', 'berg'
-];
-
-/**
  * Dynamic Destination Profile Resolver
- * Generates destination metadata dynamically from the worldwide commercial airport database.
- * Completely eliminates static, hardcoded city lists.
+ * Generates destination metadata dynamically from the worldwide commercial airport database,
+ * physical elevation, latitude, and continuous climatological modeling.
+ * Completely eliminates static, hardcoded city lists and keyword matching.
  */
 export function getDestinationProfile(code: string): DestinationProfile | null {
   const airport = getAirportByIata(code);
@@ -40,24 +27,31 @@ export function getDestinationProfile(code: string): DestinationProfile | null {
 
   const lat = airport.lat;
   const lon = airport.lon;
-  const nameLower = airport.name.toLowerCase();
-  const muniLower = (airport.city || '').toLowerCase();
-  const subName = airport.state ? (iso.subdivision(airport.state)?.name || '').toLowerCase() : '';
+  const altitudeMeters = (airport.altitude || 0) * 0.3048;
 
-  // Infer default vacation category based on geographic descriptors, altitude, and latitude
+  const winterMonth = lat >= 0 ? 0 : 6;
+  const summerMonth = lat >= 0 ? 6 : 0;
+  const winterClimate = getEstimatedClimate(airport.code, winterMonth, { lat, lon });
+  const summerClimate = getEstimatedClimate(airport.code, summerMonth, { lat, lon });
+
+  // Infer destination vacation category based purely on physical elevation, latitude, and climatological conditions
   let type: DestinationType = 'CITY';
 
   const isSki =
-    ALPINE_SKI_KEYWORDS.some((kw) => nameLower.includes(kw) || muniLower.includes(kw)) ||
-    ((airport.altitude || 0) >= 1500 && Math.abs(lat) >= 44);
+    altitudeMeters >= 550 &&
+    Math.abs(lat) >= 35 &&
+    winterClimate.avgTempC <= 3;
 
   const isCoastal =
-    COASTAL_BEACH_KEYWORDS.some((kw) => nameLower.includes(kw) || muniLower.includes(kw) || subName.includes(kw)) ||
-    /\b(illes|islas|inseln|îles|isole|island|islands)\b/i.test(subName);
+    !isSki &&
+    altitudeMeters < 600 &&
+    summerClimate.waterTempC != null &&
+    summerClimate.waterTempC >= 19 &&
+    (summerClimate.maxTempC ?? summerClimate.avgTempC) >= 22;
 
   if (isSki) {
     type = 'SKI';
-  } else if (isCoastal || Math.abs(lat) < 35) {
+  } else if (isCoastal || Math.abs(lat) < 32) {
     // Warm subtropical / tropical latitudes or coastal geography naturally support beach/leisure vacations
     type = 'BEACH';
   }
@@ -425,7 +419,7 @@ export function getDestinationSeasonalWarning(
   const isSpringBreakMonth = monthIndex === easter.month || (easter.day <= 7 && monthIndex === easter.month - 1);
   const isWarmBeachDestination =
     weather.avgTempC >= 21 &&
-    (COASTAL_BEACH_KEYWORDS.some((kw) => nameLower.includes(kw) || cityLower.includes(kw)) || Math.abs(lat) < 32);
+    ((weather.waterTempC != null && weather.waterTempC >= 19) || Math.abs(lat) < 30);
 
   if (isSpringBreakMonth && isWarmBeachDestination) {
     return {

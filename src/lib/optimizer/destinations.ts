@@ -62,14 +62,23 @@ export const dynamicDestinationEntityCache = new Map<string, LocalizedDestinatio
 export function normalizeDestinationString(str: string): string {
   return str
     .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[_\-\/()&]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
+const GENERIC_GEO_TOKENS = new Set([
+  'city', 'town', 'port', 'airport', 'stadt', 'ville', 'citta', 'ciudad',
+  'island', 'islands', 'isle', 'insel', 'inseln', 'costa', 'coast', 'beach',
+  'north', 'south', 'east', 'west', 'nord', 'sud', 'ost',
+  'upper', 'lower', 'saint', 'san', 'santa'
+]);
+
 /**
  * Checks if two strings match via full equality, whole-word phrase match,
- * or shared significant word tokens (length >= 4).
+ * or shared significant word tokens (length >= 4, excluding generic geographic stop-words).
  */
 function isWordMatch(source: string, target: string): boolean {
   if (source === target) return true;
@@ -81,9 +90,9 @@ function isWordMatch(source: string, target: string): boolean {
 
   if (sWords.includes(target) || tWords.includes(source)) return true;
 
-  // Check if they share any significant word token (>= 4 chars)
+  // Check if they share any significant word token (>= 4 chars, excluding generic geographic descriptors)
   for (const sw of sWords) {
-    if (sw.length >= 4 && tWords.includes(sw)) {
+    if (sw.length >= 4 && !GENERIC_GEO_TOKENS.has(sw) && tWords.includes(sw)) {
       return true;
     }
   }
@@ -123,6 +132,10 @@ export function wordLevenshtein(query: string, text: string): number {
   for (const w of words) {
     if (w.length >= 2) {
       best = Math.min(best, levenshteinDistance(q, w));
+      // Language suffix stemming (e.g. Athens -> Athen, Brussels -> Brussel)
+      if (w.endsWith('s') && w.length >= 4) {
+        best = Math.min(best, levenshteinDistance(q, w.slice(0, -1)));
+      }
     }
   }
   return best;
@@ -301,19 +314,31 @@ export function fuzzyMatchDestinationEntity(
   // Resilient word-based Levenshtein matching across all commercial airports worldwide
   const allAirports = getAllCommercialAirports();
   let bestAirportMatch: any = null;
-  let bestScore = Infinity;
+  let bestDist = Infinity;
+  let bestTieBreaker = -Infinity;
 
   for (const a of allAirports) {
     if (!a.code || !a.city) continue;
     const cLow = normalizeDestinationString(a.city);
     const nLow = normalizeDestinationString(a.name);
-    const dist = Math.min(wordLevenshtein(clean, cLow), wordLevenshtein(clean, nLow));
+    const kLow = a.keywords ? normalizeDestinationString(a.keywords) : '';
+    const distCity = wordLevenshtein(clean, cLow);
+    const distName = wordLevenshtein(clean, nLow);
+    const distKw = kLow ? wordLevenshtein(clean, kLow) : Infinity;
+    const dist = Math.min(distCity, distName, distKw + 1);
     const maxAllowed = clean.length <= 4 ? 2 : 3;
     if (dist > maxAllowed) continue;
 
-    const score = dist - (a.isMajorHub ? 1.5 : 0);
-    if (score < bestScore) {
-      bestScore = score;
+    let prefixLen = 0;
+    while (prefixLen < clean.length && prefixLen < cLow.length && clean[prefixLen] === cLow[prefixLen]) {
+      prefixLen++;
+    }
+
+    const tieBreaker = (a.isMajorHub ? 2 : 0) + (prefixLen * 0.5) - (distKw < distCity ? 1 : 0);
+
+    if (dist < bestDist || (dist === bestDist && tieBreaker > bestTieBreaker)) {
+      bestDist = dist;
+      bestTieBreaker = tieBreaker;
       bestAirportMatch = a;
     }
   }

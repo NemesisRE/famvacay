@@ -258,8 +258,8 @@ The dynamic airport engine (`src/lib/airports/airport-service.ts`) operates glob
    - Airport proximity is computed using true geodesic distance and transit connectivity from origin coordinates worldwide.
    - Arbitrary country-specific hardcoding is eliminated, enabling consistent recommendations for origins across Australia, North America, Asia, and Europe.
 2. **Commercial Passenger Status Filtering**:
-   - Airport recommendations are restricted to active commercial passenger hubs handling scheduled commercial flights or leisure charter operations.
-   - An exclusion filter (`EXCLUDED_NON_COMMERCIAL_AIRPORTS` and `NON_COMMERCIAL_KEYWORDS`) eliminates military air bases, decommissioned facilities, and general aviation airstrips.
+   - Airport recommendations are restricted to active commercial passenger hubs handling scheduled commercial flights or leisure charter operations, powered by the OurAirports open aviation dataset with scheduled passenger service validation.
+   - Non-commercial military air bases, decommissioned facilities, and general aviation grass strips are pre-filtered at the dataset and database layer.
 3. **Stale Airport Pruning (`pruneStaleAirportsForCoordinates`)**:
    - When departure origin coordinates change (e.g., switching from Germany to Sydney, Australia or Tokyo), active airport selections are automatically re-evaluated.
    - Selected airports exceeding the catchment radius (default 450 km) without high-speed rail connectivity are pruned.

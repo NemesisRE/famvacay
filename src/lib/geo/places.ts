@@ -226,9 +226,17 @@ export async function searchGlobalPlaces(
       airportCodes = getMajorAirportsForCountry(countryCode || rawCountryName);
     } else {
       const isExtendedCorridor = cleanName.includes('&') || q.includes('&') || /\b(corridor|meer|sea|riviera)\b/i.test(cleanName + ' ' + q);
-      const maxRadius = isExtendedCorridor ? 205 : 95;
+      const maxRadius = isExtendedCorridor ? 215 : 95;
       const nearbyAirports = getRecommendedAirportsForCoordinates(lat, lon, maxRadius);
-      airportCodes = nearbyAirports.map((a) => a.code).slice(0, 3);
+      const inCountryAirports = countryCode
+        ? nearbyAirports.filter(
+            (a) =>
+              (a.state && a.state.startsWith(countryCode.toUpperCase() + '-')) ||
+              a.country.toUpperCase() === rawCountryName.toUpperCase()
+          )
+        : [];
+      const candidateList = inCountryAirports.length >= 2 ? inCountryAirports : nearbyAirports;
+      airportCodes = candidateList.map((a) => a.code).slice(0, 3);
     }
 
     // Skip fictitious or unserviceable results with zero commercial airport coverage
