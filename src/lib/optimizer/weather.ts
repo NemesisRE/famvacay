@@ -303,7 +303,20 @@ export function getDestinationSeasonalWarning(
     };
   }
 
-  // 3. Overcrowded Hyper-Peak & Major Events
+  // 3. Extreme Heat Warning
+  // Evaluated directly from meteorological temperatures for ANY location on Earth
+  const effectiveMaxTemp = weather.maxTempC ?? Math.round(weather.avgTempC + 3.5);
+  if (effectiveMaxTemp >= 38 && weather.precipitationRiskPercent <= 25) {
+    return {
+      destinationCode,
+      seasonType: 'EXTREME_HEAT',
+      monthRange: [5, 6, 7, 8],
+      messageKey: 'seasonWarningExtremeHeat',
+      fallbackMessage: `Extreme summer heat: Daily temperatures consistently reach ${effectiveMaxTemp}°C.`,
+    };
+  }
+
+  // 4. Overcrowded Hyper-Peak & Major Events
   // Evaluates every location individually based on real holiday data, astronomical calendar dates,
   // and destination physical climate normals. Zero arbitrary location hardcoding.
   const easter = getEasterDate(year);
@@ -351,72 +364,64 @@ export function getDestinationSeasonalWarning(
     // Non-critical holiday resolution fallback
   }
 
-  // A) Carnival Hyper-Peak: Evaluates real carnival holidays from date-holidays or pre-Lenten carnival season
-  const hasCarnivalHoliday = destinationHolidays.some((h) =>
+  // A) Carnival Hyper-Peak: Evaluates real carnival holidays from date-holidays or cultural calendar
+  const isCarnivalSeason = monthIndex === carnivalMonth;
+  const carnivalHoliday = destinationHolidays.find((h) =>
     /carnav|carnival|mardi\s*gras|fasching|karneval|shrove/i.test(h.name)
   );
   const isCarnivalDestination =
-    hasCarnivalHoliday ||
-    (monthIndex === carnivalMonth &&
-      (cityLower.includes('venic') || cityLower.includes('venez') || cityLower.includes('rio') || countryCode === 'BR'));
+    Boolean(carnivalHoliday) ||
+    (isCarnivalSeason && (
+      countryCode === 'IT' || countryCode === 'BR' || countryCode === 'TT' ||
+      /\b(venice|venezia|rio|cologne|köln|cadiz|orleans|tenerife)\b/i.test(cityLower + ' ' + nameLower)
+    ));
 
-  if (isCarnivalDestination && (monthIndex === carnivalMonth || hasCarnivalHoliday)) {
+  if (isCarnivalSeason && isCarnivalDestination) {
+    const rawName = carnivalHoliday?.name || (countryCode === 'IT' ? 'Carnevale' : 'Carnival');
+    const eventName = /carnival/i.test(rawName)
+      ? rawName
+      : `Carnival (${rawName})`;
+
     return {
       destinationCode,
       seasonType: 'OVERCROWDED_PEAK',
       monthRange: [carnivalMonth],
       messageKey: 'seasonWarningCrowdedPeak',
       fallbackMessage: 'Carnival festival hyper-peak: Massive street parades, citywide celebrations, and surge accommodation rates.',
-      eventName: 'Carnival / Mardi Gras',
+      eventName,
     };
   }
 
-  // B) Songkran / Water Festival: Evaluated from official national holidays in date-holidays
-  const songkranHoliday = destinationHolidays.find((h) => /songkran|water\s*festival/i.test(h.name));
-  if (songkranHoliday || (countryCode === 'TH' && monthIndex === 3)) {
+  // B) National Water / Summer Celebrations (evaluated from date-holidays)
+  const waterFestivalHoliday = destinationHolidays.find((h) => /songkran|water\s*festival/i.test(h.name));
+  if (waterFestivalHoliday) {
     return {
       destinationCode,
       seasonType: 'OVERCROWDED_PEAK',
-      monthRange: [3],
+      monthRange: [monthIndex],
       messageKey: 'seasonWarningCrowdedPeak',
-      fallbackMessage: 'Songkran New Year festival: Nationwide water celebrations, high domestic travel congestion, and elevated hotel rates.',
-      eventName: 'Songkran Festival',
+      fallbackMessage: `${waterFestivalHoliday.name}: Celebrations, high domestic travel congestion, and elevated hotel rates.`,
+      eventName: waterFestivalHoliday.name,
     };
   }
 
-  // C) Cultural Spring Bloom & Golden Week Peak (East Asia / Japan spring festivals)
-  const hasGoldenWeek =
-    destinationHolidays.some((h) => /golden\s*week|昭和の日|showa/i.test(h.name)) ||
-    (countryCode === 'JP' && (monthIndex === 2 || monthIndex === 3));
-
-  if (hasGoldenWeek) {
+  // C) Multi-Holiday Clusters & Golden Week Peaks (evaluated dynamically from real public holiday schedules)
+  const goldenWeekHoliday = destinationHolidays.find((h) => /golden\s*week|昭和の日|showa/i.test(h.name));
+  const publicHolidaysInMonth = destinationHolidays.filter((h) => h.type === 'public');
+  if (goldenWeekHoliday || publicHolidaysInMonth.length >= 4) {
     return {
       destinationCode,
       seasonType: 'OVERCROWDED_PEAK',
-      monthRange: [2, 3],
+      monthRange: [monthIndex],
       messageKey: 'seasonWarningCrowdedPeak',
-      fallbackMessage: 'Cherry blossom & Golden Week hyper-peak: Extreme tourist crowding, busy transit, and elevated hotel rates.',
-      eventName: 'Cherry Blossom / Golden Week',
+      fallbackMessage: goldenWeekHoliday
+        ? 'Golden Week festival hyper-peak: Extreme tourist crowding, busy transit, and elevated hotel rates.'
+        : 'Multi-holiday travel surge: High domestic visitor volume, crowded transit, and peak lodging demand.',
+      eventName: goldenWeekHoliday ? 'Golden Week' : (publicHolidaysInMonth[0]?.name || 'National Holiday Peak'),
     };
   }
 
-  // D) Autumn Volksfest / Oktoberfest Peak (Bavaria / Munich)
-  const isOktoberfestDestination =
-    (airport.state === 'DE-BY' || cityLower.includes('münchen') || cityLower.includes('munich')) &&
-    (monthIndex === 8 || monthIndex === 9);
-
-  if (isOktoberfestDestination) {
-    return {
-      destinationCode,
-      seasonType: 'OVERCROWDED_PEAK',
-      monthRange: [8, 9],
-      messageKey: 'seasonWarningCrowdedPeak',
-      fallbackMessage: 'Oktoberfest festival peak: Millions of international visitors, severe venue crowding, and premium hotel rates.',
-      eventName: 'Oktoberfest',
-    };
-  }
-
-  // E) Spring Break & Easter Peak: Evaluates warm beach destinations during Easter / Spring Break season
+  // D) Spring Break & Easter Peak: Evaluates warm beach destinations during Easter / Spring Break season
   const isSpringBreakMonth = monthIndex === easter.month || (easter.day <= 7 && monthIndex === easter.month - 1);
   const isWarmBeachDestination =
     weather.avgTempC >= 21 &&
@@ -433,16 +438,19 @@ export function getDestinationSeasonalWarning(
     };
   }
 
-  // 4. Extreme Heat Warning
-  // Evaluated directly from meteorological temperatures for ANY location on Earth
-  const effectiveMaxTemp = weather.maxTempC ?? Math.round(weather.avgTempC + 3.5);
-  if (effectiveMaxTemp >= 38 && weather.precipitationRiskPercent <= 25) {
+  // E) Autumn Festival / Oktoberfest Peak (Munich / Bavaria, September - October)
+  const isOktoberfest =
+    (code === 'MUC' || airport.state === 'DE-BY' || /\b(münchen|munich)\b/i.test(cityLower)) &&
+    (monthIndex === 8 || monthIndex === 9);
+
+  if (isOktoberfest) {
     return {
       destinationCode,
-      seasonType: 'EXTREME_HEAT',
-      monthRange: [5, 6, 7, 8],
-      messageKey: 'seasonWarningExtremeHeat',
-      fallbackMessage: `Extreme summer heat: Daily temperatures consistently reach ${effectiveMaxTemp}°C.`,
+      seasonType: 'OVERCROWDED_PEAK',
+      monthRange: [8, 9],
+      messageKey: 'seasonWarningCrowdedPeak',
+      fallbackMessage: 'Oktoberfest festival peak: Millions of international visitors, severe venue crowding, and premium hotel rates.',
+      eventName: 'Oktoberfest',
     };
   }
 

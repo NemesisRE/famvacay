@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SECURITY.md` vulnerability reporting policy and `docs/setup.md`.
 
 ### Changed
+- Completely eradicated `MAJOR_CITY_EXONYMS`, hardcoded special region corridors ("Hurghada & Rotes Meer"), and special island checks from `src/lib/optimizer/destinations.ts` in favor of universal word-based Levenshtein matching (`wordLevenshtein`) and runtime geocoding place resolution via `searchGlobalPlaces`.
+- Replaced hardcoded destination names for long-haul and charter corridors in `src/lib/airports/airport-service.ts` with dynamic geodesic distance thresholds (>= 3,500 km for intercontinental corridors, 1,500 - 3,500 km for medium-haul charter corridors).
+- Eliminated hardcoded country/state fallbacks (`DE-BW`, `['STR', 'FRA']`, `'DE'`) across `engine.ts`, `subdivisions.ts`, `airports-db.ts`, and `portals.ts`.
+- Enhanced regional containment detection (`checkRegionalContainment`) and dynamic destination caching (`dynamicDestinationEntityCache`) to support compound travel corridors and airport code subsets without static lookup tables.
 - Completely eradicated massive static constants and hardcoded catalogs across the codebase: `GLOBAL_DESTINATION_ENTITIES` (600+ lines), `LOCALIZED_AIRPORT_METADATA` (260+ lines), and static `REGION_CENTERS` dictionaries.
 - Replaced the static 6-country list (`COUNTRIES` in `src/lib/regions/subdivisions.ts`) with a dynamic Proxy over all 249 ISO-3166-1/2 countries and subdivisions via `iso-3166-2`.
 - Replaced hardcoded intercontinental airport hub corridors (`FRA`, `CDG`, `MUC`) with dynamic passenger hub classification within catchment zones.

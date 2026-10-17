@@ -11,7 +11,12 @@ import { calculatePtoDaysConsumed } from './pto-calculator';
 import { calculatePassengerCostMultiplier } from './child-tiers';
 import { POPULAR_DESTINATIONS, getEstimatedClimate, getDestinationSeasonalWarning } from './weather';
 import { resolveDestinationCodes } from './destinations';
-import { getAirportByIata, calculateGeodesicDistanceKm } from '../airports/airport-service';
+import {
+  getAirportByIata,
+  calculateGeodesicDistanceKm,
+  getMajorAirportsForCountry,
+} from '../airports/airport-service';
+import { getCountryCodeFromSubdivision } from '../regions/subdivisions';
 import { getSynchronousTripPricing } from '../pricing/pricing-service';
 
 /**
@@ -189,14 +194,16 @@ export function optimizeVacationWindows(
     ...(input.searchBlackouts || []),
   ];
 
-  const homeState = userProfile.federalState || 'DE-BW';
-  const homeSchoolHolidays = schoolHolidaysByState[homeState] || [];
-  const homePublicHolidays = publicHolidaysByState[homeState] || [];
+  const homeState = userProfile.federalState || '';
+  const homeSchoolHolidays = homeState ? schoolHolidaysByState[homeState] || [] : [];
+  const homePublicHolidays = homeState ? publicHolidaysByState[homeState] || [] : [];
 
   const originAirports =
     userProfile.originAirports && userProfile.originAirports.length > 0
       ? userProfile.originAirports
-      : ['STR', 'FRA'];
+      : (homeState
+          ? getMajorAirportsForCountry(getCountryCodeFromSubdivision(homeState)).slice(0, 3)
+          : []);
 
   // Select candidate destination codes
   const hasUserSelectedDestinations = Boolean(

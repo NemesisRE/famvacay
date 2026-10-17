@@ -155,7 +155,7 @@ export const TRAVEL_PORTALS: TravelPortal[] = [
  * Returns market-aware default portal IDs based on origin country.
  */
 export function getDefaultPortalsForCountry(countryCode?: string): string[] {
-  const c = (countryCode || 'DE').toUpperCase();
+  const c = (countryCode || '').toUpperCase();
 
   if (['DE', 'AT', 'CH'].includes(c)) {
     return ['google_flights', 'holidaycheck', 'check24', 'skyscanner', 'booking_com'];

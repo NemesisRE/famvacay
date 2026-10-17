@@ -153,12 +153,14 @@ export async function searchGlobalPlaces(
     const rawCountryName = item.address?.country || countryCode;
 
     const rawName =
-      item.address?.village ||
-      item.address?.town ||
-      item.address?.city ||
-      item.address?.island ||
-      item.address?.state ||
       item.name ||
+      item.address?.island ||
+      item.address?.city ||
+      item.address?.town ||
+      item.address?.village ||
+      item.address?.municipality ||
+      item.address?.region ||
+      item.address?.state ||
       item.display_name?.split(',')?.[0]?.trim();
 
     const cleanName = rawName || q;
@@ -190,6 +192,8 @@ export async function searchGlobalPlaces(
       placeType === 'state' ||
       placeType === 'province' ||
       placeType === 'region' ||
+      Boolean(item.address?.region) ||
+      cleanName.includes('&') ||
       (placeClass === 'boundary' && (adminLevel === '3' || adminLevel === '4' || adminLevel === '5'));
 
     const isCity =
@@ -221,9 +225,10 @@ export async function searchGlobalPlaces(
     if (category === 'country') {
       airportCodes = getMajorAirportsForCountry(countryCode || rawCountryName);
     } else {
-      const maxRadius = category === 'island' || category === 'region' ? 250 : 85;
+      const isExtendedCorridor = cleanName.includes('&') || q.includes('&') || /\b(corridor|meer|sea|riviera)\b/i.test(cleanName + ' ' + q);
+      const maxRadius = isExtendedCorridor ? 205 : 95;
       const nearbyAirports = getRecommendedAirportsForCoordinates(lat, lon, maxRadius);
-      airportCodes = nearbyAirports.map((a) => a.code).slice(0, 4);
+      airportCodes = nearbyAirports.map((a) => a.code).slice(0, 3);
     }
 
     // Skip fictitious or unserviceable results with zero commercial airport coverage

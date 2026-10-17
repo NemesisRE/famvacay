@@ -28,8 +28,8 @@ import iso from 'iso-3166-2';
  * Dynamically resolves geographical center coordinates for any administrative subdivision worldwide.
  * Eliminates static coordinate dictionaries and arbitrary hardcoded region fallbacks.
  */
-export function getRegionCenter(regionCode: string): { lat: number; lon: number } {
-  if (!regionCode) return { lat: 48.66, lon: 9.35 };
+export function getRegionCenter(regionCode: string): { lat: number; lon: number } | null {
+  if (!regionCode) return null;
 
   // 1. Direct match on indexed airports belonging to this subdivision
   const matchingAirports = AIRPORTS_DATABASE.filter((a) => a.state === regionCode);
@@ -67,8 +67,7 @@ export function getRegionCenter(regionCode: string): { lat: number; lon: number 
     }
   }
 
-  // 3. Fallback center
-  return { lat: 48.66, lon: 9.35 };
+  return null;
 }
 
 /**
@@ -79,7 +78,7 @@ export const REGION_CENTERS: Record<string, { lat: number; lon: number }> = new 
   {
     get(_target, prop: string | symbol) {
       if (typeof prop !== 'string') return undefined;
-      return getRegionCenter(prop);
+      return getRegionCenter(prop) || undefined;
     },
     has(_target, prop: string | symbol) {
       if (typeof prop !== 'string') return false;
@@ -95,7 +94,8 @@ export function getRecommendedAirportsForRegion(
   regionCode: string,
   maxDistanceKm: number = 380
 ): (AirportOption & { distanceKm: number })[] {
-  const center = REGION_CENTERS[regionCode] || REGION_CENTERS['DE-BW'];
+  const center = REGION_CENTERS[regionCode];
+  if (!center) return [];
 
   const scored = AIRPORTS_DATABASE.map((airport) => {
     const distanceKm = calculateGeodesicDistanceKm(center.lat, center.lon, airport.lat, airport.lon);

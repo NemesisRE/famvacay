@@ -68,17 +68,27 @@ export function normalizeDestinationString(str: string): string {
 }
 
 /**
- * Checks if two strings match via full equality or whole-word phrase match
+ * Checks if two strings match via full equality, whole-word phrase match,
+ * or shared significant word tokens (length >= 4).
  */
 function isWordMatch(source: string, target: string): boolean {
   if (source === target) return true;
-  const sWords = source.split(/\s+/);
-  const tWords = target.split(/\s+/);
+  const sWords = source.split(/\s+/).filter(Boolean);
+  const tWords = target.split(/\s+/).filter(Boolean);
 
   if (tWords.length > 1 && source.includes(target)) return true;
   if (sWords.length > 1 && target.includes(source)) return true;
 
-  return sWords.includes(target) || tWords.includes(source);
+  if (sWords.includes(target) || tWords.includes(source)) return true;
+
+  // Check if they share any significant word token (>= 4 chars)
+  for (const sw of sWords) {
+    if (sw.length >= 4 && tWords.includes(sw)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -103,49 +113,20 @@ export function levenshteinDistance(a: string, b: string): number {
 }
 
 /**
- * Standardized multilingual exonyms for international destination hubs
+ * Universal word-level Levenshtein edit distance calculator.
+ * Computes the minimum edit distance against any word token in a multi-word place or airport name.
  */
-const MAJOR_CITY_EXONYMS: Record<
-  string,
-  { id: string; code: string; names: Record<string, string>; aliases: string[] }
-> = {
-  athens: {
-    id: 'athens',
-    code: 'ATH',
-    names: { en: 'Athens', de: 'Athen', fr: 'Athènes', es: 'Atenas', it: 'Atene' },
-    aliases: ['athen', 'athens', 'athènes', 'atene', 'atenas', 'athene', 'aten'],
-  },
-  munich: {
-    id: 'munich',
-    code: 'MUC',
-    names: { en: 'Munich', de: 'München', fr: 'Munich', es: 'Múnich', it: 'Monaco di Baviera' },
-    aliases: ['munich', 'münchen', 'munchen', 'múnich', 'monaco di baviera'],
-  },
-  vienna: {
-    id: 'vienna',
-    code: 'VIE',
-    names: { en: 'Vienna', de: 'Wien', fr: 'Vienne', es: 'Viena', it: 'Vienna' },
-    aliases: ['vienna', 'wien', 'vienne', 'viena'],
-  },
-  rome: {
-    id: 'rome',
-    code: 'FCO',
-    names: { en: 'Rome', de: 'Rom', fr: 'Rome', es: 'Roma', it: 'Roma' },
-    aliases: ['rome', 'rom', 'roma', 'romme'],
-  },
-  prague: {
-    id: 'prague',
-    code: 'PRG',
-    names: { en: 'Prague', de: 'Prag', fr: 'Prague', es: 'Praga', it: 'Praga' },
-    aliases: ['prague', 'prag', 'praha', 'praga'],
-  },
-  lisbon: {
-    id: 'lisbon',
-    code: 'LIS',
-    names: { en: 'Lisbon', de: 'Lissabon', fr: 'Lisbonne', es: 'Lisboa', it: 'Lisbona' },
-    aliases: ['lisbon', 'lissabon', 'lisbonne', 'lisboa', 'lisbona'],
-  },
-};
+export function wordLevenshtein(query: string, text: string): number {
+  const q = normalizeDestinationString(query);
+  const words = normalizeDestinationString(text).split(/[\s,/-]+/);
+  let best = levenshteinDistance(q, normalizeDestinationString(text));
+  for (const w of words) {
+    if (w.length >= 2) {
+      best = Math.min(best, levenshteinDistance(q, w));
+    }
+  }
+  return best;
+}
 
 /**
  * Resolves any localized country name or English country name to its 2-letter ISO code dynamically.
@@ -239,6 +220,11 @@ export function getDestinationEntity(
   if (dynamicDestinationEntityCache.has(clean)) {
     return dynamicDestinationEntityCache.get(clean)!;
   }
+  for (const [key, ent] of dynamicDestinationEntityCache.entries()) {
+    if (key.length >= 4 && (key.includes(clean) || clean.includes(key))) {
+      return ent;
+    }
+  }
 
   // 2. Direct IATA commercial airport code
   const upper = queryOrTag.trim().toUpperCase();
@@ -251,36 +237,7 @@ export function getDestinationEntity(
     }
   }
 
-  // 3. International city exonyms
-  for (const exonym of Object.values(MAJOR_CITY_EXONYMS)) {
-    if (
-      exonym.aliases.includes(clean) ||
-      Object.values(exonym.names).some((n) => normalizeDestinationString(n) === clean)
-    ) {
-      const airport = getAirportByIata(exonym.code);
-      const cCode = airport ? resolveCountryCode(airport.country) : 'XX';
-      const cNames = getLocalizedCountryNames(cCode, airport?.country || '');
-      const ent: LocalizedDestinationEntity = {
-        id: exonym.id,
-        category: 'city',
-        code: exonym.code,
-        airportCodes: [exonym.code],
-        countryCode: cCode,
-        names: {
-          en: exonym.names.en || exonym.id,
-          de: exonym.names.de || exonym.id,
-          fr: exonym.names.fr || exonym.id,
-          es: exonym.names.es || exonym.id,
-          it: exonym.names.it || exonym.id,
-        },
-        countryNames: cNames,
-      };
-      dynamicDestinationEntityCache.set(clean, ent);
-      return ent;
-    }
-  }
-
-  // 4. Country match via dynamic ISO package
+  // 3. Country match via dynamic ISO package
   const countryCode = resolveCountryCode(clean);
   if (countryCode && countryCode !== 'XX') {
     const cNames = getLocalizedCountryNames(countryCode, clean);
@@ -296,81 +253,32 @@ export function getDestinationEntity(
     return ent;
   }
 
-  // 5. Special region corridors: Red Sea / Rotes Meer
-  if (
-    clean === 'rotes meer' ||
-    clean === 'red sea' ||
-    clean === 'hurghada & rotes meer' ||
-    clean === 'hurghada rotes meer' ||
-    clean === 'hurghada red sea'
-  ) {
-    const redSeaEntity: LocalizedDestinationEntity = {
-      id: 'red_sea',
-      category: 'region',
-      code: 'HRG',
-      airportCodes: ['HRG', 'SSH', 'RMF'],
-      countryCode: 'EG',
-      aliases: ['hurghada', 'red sea', 'rotes meer', 'hurghada & rotes meer'],
-      names: {
-        en: 'Hurghada & Red Sea',
-        de: 'Hurghada & Rotes Meer',
-        fr: 'Hurghada et Mer Rouge',
-        es: 'Hurgada y Mar Rojo',
-        it: 'Hurghada e Mar Rosso',
-      },
-      countryNames: getLocalizedCountryNames('EG', 'Egypt'),
-    };
-    dynamicDestinationEntityCache.set(clean, redSeaEntity);
-    return redSeaEntity;
-  }
+  // 4. Commercial airport city matching across all worldwide airports
+  // Avoid collapsing compound multi-destination or corridor queries (e.g. "Hurghada & Rotes Meer") into a single airport city
+  const isCompoundQuery = queryOrTag.includes('&') || /\b(and|und)\b/i.test(queryOrTag);
+  if (!isCompoundQuery) {
+    const allAirports = getAllCommercialAirports();
+    const candidates: { airport: any; score: number }[] = [];
 
-  // 6. Island / archipelago: Mallorca (Balearen)
-  if (clean.includes('mallorca') || clean.includes('majorca')) {
-    const mallorcaEntity: LocalizedDestinationEntity = {
-      id: 'mallorca',
-      category: 'region',
-      code: 'PMI',
-      airportCodes: ['PMI'],
-      countryCode: 'ES',
-      aliases: ['mallorca', 'majorca', 'palma'],
-      names: {
-        en: 'Mallorca (Balearic Islands)',
-        de: 'Mallorca (Balearen)',
-        fr: 'Majorque (Îles Baléares)',
-        es: 'Mallorca (Islas Baleares)',
-        it: 'Maiorca (Isole Baleari)',
-      },
-      countryNames: getLocalizedCountryNames('ES', 'Spain'),
-    };
-    dynamicDestinationEntityCache.set(clean, mallorcaEntity);
-    return mallorcaEntity;
-  }
+    for (const a of allAirports) {
+      const aCity = normalizeDestinationString(a.city);
+      const isExact = aCity === clean;
+      const isWord = isWordMatch(aCity, clean);
 
-  // 7. Commercial airport city matching across all worldwide airports
-  const allAirports = getAllCommercialAirports();
-  const candidates = [];
-  for (const a of allAirports) {
-    const aCity = normalizeDestinationString(a.city);
-    const aName = normalizeDestinationString(a.name);
-    if (aCity === clean || aName === clean || isWordMatch(aCity, clean) || isWordMatch(aName, clean)) {
-      candidates.push(a);
+      if (isExact || isWord) {
+        const score = (isExact ? 0 : 1) - (a.isMajorHub ? 0.5 : 0);
+        candidates.push({ airport: a, score });
+      }
     }
-  }
 
-  candidates.sort((a, b) => {
-    const aExact = normalizeDestinationString(a.city) === clean ? 1 : 0;
-    const bExact = normalizeDestinationString(b.city) === clean ? 1 : 0;
-    if (aExact !== bExact) return bExact - aExact;
-    const aHub = a.isMajorHub ? 1 : 0;
-    const bHub = b.isMajorHub ? 1 : 0;
-    return bHub - aHub;
-  });
+    candidates.sort((a, b) => a.score - b.score);
 
-  if (candidates.length > 0) {
-    const best = candidates[0];
-    const ent = airportToDestinationEntity(best.code, best.city, best.country, locale);
-    dynamicDestinationEntityCache.set(clean, ent);
-    return ent;
+    if (candidates.length > 0) {
+      const best = candidates[0].airport;
+      const ent = airportToDestinationEntity(best.code, best.city, best.country, locale);
+      dynamicDestinationEntityCache.set(clean, ent);
+      return ent;
+    }
   }
 
   return null;
@@ -390,37 +298,38 @@ export function fuzzyMatchDestinationEntity(
   const direct = getDestinationEntity(query, locale);
   if (direct) return direct;
 
-  // 1. Resilient fuzzy match against major international city exonyms
-  for (const exonym of Object.values(MAJOR_CITY_EXONYMS)) {
-    for (const cand of exonym.aliases) {
-      const dist = levenshteinDistance(clean, cand);
-      const maxAllowed = clean.length <= 4 ? 1 : 2;
-      if (dist <= maxAllowed) {
-        return getDestinationEntity(exonym.id, locale);
-      }
-    }
-  }
-
-  // 2. Resilient fuzzy match against all commercial airport cities and names
+  // Resilient word-based Levenshtein matching across all commercial airports worldwide
   const allAirports = getAllCommercialAirports();
-  let bestAirportMatch: LocalizedDestinationEntity | null = null;
-  let minDistance = Infinity;
+  let bestAirportMatch: any = null;
+  let bestScore = Infinity;
 
   for (const a of allAirports) {
-    const candidates = [normalizeDestinationString(a.city), normalizeDestinationString(a.name)];
-    for (const cand of candidates) {
-      if (!cand || cand.length < 3) continue;
-      const dist = levenshteinDistance(clean, cand);
-      const maxAllowed = clean.length <= 4 ? 1 : 2;
+    if (!a.code || !a.city) continue;
+    const cLow = normalizeDestinationString(a.city);
+    const nLow = normalizeDestinationString(a.name);
+    const dist = Math.min(wordLevenshtein(clean, cLow), wordLevenshtein(clean, nLow));
+    const maxAllowed = clean.length <= 4 ? 2 : 3;
+    if (dist > maxAllowed) continue;
 
-      if (dist <= maxAllowed && dist < minDistance) {
-        minDistance = dist;
-        bestAirportMatch = airportToDestinationEntity(a.code, a.city, a.country, locale);
-      }
+    const score = dist - (a.isMajorHub ? 1.5 : 0);
+    if (score < bestScore) {
+      bestScore = score;
+      bestAirportMatch = a;
     }
   }
 
-  return bestAirportMatch;
+  if (bestAirportMatch) {
+    const ent = airportToDestinationEntity(
+      bestAirportMatch.code,
+      bestAirportMatch.city,
+      bestAirportMatch.country,
+      locale
+    );
+    dynamicDestinationEntityCache.set(clean, ent);
+    return ent;
+  }
+
+  return null;
 }
 
 export interface ContainmentCheckResult {
@@ -490,10 +399,13 @@ export function checkRegionalContainment(
     }
 
     // 4. Substring / phrase containment: e.g. "Palma" in "Mallorca (Balearen)" or "Hurghada" in "Hurghada & Rotes Meer"
+    const childNames = child.names ? Object.values(child.names).map((n) => normalizeDestinationString(n)) : [];
     if (
       cleanParentTag.includes(cleanChildId) ||
       cleanChildId.includes(cleanParentTag) ||
-      (child.names && Object.values(child.names).some((n) => cleanParentTag.includes(normalizeDestinationString(n))))
+      childNames.some((n) => cleanParentTag.includes(n)) ||
+      childNames.some((n) => isWordMatch(n, cleanParentTag)) ||
+      isWordMatch(cleanChildId, cleanParentTag)
     ) {
       return {
         isContained: true,
@@ -547,10 +459,10 @@ export function resolveDestinationCodes(destinationTags?: string[]): string[] {
   // If no destination filter was set by user, provide open discovery hubs dynamically
   if (!destinationTags || destinationTags.length === 0) {
     const commercialAirports = getAllCommercialAirports();
-    const hubs = commercialAirports.filter((a) => a.isMajorHub);
-    const popularLeisure = ['PMI', 'AYT', 'HRG', 'HER', 'AGP', 'FAO', 'BCN', 'DJE'];
-    const codes = Array.from(new Set([...popularLeisure, ...hubs.map((a) => a.code)]));
-    return codes.slice(0, 10);
+    const discoveryVacationHubs = ['PMI', 'AYT', 'HRG', 'HER', 'AGP', 'FAO', 'BCN', 'DJE'];
+    const majorHubs = commercialAirports.filter((a) => a.isMajorHub).map((a) => a.code);
+    const combined = Array.from(new Set([...discoveryVacationHubs, ...majorHubs]));
+    return combined.slice(0, 10);
   }
 
   const resolved = new Set<string>();
@@ -558,17 +470,6 @@ export function resolveDestinationCodes(destinationTags?: string[]): string[] {
   for (const tag of destinationTags) {
     const clean = normalizeDestinationString(tag);
     if (!clean) continue;
-
-    // Special travel corridor matching
-    if (clean.includes('rot') && clean.includes('meer') || clean.includes('red') && clean.includes('sea')) {
-      ['HRG', 'SSH', 'RMF'].forEach((c) => resolved.add(c));
-      continue;
-    }
-
-    if (clean.includes('mallorca') || clean.includes('majorca')) {
-      resolved.add('PMI');
-      continue;
-    }
 
     // 1. Destination entity (region, island, or city)
     const entity = getDestinationEntity(tag);
@@ -631,9 +532,11 @@ export async function validateDestinationInput(
     return { isValid: false };
   }
 
-  // 1. Destination entity match (regions, islands, cities, exonyms)
-  const entity = getDestinationEntity(clean, locale);
-  if (entity) {
+  const cleanNorm = normalizeDestinationString(clean);
+
+  // 1. Dynamic cache match (already resolved runtime entities)
+  if (dynamicDestinationEntityCache.has(cleanNorm)) {
+    const entity = dynamicDestinationEntityCache.get(cleanNorm)!;
     const localizedName = getLocalizedDestinationName(entity, locale);
     const containment = checkRegionalContainment(entity, selectedDestinations, locale);
     return {
@@ -674,13 +577,7 @@ export async function validateDestinationInput(
       const place = places[0];
       if (place.airportCodes && place.airportCodes.length > 0) {
         const locKey = ((locale.slice(0, 2) as 'en' | 'de' | 'fr' | 'es' | 'it') || 'en');
-        let localizedName = place.names?.[locKey] || place.name;
-
-        // Ensure localized name formatting matches user region conventions (e.g. Mallorca (Balearen))
-        const cleanNorm = normalizeDestinationString(clean);
-        if (cleanNorm === 'mallorca' && locale === 'de') {
-          localizedName = 'Mallorca (Balearen)';
-        }
+        const localizedName = place.names?.[locKey] || place.name;
 
         const resolvedEntity: LocalizedDestinationEntity = {
           id: place.id,
@@ -704,6 +601,17 @@ export async function validateDestinationInput(
         dynamicDestinationEntityCache.set(cleanNorm, resolvedEntity);
         dynamicDestinationEntityCache.set(place.id, resolvedEntity);
 
+        // Also cache individual parts of compound queries (e.g. "Hurghada & Rotes Meer" -> "rotes meer", "hurghada")
+        if (clean.includes('&') || clean.toLowerCase().includes(' and ') || clean.toLowerCase().includes(' und ')) {
+          const parts = clean.split(/[&+]|\b(?:and|und)\b/i);
+          for (const p of parts) {
+            const normP = normalizeDestinationString(p);
+            if (normP.length >= 3) {
+              dynamicDestinationEntityCache.set(normP, resolvedEntity);
+            }
+          }
+        }
+
         const containment = checkRegionalContainment(resolvedEntity, selectedDestinations, locale);
 
         return {
@@ -719,9 +627,26 @@ export async function validateDestinationInput(
       }
     }
   } catch {
-    // Fall through
+    // Fall through to offline resolver
   }
 
-  // 4. Strict rejection for unknown, non-flight, or fictitious places
+  // 4. Offline fallback via getDestinationEntity (commercial airport cities and countries)
+  const entity = getDestinationEntity(clean, locale);
+  if (entity) {
+    const localizedName = getLocalizedDestinationName(entity, locale);
+    const containment = checkRegionalContainment(entity, selectedDestinations, locale);
+    return {
+      isValid: true,
+      entity,
+      resolvedName: localizedName,
+      category: entity.category,
+      categoryLabel: getLocalizedCategoryName(entity.category, locale),
+      airportCodes: entity.airportCodes,
+      isContained: containment.isContained,
+      containment,
+    };
+  }
+
+  // 5. Strict rejection for unknown, non-flight, or fictitious places
   return { isValid: false };
 }

@@ -64,10 +64,10 @@ export const COUNTRIES: Record<string, CountryInfo> = new Proxy(
  * Dynamically extracts 2-letter ISO country code from standard ISO 3166-2 subdivision identifiers.
  */
 export function getCountryCodeFromSubdivision(subdivisionCode: string): string {
-  if (!subdivisionCode) return 'DE';
+  if (!subdivisionCode) return '';
   const prefix = subdivisionCode.split('-')[0]?.trim().toUpperCase();
   if (prefix && prefix.length === 2) {
     return prefix;
   }
-  return subdivisionCode.slice(0, 2).toUpperCase() || 'DE';
+  return subdivisionCode.slice(0, 2).toUpperCase() || '';
 }

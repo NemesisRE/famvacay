@@ -117,12 +117,12 @@ export const EXCLUDED_NON_COMMERCIAL_AIRPORTS = new Set([
   // Military Air Bases & Air Stations
   'RMS', 'SPM', 'GKE', 'GUT', 'GHF', 'ZNF', 'NDZ', 'QMI', 'AVB', 'VVI',
   // Decommissioned / closed airports
-  'TXL', 'THF', 'SXF', 'BBS',
+  'TXL', 'THF', 'SXF', 'BBS', 'HEW',
   // Small general aviation, private airstrips, glider fields
   'QEF', 'MHG', 'ZQC', 'ZQF', 'ZNV', 'ZQL', 'ZQW', 'BYU', 'HOQ', 'AAH', 'LHA',
   'CSO', 'PEF', 'BBJ', 'EUM', 'FNB', 'ZCA', 'ESS', 'MGL', 'OBF', 'RBM', 'SZW',
   'ZSN', 'BWE', 'BRV', 'FLF', 'BBH', 'AOC', 'KEL', 'EBE', 'EMP', 'ESX', 'LND',
-  'QFB', 'BFE', 'QFD',
+  'QFB', 'BFE', 'QFD', 'ELT', 'SKV',
 ]);
 
 export const NON_COMMERCIAL_KEYWORDS = [
@@ -333,34 +333,33 @@ export function getRecommendedAirportsForCoordinates(
 ): DynamicAirport[] {
   const scored: DynamicAirport[] = [];
 
-  // Check destination corridors
-  const destListLower = (targetDestinations || []).map((d) => d.toLowerCase());
-  const hasLongHaulDestinations = destListLower.some(
-    (d) =>
-      d.includes('bali') ||
-      d.includes('cancun') ||
-      d.includes('thailand') ||
-      d.includes('phuket') ||
-      d.includes('dubai') ||
-      d.includes('egypt') ||
-      d.includes('caribbean') ||
-      d.includes('dps') ||
-      d.includes('cun') ||
-      d.includes('dxb') ||
-      d.includes('hkt')
-  );
+  // Dynamically evaluate flight corridors from geodesic distance between origin and destinations
+  let hasLongHaulDestinations = false;
+  let hasMediumHaulDestinations = false;
 
-  const hasEgyptOrTurkey = destListLower.some(
-    (d) =>
-      d.includes('egypt') ||
-      d.includes('hurghada') ||
-      d.includes('sharm') ||
-      d.includes('turkey') ||
-      d.includes('riviera') ||
-      d.includes('antalya') ||
-      d.includes('hrg') ||
-      d.includes('ayt')
-  );
+  if (targetDestinations && targetDestinations.length > 0) {
+    for (const d of targetDestinations) {
+      const clean = d.trim().toLowerCase();
+      const targetAirport =
+        getAirportByIata(clean) ||
+        indexedAirports.find(
+          (a) =>
+            a.code.toLowerCase() === clean ||
+            a.city.toLowerCase() === clean ||
+            clean.includes(a.city.toLowerCase()) ||
+            a.name.toLowerCase().includes(clean)
+        );
+
+      if (targetAirport) {
+        const distKm = calculateGeodesicDistanceKm(userLat, userLon, targetAirport.lat, targetAirport.lon);
+        if (distKm >= 3500) {
+          hasLongHaulDestinations = true;
+        } else if (distKm >= 1500) {
+          hasMediumHaulDestinations = true;
+        }
+      }
+    }
+  }
 
   for (const airport of indexedAirports) {
     const distanceKm = calculateGeodesicDistanceKm(userLat, userLon, airport.lat, airport.lon);
@@ -369,7 +368,7 @@ export function getRecommendedAirportsForCoordinates(
     let corridorNote: string | undefined;
     if (hasLongHaulDestinations && airport.isMajorHub) {
       corridorNote = 'Direct intercontinental long-haul corridor';
-    } else if (hasEgyptOrTurkey && (airport.isMajorHub || distanceKm <= 180)) {
+    } else if (hasMediumHaulDestinations && (airport.isMajorHub || distanceKm <= 180)) {
       corridorNote = 'Direct holiday charter corridor';
     }
 

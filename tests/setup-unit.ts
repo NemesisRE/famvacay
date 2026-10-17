@@ -81,16 +81,95 @@ beforeAll(() => {
             },
           },
         ];
+      } else if (q.includes('munich') || q.includes('munch')) {
+        mockData = [
+          {
+            name: 'Munich',
+            display_name: 'Munich, Bavaria, Germany',
+            lat: '48.1351',
+            lon: '11.5820',
+            type: 'city',
+            address: {
+              city: 'Munich',
+              country_code: 'de',
+              'ISO3166-2-lvl4': 'DE-BY',
+              state: 'Bavaria',
+            },
+          },
+        ];
+      } else if (q.includes('vienna') || q.includes('wien')) {
+        mockData = [
+          {
+            name: 'Vienna',
+            display_name: 'Vienna, Austria',
+            lat: '48.2082',
+            lon: '16.3738',
+            type: 'city',
+            address: {
+              city: 'Vienna',
+              country_code: 'at',
+              'ISO3166-2-lvl4': 'AT-9',
+              state: 'Wien',
+            },
+          },
+        ];
+      } else if (q.includes('rome') || q === 'rom' || q.includes('roma')) {
+        mockData = [
+          {
+            name: 'Rome',
+            display_name: 'Rome, Lazio, Italy',
+            lat: '41.9028',
+            lon: '12.4964',
+            type: 'city',
+            address: {
+              city: 'Rome',
+              country_code: 'it',
+              'ISO3166-2-lvl4': 'IT-62',
+              state: 'Lazio',
+            },
+          },
+        ];
+      } else if (q.includes('prague') || q.includes('prag') || q.includes('praha')) {
+        mockData = [
+          {
+            name: 'Prague',
+            display_name: 'Prague, Czech Republic',
+            lat: '50.0755',
+            lon: '14.4378',
+            type: 'city',
+            address: {
+              city: 'Prague',
+              country_code: 'cz',
+              state: 'Prague',
+            },
+          },
+        ];
+      } else if (q.includes('lisbon') || q.includes('lissabon') || q.includes('lisboa')) {
+        mockData = [
+          {
+            name: 'Lisbon',
+            display_name: 'Lisbon, Portugal',
+            lat: '38.7223',
+            lon: '-9.1393',
+            type: 'city',
+            address: {
+              city: 'Lisbon',
+              country_code: 'pt',
+              'ISO3166-2-lvl4': 'PT-11',
+              state: 'Lisboa',
+            },
+          },
+        ];
       } else if (q.includes('mallorca')) {
         mockData = [
           {
-            name: 'Mallorca',
-            display_name: 'Mallorca, Illes Balears, Spain',
+            name: 'Mallorca (Balearen)',
+            display_name: 'Mallorca (Balearen), Illes Balears, Spain',
             lat: '39.5517',
             lon: '2.7388',
-            type: 'island',
+            type: 'region',
             address: {
-              island: 'Mallorca',
+              region: 'Mallorca (Balearen)',
               state: 'Illes Balears',
               country_code: 'es',
               'ISO3166-2-lvl4': 'ES-IB',
@@ -145,13 +224,13 @@ beforeAll(() => {
       } else if (q.includes('hurghada') || q.includes('rotes meer') || q.includes('red sea')) {
         mockData = [
           {
-            name: 'Hurghada',
-            display_name: 'Hurghada, Red Sea Governorate, Egypt',
+            name: 'Hurghada & Rotes Meer',
+            display_name: 'Hurghada & Rotes Meer, Red Sea Governorate, Egypt',
             lat: '27.2579',
             lon: '33.8116',
-            type: 'city',
+            type: 'region',
             address: {
-              city: 'Hurghada',
+              region: 'Hurghada & Rotes Meer',
               state: 'Red Sea',
               country_code: 'eg',
             },
@@ -257,6 +336,26 @@ beforeAll(() => {
           coords = [24.4633, 35.3084];
           country = 'Greece';
           countryCode = 'GR';
+        } else if (q.includes('munich') || q.includes('munch')) {
+          coords = [11.5820, 48.1351];
+          country = 'Germany';
+          countryCode = 'DE';
+        } else if (q.includes('vienna') || q.includes('wien')) {
+          coords = [16.3738, 48.2082];
+          country = 'Austria';
+          countryCode = 'AT';
+        } else if (q.includes('rome') || q === 'rom' || q.includes('roma')) {
+          coords = [12.4964, 41.9028];
+          country = 'Italy';
+          countryCode = 'IT';
+        } else if (q.includes('prague') || q.includes('prag') || q.includes('praha')) {
+          coords = [14.4378, 50.0755];
+          country = 'Czech Republic';
+          countryCode = 'CZ';
+        } else if (q.includes('lisbon') || q.includes('lissabon') || q.includes('lisboa')) {
+          coords = [-9.1393, 38.7223];
+          country = 'Portugal';
+          countryCode = 'PT';
         } else if (q.includes('algarve')) {
           coords = [-8.2632, 37.1928];
           country = 'Portugal';
