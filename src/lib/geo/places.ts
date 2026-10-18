@@ -3,6 +3,8 @@ import {
   getAirportByIata,
   getRecommendedAirportsForCoordinates,
   getMajorAirportsForCountry,
+  getAllCommercialAirports,
+  calculateGeodesicDistanceKm,
 } from '../airports/airport-service';
 
 export * from './places-data';
@@ -204,14 +206,22 @@ export async function searchGlobalPlaces(
       Boolean(item.address?.town) ||
       (placeClass === 'boundary' && (adminLevel === '6' || adminLevel === '7'));
 
+    const isSeaOrMajorRegion =
+      placeType === 'sea' ||
+      placeType === 'water' ||
+      placeType === 'ocean' ||
+      item.class === 'natural' ||
+      item.class === 'water' ||
+      /\b(sea|ocean|basin|caribbean|karibik|mediterranean|mittelmeer|alps|alpen|gulf|bay|archipelago|sound)\b/i.test(cleanName + ' ' + q);
+
     if (isIsland) {
       category = 'island';
     } else if (isCountry) {
       category = 'country';
+    } else if (isSeaOrMajorRegion || isMajorRegion) {
+      category = 'region';
     } else if (isCity) {
       category = 'city';
-    } else if (isMajorRegion) {
-      category = 'region';
     } else {
       category = 'city';
     }
@@ -224,6 +234,56 @@ export async function searchGlobalPlaces(
     let airportCodes: string[] = [];
     if (category === 'country') {
       airportCodes = getMajorAirportsForCountry(countryCode || rawCountryName);
+    } else if (isSeaOrMajorRegion) {
+      // Broad seas and multinational basins (e.g. Caribbean, Mediterranean)
+      const allAirports = getAllCommercialAirports();
+      const isCaribbean = /\b(caribbean|karibik|caraibes|caribe|caraibi)\b/i.test(cleanName + ' ' + q);
+      const nearbyAirports = allAirports
+        .map((a) => ({ airport: a, distKm: calculateGeodesicDistanceKm(lat, lon, a.lat, a.lon) }))
+        .filter((item) => {
+          const altM = (item.airport.altitude || 0) * 0.3048;
+          if (isCaribbean) {
+            return (
+              item.distKm <= 2600 &&
+              altM < 350 &&
+              item.airport.lat >= 9 &&
+              item.airport.lat <= 28 &&
+              item.airport.lon >= -90 &&
+              item.airport.lon <= -58
+            );
+          }
+          return item.distKm <= 1600 && altM < 400;
+        })
+        .sort((a, b) => {
+          const aRank = (a.airport.type === 'large_airport' ? 3 : 0) + (a.airport.isMajorHub ? 2 : 0);
+          const bRank = (b.airport.type === 'large_airport' ? 3 : 0) + (b.airport.isMajorHub ? 2 : 0);
+          if (bRank !== aRank) return bRank - aRank;
+          return a.distKm - b.distKm;
+        });
+
+      // Group airports by sovereign/island territory to guarantee representation of every island & country
+      const byCountry = new Map<string, typeof nearbyAirports>();
+      for (const item of nearbyAirports) {
+        const c = item.airport.country || 'XX';
+        const list = byCountry.get(c) || [];
+        list.push(item);
+        byCountry.set(c, list);
+      }
+
+      const selectedCodes: string[] = [];
+      let round = 0;
+      let added = true;
+      while (added && round < 4) {
+        added = false;
+        for (const [, list] of byCountry.entries()) {
+          if (round < list.length) {
+            selectedCodes.push(list[round].airport.code);
+            added = true;
+          }
+        }
+        round++;
+      }
+      airportCodes = selectedCodes.length > 0 ? selectedCodes : nearbyAirports.map((item) => item.airport.code);
     } else {
       const isExtendedCorridor = cleanName.includes('&') || q.includes('&') || /\b(corridor|meer|sea|riviera)\b/i.test(cleanName + ' ' + q);
       const maxRadius = isExtendedCorridor ? 215 : 95;

@@ -18,7 +18,7 @@ export interface GeocodedLocation {
 
 interface LocationInputProps {
   value: string;
-  onChange: (value: string, coords?: { lat: number; lon: number }) => void;
+  onChange: (value: string, coords?: { lat: number; lon: number }, locationData?: GeocodedLocation) => void;
   placeholder?: string;
   label?: string;
   className?: string;
@@ -44,10 +44,12 @@ export function LocationInput({
 
   // Sync external value changes
   useEffect(() => {
-    setQuery(value);
-    if (value && value.trim().length >= 2) {
-      setIsVerified(true);
-      setValidationWarning(null);
+    if (value !== query) {
+      setQuery(value);
+      if (value && value.trim().length >= 2) {
+        setIsVerified(true);
+        setValidationWarning(null);
+      }
     }
   }, [value]);
 
@@ -82,25 +84,25 @@ export function LocationInput({
     return () => clearTimeout(timer);
   }, [query, isFocused]);
 
-  // Handle outside click
+  // Handle outside click to close dropdown ONLY
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
         setIsFocused(false);
-        // Validate upon clicking away
-        validateCurrentQuery();
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [query, results]);
+  }, []);
 
   const validateCurrentQuery = async () => {
     const q = query.trim();
     if (!q) {
       setIsVerified(true);
       setValidationWarning(null);
+      setHasUserInteracted(false);
+      onChange('', undefined);
       return;
     }
 
@@ -119,6 +121,7 @@ export function LocationInput({
 
     // Try verifying against API
     try {
+      setLoading(true);
       const res = await fetch(`/api/locations/geocode?q=${encodeURIComponent(q)}`);
       if (res.ok) {
         const data = await res.json();
@@ -129,6 +132,9 @@ export function LocationInput({
       }
     } catch {
       // Fall through to unverified
+    } finally {
+      setLoading(false);
+      setHasUserInteracted(false);
     }
 
     setIsVerified(false);
@@ -155,8 +161,9 @@ export function LocationInput({
 
     setQuery(formatted);
     setIsVerified(true);
+    setHasUserInteracted(false);
     setValidationWarning(null);
-    onChange(formatted, { lat: loc.lat, lon: loc.lon });
+    onChange(formatted, { lat: loc.lat, lon: loc.lon }, loc);
     setShowDropdown(false);
   };
 
@@ -165,6 +172,7 @@ export function LocationInput({
     setHasUserInteracted(true);
     setIsVerified(false);
     setValidationWarning(null);
+    onChange(val, undefined);
   };
 
   return (
@@ -194,18 +202,15 @@ export function LocationInput({
           onChange={(e) => handleManualChange(e.target.value)}
           onFocus={() => {
             setIsFocused(true);
-            if (hasUserInteracted && results.length > 0) {
+            if (results.length > 0) {
               setShowDropdown(true);
             }
           }}
           onBlur={() => {
-            // Delay to allow clicking dropdown item
-            setTimeout(() => {
-              if (!showDropdown) {
-                setIsFocused(false);
-                validateCurrentQuery();
-              }
-            }, 200);
+            setIsFocused(false);
+            if (hasUserInteracted && !isVerified) {
+              validateCurrentQuery();
+            }
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -256,8 +261,12 @@ export function LocationInput({
             <button
               key={`${loc.name}-${loc.lat}-${loc.lon}-${idx}`}
               type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleSelect(loc);
+              }}
               onClick={() => handleSelect(loc)}
-              className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition-colors flex items-center justify-between"
+              className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition-colors flex items-center justify-between cursor-pointer"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <MapPin className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />

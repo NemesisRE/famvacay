@@ -12,7 +12,7 @@ import {
   useInteractions,
   FloatingPortal,
 } from '@floating-ui/react';
-import { Sun, CloudRain, Waves, Thermometer, Info, Sparkles, X } from 'lucide-react';
+import { Sun, CloudRain, Waves, Thermometer, Info, Sparkles, X, Snowflake } from 'lucide-react';
 import { WeatherAssessment } from '@/lib/optimizer/types';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
@@ -148,6 +148,19 @@ export function ClimateDetailsPopover({
                   ~{rainyDays}d <span className="text-[10px] font-normal text-slate-500">({weather.precipitationRiskPercent}%)</span>
                 </div>
               </div>
+
+              {/* Snow & Winter Sports Conditions */}
+              {weather.hasSnow && (
+                <div className="bg-sky-50 p-2.5 rounded-lg border border-sky-200 col-span-2 flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-sky-900 flex items-center gap-1.5">
+                    <Snowflake className="w-3.5 h-3.5 text-sky-600" />
+                    <span>{t.home.snowGuaranteeBadge || 'Schneegarantie'}</span>
+                  </span>
+                  <span className="text-xs font-extrabold text-sky-950">
+                    ~{weather.snowDepthCm || 35} cm {t.home.winterSportsLabel || 'Schnee'}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Daily Sunshine Hours */}

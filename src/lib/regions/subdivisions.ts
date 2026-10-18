@@ -28,16 +28,34 @@ export function getCountrySubdivisions(countryCode: string): AdministrativeSubdi
 }
 
 /**
+ * Resolves the localized country name in the requested locale using Intl.DisplayNames,
+ * falling back to the standard ISO name if unavailable.
+ */
+export function getLocalizedCountryName(countryCode: string, locale = 'en'): string {
+  if (!countryCode) return '';
+  const code = countryCode.toUpperCase();
+  try {
+    const regionNames = new Intl.DisplayNames([locale], { type: 'region' });
+    const name = regionNames.of(code);
+    if (name) return name;
+  } catch {
+    // Fall back to standard ISO country name
+  }
+  const c = iso.country(code);
+  return c?.name || code;
+}
+
+/**
  * Dynamically resolves country information and official subdivisions for any jurisdiction on Earth.
  */
-export function getCountryInfo(countryCode: string): CountryInfo | null {
+export function getCountryInfo(countryCode: string, locale = 'en'): CountryInfo | null {
   const code = countryCode.toUpperCase();
   const c = iso.country(code);
   if (!c) return null;
   const subdivisions = getCountrySubdivisions(code);
   return {
     code,
-    name: c.name,
+    name: getLocalizedCountryName(code, locale),
     subdivisions,
   };
 }
@@ -57,8 +75,55 @@ export const COUNTRIES: Record<string, CountryInfo> = new Proxy(
       if (typeof prop !== 'string') return false;
       return Boolean(iso.country(prop.toUpperCase()));
     },
+    ownKeys(_target) {
+      return Object.keys(iso.data).sort((a, b) => {
+        const nameA = iso.data[a]?.name || a;
+        const nameB = iso.data[b]?.name || b;
+        return nameA.localeCompare(nameB);
+      });
+    },
+    getOwnPropertyDescriptor(_target, prop: string | symbol) {
+      if (typeof prop === 'string' && iso.data[prop.toUpperCase()]) {
+        return {
+          enumerable: true,
+          configurable: true,
+          value: getCountryInfo(prop),
+        };
+      }
+      return undefined;
+    },
   }
 );
+
+/**
+ * Returns a static, deterministic country list using fixed ISO data.
+ * Safe for server-side rendering and initial hydration without ICU version divergence.
+ */
+export function getDeterministicCountryList(): CountryInfo[] {
+  return Object.keys(iso.data)
+    .map((code) => {
+      const c = iso.country(code.toUpperCase());
+      if (!c) return null;
+      const subdivisions = getCountrySubdivisions(code);
+      return {
+        code: code.toUpperCase(),
+        name: c.name,
+        subdivisions,
+      };
+    })
+    .filter((c): c is CountryInfo => c !== null)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Returns all ISO countries localized and sorted alphabetically for the given locale.
+ */
+export function getAllCountries(locale = 'en'): CountryInfo[] {
+  return Object.keys(iso.data)
+    .map((code) => getCountryInfo(code, locale))
+    .filter((c): c is CountryInfo => c !== null)
+    .sort((a, b) => a.name.localeCompare(b.name, locale));
+}
 
 /**
  * Dynamically extracts 2-letter ISO country code from standard ISO 3166-2 subdivision identifiers.

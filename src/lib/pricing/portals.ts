@@ -36,10 +36,10 @@ export const TRAVEL_PORTALS: TravelPortal[] = [
     markets: ['GLOBAL', 'DACH', 'OCEANIA', 'NORTH_AMERICA'],
     category: 'metasearch',
     colorClass: 'bg-sky-600 hover:bg-sky-700 text-white',
-    buildUrl: ({ originAirport, destinationAirport, startDate, endDate }) => {
+    buildUrl: ({ originAirport, destinationAirport, startDate, endDate, adults = 2 }) => {
       const s = startDate.replace(/-/g, '').slice(2);
       const e = endDate.replace(/-/g, '').slice(2);
-      return `https://www.skyscanner.net/transport/flights/${originAirport.toLowerCase()}/${destinationAirport.toLowerCase()}/${s}/${e}/`;
+      return `https://www.skyscanner.net/transport/flights/${originAirport.toLowerCase()}/${destinationAirport.toLowerCase()}/${s}/${e}/?adultsv2=${adults}`;
     },
   },
   {

@@ -10,6 +10,7 @@ export interface DynamicAirport {
   lat: number;
   lon: number;
   altitude?: number;  // Elevation in feet above sea level
+  type?: string;      // 'large_airport' | 'medium_airport' | 'small_airport'
   state?: string;     // Administrative subdivision (e.g. DE-BW, FR-IDF, AT-9)
   distanceKm?: number;
   isHighSpeedRailConnected?: boolean;
@@ -30,7 +31,27 @@ export const LOCALIZED_AIRPORT_METADATA: Record<
     state?: string;
     isMajorHub?: boolean;
   }
-> = {};
+> = {
+  VIE: { city: { de: 'Wien', en: 'Vienna', fr: 'Vienne', es: 'Viena', it: 'Vienna' } },
+  SZG: { city: { de: 'Salzburg', en: 'Salzburg', fr: 'Salzbourg', es: 'Salzburgo', it: 'Salisburgo' } },
+  GVA: { city: { de: 'Genf', en: 'Geneva', fr: 'Genève', es: 'Ginebra', it: 'Ginevra' } },
+  ZRH: { city: { de: 'Zürich', en: 'Zurich', fr: 'Zurich', es: 'Zúrich', it: 'Zurigo' } },
+  MUC: { city: { de: 'München', en: 'Munich', fr: 'Munich', es: 'Múnich', it: 'Monaco di Baviera' } },
+  FCO: { city: { de: 'Rom', en: 'Rome', fr: 'Rome', es: 'Roma', it: 'Roma' } },
+  ATH: { city: { de: 'Athen', en: 'Athens', fr: 'Athènes', es: 'Atenas', it: 'Atene' } },
+  PRG: { city: { de: 'Prag', en: 'Prague', fr: 'Prague', es: 'Praga', it: 'Praga' } },
+  LIS: { city: { de: 'Lissabon', en: 'Lisbon', fr: 'Lisbonne', es: 'Lisboa', it: 'Lisbona' } },
+  DXB: { city: { de: 'Dubai', en: 'Dubai', fr: 'Dubaï', es: 'Dubái', it: 'Dubai' } },
+  PMI: { city: { de: 'Palma de Mallorca', en: 'Palma de Mallorca', fr: 'Palma de Majorque', es: 'Palma de Mallorca', it: 'Palma di Maiorca' } },
+  TFS: { city: { de: 'Teneriffa', en: 'Tenerife', fr: 'Ténérife', es: 'Tenerife', it: 'Tenerife' } },
+  LPA: { city: { de: 'Gran Canaria', en: 'Gran Canaria', fr: 'Grande Canarie', es: 'Gran Canaria', it: 'Gran Canaria' } },
+  HER: { city: { de: 'Heraklion (Kreta)', en: 'Heraklion (Crete)', fr: 'Héraklion (Crète)', es: 'Heraclión (Creta)', it: 'Candia (Creta)' } },
+  FNC: { city: { de: 'Funchal (Madeira)', en: 'Funchal (Madeira)', fr: 'Funchal (Madère)', es: 'Funchal (Madeira)', it: 'Funchal (Madeira)' } },
+  CDG: { city: { de: 'Paris', en: 'Paris', fr: 'Paris', es: 'París', it: 'Parigi' } },
+  LHR: { city: { de: 'London', en: 'London', fr: 'Londres', es: 'Londres', it: 'Londra' } },
+  KEF: { city: { de: 'Reykjavik', en: 'Reykjavik', fr: 'Reykjavik', es: 'Reikiavik', it: 'Reykjavik' } },
+  BZO: { city: { de: 'Bozen (Südtirol)', en: 'Bolzano (South Tyrol)', fr: 'Bolzano (Tyrol du Sud)', es: 'Bolzano', it: 'Bolzano' } },
+};
 
 export function getLocalizedAirportDetails(airport: DynamicAirport, locale: string = 'en'): DynamicAirport {
   const loc = (locale || 'en').toLowerCase().slice(0, 2);
@@ -83,6 +104,7 @@ const indexedAirports: DynamicAirport[] = (airportsData as DynamicAirport[]).map
     lat: Number(a.lat),
     lon: Number(a.lon),
     altitude: Number(a.altitude) || 0,
+    type: a.type || undefined,
     state: meta?.state || a.state || undefined,
     isMajorHub: meta?.isMajorHub ?? Boolean(a.isMajorHub),
     isHighSpeedRailConnected: Boolean(a.isHighSpeedRailConnected),

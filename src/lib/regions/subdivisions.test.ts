@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   COUNTRIES,
   getCountryCodeFromSubdivision,
+  getAllCountries,
+  getLocalizedCountryName,
 } from './subdivisions';
 import { getRecommendedAirportsForRegion } from '../airports/airports-db';
 import { getDestinationSeasonalWarning } from '../optimizer/weather';
@@ -102,6 +104,37 @@ describe('Regions, Subdivisions & Airport Proximity', () => {
 
     // Standard Mediterranean beach destination in July like PMI returns null (normal family travel)
     expect(getDestinationSeasonalWarning('PMI', 6)).toBeNull();
+  });
+
+  it('allows enumerating all 249 ISO countries via Object.values and getAllCountries', () => {
+    const listFromValues = Object.values(COUNTRIES);
+    expect(listFromValues.length).toBeGreaterThanOrEqual(240);
+    expect(listFromValues.some((c) => c.code === 'DE' && c.name === 'Germany')).toBe(true);
+
+    const listFromHelper = getAllCountries();
+    expect(listFromHelper.length).toBeGreaterThanOrEqual(240);
+    expect(listFromHelper.some((c) => c.code === 'FR' && c.name === 'France')).toBe(true);
+    expect(listFromHelper.some((c) => c.code === 'US')).toBe(true);
+  });
+
+  it('supports i18n country names across de, fr, es, it and en', () => {
+    expect(getLocalizedCountryName('DE', 'de')).toBe('Deutschland');
+    expect(getLocalizedCountryName('DE', 'en')).toBe('Germany');
+    expect(getLocalizedCountryName('DE', 'fr')).toBe('Allemagne');
+    expect(getLocalizedCountryName('DE', 'es')).toBe('Alemania');
+    expect(getLocalizedCountryName('DE', 'it')).toBe('Germania');
+
+    expect(getLocalizedCountryName('ES', 'de')).toBe('Spanien');
+    expect(getLocalizedCountryName('AT', 'de')).toBe('Österreich');
+    expect(getLocalizedCountryName('CH', 'de')).toBe('Schweiz');
+
+    const germanCountries = getAllCountries('de');
+    const deEntry = germanCountries.find((c) => c.code === 'DE');
+    expect(deEntry?.name).toBe('Deutschland');
+
+    const frenchCountries = getAllCountries('fr');
+    const frEntry = frenchCountries.find((c) => c.code === 'DE');
+    expect(frEntry?.name).toBe('Allemagne');
   });
 });
 

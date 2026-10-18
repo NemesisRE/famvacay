@@ -40,6 +40,7 @@ interface BookingDealsPopoverProps {
   countryCode?: string;
   startDate?: string;
   endDate?: string;
+  adults?: number;
   className?: string;
 }
 
@@ -51,6 +52,7 @@ export function BookingDealsPopover({
   countryCode = 'DE',
   startDate,
   endDate,
+  adults,
   className = '',
 }: BookingDealsPopoverProps) {
   const { t } = useI18n();
@@ -245,11 +247,13 @@ export function BookingDealsPopover({
                   </span>
                   <div className="grid grid-cols-2 gap-2">
                     {activePortalsList.map((portal) => {
+                      const partyAdults = pricingDetails.party?.adults ?? adults ?? 2;
                       const url = portal.buildUrl({
                         originAirport,
                         destinationAirport,
                         startDate: sDate,
                         endDate: eDate,
+                        adults: partyAdults,
                       });
 
                       return (

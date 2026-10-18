@@ -13,6 +13,9 @@ export interface PricingFlightQuote {
   totalFlightCost: number;
   airlineCarrier?: string;
   isDirectFlight?: boolean;
+  dayOfWeekMultiplier?: number;
+  isMidweekSaving?: boolean;
+  holidaySurgeMultiplier?: number;
 }
 
 export interface PricingLodgingQuote {
@@ -39,6 +42,7 @@ export interface AggregatedTripPricing {
   providerSource: string; // 'PortalAggregator' | 'AmadeusLive' | 'BenchmarkEstimator'
   isCachedBenchmark: boolean;
   deepLinks: DeepLinkUrls;
+  party?: PricingPartyComposition;
 }
 
 export interface TravelPricingProvider {
