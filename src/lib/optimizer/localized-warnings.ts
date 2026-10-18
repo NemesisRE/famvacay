@@ -21,17 +21,50 @@ export function getLocalizedSeasonalWarning(
         title: t.home.seasonWarningHurricaneTitle,
         description: t.home.seasonWarningHurricaneDesc,
       };
-    case 'OVERCROWDED_PEAK':
+    case 'OVERCROWDED_PEAK': {
+      let eventTitle = warning.eventName;
+      if (warning.eventKey) {
+        switch (warning.eventKey) {
+          case 'easter':
+            eventTitle = t.home.seasonEventEaster;
+            break;
+          case 'spring_break_easter':
+            eventTitle = t.home.seasonEventSpringBreakEaster;
+            break;
+          case 'carnival':
+            eventTitle = t.home.seasonEventCarnival;
+            break;
+          case 'golden_week':
+            eventTitle = t.home.seasonEventGoldenWeek;
+            break;
+          case 'oktoberfest':
+            eventTitle = t.home.seasonEventOktoberfest;
+            break;
+          case 'christmas_new_year':
+            eventTitle = t.home.seasonEventChristmasNewYear;
+            break;
+          case 'lunar_new_year':
+            eventTitle = t.home.seasonEventLunarNewYear;
+            break;
+          case 'songkran':
+            eventTitle = t.home.seasonEventSongkran;
+            break;
+        }
+      }
+
       return {
-        title: warning.eventName
-          ? `${t.home.seasonWarningCrowdedPeakTitle}: ${warning.eventName}`
+        title: eventTitle
+          ? `${t.home.seasonWarningCrowdedPeakTitle}: ${eventTitle}`
           : t.home.seasonWarningCrowdedPeakTitle,
-        description: warning.fallbackMessage || t.home.seasonWarningCrowdedPeakDesc,
+        description: warning.eventKey
+          ? t.home.seasonWarningCrowdedPeakDesc
+          : (warning.fallbackMessage || t.home.seasonWarningCrowdedPeakDesc),
       };
+    }
     default:
       return {
         title: warning.seasonType,
-        description: warning.fallbackMessage,
+        description: warning.fallbackMessage || t.home.seasonWarningCrowdedPeakDesc,
       };
   }
 }

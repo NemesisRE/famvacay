@@ -5,11 +5,14 @@ import {
   checkRegionalContainment,
   fuzzyMatchDestinationEntity,
   resolveDestinationCodes,
+  discoverDestinationsDynamically,
+  getDestinationVacationStyles,
 } from './destinations';
 import {
   isCommercialPassengerAirport,
   getAirportByIata,
   getRecommendedAirportsForCoordinates,
+  calculateGeodesicDistanceKm,
 } from '../airports/airport-service';
 import { getEstimatedClimate } from './weather';
 import {
@@ -230,4 +233,152 @@ describe('Pricing Provider & Deep-Links', () => {
     expect(pricing.deepLinks.bookingCom).toBeDefined();
   });
 });
+
+describe('Dynamic Vacation Destination Discovery Engine', () => {
+  it('discovers balanced destinations dynamically without any hardcoded lists', () => {
+    // Default discovery (no tags, default origin) returns dynamic airport codes
+    const defaultCodes = resolveDestinationCodes([], 'ALL');
+    expect(defaultCodes.length).toBeGreaterThanOrEqual(8);
+    // All returned codes must be valid 3-letter IATA codes existing in commercial dataset
+    defaultCodes.forEach((code) => {
+      expect(code).toHaveLength(3);
+      expect(getAirportByIata(code)).toBeDefined();
+    });
+  });
+
+  it('dynamically adapts discovery to Sydney (Australia / Pacific) without European bias', () => {
+    const sydneyResults = resolveDestinationCodes([], 'ALL', {
+      departureLat: -33.9,
+      departureLon: 151.2,
+      originAirports: ['SYD'],
+    });
+
+    expect(sydneyResults.length).toBeGreaterThanOrEqual(6);
+    // Must feature Pacific / Oceania destinations (e.g. Gold Coast, Queenstown, New Caledonia, Melbourne)
+    expect(
+      sydneyResults.some((code) => ['OOL', 'MEL', 'HBA', 'ADL', 'ZQN', 'NOU', 'NAN'].includes(code))
+    ).toBe(true);
+    // Must NOT contain SYD itself
+    expect(sydneyResults).not.toContain('SYD');
+    // European short-haul destinations must NOT be in Sydney discovery
+    expect(sydneyResults).not.toContain('PMI');
+    expect(sydneyResults).not.toContain('INN');
+  });
+
+  it('dynamically adapts discovery to San Francisco (US West Coast)', () => {
+    const sfResults = resolveDestinationCodes([], 'ALL', {
+      departureLat: 37.6,
+      departureLon: -122.4,
+      originAirports: ['SFO'],
+    });
+
+    expect(sfResults.length).toBeGreaterThanOrEqual(6);
+    // Must contain West Coast / Western destinations (e.g. Reno/Tahoe, Mexico/Baja, Salt Lake, Seattle, Portland)
+    expect(
+      sfResults.some((code) => ['RNO', 'FAT', 'TIJ', 'BOI', 'PDX', 'SLC', 'SEA'].includes(code))
+    ).toBe(true);
+    expect(sfResults).not.toContain('SFO');
+  });
+
+  it('dynamically adapts discovery to Miami (US East Coast / Caribbean)', () => {
+    const miamiResults = resolveDestinationCodes([], 'ALL', {
+      departureLat: 25.8,
+      departureLon: -80.2,
+      originAirports: ['MIA'],
+    });
+
+    expect(miamiResults.length).toBeGreaterThanOrEqual(6);
+    // Must feature Caribbean / Tropical destinations (e.g. Bahamas, Jamaica, Cancun, Cayman)
+    expect(
+      miamiResults.some((code) => ['NAS', 'MBJ', 'CUN', 'GCM', 'PLS', 'VRA'].includes(code))
+    ).toBe(true);
+    expect(miamiResults).not.toContain('MIA');
+  });
+
+  it('filters by vacation style dynamically using physical geography and climate', () => {
+    // BEACH from Miami yields tropical coastal destinations
+    const miamiBeach = resolveDestinationCodes([], 'BEACH', {
+      departureLat: 25.8,
+      departureLon: -80.2,
+      originAirports: ['MIA'],
+    });
+    expect(miamiBeach.length).toBeGreaterThanOrEqual(5);
+    expect(miamiBeach.some((code) => ['NAS', 'MBJ', 'CUN', 'PLS', 'GCM'].includes(code))).toBe(true);
+
+    // ALPINE from Frankfurt yields mountain hubs
+    const frankfurtAlpine = resolveDestinationCodes([], 'ALPINE', {
+      departureLat: 50.0,
+      departureLon: 8.6,
+      originAirports: ['FRA'],
+    });
+    expect(frankfurtAlpine.length).toBeGreaterThanOrEqual(3);
+    expect(frankfurtAlpine.some((code) => ['INN', 'ZRH', 'SZG', 'FMM', 'KLV'].includes(code))).toBe(true);
+  });
+
+  it('resolves dynamic vacation styles across world destinations with getDestinationVacationStyles', () => {
+    // 1. Canary Islands (Tenerife TFS): Beach & Nature
+    const tfsStyles = getDestinationVacationStyles('TFS', 3150);
+    expect(tfsStyles).toContain('BEACH');
+
+    // 2. Caribbean (Punta Cana PUJ): Beach & Longrange
+    const pujStyles = getDestinationVacationStyles('PUJ', 7300);
+    expect(pujStyles).toContain('BEACH');
+    expect(pujStyles).toContain('LONGRANGE');
+
+    // 3. Alpine (Innsbruck INN): Alpine & Ski
+    const innStyles = getDestinationVacationStyles('INN', 320);
+    expect(innStyles).toContain('ALPINE');
+
+    // 4. Major Culture City (Rome FCO): City
+    const fcoStyles = getDestinationVacationStyles('FCO', 850);
+    expect(fcoStyles).toContain('CITY');
+
+    // 5. Inland landlocked cities (Oradea OMR, Vienna VIE): City only, NEVER Beach
+    const omrStyles = getDestinationVacationStyles('OMR', 1000);
+    expect(omrStyles).toContain('CITY');
+    expect(omrStyles).not.toContain('BEACH');
+
+    const vieStyles = getDestinationVacationStyles('VIE', 600);
+    expect(vieStyles).toContain('CITY');
+    expect(vieStyles).not.toContain('BEACH');
+  });
+
+  it('includes Canary Islands (up to 3500km) and Long-range destinations in open flex discovery from Germany', () => {
+    const karlsruheResults = resolveDestinationCodes([], 'ALL', {
+      departureLat: 49.0069,
+      departureLon: 8.4037,
+      originAirports: ['FKB', 'STR', 'FRA'],
+    });
+
+    const allAp = getAirportByIata('TFS');
+    const allCandidates = discoverDestinationsDynamically(['ALL'], {
+      departureLat: 49.0069,
+      departureLon: 8.4037,
+      originAirports: ['FKB', 'STR', 'FRA'],
+    });
+    expect(karlsruheResults.length).toBeGreaterThanOrEqual(15);
+
+    // 1. Canary Islands (Tenerife, Gran Canaria, Lanzarote, Fuerteventura ~3,100-3,300 km) must be included
+    const hasCanary = karlsruheResults.some((code) => ['TFS', 'LPA', 'ACE', 'FUE'].includes(code));
+    expect(hasCanary).toBe(true);
+
+    // 2. Long-range & exotic destinations (>3500 km, e.g. Caribbean like SXM/ANU/PUJ/CUN, Gulf/Near East like DXB/DIA/RSI, or Asia like SIN/BKK) must be included
+    const hasLongrange = karlsruheResults.some((code) =>
+      ['PUJ', 'CUN', 'DXB', 'MLE', 'BKK', 'MBJ', 'SXM', 'ANU', 'SIN', 'DIA', 'RSI', 'BLA'].includes(code)
+    );
+    expect(hasLongrange).toBe(true);
+
+    // 3. Explicit LONGRANGE style discovery returns predominantly long-haul destinations
+    const karlsruheLongrange = resolveDestinationCodes([], 'LONGRANGE', {
+      departureLat: 49.0069,
+      departureLon: 8.4037,
+      originAirports: ['FRA'],
+    });
+    expect(karlsruheLongrange.length).toBeGreaterThanOrEqual(5);
+    expect(
+      karlsruheLongrange.some((code) => ['PUJ', 'CUN', 'DXB', 'MLE', 'BKK', 'MBJ', 'SEZ'].includes(code))
+    ).toBe(true);
+  });
+});
+
 

@@ -6,18 +6,29 @@ import {
   SchoolHoliday,
   OptimizationWeights,
   DEFAULT_WEIGHTS,
+  DestinationType,
+  TravelVehicle,
 } from './types';
 import { calculatePtoDaysConsumed } from './pto-calculator';
 import { calculatePassengerCostMultiplier } from './child-tiers';
-import { POPULAR_DESTINATIONS, getEstimatedClimate, getDestinationSeasonalWarning } from './weather';
-import { resolveDestinationCodes } from './destinations';
+import {
+  POPULAR_DESTINATIONS,
+  getEstimatedClimate,
+  getDestinationSeasonalWarning,
+  getIdealTemperatureBand,
+  getDestinationProfile,
+} from './weather';
+import { resolveDestinationCodes, OriginContext, getDestinationVacationStyles } from './destinations';
 import {
   getAirportByIata,
   calculateGeodesicDistanceKm,
   getMajorAirportsForCountry,
+  getRecommendedAirportsForCoordinates,
 } from '../airports/airport-service';
 import { getCountryCodeFromSubdivision } from '../regions/subdivisions';
 import { getSynchronousTripPricing } from '../pricing/pricing-service';
+import { getAvailableVehicles, calculateVehicleMetrics } from './vehicles';
+import { getDestinationSafetyAssessment } from '../safety/safety-service';
 
 /**
  * Filter blackout dates: Checks if [candidateStart, candidateEnd] overlaps with any blackout range.
@@ -170,6 +181,38 @@ export function normalizeScore(
   return Math.round(score * 10) / 10;
 }
 
+/**
+ * Calculates travel friction for the flight corridor based on distance and vacation style.
+ * Short regional hops minimize family travel fatigue and score highest.
+ */
+export function calculateFlightFrictionScore(
+  flightDistKm?: number,
+  isLongRangeSelected: boolean = false
+): number {
+  if (flightDistKm == null || flightDistKm <= 0) return 90;
+  if (flightDistKm <= 950) {
+    // Short convenient hop: 98 - 94
+    return Math.max(94, Math.round(98 - (flightDistKm / 950) * 4));
+  }
+  if (flightDistKm <= 2000) {
+    // Regional mid-haul: 94 - 86
+    return Math.max(86, Math.round(94 - ((flightDistKm - 950) / 1050) * 8));
+  }
+  if (flightDistKm <= 3800) {
+    // Extended mid-haul: 86 - 74
+    return Math.max(74, Math.round(86 - ((flightDistKm - 2000) / 1800) * 12));
+  }
+  if (flightDistKm <= 6000) {
+    // Transcontinental: 74 - 58
+    return Math.max(58, Math.round(74 - ((flightDistKm - 3800) / 2200) * 16));
+  }
+  // Long-haul > 6000 km:
+  if (isLongRangeSelected) {
+    return Math.max(65, Math.round(80 - ((flightDistKm - 6000) / 4000) * 15));
+  }
+  return Math.max(35, Math.round(58 - ((flightDistKm - 6000) / 4000) * 23));
+}
+
 interface RawCandidate extends Omit<CandidateWindow, 'finalScore' | 'scoreBreakdown'> {
   holidayCoverage: HolidayCoverageResult;
   frictionBaseScore: number;
@@ -201,21 +244,56 @@ export function optimizeVacationWindows(
   const originAirports =
     userProfile.originAirports && userProfile.originAirports.length > 0
       ? userProfile.originAirports
-      : (homeState
-          ? getMajorAirportsForCountry(getCountryCodeFromSubdivision(homeState)).slice(0, 3)
-          : []);
+      : (userProfile.departureLat != null && userProfile.departureLon != null
+          ? getRecommendedAirportsForCoordinates(userProfile.departureLat, userProfile.departureLon)
+              .filter((a) => a.isMajorHub || (a.distanceKm || 0) <= 80)
+              .slice(0, 3)
+              .map((a) => a.code)
+          : (homeState
+              ? getMajorAirportsForCountry(getCountryCodeFromSubdivision(homeState)).slice(0, 3)
+              : []));
+
+  const selectedVehicles: TravelVehicle[] =
+    input.travelVehicles && input.travelVehicles.length > 0
+      ? input.travelVehicles
+      : input.travelVehicle
+      ? [input.travelVehicle]
+      : ['PLANE'];
+
+  const originContext: OriginContext = {
+    departureLat: userProfile.departureLat,
+    departureLon: userProfile.departureLon,
+    country: homeState ? getCountryCodeFromSubdivision(homeState) : undefined,
+    federalState: homeState,
+    originAirports,
+    travelVehicle: selectedVehicles[0],
+    travelVehicles: selectedVehicles,
+    minBeachTemp: input.minBeachTemp,
+    requireSnow: input.requireSnow,
+    earliestDate: input.earliestDate,
+    latestDate: input.latestDate,
+  };
 
   // Select candidate destination codes
   const hasUserSelectedDestinations = Boolean(
     (input.targetDestinations && input.targetDestinations.length > 0) || input.targetRegion
   );
 
+  const selectedTypes: DestinationType[] =
+    input.destinationTypes && input.destinationTypes.length > 0
+      ? input.destinationTypes
+      : input.destinationType
+      ? [input.destinationType]
+      : ['ALL'];
+
   let candidateDestinations = resolveDestinationCodes(
     input.targetDestinations && input.targetDestinations.length > 0
       ? input.targetDestinations
       : input.targetRegion
       ? [input.targetRegion]
-      : undefined
+      : undefined,
+    selectedTypes,
+    originContext
   );
 
   // STRICT FILTERING:
@@ -228,11 +306,9 @@ export function optimizeVacationWindows(
     return [];
   }
 
-  // If user chose open discovery (no destination tags), dynamically select commercial major hubs
+  // If user chose open discovery (no destination tags), ensure candidate destinations are populated
   if (!hasUserSelectedDestinations && (!candidateDestinations || candidateDestinations.length === 0)) {
-    const { getAllCommercialAirports } = require('../airports/airport-service');
-    const majorAirports = getAllCommercialAirports().filter((a: any) => a.isMajorHub);
-    candidateDestinations = majorAirports.slice(0, 10).map((a: any) => a.iata);
+    candidateDestinations = resolveDestinationCodes(undefined, selectedTypes, originContext);
   }
 
   const rawCandidatePool: RawCandidate[] = [];
@@ -265,8 +341,11 @@ export function optimizeVacationWindows(
         });
       }
 
+      const adultsCount = typeof userProfile.adults === 'number' && userProfile.adults >= 1
+        ? userProfile.adults
+        : 2;
       const hasSchoolKids = currentChildrenAges.some((age) => age >= 6);
-      const pCostMultiplier = calculatePassengerCostMultiplier(2, currentChildrenAges, {
+      const pCostMultiplier = calculatePassengerCostMultiplier(adultsCount, currentChildrenAges, {
         birthDates: userProfile.childrenBirthDates,
         outboundDate: startStr,
         returnDate: endStr,
@@ -296,6 +375,27 @@ export function optimizeVacationWindows(
         const airportState = airportDetails?.state || homeState;
         const isArbitrage = airportState !== homeState;
 
+        let originDistKm: number | undefined;
+        let originDriveMins: number | undefined;
+        if (userProfile.departureLat && userProfile.departureLon && airportDetails) {
+          originDistKm = Math.round(
+            calculateGeodesicDistanceKm(
+              userProfile.departureLat,
+              userProfile.departureLon,
+              airportDetails.lat,
+              airportDetails.lon
+            )
+          );
+          originDriveMins = Math.round((originDistKm / 85) * 60);
+        }
+
+        const originName = airportDetails?.name
+          ? (airportDetails.city ? `${airportDetails.name} (${airportDetails.city})` : airportDetails.name)
+          : origin;
+        const originCity = airportDetails?.city || origin;
+        const originCountry = airportDetails?.country || '';
+        const originHighSpeedRail = Boolean(airportDetails?.isHighSpeedRailConnected);
+
         // Arbitrage check: If departing from an airport in neighboring state/country, check if that state is NOT on holiday
         let arbitrageNote: string | undefined;
         let arbitrageState: string | undefined;
@@ -309,8 +409,8 @@ export function optimizeVacationWindows(
           }
         }
 
-        // Travel friction calculation based on distance and profile maxDrivingHours
-        let frictionBaseScore = isArbitrage ? 80 : 95;
+        // Travel friction calculation based on driving distance and profile maxDrivingHours
+        let frictionDriveScore = isArbitrage ? 80 : 95;
         if (userProfile.maxDrivingHours && userProfile.departureLat && userProfile.departureLon) {
           const airportObj = getAirportByIata(origin);
           if (airportObj) {
@@ -323,12 +423,79 @@ export function optimizeVacationWindows(
             const maxDriveDist = userProfile.maxDrivingHours * 90; // ~90 km/h driving benchmark
             if (distKm > maxDriveDist) {
               const excess = distKm - maxDriveDist;
-              frictionBaseScore = Math.max(30, frictionBaseScore - Math.round(excess / 15));
+              frictionDriveScore = Math.max(30, frictionDriveScore - Math.round(excess / 15));
             }
           }
         }
 
         for (const dest of candidateDestinations) {
+          const destAirportObj = getAirportByIata(dest);
+          let flightDistKm: number | undefined;
+          let flightDurationMins: number | undefined;
+          if (airportDetails && destAirportObj) {
+            flightDistKm = Math.round(
+              calculateGeodesicDistanceKm(
+                airportDetails.lat,
+                airportDetails.lon,
+                destAirportObj.lat,
+                destAirportObj.lon
+              )
+            );
+            flightDurationMins = Math.round(35 + (flightDistKm / 820) * 60);
+          }
+
+          const isLongRangeSelected = selectedTypes.includes('LONGRANGE');
+          const flightFrictionScore = calculateFlightFrictionScore(flightDistKm, isLongRangeSelected);
+          const compositeFrictionScore = Math.round(frictionDriveScore * 0.4 + flightFrictionScore * 0.6);
+
+          const destinationName = destAirportObj?.city && destAirportObj?.country
+            ? `${destAirportObj.city}, ${destAirportObj.country}`
+            : (destAirportObj?.name || dest);
+          const destinationCity = destAirportObj?.city || destAirportObj?.name || dest;
+          const destinationCountry = destAirportObj?.country || '';
+
+          const originGeo = {
+            lat: userProfile.departureLat ?? airportDetails?.lat ?? 49.0069,
+            lon: userProfile.departureLon ?? airportDetails?.lon ?? 8.4037,
+            countryCode: originCountry || (homeState ? getCountryCodeFromSubdivision(homeState) : undefined),
+            state: airportState || homeState,
+          };
+          const destGeo = {
+            lat: destAirportObj?.lat ?? 0,
+            lon: destAirportObj?.lon ?? 0,
+            countryCode: destAirportObj?.state ? destAirportObj.state.split('-')[0] : undefined,
+            state: destAirportObj?.state,
+            code: dest,
+            isHighSpeedRailConnected: destAirportObj?.isHighSpeedRailConnected,
+          };
+
+          const directDist = flightDistKm || (airportDetails && destAirportObj ? Math.round(calculateGeodesicDistanceKm(originGeo.lat, originGeo.lon, destGeo.lat, destGeo.lon)) : 500);
+          const availableVehicles = getAvailableVehicles(originGeo, destGeo, directDist);
+          const matchingVehicles = availableVehicles.filter((v) => selectedVehicles.includes(v));
+
+          // Destination must be physically viable for at least one of the user's selected vehicles
+          if (matchingVehicles.length === 0) {
+            continue;
+          }
+
+          // Choose the most appropriate active vehicle among matching options:
+          // For shorter distances, prefer Train/Car if selected by user; for longer hops, prefer Plane
+          let activeVehicle: TravelVehicle = matchingVehicles[0];
+          if (matchingVehicles.includes('TRAIN') && (destAirportObj?.isHighSpeedRailConnected || directDist <= 450)) {
+            activeVehicle = 'TRAIN';
+          } else if (matchingVehicles.includes('CAR') && directDist <= 550 && !matchingVehicles.includes('TRAIN')) {
+            activeVehicle = 'CAR';
+          } else if (matchingVehicles.includes('PLANE') && directDist >= 650) {
+            activeVehicle = 'PLANE';
+          }
+
+          const vehicleDetails = calculateVehicleMetrics(
+            activeVehicle,
+            directDist,
+            pCostMultiplier,
+            destAirportObj?.isHighSpeedRailConnected
+          );
+
           // Dynamic weather assessment
           const weather = getEstimatedClimate(dest, monthIndex);
           const travelYear = parseInt(startStr.split('-')[0], 10) || 2026;
@@ -336,6 +503,35 @@ export function optimizeVacationWindows(
             year: travelYear,
             weatherAssessment: weather,
           });
+
+          // Minimum beach temperature constraint
+          if (input.minBeachTemp && input.minBeachTemp > 0) {
+            const isBeachCandidate = selectedTypes.includes('BEACH') ||
+              (hasUserSelectedDestinations && getDestinationVacationStyles(dest).includes('BEACH'));
+            if (isBeachCandidate) {
+              const dayTemp = weather.maxTempC ?? weather.avgTempC;
+              if (dayTemp < input.minBeachTemp) {
+                continue; // Destination window too cold for user's minimum beach temperature
+              }
+            }
+          }
+
+          // Winter sports & snow guarantee constraint
+          if (input.requireSnow) {
+            const isAlpineCandidate = selectedTypes.includes('ALPINE') ||
+              (hasUserSelectedDestinations && getDestinationVacationStyles(dest).includes('ALPINE'));
+            if (isAlpineCandidate) {
+              const altMeters = (destAirportObj?.altitude || 0) * 0.3048;
+              const isWinterSeason = (destAirportObj?.lat || 0) >= 0
+                ? (monthIndex === 11 || monthIndex <= 3)
+                : (monthIndex >= 5 && monthIndex <= 9);
+              const hasFreezingTemps = weather.avgTempC <= 3 || (weather.minTempC != null && weather.minTempC <= 0);
+              const hasSnowConditions = isWinterSeason && hasFreezingTemps && (altMeters >= 450 || (destAirportObj?.keywords && /ski|snow|alps|dolomites|tirol/i.test(destAirportObj.keywords)));
+              if (!hasSnowConditions) {
+                continue; // No snow / winter sports conditions during this window
+              }
+            }
+          }
 
           // Modular Pricing Engine with deep-links and realistic quotes
           const pricingDetails = getSynchronousTripPricing({
@@ -345,15 +541,25 @@ export function optimizeVacationWindows(
             endDate: endStr,
             durationDays,
             party: {
-              adults: 2,
+              adults: adultsCount,
               childrenAges: currentChildrenAges,
               cabinClass: (userProfile.preferredCabinClass as any) || 'ECONOMY',
             },
             isArbitrage: Boolean(arbitrageNote),
           });
 
-          const totalCost = pricingDetails.totalCost;
-          const perPersonCost = pricingDetails.pricePerPerson;
+          let totalCost = pricingDetails.totalCost;
+          let perPersonCost = pricingDetails.pricePerPerson;
+
+          if (activeVehicle !== 'PLANE') {
+            const travelCost = vehicleDetails.estimatedTravelCost;
+            totalCost = travelCost + pricingDetails.lodging.totalLodgingCost;
+            perPersonCost = Math.round(totalCost / Math.max(1, adultsCount + currentChildrenAges.length));
+            pricingDetails.flight.totalFlightCost = travelCost;
+            pricingDetails.flight.baseAdultFare = Math.round(travelCost / pCostMultiplier);
+            pricingDetails.totalCost = totalCost;
+            pricingDetails.pricePerPerson = perPersonCost;
+          }
 
           // Budget check
           if (input.maxBudgetTotal && totalCost > input.maxBudgetTotal) {
@@ -370,6 +576,17 @@ export function optimizeVacationWindows(
             durationDays,
             originAirport: origin,
             destinationAirport: dest,
+            destinationName,
+            destinationCity,
+            destinationCountry,
+            originName,
+            originCity,
+            originCountry,
+            flightDistanceKm: flightDistKm,
+            flightDurationMinutes: flightDurationMins,
+            originDistanceKm: originDistKm,
+            originDriveMinutes: originDriveMins,
+            originHighSpeedRail,
             totalWeekdays: ptoInfo.totalWeekdays,
             publicHolidaysCount: ptoInfo.publicHolidaysCount,
             ptoDaysConsumed: ptoInfo.ptoDaysConsumed,
@@ -387,7 +604,10 @@ export function optimizeVacationWindows(
             requiresSchoolExemption: false,
             schoolHolidayDaysOverlap: holidayCoverage.overlapDays,
             holidayCoverage,
-            frictionBaseScore,
+            frictionBaseScore: compositeFrictionScore,
+            travelVehicle: activeVehicle,
+            availableVehicles,
+            vehicleDetails,
           });
         }
       }
@@ -397,40 +617,55 @@ export function optimizeVacationWindows(
   }
 
   // 5. Intelligent School Holiday Tiering & Fallback
-  // If the family has school-age children, prioritize 100% enclosed windows.
-  // If NO 100% enclosed windows exist in the requested date range / duration (e.g., 12-16 days during a 9-day Herbstferien),
-  // do NOT return 0 results! Provide graceful fallback to best overlapping or available windows.
+  // If the family has school-age children:
+  // - If input.strictSchoolHolidays is true: strictly enforce 100% enclosed school holiday windows (or graceful fallback).
+  // - If input.strictSchoolHolidays is false/omitted (default open discovery): keep candidates across the full date range,
+  //   marking non-enclosed windows with requiresSchoolExemption = true so they receive the score penalty without discarding entire months.
   let eligibleCandidates: RawCandidate[] = rawCandidatePool;
 
   const hasAnySchoolKids = (userProfile.childrenAges || []).some((a) => a >= 6);
 
   if (hasAnySchoolKids && homeSchoolHolidays.length > 0) {
-    const fullHolidayMatches = rawCandidatePool.filter((c) => c.holidayCoverage.isFullyInside);
+    if (input.strictSchoolHolidays) {
+      const fullHolidayMatches = rawCandidatePool.filter((c) => c.holidayCoverage.isFullyInside);
 
-    if (fullHolidayMatches.length > 0) {
-      eligibleCandidates = fullHolidayMatches;
-    } else {
-      // Graceful Fallback: Pick candidate windows that maximize holiday overlap
-      // Mark as requiring school exemption
-      const partialMatches = rawCandidatePool.filter((c) => c.holidayCoverage.overlapDays > 0);
-      if (partialMatches.length > 0) {
-        eligibleCandidates = partialMatches.map((c) => ({
-          ...c,
-          requiresSchoolExemption: true,
-        }));
+      if (fullHolidayMatches.length > 0) {
+        eligibleCandidates = fullHolidayMatches;
       } else {
-        // If search window doesn't overlap any holidays at all, return available dates with exemption flag
-        eligibleCandidates = rawCandidatePool.map((c) => ({
-          ...c,
-          requiresSchoolExemption: true,
-        }));
-      }
+        // Graceful Fallback: Pick candidate windows that maximize holiday overlap
+        // Mark as requiring school exemption
+        const partialMatches = rawCandidatePool.filter((c) => c.holidayCoverage.overlapDays > 0);
+        if (partialMatches.length > 0) {
+          eligibleCandidates = partialMatches.map((c) => ({
+            ...c,
+            requiresSchoolExemption: true,
+          }));
+        } else {
+          // If search window doesn't overlap any holidays at all, return available dates with exemption flag
+          eligibleCandidates = rawCandidatePool.map((c) => ({
+            ...c,
+            requiresSchoolExemption: true,
+          }));
+        }
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn(
-          `[Optimizer] No 100% enclosed school holiday windows found for duration ${minDuration}-${maxDuration}d. Activated holiday overlap fallback with ${eligibleCandidates.length} windows.`
-        );
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            `[Optimizer] No 100% enclosed school holiday windows found for duration ${minDuration}-${maxDuration}d. Activated holiday overlap fallback with ${eligibleCandidates.length} windows.`
+          );
+        }
       }
+    } else {
+      // Open multi-month exploration: retain candidates across the requested date window,
+      // flagging any window that isn't fully inside school holidays as requiring exemption.
+      eligibleCandidates = rawCandidatePool.map((c) => {
+        if (!c.holidayCoverage.isFullyInside) {
+          return {
+            ...c,
+            requiresSchoolExemption: true,
+          };
+        }
+        return c;
+      });
     }
   }
 
@@ -457,8 +692,20 @@ export function optimizeVacationWindows(
     // 1. Price Index (lower price is better: 0-100)
     const priceIndex = normalizeScore(cand.estimatedTotalCost, minPrice, maxPrice, false);
 
-    // 2. Weather Index (temperature comfort and rain risk: 0-100)
-    let tempQuality = Math.max(10, 100 - Math.abs(cand.weather.avgTempC - 25) * 5);
+    // 2. Weather Index (temperature comfort calibrated to vacation style and rain risk: 0-100)
+    const monthIndex = parseISO(cand.startDate).getMonth();
+    const profile = getDestinationProfile(cand.destinationAirport);
+    const effectiveTypes = hasUserSelectedDestinations
+      ? (profile?.type ? [profile.type] : selectedTypes)
+      : selectedTypes;
+    const tempBand = getIdealTemperatureBand(cand.destinationAirport, monthIndex, effectiveTypes);
+    let tempDiff = 0;
+    if (cand.weather.avgTempC < tempBand.minIdeal) {
+      tempDiff = tempBand.minIdeal - cand.weather.avgTempC;
+    } else if (cand.weather.avgTempC > tempBand.maxIdeal) {
+      tempDiff = cand.weather.avgTempC - tempBand.maxIdeal;
+    }
+    const tempQuality = Math.max(10, Math.round(100 - tempDiff * 4.5));
     const rainQuality = Math.max(10, 100 - cand.weather.precipitationRiskPercent * 2);
     let weatherIndex = Math.round((tempQuality * 0.6 + rainQuality * 0.4) * 10) / 10;
 
@@ -469,6 +716,13 @@ export function optimizeVacationWindows(
       weatherIndex = Math.min(100, weatherIndex + 12);
     } else if (userProfile.climatePreference === 'MODERATE' && cand.weather.avgTempC >= 18 && cand.weather.avgTempC <= 26) {
       weatherIndex = Math.min(100, weatherIndex + 8);
+    }
+
+    if (input.minBeachTemp && cand.weather.avgTempC >= input.minBeachTemp) {
+      weatherIndex = Math.min(100, weatherIndex + 10);
+    }
+    if (input.requireSnow && cand.weather.hasSnow) {
+      weatherIndex = Math.min(100, weatherIndex + 12);
     }
 
     // 3. PTO Efficiency (lower PTO consumed is better: 0-100)
@@ -494,8 +748,14 @@ export function optimizeVacationWindows(
 
     const { holidayCoverage, frictionBaseScore, ...cleanCand } = cand;
 
+    const safetyAssessment = getDestinationSafetyAssessment(
+      cand.destinationAirport,
+      cand.destinationCountry || ''
+    );
+
     return {
       ...cleanCand,
+      safetyAssessment,
       scoreBreakdown: {
         priceIndex,
         weatherIndex,
@@ -506,6 +766,154 @@ export function optimizeVacationWindows(
     };
   });
 
-  // Rank by final score descending
-  return scoredWindows.sort((a, b) => b.finalScore - a.finalScore);
+  // Interleave distinct destinations to ensure balanced discovery across pages
+  return interleaveCandidateWindowsByDestination(scoredWindows);
+}
+
+/**
+ * Interleaves candidate windows across distinct destinations so results showcase a diverse
+ * variety of destinations on every page rather than 50 consecutive windows of one destination.
+ */
+export function interleaveCandidateWindowsByDestination(
+  windows: CandidateWindow[]
+): CandidateWindow[] {
+  const destinations = new Set(windows.map((w) => w.destinationAirport));
+  if (destinations.size <= 1) {
+    return windows.sort((a, b) => b.finalScore - a.finalScore);
+  }
+
+  // Group windows by destination airport, each sorted by finalScore desc
+  const byDestination = new Map<string, CandidateWindow[]>();
+  for (const w of windows) {
+    const list = byDestination.get(w.destinationAirport) || [];
+    list.push(w);
+    byDestination.set(w.destinationAirport, list);
+  }
+  for (const [_, list] of byDestination.entries()) {
+    list.sort((a, b) => b.finalScore - a.finalScore);
+  }
+
+  // Sort destination buckets by their highest-scoring window
+  const sortedDestKeys = Array.from(byDestination.keys()).sort((k1, k2) => {
+    const top1 = byDestination.get(k1)![0].finalScore;
+    const top2 = byDestination.get(k2)![0].finalScore;
+    return top2 - top1;
+  });
+
+  // Round-robin interleave across destinations
+  const result: CandidateWindow[] = [];
+  let round = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    hasMore = false;
+    for (const key of sortedDestKeys) {
+      const list = byDestination.get(key)!;
+      if (round < list.length) {
+        result.push(list[round]);
+        if (round + 1 < list.length) {
+          hasMore = true;
+        }
+      }
+    }
+    round++;
+  }
+
+  return result;
+}
+
+/**
+ * Curates a distinct, non-redundant set of alternative vacation date windows.
+ * Eliminates noisy +1 day shifts and overlapping windows from the same origin.
+ * Surfaces key vacation milestones:
+ * 1. Absolute Lowest Price Deal (e.g. Midweek departure savings)
+ * 2. Peak PTO Efficiency (bridge day / holiday savings)
+ * 3. 100% School Holiday Window (if applicable)
+ * 4. Alternative Origin Airport options (e.g. FKB vs STR vs FRA)
+ * 5. Distinct travel periods across the search months
+ */
+export function curateDistinctAlternativeWindows(
+  windows: CandidateWindow[],
+  featured: CandidateWindow,
+  maxAlternatives: number = 8
+): CandidateWindow[] {
+  // Exclude the featured window itself
+  const candidates = windows.filter(
+    (w) =>
+      !(
+        w.startDate === featured.startDate &&
+        w.endDate === featured.endDate &&
+        w.originAirport === featured.originAirport &&
+        w.durationDays === featured.durationDays
+      )
+  );
+
+  if (candidates.length === 0) return [];
+
+  const curated: CandidateWindow[] = [];
+  const selectedKeys = new Set<string>();
+
+  const isTooClose = (w1: CandidateWindow, w2: CandidateWindow) => {
+    // If same origin and start dates are within 2 days, treat as redundant +1 day shift
+    if (w1.originAirport === w2.originAirport) {
+      const d1 = new Date(w1.startDate).getTime();
+      const d2 = new Date(w2.startDate).getTime();
+      const diffDays = Math.abs(d1 - d2) / (1000 * 60 * 60 * 24);
+      return diffDays <= 2;
+    }
+    // If different origin airport and start dates are identical, keep only if price differs noticeably
+    if (w1.startDate === w2.startDate && w1.endDate === w2.endDate) {
+      return Math.abs(w1.estimatedTotalCost - w2.estimatedTotalCost) < 40;
+    }
+    return false;
+  };
+
+  const addIfDistinct = (cand: CandidateWindow | undefined) => {
+    if (!cand) return;
+    const key = `${cand.startDate}_${cand.endDate}_${cand.originAirport}_${cand.durationDays}`;
+    if (selectedKeys.has(key)) return;
+
+    if (isTooClose(cand, featured)) return;
+    for (const chosen of curated) {
+      if (isTooClose(cand, chosen)) return;
+    }
+
+    selectedKeys.add(key);
+    curated.push(cand);
+  };
+
+  // 1. Lowest Price Deal (midweek saving)
+  const sortedByPrice = [...candidates].sort((a, b) => a.estimatedTotalCost - b.estimatedTotalCost);
+  addIfDistinct(sortedByPrice[0]);
+
+  // 2. Highest PTO efficiency
+  const sortedByPto = [...candidates].sort((a, b) => b.ptoEfficiencyRatio - a.ptoEfficiencyRatio);
+  addIfDistinct(sortedByPto[0]);
+
+  // 3. Best Holiday Window (if applicable)
+  const holidayMatches = candidates.filter((w) => !w.requiresSchoolExemption);
+  if (holidayMatches.length > 0) {
+    const sortedHolidays = [...holidayMatches].sort((a, b) => b.finalScore - a.finalScore);
+    addIfDistinct(sortedHolidays[0]);
+  }
+
+  // 4. Best alternative origin airport options
+  const altOrigins = Array.from(
+    new Set(candidates.map((w) => w.originAirport).filter((o) => o !== featured.originAirport))
+  );
+  for (const altOrigin of altOrigins) {
+    const fromOrigin = candidates
+      .filter((w) => w.originAirport === altOrigin)
+      .sort((a, b) => b.finalScore - a.finalScore);
+    addIfDistinct(fromOrigin[0]);
+  }
+
+  // 5. Distinct dates across the months sorted by final score
+  const sortedByScore = [...candidates].sort((a, b) => b.finalScore - a.finalScore);
+  for (const cand of sortedByScore) {
+    if (curated.length >= maxAlternatives) break;
+    addIfDistinct(cand);
+  }
+
+  return curated.sort((a, b) => a.startDate.localeCompare(b.startDate));
 }

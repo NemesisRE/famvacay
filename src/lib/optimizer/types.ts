@@ -1,6 +1,17 @@
 import type { SeasonalConstraintWarning } from './weather';
 
-export type DestinationType = 'BEACH' | 'CITY' | 'NATURE' | 'SKI';
+export type DestinationType = 'ALL' | 'BEACH' | 'ALPINE' | 'CITY' | 'NATURE' | 'LONGRANGE' | 'SKI';
+
+export type TravelVehicle = 'PLANE' | 'CAR' | 'TRAIN' | 'BUS';
+
+export interface VehicleTravelMetrics {
+  vehicle: TravelVehicle;
+  durationMinutes: number;
+  distanceKm: number;
+  estimatedTravelCost: number;
+  isOverlandReachable: boolean;
+  co2KgEstimate?: number;
+}
 
 export type ChildAgeTier = 'infant' | 'child' | 'teen'; // <2, 2-11, 12+
 
@@ -17,6 +28,7 @@ export interface UserProfileInput {
   originAirports: string[]; // e.g. ["STR", "FKB", "FRA", "CDG"]
   federalState: string;     // e.g. "DE-BW"
   workweekDays?: number[];  // [1, 2, 3, 4, 5] for Mon-Fri
+  adults?: number;          // Number of adult travelers (defaults to 2)
   childrenAges: number[];    // e.g. [1, 7, 14]
   childrenBirthDates?: string[]; // ISO date YYYY-MM-DD
   blackoutRanges: BlackoutRange[];
@@ -35,6 +47,7 @@ export interface BlackoutRange {
 export interface TripPlanInput {
   id?: string;
   destinationType?: DestinationType;
+  destinationTypes?: DestinationType[]; // Flexible multiple vacation styles (e.g. ['BEACH', 'ALPINE'])
   targetDestinations?: string[];    // Flexible multiple destination tags (e.g. ['Egypt', 'Mallorca'])
   targetRegion?: string;           // Optional single destination code
   durationDays: number;            // Fixed or base window length
@@ -43,6 +56,11 @@ export interface TripPlanInput {
   earliestDate: string;            // YYYY-MM-DD
   latestDate: string;              // YYYY-MM-DD
   maxBudgetTotal?: number;
+  strictSchoolHolidays?: boolean;   // If true, strictly restricts results to 100% enclosed school holiday windows
+  travelVehicle?: TravelVehicle;    // Single travel mode (backward-compat)
+  travelVehicles?: TravelVehicle[];  // Multiple selectable travel modes (e.g. ['PLANE', 'CAR', 'TRAIN'])
+  minBeachTemp?: number;             // Minimum daytime temperature for sun/beach vacations (e.g. 20, 22, 25°C)
+  requireSnow?: boolean;             // If true, strictly requires snow / winter sports conditions for alpine vacations
   userProfile: UserProfileInput;
   searchBlackouts?: BlackoutRange[]; // Additional search-specific blackouts
 }
@@ -70,6 +88,8 @@ export interface WeatherAssessment {
   waterTempC?: number | null;
   rainyDays?: number;
   sunshineHoursPerDay?: number;
+  hasSnow?: boolean;
+  snowDepthCm?: number;
 }
 
 export interface CandidateWindow {
@@ -78,6 +98,19 @@ export interface CandidateWindow {
   durationDays: number;
   originAirport: string;
   destinationAirport: string;
+
+  // Destination & Flight Logistics
+  destinationName?: string;
+  destinationCity?: string;
+  destinationCountry?: string;
+  originName?: string;
+  originCity?: string;
+  originCountry?: string;
+  flightDistanceKm?: number;
+  flightDurationMinutes?: number;
+  originDistanceKm?: number;
+  originDriveMinutes?: number;
+  originHighSpeedRail?: boolean;
   
   // PTO metrics
   totalWeekdays: number;
@@ -104,6 +137,14 @@ export interface CandidateWindow {
   // School holiday match details
   requiresSchoolExemption?: boolean;
   schoolHolidayDaysOverlap?: number;
+
+  // Travel vehicle metrics & multi-modal availability
+  travelVehicle?: TravelVehicle;
+  availableVehicles?: TravelVehicle[];
+  vehicleDetails?: VehicleTravelMetrics;
+
+  // Travel Safety & Security Assessment (Amadeus Safe Place / Travel Advisory)
+  safetyAssessment?: import('../safety/safety-service').DestinationSafetyAssessment;
 
   // Normalized scores (0 - 100)
   scoreBreakdown: {

@@ -21,6 +21,20 @@ export async function POST(req: NextRequest) {
       body.durationDays = body.durationDaysMin;
     }
 
+    // Ensure all user-specified target destinations are dynamically resolved and cached
+    if (body.targetDestinations && body.targetDestinations.length > 0) {
+      const { validateDestinationInput } = await import('@/lib/optimizer/destinations');
+      await Promise.all(
+        body.targetDestinations.map(async (dest) => {
+          try {
+            await validateDestinationInput(dest, 'en');
+          } catch {
+            // Ignore pre-validation error and let optimizer handle offline fallback
+          }
+        })
+      );
+    }
+
     const homeState = body.userProfile.federalState || 'DE-BW';
     const statesToFetch = new Set<string>([homeState]);
 

@@ -4,37 +4,43 @@ import {
   overlapsWithBlackout,
   isWithinSchoolHoliday,
   normalizeScore,
+  interleaveCandidateWindowsByDestination,
+  calculateFlightFrictionScore,
+  curateDistinctAlternativeWindows,
 } from './engine';
+import { getSynchronousTripPricing } from '../pricing/pricing-service';
 import { calculatePtoDaysConsumed } from './pto-calculator';
 import { getChildAgeTier, parseChildrenAges, calculatePassengerCostMultiplier } from './child-tiers';
 import { isArbitrageAirport, calculateDistanceKm } from './arbitrage';
 import { getEstimatedClimate, getDestinationSeasonalWarning } from './weather';
-import { TripPlanInput, SchoolHoliday, PublicHoliday } from './types';
+import { TripPlanInput, SchoolHoliday, PublicHoliday, CandidateWindow } from './types';
+import { getDestinationVacationStyles } from './destinations';
+
+const mockSchoolHolidaysBW: SchoolHoliday[] = [
+  {
+    startDate: '2026-07-30',
+    endDate: '2026-09-12',
+    name: 'Sommerferien BW',
+    state: 'DE-BW',
+  },
+  {
+    startDate: '2026-05-25',
+    endDate: '2026-06-05',
+    name: 'Pfingstferien BW',
+    state: 'DE-BW',
+  },
+];
+
+const mockSchoolHolidaysBY: SchoolHoliday[] = [
+  {
+    startDate: '2026-08-03',
+    endDate: '2026-09-14',
+    name: 'Sommerferien BY',
+    state: 'DE-BY',
+  },
+];
 
 describe('CSP Optimizer - Edge Cases & Core Engine', () => {
-  const mockSchoolHolidaysBW: SchoolHoliday[] = [
-    {
-      startDate: '2026-07-30',
-      endDate: '2026-09-12',
-      name: 'Sommerferien BW',
-      state: 'DE-BW',
-    },
-    {
-      startDate: '2026-05-25',
-      endDate: '2026-06-05',
-      name: 'Pfingstferien BW',
-      state: 'DE-BW',
-    },
-  ];
-
-  const mockSchoolHolidaysBY: SchoolHoliday[] = [
-    {
-      startDate: '2026-08-03',
-      endDate: '2026-09-14',
-      name: 'Sommerferien BY',
-      state: 'DE-BY',
-    },
-  ];
 
   const mockSchoolHolidaysHE: SchoolHoliday[] = [
     {
@@ -562,7 +568,537 @@ describe('Arbitrage Airport Info & Localized Seasonal Warnings', () => {
     expect(tpeWarning).not.toBeNull();
     expect(tpeWarning?.seasonType).toBe('TYPHOON_HURRICANE');
   });
+
+  it('correctly uses the configured number of adults in vacation cost estimation', () => {
+    const baseInput = {
+      targetDestinations: ['Mallorca'],
+      durationDays: 7,
+      earliestDate: '2026-08-01',
+      latestDate: '2026-08-08',
+      userProfile: {
+        homeLocation: 'Stuttgart',
+        federalState: 'DE-BW',
+        originAirports: ['STR'],
+        childrenAges: [7],
+        blackoutRanges: [],
+      },
+    };
+
+    const res1Adult = optimizeVacationWindows({
+      ...baseInput,
+      userProfile: { ...baseInput.userProfile, adults: 1 },
+    }, { 'DE-BW': mockSchoolHolidaysBW }, {});
+
+    const res2Adults = optimizeVacationWindows({
+      ...baseInput,
+      userProfile: { ...baseInput.userProfile, adults: 2 },
+    }, { 'DE-BW': mockSchoolHolidaysBW }, {});
+
+    const res3Adults = optimizeVacationWindows({
+      ...baseInput,
+      userProfile: { ...baseInput.userProfile, adults: 3 },
+    }, { 'DE-BW': mockSchoolHolidaysBW }, {});
+
+    expect(res1Adult.length).toBeGreaterThan(0);
+    expect(res2Adults.length).toBeGreaterThan(0);
+    expect(res3Adults.length).toBeGreaterThan(0);
+
+    // 1 adult should cost less than 2 adults, which costs less than 3 adults
+    expect(res1Adult[0].estimatedTotalCost).toBeLessThan(res2Adults[0].estimatedTotalCost);
+    expect(res2Adults[0].estimatedTotalCost).toBeLessThan(res3Adults[0].estimatedTotalCost);
+
+    // Verify party composition in pricing details
+    expect(res1Adult[0].pricingDetails?.party?.adults).toBe(1);
+    expect(res2Adults[0].pricingDetails?.party?.adults).toBe(2);
+    expect(res3Adults[0].pricingDetails?.party?.adults).toBe(3);
+  });
+
+  it('interleaves candidate windows so distinct destinations are presented on page 1', () => {
+    // Mock candidate windows for 3 destinations
+    const makeCand = (dest: string, score: number, id: string): any => ({
+      destinationAirport: dest,
+      finalScore: score,
+      startDate: '2026-08-01',
+      endDate: '2026-08-08',
+      durationDays: 7,
+      originAirport: 'STR',
+      estimatedTotalCost: 1000,
+      ptoDaysConsumed: 5,
+    });
+
+    const mockWindows = [
+      makeCand('HRG', 95, 'h1'),
+      makeCand('HRG', 94, 'h2'),
+      makeCand('HRG', 93, 'h3'),
+      makeCand('INN', 92, 'i1'),
+      makeCand('INN', 91, 'i2'),
+      makeCand('BCN', 90, 'b1'),
+      makeCand('BCN', 89, 'b2'),
+    ];
+
+    const interleaved = interleaveCandidateWindowsByDestination(mockWindows);
+    // Round 0: HRG (95), INN (92), BCN (90)
+    expect(interleaved[0].destinationAirport).toBe('HRG');
+    expect(interleaved[1].destinationAirport).toBe('INN');
+    expect(interleaved[2].destinationAirport).toBe('BCN');
+    // Round 1: HRG (94), INN (91), BCN (89)
+    expect(interleaved[3].destinationAirport).toBe('HRG');
+    expect(interleaved[4].destinationAirport).toBe('INN');
+    expect(interleaved[5].destinationAirport).toBe('BCN');
+    // Round 2: HRG (93)
+    expect(interleaved[6].destinationAirport).toBe('HRG');
+  });
+
+  it('optimizes for ALPINE vacation style and yields alpine destination windows', () => {
+    const input: TripPlanInput = {
+      destinationType: 'ALPINE',
+      durationDays: 7,
+      earliestDate: '2026-08-01',
+      latestDate: '2026-08-15',
+      userProfile: {
+        homeLocation: 'Stuttgart',
+        federalState: 'DE-BW',
+        originAirports: ['STR', 'FRA'],
+        childrenAges: [7],
+        blackoutRanges: [],
+      },
+    };
+
+    const results = optimizeVacationWindows(input, { 'DE-BW': mockSchoolHolidaysBW }, {});
+    expect(results.length).toBeGreaterThan(0);
+
+    // All results must be from the Alpine portfolio
+    const destinationsFound = new Set(results.map((r) => r.destinationAirport));
+    expect(destinationsFound.has('INN') || destinationsFound.has('SZG') || destinationsFound.has('GVA')).toBe(true);
+    expect(destinationsFound.has('HRG')).toBe(false);
+  });
+
+  it('provides diverse destinations across the first 10 results in open discovery', () => {
+    const input: TripPlanInput = {
+      destinationType: 'ALL',
+      durationDays: 7,
+      earliestDate: '2026-08-01',
+      latestDate: '2026-08-15',
+      userProfile: {
+        homeLocation: 'Stuttgart',
+        federalState: 'DE-BW',
+        originAirports: ['STR', 'FRA'],
+        childrenAges: [7],
+        blackoutRanges: [],
+      },
+    };
+
+    const results = optimizeVacationWindows(input, { 'DE-BW': mockSchoolHolidaysBW }, {});
+    expect(results.length).toBeGreaterThanOrEqual(5);
+
+    // First 10 results (Page 1) must showcase multiple distinct destinations
+    const page1Destinations = new Set(results.slice(0, 10).map((r) => r.destinationAirport));
+    expect(page1Destinations.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it('retains candidate windows across multiple months during open discovery with school kids', () => {
+    // Range spanning from outside holiday (early July) into Sommerferien (Aug)
+    const input: TripPlanInput = {
+      destinationType: 'BEACH',
+      durationDays: 7,
+      earliestDate: '2026-07-01',
+      latestDate: '2026-08-15',
+      userProfile: {
+        homeLocation: 'Stuttgart',
+        federalState: 'DE-BW',
+        originAirports: ['STR'],
+        childrenAges: [7], // School kid
+        blackoutRanges: [],
+      },
+    };
+
+    // Sommerferien BW: 2026-07-30 to 2026-09-12
+    const resultsOpen = optimizeVacationWindows(input, { 'DE-BW': mockSchoolHolidaysBW }, {});
+    expect(resultsOpen.length).toBeGreaterThan(0);
+
+    // Should include early July dates (outside holidays with exemption flag) and August dates (inside holidays)
+    const earlyJulyWindows = resultsOpen.filter((w) => w.startDate < '2026-07-20');
+    const augWindows = resultsOpen.filter((w) => w.startDate.startsWith('2026-08'));
+    expect(earlyJulyWindows.length).toBeGreaterThan(0);
+    expect(augWindows.length).toBeGreaterThan(0);
+
+    // Early July windows should be marked with requiresSchoolExemption: true
+    expect(earlyJulyWindows[0].requiresSchoolExemption).toBe(true);
+    // Aug windows should be false
+    expect(augWindows[0].requiresSchoolExemption).toBe(false);
+
+    // Now test with strictSchoolHolidays: true
+    const resultsStrict = optimizeVacationWindows(
+      { ...input, strictSchoolHolidays: true },
+      { 'DE-BW': mockSchoolHolidaysBW },
+      {}
+    );
+    expect(resultsStrict.length).toBeGreaterThan(0);
+    // Under strict mode, NO July windows before July 30 should exist
+    const strictEarlyJuly = resultsStrict.filter((w) => w.startDate < '2026-07-30');
+    expect(strictEarlyJuly).toHaveLength(0);
+  });
+
+  it('calculates flight friction score based on flight corridor distance', () => {
+    // Short hop (Miami -> Bahamas, ~290 km): friction score is very high (> 95)
+    expect(calculateFlightFrictionScore(290)).toBeGreaterThanOrEqual(95);
+
+    // Regional mid-haul (Miami -> Punta Cana, ~1460 km): friction score ~90
+    expect(calculateFlightFrictionScore(1460)).toBeGreaterThanOrEqual(88);
+
+    // Transatlantic long-haul (Miami -> Innsbruck, ~8000 km): friction score is low without LONGRANGE
+    expect(calculateFlightFrictionScore(8000, false)).toBeLessThanOrEqual(50);
+
+    // Transatlantic with LONGRANGE opt-in: friction penalty is mitigated
+    expect(calculateFlightFrictionScore(8000, true)).toBeGreaterThanOrEqual(65);
+  });
+
+  it('eliminates European bias for American departures (Miami yields Bahamas and Dominican Republic at top)', () => {
+    const input: TripPlanInput = {
+      durationDays: 7,
+      earliestDate: '2026-11-01',
+      latestDate: '2026-11-15',
+      userProfile: {
+        homeLocation: 'Miami, Florida',
+        departureLat: 25.7617,
+        departureLon: -80.1918,
+        federalState: 'US-FL',
+        originAirports: ['MIA'],
+        childrenAges: [],
+        blackoutRanges: [],
+      },
+    };
+
+    const results = optimizeVacationWindows(input, {}, {});
+    expect(results.length).toBeGreaterThan(0);
+
+    // Top results must feature Caribbean / Regional Americas destinations
+    const topDestinations = results.slice(0, 20).map((r) => r.destinationAirport);
+    expect(topDestinations).toContain('NAS'); // Bahamas
+    expect(topDestinations).toContain('PUJ'); // Dominican Republic
+    expect(topDestinations).toContain('MBJ'); // Jamaica
+    expect(topDestinations).toContain('CUN'); // Cancun
+
+    // European destinations like Innsbruck (INN) or Tenerife (TFS) must NOT be ahead of close Caribbean hubs
+    expect(topDestinations).not.toContain('INN');
+    expect(topDestinations).not.toContain('TFS');
+
+    // Friction score for top Caribbean results must be high (>= 90)
+    const nasWindow = results.find((r) => r.destinationAirport === 'NAS');
+    expect(nasWindow?.scoreBreakdown.travelFrictionIndex).toBeGreaterThanOrEqual(90);
+
+    const pujWindow = results.find((r) => r.destinationAirport === 'PUJ');
+    expect(pujWindow?.scoreBreakdown.travelFrictionIndex).toBeGreaterThanOrEqual(90);
+  });
+
+  it('optimizes Caribbean vacation search for adults from Karlsruhe without hardcoding', () => {
+    const input: TripPlanInput = {
+      targetDestinations: ['Caribbean'],
+      durationDays: 10,
+      earliestDate: '2026-11-01',
+      latestDate: '2026-12-15',
+      durationDaysMin: 10,
+      durationDaysMax: 10,
+      userProfile: {
+        homeLocation: 'Karlsruhe',
+        departureLat: 49.0069,
+        departureLon: 8.4037,
+        federalState: 'DE-BW',
+        originAirports: ['FKB', 'STR', 'FRA'],
+        adults: 2,
+        childrenAges: [],
+        blackoutRanges: [],
+      },
+    };
+
+    const results = optimizeVacationWindows(input, {}, {});
+    expect(results.length).toBeGreaterThan(0);
+
+    const foundDestinations = Array.from(new Set(results.map((r) => r.destinationAirport)));
+    // Must feature Caribbean vacation hubs
+    expect(
+      foundDestinations.some((code) => ['PUJ', 'CUN', 'NAS', 'MBJ', 'SDQ', 'SJU', 'GCM', 'AUA', 'CUR', 'KIN'].includes(code))
+    ).toBe(true);
+
+    // Weather index must reflect high comfort for Caribbean in winter season
+    const firstWin = results[0];
+    expect(firstWin.weather.avgTempC).toBeGreaterThanOrEqual(22);
+    expect(firstWin.finalScore).toBeGreaterThan(60);
+  });
+
+  it('resolves destination categories dynamically when destinations are defined without manual style', () => {
+    // 1. Alpine destination: Innsbruck (INN)
+    const alpineInput: TripPlanInput = {
+      targetDestinations: ['Innsbruck'],
+      durationDays: 7,
+      earliestDate: '2026-12-01',
+      latestDate: '2026-12-31',
+      durationDaysMin: 7,
+      durationDaysMax: 7,
+      userProfile: {
+        homeLocation: 'Karlsruhe',
+        departureLat: 49.0069,
+        departureLon: 8.4037,
+        federalState: 'DE-BW',
+        originAirports: ['FRA'],
+        adults: 2,
+        childrenAges: [],
+        blackoutRanges: [],
+      },
+    };
+
+    const alpineResults = optimizeVacationWindows(alpineInput, {}, {});
+    expect(alpineResults.length).toBeGreaterThan(0);
+    // Innsbruck in December is dynamically analyzed as SKI/ALPINE, resulting in high weather index for winter temperatures
+    expect(alpineResults[0].scoreBreakdown.weatherIndex).toBeGreaterThanOrEqual(60);
+
+    // 2. Beach destination: Mallorca (PMI)
+    const beachInput: TripPlanInput = {
+      targetDestinations: ['Mallorca'],
+      durationDays: 7,
+      earliestDate: '2026-06-01',
+      latestDate: '2026-06-30',
+      durationDaysMin: 7,
+      durationDaysMax: 7,
+      userProfile: {
+        homeLocation: 'Karlsruhe',
+        departureLat: 49.0069,
+        departureLon: 8.4037,
+        federalState: 'DE-BW',
+        originAirports: ['FRA'],
+        adults: 2,
+        childrenAges: [],
+        blackoutRanges: [],
+      },
+    };
+
+    const beachResults = optimizeVacationWindows(beachInput, {}, {});
+    expect(beachResults.length).toBeGreaterThan(0);
+    // Mallorca in June is dynamically analyzed as BEACH, resulting in high weather index for summer temperatures
+    expect(beachResults[0].scoreBreakdown.weatherIndex).toBeGreaterThanOrEqual(80);
+  });
+
+  describe('Alternative Dates Curation & Airline Day-of-Week Pricing', () => {
+    it('curates distinct alternative dates eliminating redundant +1 day shifts and caps at maxAlternatives', () => {
+      // Simulate raw candidate windows with repetitive daily shifts across 2 origins
+      const mockWindows: CandidateWindow[] = [];
+      const baseDate = new Date('2026-11-01');
+
+      for (let day = 0; day < 30; day++) {
+        const d1 = new Date(baseDate.getTime() + day * 86400000).toISOString().split('T')[0];
+        const d2 = new Date(baseDate.getTime() + (day + 10) * 86400000).toISOString().split('T')[0];
+
+        // Origin 1: FKB
+        mockWindows.push({
+          startDate: d1,
+          endDate: d2,
+          durationDays: 10,
+          originAirport: 'FKB',
+          destinationAirport: 'PUJ',
+          destinationName: 'Punta Cana',
+          destinationCity: 'Punta Cana',
+          destinationCountry: 'Dominican Republic',
+          estimatedTotalCost: 2200 + day * 10,
+          pricePerPerson: 1100,
+          ptoDaysConsumed: 6 + (day % 3),
+          ptoEfficiencyRatio: 1.6,
+          publicHolidaysCount: day === 5 ? 2 : 0,
+          requiresSchoolExemption: false,
+          isArbitrageOpportunity: false,
+          finalScore: 85 - (day % 10),
+          scoreBreakdown: { priceIndex: 80, weatherIndex: 90, ptoEfficiencyIndex: 75, travelFrictionIndex: 85 },
+        } as CandidateWindow);
+
+        // Origin 2: FRA
+        mockWindows.push({
+          startDate: d1,
+          endDate: d2,
+          durationDays: 10,
+          originAirport: 'FRA',
+          destinationAirport: 'PUJ',
+          destinationName: 'Punta Cana',
+          destinationCity: 'Punta Cana',
+          destinationCountry: 'Dominican Republic',
+          estimatedTotalCost: 2050 + (day % 7) * 20,
+          pricePerPerson: 1025,
+          ptoDaysConsumed: 6,
+          ptoEfficiencyRatio: 1.6,
+          publicHolidaysCount: 0,
+          requiresSchoolExemption: false,
+          isArbitrageOpportunity: false,
+          finalScore: 82 - (day % 8),
+          scoreBreakdown: { priceIndex: 85, weatherIndex: 90, ptoEfficiencyIndex: 75, travelFrictionIndex: 80 },
+        } as CandidateWindow);
+      }
+
+      const featured = mockWindows[0];
+      const curated = curateDistinctAlternativeWindows(mockWindows, featured, 8);
+
+      expect(curated.length).toBeLessThanOrEqual(8);
+      expect(curated.length).toBeGreaterThanOrEqual(4);
+
+      // Featured window itself must not be in the alternatives list
+      const hasFeatured = curated.some(
+        (c) => c.startDate === featured.startDate && c.originAirport === featured.originAirport
+      );
+      expect(hasFeatured).toBe(false);
+
+      // No redundant consecutive dates (diff <= 2 days) for the same origin airport
+      for (let i = 0; i < curated.length; i++) {
+        for (let j = i + 1; j < curated.length; j++) {
+          if (curated[i].originAirport === curated[j].originAirport) {
+            const timeDiff = Math.abs(
+              new Date(curated[i].startDate).getTime() - new Date(curated[j].startDate).getTime()
+            );
+            const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
+            expect(daysDiff).toBeGreaterThan(2);
+          }
+        }
+      }
+
+      // Alternative origin airport (FRA) is included among curated options
+      const hasFra = curated.some((c) => c.originAirport === 'FRA');
+      expect(hasFra).toBe(true);
+    });
+
+    it('models realistic airline day-of-week yield pricing (midweek flight discount vs weekend surge)', () => {
+      // Midweek: Tuesday departure (2026-11-10) to Thursday return (2026-11-19)
+      const midweekPricing = getSynchronousTripPricing({
+        originAirport: 'FRA',
+        destinationAirport: 'PUJ',
+        startDate: '2026-11-10',
+        endDate: '2026-11-19',
+        durationDays: 10,
+        party: {
+          adults: 2,
+          childrenAges: [],
+        },
+      });
+
+      // Weekend: Saturday departure (2026-11-07) to Sunday return (2026-11-15)
+      const weekendPricing = getSynchronousTripPricing({
+        originAirport: 'FRA',
+        destinationAirport: 'PUJ',
+        startDate: '2026-11-07',
+        endDate: '2026-11-15',
+        durationDays: 9,
+        party: {
+          adults: 2,
+          childrenAges: [],
+        },
+      });
+
+      // Midweek flight multiplier must reflect off-peak airline yield (< 0.95 and isMidweekSaving = true)
+      expect(midweekPricing.flight.dayOfWeekMultiplier).toBeLessThanOrEqual(0.92);
+      expect(midweekPricing.flight.isMidweekSaving).toBe(true);
+
+      // Weekend flight multiplier must reflect high peak airline demand (> 1.15 and isMidweekSaving = false)
+      expect(weekendPricing.flight.dayOfWeekMultiplier).toBeGreaterThanOrEqual(1.18);
+      expect(weekendPricing.flight.isMidweekSaving).toBe(false);
+
+      // Base fare and total flight cost must be significantly lower on midweek flights than weekend flights
+      expect(midweekPricing.flight.baseAdultFare).toBeLessThan(weekendPricing.flight.baseAdultFare);
+      expect(midweekPricing.flight.totalFlightCost).toBeLessThan(weekendPricing.flight.totalFlightCost);
+    });
+  });
+
+  describe('Vacation Style Specific Options (minBeachTemp & requireSnow)', () => {
+    it('filters out beach destinations that do not meet minBeachTemp during winter', () => {
+      const winterBeachInput: TripPlanInput = {
+        destinationTypes: ['BEACH'],
+        minBeachTemp: 22,
+        durationDays: 7,
+        durationDaysMin: 7,
+        durationDaysMax: 7,
+        earliestDate: '2026-01-10',
+        latestDate: '2026-01-25',
+        userProfile: {
+          homeLocation: 'Karlsruhe',
+          departureLat: 49.0069,
+          departureLon: 8.4037,
+          federalState: 'DE-BW',
+          originAirports: ['FRA'],
+          adults: 2,
+          childrenAges: [],
+          blackoutRanges: [],
+        },
+      };
+
+      const results = optimizeVacationWindows(winterBeachInput, {}, {});
+      expect(results.length).toBeGreaterThan(0);
+
+      // Verify that every single returned window satisfies minBeachTemp >= 22°C
+      for (const win of results) {
+        const dayTemp = win.weather.maxTempC ?? win.weather.avgTempC;
+        expect(dayTemp).toBeGreaterThanOrEqual(22);
+        // Should not contain cold winter European beaches like Mallorca (PMI ~14°C) or Nice (NCE ~13°C)
+        expect(['PMI', 'NCE', 'BCN']).not.toContain(win.destinationAirport);
+      }
+    });
+
+    it('enforces requireSnow constraint for winter sports and provides snow assessment', () => {
+      // 1. In January with requireSnow: true -> should return snow-covered alpine destinations
+      const winterSkiInput: TripPlanInput = {
+        destinationTypes: ['ALPINE'],
+        requireSnow: true,
+        durationDays: 7,
+        durationDaysMin: 7,
+        durationDaysMax: 7,
+        earliestDate: '2026-01-10',
+        latestDate: '2026-01-25',
+        userProfile: {
+          homeLocation: 'Karlsruhe',
+          departureLat: 49.0069,
+          departureLon: 8.4037,
+          federalState: 'DE-BW',
+          originAirports: ['FRA'],
+          adults: 2,
+          childrenAges: [],
+          blackoutRanges: [],
+        },
+      };
+
+      const skiResults = optimizeVacationWindows(winterSkiInput, {}, {});
+      expect(skiResults.length).toBeGreaterThan(0);
+      for (const win of skiResults) {
+        expect(win.weather.hasSnow).toBe(true);
+        expect(win.weather.snowDepthCm).toBeGreaterThan(0);
+      }
+
+      // 2. In July for Innsbruck (European Alps) with requireSnow: true -> summer alpine trips do not have ski snow guarantee
+      const summerSkiInput: TripPlanInput = {
+        targetDestinations: ['Innsbruck'],
+        requireSnow: true,
+        durationDays: 7,
+        durationDaysMin: 7,
+        durationDaysMax: 7,
+        earliestDate: '2026-07-10',
+        latestDate: '2026-07-25',
+        userProfile: {
+          homeLocation: 'Karlsruhe',
+          departureLat: 49.0069,
+          departureLon: 8.4037,
+          federalState: 'DE-BW',
+          originAirports: ['FRA'],
+          adults: 2,
+          childrenAges: [],
+          blackoutRanges: [],
+        },
+      };
+
+      const summerResults = optimizeVacationWindows(summerSkiInput, {}, {});
+      // In mid-July, Innsbruck in the Austrian Alps does not have ski snow cover
+      expect(summerResults.length).toBe(0);
+    });
+
+    it('ensures inland destinations like Oradea (OMR) are not falsely tagged as BEACH', () => {
+      const styles = getDestinationVacationStyles('OMR');
+      expect(styles).not.toContain('BEACH');
+      expect(styles).toContain('CITY');
+    });
+  });
 });
+
 
 
 

@@ -48,7 +48,19 @@ export async function GET() {
       return NextResponse.json({ profile: null });
     }
 
-    return NextResponse.json({ profile });
+    const adultMembers = profile.members.filter(
+      (m: any) => m.role === 'PARENT' || m.role === 'MEMBER' || m.role === 'OTHER' || (m.role !== 'CHILD' && m.role !== 'INFANT')
+    );
+    const adultsCount = adultMembers.length > 0
+      ? adultMembers.length
+      : Math.max(1, profile.memberships.length);
+
+    return NextResponse.json({
+      profile: {
+        ...profile,
+        adultsCount,
+      },
+    });
   } catch (error: any) {
     console.error('[GET /api/family-profile Error]', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
