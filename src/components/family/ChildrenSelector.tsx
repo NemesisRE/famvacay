@@ -54,26 +54,18 @@ export function ChildrenSelector({
 
   return (
     <div className={`space-y-2.5 ${className}`}>
-      <div className="flex items-center justify-between">
+      <div>
         <label className="block text-xs font-semibold text-slate-700 flex items-center gap-1.5">
           <Users className="w-3.5 h-3.5 text-blue-600" />
           {t.home.childrenAgesLabel} ({childrenList.length})
         </label>
-        <button
-          type="button"
-          onClick={handleAddChild}
-          className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          {t.home.addChild}
-        </button>
       </div>
 
       <p className="text-[11px] text-slate-500">{t.home.childrenAgesHint}</p>
 
       {childrenList.length === 0 ? (
         <div className="p-2.5 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center">
-          <p className="text-xs text-slate-500">No children traveling (Adults only).</p>
+          <p className="text-xs text-slate-500">{t.home.noChildrenTraveling}</p>
           <button
             type="button"
             onClick={handleAddChild}
@@ -154,6 +146,15 @@ export function ChildrenSelector({
               </div>
             );
           })}
+
+          <button
+            type="button"
+            onClick={handleAddChild}
+            className="w-full mt-2 py-1.5 px-3 rounded-lg border border-dashed border-blue-300 bg-blue-50/60 hover:bg-blue-100/70 text-blue-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            {t.home.addChild}
+          </button>
         </div>
       )}
     </div>
