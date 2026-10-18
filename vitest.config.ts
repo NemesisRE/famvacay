@@ -9,7 +9,7 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     setupFiles: ['./tests/setup-unit.ts'],
-    exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/tests/e2e/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

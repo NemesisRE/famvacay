@@ -1,6 +1,24 @@
+const os = require('os');
+
 /** @type {import('next').NextConfig} */
 function getAllowedOrigins() {
   const origins = ['localhost:3000', '127.0.0.1:3000'];
+
+  try {
+    const ifaces = os.networkInterfaces();
+    for (const name in ifaces) {
+      for (const net of ifaces[name] || []) {
+        if (net.family === 'IPv4') {
+          const originWithPort = `${net.address}:3000`;
+          if (!origins.includes(originWithPort)) {
+            origins.push(originWithPort);
+          }
+        }
+      }
+    }
+  } catch {
+    // Non-critical network interface resolution
+  }
   const appUrl = process.env.APP_URL;
   if (appUrl) {
     try {
@@ -68,12 +86,24 @@ const nextConfig = {
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
               "connect-src 'self' https:",
+              "frame-src 'self' https://maps.google.com https://www.google.com https://www.openstreetmap.org",
               "frame-ancestors 'none'",
             ].join('; '),
           },
         ],
       },
     ];
+  },
+  turbopack: {},
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+      };
+    }
+    return config;
   },
 };
 
