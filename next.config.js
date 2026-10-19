@@ -2,7 +2,7 @@ const os = require('os');
 
 /** @type {import('next').NextConfig} */
 function getAllowedOrigins() {
-  const origins = ['localhost', 'localhost:3000', '127.0.0.1', '127.0.0.1:3000', '0.0.0.0'];
+  const origins = ['famvacay.us', 'localhost', 'localhost:3000', '127.0.0.1', '127.0.0.1:3000', '0.0.0.0'];
 
   try {
     const ifaces = os.networkInterfaces();

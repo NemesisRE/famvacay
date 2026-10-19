@@ -7,6 +7,7 @@ import { LanguageSelector } from '@/components/language-selector';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.APP_URL || 'https://famvacay.us'),
   title: 'FamVacay - Vacation Optimizer',
   description: 'Self-hostable vacation window optimization engine leveraging school holidays, departure savings, weather models, and PTO bridge days.',
 };
@@ -44,7 +45,7 @@ export default function RootLayout({
                 <span>FamVacay — Vacation Planning &amp; Travel Optimization</span>
                 <span className="hidden sm:inline">•</span>
                 <a
-                  href="https://github.com/example/famvac"
+                  href="https://github.com/NemesisRE/famvacay"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline hover:text-slate-800 transition-colors"

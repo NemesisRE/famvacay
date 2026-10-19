@@ -25,7 +25,7 @@ Engineered with modern cloud-agnostic standards, FamVacay runs seamlessly on hom
 
 ```bash
 # 1. Clone repository and create local environment
-git clone https://github.com/famvacay/famvacay.git
+git clone https://github.com/NemesisRE/famvacay.git
 cd famvacay
 cp .env.example .env
 
@@ -33,7 +33,7 @@ cp .env.example .env
 docker compose up -d
 
 # 3. Access the web app
-# Visit http://localhost:3000
+# Visit http://localhost:3000 (local) or https://famvacay.us (production)
 ```
 
 ### Option B: Local Development

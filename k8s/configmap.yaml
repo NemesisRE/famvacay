@@ -8,10 +8,10 @@ metadata:
 data:
   NODE_ENV: "production"
   PORT: "3000"
-  APP_URL: "https://vacations.example.com"
+  APP_URL: "https://famvacay.us"
   TRUST_PROXY: "true"
   TRUSTED_PROXY_HOPS: "1"
-  ALLOWED_ORIGINS: "vacations.example.com"
+  ALLOWED_ORIGINS: "famvacay.us"
   REDIS_URL: "redis://famvacay-redis:6379"
   PHOTON_API_URL: "https://photon.komoot.io/api"
   OPEN_HOLIDAYS_API_URL: "https://openholidaysapi.org"

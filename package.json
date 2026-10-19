@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "license": "AGPL-3.0",
+  "homepage": "https://famvacay.us",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NemesisRE/famvacay.git"
+  },
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
     "build": "next build && node scripts/copy-standalone-assets.js",

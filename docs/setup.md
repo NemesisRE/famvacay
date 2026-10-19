@@ -20,14 +20,14 @@ This guide covers prerequisites, local development, production deployment via Do
 |---|---|---|---|
 | `NODE_ENV` | String | `development` | Runtime environment (`development`, `production`, `test`). |
 | `PORT` | Number | `3000` | Port FamVacay listens on. |
-| `APP_URL` | URL | `http://localhost:3000` | **Required in production.** The canonical public URL (e.g. `https://vacations.example.com`). All redirects, OAuth callbacks, and canonical URLs derive from this. |
+| `APP_URL` | URL | `http://localhost:3000` | **Required in production.** The canonical public URL (`https://famvacay.us`). All redirects, OAuth callbacks, and canonical URLs derive from this. |
 | `TRUST_PROXY` | Boolean | `false` | Set to `true` when running behind a trusted reverse proxy. Enables parsing of `X-Forwarded-*` and RFC 7239 `Forwarded` headers. |
 | `TRUSTED_PROXY_HOPS` | Number | `1` | Number of trusted reverse proxy hops between client and application. Used to extract client IP safely from the right-most untrusted entry. |
 | `DATABASE_URL` | String | (Required) | PostgreSQL connection string (e.g. `postgresql://user:pass@localhost:5432/famvacay_db?schema=public`). |
 | `REDIS_URL` | String | `redis://localhost:6379` | Valkey / Redis connection URL. |
 | `NEXTAUTH_SECRET` | String | (Required in prod) | Cryptographic secret for signing sessions and JWTs (`openssl rand -base64 32`). |
 | `NEXTAUTH_URL` | URL | `${APP_URL}` | Canonical NextAuth URL. |
-| `ALLOWED_ORIGINS` | String | (Optional) | Comma-separated list of additional allowed Server Action origins. |
+| `ALLOWED_ORIGINS` | String | (Optional) | Comma-separated list of additional allowed Server Action origins (e.g. `famvacay.us,localhost:3000`). |
 | `PHOTON_API_URL` | URL | `https://photon.komoot.io/api` | Geocoding autocomplete endpoint (default public Komoot or self-hosted Photon). |
 | `OPEN_HOLIDAYS_API_URL` | URL | `https://openholidaysapi.org` | OpenHolidays API endpoint. |
 | `NAGER_DATE_API_URL` | URL | `https://date.nager.at/api/v3` | Fallback public holiday API for regions outside OpenHolidays school break coverage. |
@@ -49,7 +49,7 @@ FamVacay serves plain HTTP on port `3000`. Your reverse proxy **must** terminate
 http:
   routers:
     famvacay:
-      rule: "Host(`vacations.example.com`)"
+      rule: "Host(`famvacay.us`)"
       entryPoints: ["websecure"]
       service: "famvacay-service"
       tls:
@@ -72,10 +72,10 @@ http:
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name vacations.example.com;
+    server_name famvacay.us;
 
-    ssl_certificate /etc/letsencrypt/live/vacations.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/vacations.example.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/famvacay.us/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/famvacay.us/privkey.pem;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
@@ -101,7 +101,7 @@ server {
 
 In the Nginx Proxy Manager UI:
 1. **Details:**
-   - Domain Names: `vacations.example.com`
+   - Domain Names: `famvacay.us`
    - Scheme: `http`
    - Forward Hostname / IP: `famvacay-web` (or `127.0.0.1`)
    - Forward Port: `3000`
@@ -121,7 +121,7 @@ In the Nginx Proxy Manager UI:
 ### 3.4 Caddy (v2)
 
 ```caddyfile
-vacations.example.com {
+famvacay.us {
     reverse_proxy 127.0.0.1:3000 {
         header_up Host {host}
         header_up X-Forwarded-Host {host}
@@ -136,8 +136,8 @@ vacations.example.com {
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/example/famvac.git
-cd famvac
+git clone https://github.com/NemesisRE/famvacay.git
+cd famvacay
 
 # 2. Install dependencies
 npm ci

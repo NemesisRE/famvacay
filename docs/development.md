@@ -19,7 +19,7 @@ This guide details local environment prerequisites, installation steps, and inst
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/famvacay.git
+git clone https://github.com/NemesisRE/famvacay.git
 cd famvacay
 ```
 
