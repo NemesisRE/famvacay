@@ -7,7 +7,7 @@
     "dev": "next dev -H 0.0.0.0",
     "build": "next build && node scripts/copy-standalone-assets.js",
     "start": "node .next/standalone/server.js",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -21,8 +21,6 @@
     "@prisma/client": "^6.19.3",
     "@simplewebauthn/browser": "^9.0.1",
     "@simplewebauthn/server": "^9.0.3",
-    "@types/bcryptjs": "^2.4.6",
-    "airport-data": "^1.0.1",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
@@ -41,12 +39,14 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
+    "@types/bcryptjs": "^2.4.6",
     "@types/iso-3166-2": "^1.0.4",
     "@types/node": "^20.17.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^4.3.3",
     "@vitest/coverage-v8": "^2.1.5",
+    "airport-data": "^1.0.1",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.2",
@@ -55,5 +55,8 @@
     "tailwindcss": "^3.4.15",
     "typescript": "^5.6.3",
     "vitest": "^2.1.5"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.2"
   }
 }
