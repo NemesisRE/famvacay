@@ -2,11 +2,11 @@
 
 [![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](package.json)
 [![Renovate](https://img.shields.io/badge/renovate-enabled-brightgreen.svg)](docs/dependencies.md)
-[![Next.js](https://img.shields.io/badge/Next.js-14.2.18-black.svg)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.4.2-black.svg)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6.3-blue.svg)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16--alpine-336791.svg)](https://www.postgresql.org/)
-[![Prisma](https://img.shields.io/badge/Prisma-5.22.0-2D3748.svg)](https://www.prisma.io/)
-[![Redis](https://img.shields.io/badge/Redis-7--alpine-DC382D.svg)](https://redis.io/)
+[![Prisma](https://img.shields.io/badge/Prisma-6.19.3-2D3748.svg)](https://www.prisma.io/)
+[![Valkey](https://img.shields.io/badge/Valkey_/_Redis-8_/_7-DC382D.svg)](https://valkey.io/)
 [![Docker](https://img.shields.io/badge/Docker-Multi--Arch-2496ED.svg)](Dockerfile)
 [![Coverage](https://img.shields.io/badge/Coverage-96.06%25-brightgreen.svg)](docs/development.md)
 [![License](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
@@ -16,6 +16,38 @@ Planning memorable family vacations shouldn't require juggling multiple spreadsh
 **FamVacay** is a self-hostable web application designed specifically for parents and families. It mathematically solves the family vacation planning puzzle by harmonizing statutory school holiday calendars, discovering neighboring-state departure savings, evaluating family-friendly weather conditions, and optimizing bridge days so you use fewer paid days off.
 
 Engineered with modern cloud-agnostic standards, FamVacay runs seamlessly on home servers, private clouds, or Kubernetes clusters behind your favorite reverse proxy.
+
+---
+
+## 🚀 Quick Start
+
+### Option A: Docker Compose (Recommended for Production / Evaluation)
+```bash
+# 1. Clone repository and create local environment
+git clone https://github.com/famvacay/famvacay.git
+cd famvacay
+cp .env.example .env
+
+# 2. Launch the full stack (PostgreSQL 16, Valkey 8, Migration Job, Web App)
+docker compose up -d
+
+# 3. Access the web app
+# Visit http://localhost:3000
+```
+
+### Option B: Local Development
+```bash
+# 1. Prerequisites: Node 22 (LTS), PostgreSQL 16, Valkey/Redis
+npm ci
+cp .env.example .env
+
+# 2. Initialize Prisma client & database schema
+npx prisma generate
+npx prisma migrate dev
+
+# 3. Start local development server
+npm run dev
+```
 
 ---
 

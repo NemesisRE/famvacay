@@ -6,11 +6,11 @@ This guide details local environment prerequisites, installation steps, and inst
 
 ## Prerequisites
 
-- **Node.js**: `v20.x` or higher (Active LTS recommended)
+- **Node.js**: `v22.x` or higher (Active LTS recommended)
 - **Package Manager**: `npm` (v10+)
 - **Database & Cache**:
   - PostgreSQL 16+
-  - Redis 7+
+  - Valkey 8+ / Redis 7+
 - **Docker & Docker Compose** (Optional for local containerized development)
 
 ---
@@ -74,14 +74,17 @@ npm run start
 ## Running Tests & Quality Checks
 
 ```bash
+# Run linting (ESLint 9 flat config)
+npm run lint
+
+# Perform TypeScript type checking
+npm run typecheck
+
 # Execute unit and algorithm tests (Vitest)
 npm test
 
 # Run tests with strict coverage verification (>80% required)
 npm run test:coverage
-
-# Perform TypeScript type checking
-npm run typecheck
 
 # Run end-to-end journey tests (Playwright)
 npm run test:e2e
