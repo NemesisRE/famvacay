@@ -1,3 +1,7 @@
+import type { FlightLayover, FlightSegment } from '../airports/flight-routes';
+
+export type { FlightLayover, FlightSegment };
+
 export interface PricingPartyComposition {
   adults: number;
   childrenAges: number[];
@@ -13,6 +17,11 @@ export interface PricingFlightQuote {
   totalFlightCost: number;
   airlineCarrier?: string;
   isDirectFlight?: boolean;
+  stops?: number; // 0 for direct, 1 for 1 stop, 2 for 2 stops
+  layovers?: FlightLayover[];
+  segments?: FlightSegment[];
+  directFlightPremiumMultiplier?: number;
+  connectingSavingsDiscount?: number;
   dayOfWeekMultiplier?: number;
   isMidweekSaving?: boolean;
   holidaySurgeMultiplier?: number;

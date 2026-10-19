@@ -1,5 +1,6 @@
 import { getCached, setCached } from '../cache/redis';
 import { getAirportByIata, calculateGeodesicDistanceKm } from '../airports/airport-service';
+import { resolveFlightRoute } from '../airports/flight-routes';
 
 const TTL_12_HOURS = 12 * 60 * 60;
 
@@ -32,6 +33,10 @@ export interface FlightPriceResult {
     childFare: number;
     infantFare: number;
   };
+  isDirectFlight?: boolean;
+  stops?: number;
+  directFlightPremiumMultiplier?: number;
+  connectingSavingsDiscount?: number;
 }
 
 export interface FlightPriceProvider {
@@ -91,7 +96,13 @@ export class BenchmarkFlightProvider implements FlightPriceProvider {
       seasonalMultiplier = 1.15; // Shoulder season
     }
 
-    const adultFare = Math.round(baseAdultFare * seasonalMultiplier);
+    // Route logistics: Direct flight corridor vs connecting route with layovers
+    const flightRoute = resolveFlightRoute(origin, destination);
+    const routeMultiplier = flightRoute.isDirect
+      ? flightRoute.directFlightPremiumMultiplier // non-stop direct premium
+      : (1.0 - flightRoute.connectingSavingsDiscount); // connecting route discount
+
+    const adultFare = Math.round(baseAdultFare * seasonalMultiplier * routeMultiplier);
     const childFare = Math.round(adultFare * 0.75);
     const infantFare = Math.round(adultFare * 0.10);
 
@@ -117,6 +128,10 @@ export class BenchmarkFlightProvider implements FlightPriceProvider {
         childFare,
         infantFare,
       },
+      isDirectFlight: flightRoute.isDirect,
+      stops: flightRoute.stops,
+      directFlightPremiumMultiplier: flightRoute.directFlightPremiumMultiplier,
+      connectingSavingsDiscount: flightRoute.connectingSavingsDiscount,
     };
   }
 }

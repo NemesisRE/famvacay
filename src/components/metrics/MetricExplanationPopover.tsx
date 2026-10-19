@@ -255,6 +255,32 @@ export function MetricExplanationPopover({
                       />
                     </div>
                   </div>
+
+                  {/* Active Environmental & Seasonal Warning Penalty Notice */}
+                  {win.seasonalWarningImpact && (
+                    <div className="text-[10px] text-rose-800 bg-rose-50 border border-rose-200/90 rounded-lg p-2 flex items-center justify-between">
+                      <span className="font-semibold flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 text-rose-600" />
+                        {t.home.seasonalPenaltyNotice}: {win.seasonalWarningImpact.reason}
+                      </span>
+                      <span className="font-extrabold text-rose-700 shrink-0 ml-1">
+                        -{win.seasonalWarningPenalty || win.seasonalWarningImpact.overallScorePenalty} pts
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Layover / Connection Transfer Penalty Notice */}
+                  {win.flightStops !== undefined && win.flightStops > 0 && (
+                    <div className="text-[10px] text-amber-900 bg-amber-50 border border-amber-200/90 rounded-lg p-2 flex items-center justify-between">
+                      <span className="font-semibold flex items-center gap-1">
+                        <Navigation className="w-3 h-3 text-amber-600" />
+                        {t.home.layoverPenaltyNotice} ({win.flightStops === 1 ? t.home.oneStopFlight : t.home.multipleStopsFlight.replace('{stops}', String(win.flightStops))})
+                      </span>
+                      <span className="font-extrabold text-amber-800 shrink-0 ml-1">
+                        -{win.layoverPenalty || (win.flightStops === 1 ? 5 : 12)} pts
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 

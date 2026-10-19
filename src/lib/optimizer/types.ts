@@ -1,4 +1,5 @@
-import type { SeasonalConstraintWarning } from './weather';
+import type { SeasonalConstraintWarning, SeasonalWarningImpact } from './weather';
+import type { FlightLayover, FlightSegment } from '../airports/flight-routes';
 
 export type DestinationType = 'ALL' | 'BEACH' | 'ALPINE' | 'CITY' | 'NATURE' | 'LONGRANGE' | 'SKI';
 
@@ -36,6 +37,7 @@ export interface UserProfileInput {
   preferredCabinClass?: string;
   climatePreference?: string;
   travelModes?: string[];
+  maxFlightStops?: number;  // 0 = direct only, 1 = max 1 stop, undefined = any
 }
 
 export interface BlackoutRange {
@@ -65,6 +67,7 @@ export interface TripPlanInput {
   requireSnow?: boolean;             // If true, strictly requires snow / winter sports conditions for alpine vacations
   preferredBoardType?: BoardType;    // Board type preference (e.g. 'ALL_INCLUSIVE', 'BREAKFAST')
   maxOverlandTravelMinutes?: number; // Maximum overland travel duration in minutes (e.g. 360 for 6h)
+  maxFlightStops?: number;           // Maximum tolerated flight stops (0 = direct only, 1 = max 1 stop, undefined = any)
   userProfile: UserProfileInput;
   searchBlackouts?: BlackoutRange[]; // Additional search-specific blackouts
 }
@@ -115,6 +118,14 @@ export interface CandidateWindow {
   originDistanceKm?: number;
   originDriveMinutes?: number;
   originHighSpeedRail?: boolean;
+
+  // Flight Route & Layover Logistics
+  isDirectFlight?: boolean;
+  flightStops?: number;
+  flightLayovers?: FlightLayover[];
+  flightSegments?: FlightSegment[];
+  directFlightPremium?: number;
+  layoverPenalty?: number;
   
   // PTO metrics
   totalWeekdays: number;
@@ -132,6 +143,8 @@ export interface CandidateWindow {
   // Weather metrics
   weather: WeatherAssessment;
   seasonalWarning?: SeasonalConstraintWarning | null;
+  seasonalWarningImpact?: SeasonalWarningImpact | null;
+  seasonalWarningPenalty?: number;
   
   // Arbitrage info
   isArbitrageOpportunity: boolean;

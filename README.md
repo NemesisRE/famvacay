@@ -22,6 +22,7 @@ Engineered with modern cloud-agnostic standards, FamVacay runs seamlessly on hom
 ## 🚀 Quick Start
 
 ### Option A: Docker Compose (Recommended for Production / Evaluation)
+
 ```bash
 # 1. Clone repository and create local environment
 git clone https://github.com/famvacay/famvacay.git
@@ -36,6 +37,7 @@ docker compose up -d
 ```
 
 ### Option B: Local Development
+
 ```bash
 # 1. Prerequisites: Node 22 (LTS), PostgreSQL 16, Valkey/Redis
 npm ci
@@ -54,32 +56,41 @@ npm run dev
 ## ✈️ Why FamVacay?
 
 ### 1. Smart School Holiday Enforcement
+
 When you have school-aged children, staying strictly within official school breaks is essential. FamVacay automatically references statutory school break schedules from the OpenHolidays API (cached for 30 days) and guarantees that vacation proposals fit within approved school holidays.
 
 ### 2. Cross-Border Flight Arbitrage
+
 School holidays in neighboring federal states or countries rarely begin on the same date. FamVacay analyzes departure airports in adjacent jurisdictions (such as flying out of Frankfurt/Hessen while Baden-Württemberg is on summer break) to reveal savings of 25% to 45% compared to home airports in high season.
 
 ### 3. PTO & Bridge Day Optimization
+
 Parental leave and vacation days are limited. The optimization engine counts weekdays and public holidays inside candidate windows to minimize consumed vacation days:
 $$\text{PTO\_days\_consumed} = \text{total\_weekdays} - \text{public\_holidays}$$
 You receive clear suggestions for long getaways that require the lowest number of PTO days from work.
 
 ### 4. Family Profile & Child Age Tiers
+
 Every family member is unique. In your dedicated Family Profile, you can:
+
 - Register participating family members and exact birth dates.
 - Automatically calculate airline pricing tiers: infants (<2 years at ~10% fare), children (2–11 years at ~75% fare), and teens/adults (12+ years at 100%).
 - Set travel comfort settings, including maximum driving radius to departure airports and cabin class preferences.
 - Track passport validity dates with automated warnings to prevent airport check-in surprises.
 
 ### 5. Multi-User Authentication & Passkeys
+
 Families can safely store their trip plans and profiles with passwordless login options:
+
 - Traditional Email & Password (secured with bcrypt).
 - Biometric Passkeys & WebAuthn (Touch ID, Face ID, Windows Hello, YubiKey).
 - Social Logins (Google and Apple).
 - Account linking to bind multiple authentication methods to one family account.
 
 ### 6. Built-in Internationalization (i18n)
+
 FamVacay supports multiple languages with automatic browser language detection and an in-app language switcher:
+
 - English (`en` — default)
 - German (`de`)
 - French (`fr`)
@@ -100,5 +111,5 @@ Detailed technical guides, deployment blueprints, and dependency strategies are 
 ---
 
 ## 📄 License
- 
+
 This project is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE) to ensure strong copyleft protection, including network use and hosted services.

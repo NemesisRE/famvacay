@@ -23,9 +23,11 @@ import {
   ExternalLink,
   ChevronDown,
   Navigation,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { getAirportByIata, getLocalizedAirportDetails } from '@/lib/airports/airport-service';
+import type { FlightLayover, FlightSegment } from '@/lib/airports/flight-routes';
 
 export interface FlightDetailsPopoverProps {
   originAirport: string;
@@ -50,6 +52,12 @@ export interface FlightDetailsPopoverProps {
   adults?: number;
   baseAdultFare?: number;
   totalFlightCost?: number;
+  isDirectFlight?: boolean;
+  stops?: number;
+  layovers?: FlightLayover[];
+  segments?: FlightSegment[];
+  directFlightPremiumMultiplier?: number;
+  connectingSavingsDiscount?: number;
   className?: string;
 }
 
@@ -76,6 +84,12 @@ export function FlightDetailsPopover({
   adults = 2,
   baseAdultFare,
   totalFlightCost,
+  isDirectFlight = true,
+  stops = 0,
+  layovers = [],
+  segments = [],
+  directFlightPremiumMultiplier,
+  connectingSavingsDiscount,
   className = '',
 }: FlightDetailsPopoverProps) {
   const { t, locale } = useI18n();
@@ -129,6 +143,8 @@ export function FlightDetailsPopover({
     startDate ? `%20on%20${startDate}` : ''
   }${endDate ? `%20through%20${endDate}` : ''}`;
 
+  const isActuallyDirect = isDirectFlight !== false && stops === 0;
+
   return (
     <div className={`inline-block ${className}`}>
       {/* Interactive Trigger Button */}
@@ -144,6 +160,15 @@ export function FlightDetailsPopover({
         <span className="font-bold tracking-tight">
           {originAirport} ➔ {destinationAirport}
         </span>
+        {isActuallyDirect ? (
+          <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100/90 px-1.5 py-0.2 rounded border border-emerald-200 flex-shrink-0">
+            {t.home.nonStopFlight}
+          </span>
+        ) : (
+          <span className="text-[9px] font-bold text-amber-800 bg-amber-100/90 px-1.5 py-0.2 rounded border border-amber-200 flex-shrink-0">
+            {stops === 1 ? t.home.oneStopFlight : t.home.multipleStopsFlight.replace('{stops}', String(stops))}
+          </span>
+        )}
         <ChevronDown
           className={`w-3 h-3 text-slate-400 group-hover:text-blue-600 transition-transform ${
             isOpen ? 'rotate-180' : ''
@@ -161,7 +186,7 @@ export function FlightDetailsPopover({
               zIndex: 9999,
             }}
             {...getFloatingProps()}
-            className="w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-slate-200 p-4 text-slate-800 transition-opacity duration-150 ease-out space-y-3.5"
+            className="w-84 sm:w-[420px] max-w-[95vw] bg-white rounded-xl shadow-2xl border border-slate-200 p-4 text-slate-800 transition-opacity duration-150 ease-out space-y-3.5"
           >
             {/* Header */}
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
@@ -170,9 +195,16 @@ export function FlightDetailsPopover({
                 <span>{t.home.flightDetailsTitle}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                  {t.home.directFlight}
-                </span>
+                {isActuallyDirect ? (
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    {t.home.directFlight}
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
+                    <ArrowRightLeft className="w-2.5 h-2.5" />
+                    {stops === 1 ? t.home.oneStopFlight : t.home.multipleStopsFlight.replace('{stops}', String(stops))}
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
@@ -270,6 +302,53 @@ export function FlightDetailsPopover({
               </div>
             </div>
 
+            {/* Flight Itinerary & Stopover Breakdown for connecting routes */}
+            {stops > 0 && segments.length > 0 && (
+              <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/90 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1">
+                    <ArrowRightLeft className="w-3 h-3 text-amber-600" />
+                    {t.home.flightSegmentsTitle}
+                  </span>
+                  <span className="text-[10px] font-extrabold text-amber-800 bg-white px-1.5 py-0.2 rounded border border-amber-300">
+                    {stops === 1 ? t.home.oneStopFlight : t.home.multipleStopsFlight.replace('{stops}', String(stops))}
+                  </span>
+                </div>
+
+                <div className="space-y-1.5 text-xs">
+                  {segments.map((seg, idx) => {
+                    const nextLayover = layovers[idx];
+                    const segDurStr = `${Math.floor(seg.durationMinutes / 60)}h ${(seg.durationMinutes % 60).toString().padStart(2, '0')}m`;
+                    return (
+                      <React.Fragment key={idx}>
+                        <div className="p-2 rounded-lg bg-white border border-amber-200/80 shadow-2xs">
+                          <div className="flex items-center justify-between font-bold text-slate-800 text-[11px]">
+                            <span>
+                              {seg.departureAirport} ({seg.departureCity || seg.departureAirport}) ➔ {seg.arrivalAirport} ({seg.arrivalCity || seg.arrivalAirport})
+                            </span>
+                            <span className="text-slate-600 font-semibold">{segDurStr}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5 flex items-center justify-between">
+                            <span>{seg.carrier || 'Flight Leg'}</span>
+                            <span>~{seg.distanceKm.toLocaleString()} km</span>
+                          </div>
+                        </div>
+
+                        {nextLayover && (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-100/90 text-amber-950 font-medium text-[10px] border border-amber-300/80">
+                            <Clock className="w-3 h-3 text-amber-700 flex-shrink-0" />
+                            <span>
+                              <strong>{t.home.layoverDuration}:</strong> {Math.floor(nextLayover.durationMinutes / 60)}h {nextLayover.durationMinutes % 60}m {t.home.connectionAtHub.replace('{hub}', nextLayover.airportCode)} ({nextLayover.city})
+                            </span>
+                          </div>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Flight Metrics Grid */}
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
@@ -279,7 +358,9 @@ export function FlightDetailsPopover({
                 </span>
                 <div className="font-extrabold text-slate-900 text-sm mt-0.5">
                   {flightDurationStr}
-                  <span className="text-[9px] font-normal text-slate-400 ml-1">non-stop</span>
+                  <span className="text-[9px] font-normal text-slate-500 ml-1">
+                    {isActuallyDirect ? 'non-stop' : `${stops} stop(s)`}
+                  </span>
                 </div>
               </div>
 
@@ -297,13 +378,26 @@ export function FlightDetailsPopover({
 
             {/* Fare Breakdown Summary if available */}
             {baseAdultFare !== undefined && (
-              <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between text-[11px]">
-                <span className="text-slate-600 font-medium">
-                  {t.home.flightShare} ({adults} adult{adults > 1 ? 's' : ''}):
-                </span>
-                <span className="font-extrabold text-slate-900">
-                  {totalFlightCost ? `~${totalFlightCost} €` : `~${baseAdultFare} € / adult`}
-                </span>
+              <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-600 font-medium">
+                    {t.home.flightShare} ({adults} adult{adults > 1 ? 's' : ''}):
+                  </span>
+                  <span className="font-extrabold text-slate-900">
+                    {totalFlightCost ? `~${totalFlightCost} €` : `~${baseAdultFare} € / adult`}
+                  </span>
+                </div>
+                {isActuallyDirect ? (
+                  <div className="flex items-center justify-between text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    <span className="font-semibold">{t.home.directFlightPremiumBadge}</span>
+                    <span className="text-emerald-700 font-bold">Non-Stop Corridor</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between text-[10px] text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    <span className="font-semibold">{t.home.connectingSavingsBadge}</span>
+                    <span className="text-blue-700 font-bold">Connecting Savings Applied</span>
+                  </div>
+                )}
               </div>
             )}
 

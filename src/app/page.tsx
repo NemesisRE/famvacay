@@ -72,6 +72,7 @@ import { DestinationSafetyPopover } from '@/components/destination/DestinationSa
 import { getDestinationVacationStyles } from '@/lib/optimizer/destination-styles';
 import { getAnnualSpecialTimes, SpecialHolidayPeriod } from '@/lib/holidays/special-dates';
 import { BeachTemperaturePopover } from '@/components/preferences/BeachTemperaturePopover';
+import { FlightStopsPopover } from '@/components/preferences/FlightStopsPopover';
 
 export default function HomePage() {
   const { data: session, status } = useSession();
@@ -269,8 +270,10 @@ export default function HomePage() {
   const [minBeachTemp, setMinBeachTemp] = useState<number | undefined>(undefined);
   const [requireSnow, setRequireSnow] = useState<boolean>(false);
   const [showBeachTempMenu, setShowBeachTempMenu] = useState(false);
+  const [showFlightStopsMenu, setShowFlightStopsMenu] = useState(false);
   const [preferredBoardType, setPreferredBoardType] = useState<BoardType | undefined>(undefined);
   const [maxOverlandDurationHours, setMaxOverlandDurationHours] = useState<number | undefined>(undefined);
+  const [maxFlightStops, setMaxFlightStops] = useState<number | undefined>(undefined);
 
   // 7. Blackout Dates (Starts empty by default, loaded from profile if configured)
   const [searchBlackouts, setSearchBlackouts] = useState<
@@ -312,6 +315,7 @@ export default function HomePage() {
   const [warningFilter, setWarningFilter] = useState<'CLEAN_ONLY' | 'ALL'>('CLEAN_ONLY');
   const [boardTypeFilter, setBoardTypeFilter] = useState<string>('ALL');
   const [overlandDurationFilter, setOverlandDurationFilter] = useState<string>('ALL');
+  const [flightStopsFilter, setFlightStopsFilter] = useState<string>('ALL'); // 'ALL' | 'DIRECT_ONLY' | 'MAX_1_STOP'
   const [showResultFilters, setShowResultFilters] = useState<boolean>(false);
   const [isDestinationSearchOpen, setIsDestinationSearchOpen] = useState<boolean>(false);
 
@@ -325,6 +329,7 @@ export default function HomePage() {
     if (warningFilter !== 'CLEAN_ONLY') count++;
     if (boardTypeFilter !== 'ALL') count++;
     if (overlandDurationFilter !== 'ALL') count++;
+    if (flightStopsFilter !== 'ALL') count++;
     if (schoolHolidayFilter !== 'all') count++;
     if (maxCostFilter !== undefined && maxCostFilter > 0) count++;
     if (sortBy !== 'score') count++;
@@ -338,6 +343,7 @@ export default function HomePage() {
     warningFilter,
     boardTypeFilter,
     overlandDurationFilter,
+    flightStopsFilter,
     schoolHolidayFilter,
     maxCostFilter,
     sortBy,
@@ -352,6 +358,7 @@ export default function HomePage() {
     setWarningFilter('CLEAN_ONLY');
     setBoardTypeFilter('ALL');
     setOverlandDurationFilter('ALL');
+    setFlightStopsFilter('ALL');
     setSchoolHolidayFilter('all');
     setMaxCostFilter(undefined);
     setSortBy('score');
@@ -436,6 +443,7 @@ export default function HomePage() {
         if (typeof parsed.requireSnow === 'boolean') setRequireSnow(parsed.requireSnow);
         if (parsed.preferredBoardType) setPreferredBoardType(parsed.preferredBoardType);
         if (typeof parsed.maxOverlandDurationHours === 'number') setMaxOverlandDurationHours(parsed.maxOverlandDurationHours);
+        if (typeof parsed.maxFlightStops === 'number') setMaxFlightStops(parsed.maxFlightStops);
         if (Array.isArray(parsed.searchBlackouts)) setSearchBlackouts(parsed.searchBlackouts);
       }
 
@@ -457,6 +465,7 @@ export default function HomePage() {
         if (parsed.warningFilter) setWarningFilter(parsed.warningFilter);
         if (parsed.boardTypeFilter) setBoardTypeFilter(parsed.boardTypeFilter);
         if (parsed.overlandDurationFilter) setOverlandDurationFilter(parsed.overlandDurationFilter);
+        if (parsed.flightStopsFilter) setFlightStopsFilter(parsed.flightStopsFilter);
       }
 
       const savedResults = localStorage.getItem('famvac_cached_results');
@@ -500,6 +509,7 @@ export default function HomePage() {
         requireSnow,
         preferredBoardType,
         maxOverlandDurationHours,
+        maxFlightStops,
         searchBlackouts,
       };
       localStorage.setItem('famvac_form_state', JSON.stringify(stateToSave));
@@ -527,6 +537,7 @@ export default function HomePage() {
     requireSnow,
     preferredBoardType,
     maxOverlandDurationHours,
+    maxFlightStops,
     searchBlackouts,
   ]);
 
@@ -550,6 +561,7 @@ export default function HomePage() {
         warningFilter,
         boardTypeFilter,
         overlandDurationFilter,
+        flightStopsFilter,
       };
       localStorage.setItem('famvac_filter_settings', JSON.stringify(filtersToSave));
     } catch {
@@ -572,6 +584,7 @@ export default function HomePage() {
     warningFilter,
     boardTypeFilter,
     overlandDurationFilter,
+    flightStopsFilter,
   ]);
 
   const handleResetForm = () => {
@@ -597,6 +610,9 @@ export default function HomePage() {
     setSelectedVehicles(['PLANE']);
     setMinBeachTemp(undefined);
     setRequireSnow(false);
+    setPreferredBoardType(undefined);
+    setMaxOverlandDurationHours(undefined);
+    setMaxFlightStops(undefined);
     setSearchBlackouts([]);
     setResults(null);
   };
@@ -950,6 +966,7 @@ export default function HomePage() {
         requireSnow: (!hasDestinations && isAlpineSelected) ? requireSnow : false,
         preferredBoardType,
         maxOverlandTravelMinutes: maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
+        maxFlightStops,
         durationDays: minDur,
         durationDaysMin: minDur,
         durationDaysMax: maxDur,
@@ -974,6 +991,7 @@ export default function HomePage() {
           preferredCabinClass,
           climatePreference,
           travelModes,
+          maxFlightStops,
         },
       };
 
@@ -1077,6 +1095,18 @@ export default function HomePage() {
       });
     }
 
+    if (flightStopsFilter === 'DIRECT_ONLY') {
+      list = list.filter((w) => {
+        if (w.travelVehicle !== 'PLANE') return true;
+        return w.isDirectFlight || w.flightStops === 0;
+      });
+    } else if (flightStopsFilter === 'MAX_1_STOP') {
+      list = list.filter((w) => {
+        if (w.travelVehicle !== 'PLANE') return true;
+        return (w.flightStops ?? 0) <= 1;
+      });
+    }
+
     if (schoolHolidayFilter === 'holidaysOnly') {
       list = list.filter((w) => !w.requiresSchoolExemption);
     }
@@ -1114,6 +1144,7 @@ export default function HomePage() {
     warningFilter,
     boardTypeFilter,
     overlandDurationFilter,
+    flightStopsFilter,
     schoolHolidayFilter,
     maxCostFilter,
     sortBy,
@@ -1479,6 +1510,12 @@ export default function HomePage() {
                 adults={adultsCount}
                 baseAdultFare={win.pricingDetails?.flight?.baseAdultFare}
                 totalFlightCost={win.pricingDetails?.flight?.totalFlightCost}
+                isDirectFlight={win.isDirectFlight}
+                stops={win.flightStops}
+                layovers={win.flightLayovers}
+                segments={win.flightSegments}
+                directFlightPremiumMultiplier={win.directFlightPremium}
+                connectingSavingsDiscount={win.pricingDetails?.flight?.connectingSavingsDiscount}
               />
               <span>•</span>
               <ClimateDetailsPopover
@@ -1889,15 +1926,31 @@ export default function HomePage() {
                         {v.label}
                       </span>
 
-                      {/* Bottom: Vehicle Hint */}
+                      {/* Bottom: Vehicle Hint or Inline Popover */}
                       <div className="w-full text-left">
-                        <span
-                          className={`text-[10px] truncate block ${
-                            isSelected ? 'text-blue-100' : 'text-slate-400'
-                          }`}
-                        >
-                          {v.hint}
-                        </span>
+                        {v.type === 'PLANE' ? (
+                          isSelected ? (
+                            <FlightStopsPopover
+                              maxFlightStops={maxFlightStops}
+                              onSelect={setMaxFlightStops}
+                              isOpen={showFlightStopsMenu}
+                              onOpenChange={setShowFlightStopsMenu}
+                              t={t}
+                            />
+                          ) : (
+                            <span className="text-[10px] text-slate-400 truncate block">
+                              {v.hint}
+                            </span>
+                          )
+                        ) : (
+                          <span
+                            className={`text-[10px] truncate block ${
+                              isSelected ? 'text-blue-100' : 'text-slate-400'
+                            }`}
+                          >
+                            {v.hint}
+                          </span>
+                        )}
                       </div>
                     </div>
                   );
@@ -2582,6 +2635,26 @@ export default function HomePage() {
                         <option value="360">{t.home.overlandDuration6h}</option>
                         <option value="600">{t.home.overlandDuration10h}</option>
                         <option value="840">{t.home.overlandDuration14h}</option>
+                      </select>
+                    </div>
+
+                    {/* Line 9: Flight Transit & Stops Filter */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
+                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                        <Plane className="w-3.5 h-3.5 text-blue-600" />
+                        <span>{t.home.filterByFlightStops}</span>
+                      </label>
+                      <select
+                        value={flightStopsFilter}
+                        onChange={(e) => {
+                          setFlightStopsFilter(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
+                      >
+                        <option value="ALL">{t.home.flightStopsAny}</option>
+                        <option value="DIRECT_ONLY">{t.home.flightStopsDirectOnly}</option>
+                        <option value="MAX_1_STOP">{t.home.flightStopsMax1}</option>
                       </select>
                     </div>
 

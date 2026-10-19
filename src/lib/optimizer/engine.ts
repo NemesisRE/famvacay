@@ -17,6 +17,7 @@ import {
   getDestinationSeasonalWarning,
   getIdealTemperatureBand,
   getDestinationProfile,
+  getSeasonalWarningPenalty,
 } from './weather';
 import { resolveDestinationCodes, OriginContext, getDestinationVacationStyles } from './destinations';
 import {
@@ -25,6 +26,7 @@ import {
   getMajorAirportsForCountry,
   getRecommendedAirportsForCoordinates,
 } from '../airports/airport-service';
+import { resolveFlightRoute, FlightRouteDetails } from '../airports/flight-routes';
 import { getCountryCodeFromSubdivision } from '../regions/subdivisions';
 import { getSynchronousTripPricing } from '../pricing/pricing-service';
 import { getAvailableVehicles, calculateVehicleMetrics } from './vehicles';
@@ -182,40 +184,53 @@ export function normalizeScore(
 }
 
 /**
- * Calculates travel friction for the flight corridor based on distance and vacation style.
- * Short regional hops minimize family travel fatigue and score highest.
+ * Calculates travel friction for the flight corridor based on distance, vacation style,
+ * and flight connections / layovers. Short regional hops and direct flights minimize family travel
+ * fatigue and score highest, while layovers/transfers apply proportional convenience friction penalties.
  */
 export function calculateFlightFrictionScore(
   flightDistKm?: number,
-  isLongRangeSelected: boolean = false
+  isLongRangeSelected: boolean = false,
+  stops: number = 0,
+  layoverMinutes: number = 0
 ): number {
   if (flightDistKm == null || flightDistKm <= 0) return 90;
+  let score = 90;
   if (flightDistKm <= 950) {
     // Short convenient hop: 98 - 94
-    return Math.max(94, Math.round(98 - (flightDistKm / 950) * 4));
-  }
-  if (flightDistKm <= 2000) {
+    score = Math.max(94, Math.round(98 - (flightDistKm / 950) * 4));
+  } else if (flightDistKm <= 2000) {
     // Regional mid-haul: 94 - 86
-    return Math.max(86, Math.round(94 - ((flightDistKm - 950) / 1050) * 8));
-  }
-  if (flightDistKm <= 3800) {
+    score = Math.max(86, Math.round(94 - ((flightDistKm - 950) / 1050) * 8));
+  } else if (flightDistKm <= 3800) {
     // Extended mid-haul: 86 - 74
-    return Math.max(74, Math.round(86 - ((flightDistKm - 2000) / 1800) * 12));
-  }
-  if (flightDistKm <= 6000) {
+    score = Math.max(74, Math.round(86 - ((flightDistKm - 2000) / 1800) * 12));
+  } else if (flightDistKm <= 6000) {
     // Transcontinental: 74 - 58
-    return Math.max(58, Math.round(74 - ((flightDistKm - 3800) / 2200) * 16));
+    score = Math.max(58, Math.round(74 - ((flightDistKm - 3800) / 2200) * 16));
+  } else if (isLongRangeSelected) {
+    // Long-haul > 6000 km:
+    score = Math.max(65, Math.round(80 - ((flightDistKm - 6000) / 4000) * 15));
+  } else {
+    score = Math.max(35, Math.round(58 - ((flightDistKm - 6000) / 4000) * 23));
   }
-  // Long-haul > 6000 km:
-  if (isLongRangeSelected) {
-    return Math.max(65, Math.round(80 - ((flightDistKm - 6000) / 4000) * 15));
+
+  // Layover-weighted convenience friction penalty (more transfers = proportionally lower score)
+  if (stops === 1) {
+    const extraDurationPenalty = Math.max(0, Math.round((layoverMinutes - 90) / 30) * 2);
+    score = Math.max(20, score - 16 - extraDurationPenalty);
+  } else if (stops >= 2) {
+    const extraDurationPenalty = Math.max(0, Math.round((layoverMinutes - 150) / 30) * 3);
+    score = Math.max(10, score - 32 - extraDurationPenalty);
   }
-  return Math.max(35, Math.round(58 - ((flightDistKm - 6000) / 4000) * 23));
+
+  return score;
 }
 
 interface RawCandidate extends Omit<CandidateWindow, 'finalScore' | 'scoreBreakdown'> {
   holidayCoverage: HolidayCoverageResult;
   frictionBaseScore: number;
+  flightRoute?: FlightRouteDetails;
 }
 
 /**
@@ -430,22 +445,29 @@ export function optimizeVacationWindows(
 
         for (const dest of candidateDestinations) {
           const destAirportObj = getAirportByIata(dest);
-          let flightDistKm: number | undefined;
-          let flightDurationMins: number | undefined;
-          if (airportDetails && destAirportObj) {
-            flightDistKm = Math.round(
-              calculateGeodesicDistanceKm(
-                airportDetails.lat,
-                airportDetails.lon,
-                destAirportObj.lat,
-                destAirportObj.lon
-              )
-            );
-            flightDurationMins = Math.round(35 + (flightDistKm / 820) * 60);
+
+          // Flight route logistics: direct vs connecting, layovers, and transfer hubs
+          const flightRoute = resolveFlightRoute(origin, dest);
+
+          // Flight transit tolerance filter (direct flights only vs max 1 stop vs any)
+          const maxToleratedStops = input.maxFlightStops ?? userProfile.maxFlightStops;
+          if (maxToleratedStops !== undefined && flightRoute.stops > maxToleratedStops) {
+            // If user's selected mode is strictly PLANE or route is only viable by air, filter out
+            if (selectedVehicles.length === 1 && selectedVehicles[0] === 'PLANE') {
+              continue;
+            }
           }
 
+          let flightDistKm: number | undefined = flightRoute.flightDistanceKm;
+          let flightDurationMins: number | undefined = flightRoute.totalFlightDurationMinutes;
+
           const isLongRangeSelected = selectedTypes.includes('LONGRANGE');
-          const flightFrictionScore = calculateFlightFrictionScore(flightDistKm, isLongRangeSelected);
+          const flightFrictionScore = calculateFlightFrictionScore(
+            flightDistKm,
+            isLongRangeSelected,
+            flightRoute.stops,
+            flightRoute.totalLayoverMinutes
+          );
           const compositeFrictionScore = Math.round(frictionDriveScore * 0.4 + flightFrictionScore * 0.6);
 
           const destinationName = destAirportObj?.city && destAirportObj?.country
@@ -487,6 +509,11 @@ export function optimizeVacationWindows(
             activeVehicle = 'CAR';
           } else if (matchingVehicles.includes('PLANE') && directDist >= 650) {
             activeVehicle = 'PLANE';
+          }
+
+          // Flight transit tolerance filter (direct flights only vs max 1 stop vs any)
+          if (activeVehicle === 'PLANE' && maxToleratedStops !== undefined && flightRoute.stops > maxToleratedStops) {
+            continue;
           }
 
           const vehicleDetails = calculateVehicleMetrics(
@@ -601,6 +628,13 @@ export function optimizeVacationWindows(
             originDistanceKm: originDistKm,
             originDriveMinutes: originDriveMins,
             originHighSpeedRail,
+            isDirectFlight: activeVehicle === 'PLANE' ? flightRoute.isDirect : undefined,
+            flightStops: activeVehicle === 'PLANE' ? flightRoute.stops : undefined,
+            flightLayovers: activeVehicle === 'PLANE' ? flightRoute.layovers : undefined,
+            flightSegments: activeVehicle === 'PLANE' ? flightRoute.segments : undefined,
+            directFlightPremium: activeVehicle === 'PLANE' && flightRoute.isDirect ? flightRoute.directFlightPremiumMultiplier : undefined,
+            layoverPenalty: activeVehicle === 'PLANE' ? flightRoute.layoverScorePenalty : 0,
+            flightRoute: activeVehicle === 'PLANE' ? flightRoute : undefined,
             totalWeekdays: ptoInfo.totalWeekdays,
             publicHolidaysCount: ptoInfo.publicHolidaysCount,
             ptoDaysConsumed: ptoInfo.ptoDaysConsumed,
@@ -742,10 +776,17 @@ export function optimizeVacationWindows(
       weatherIndex = Math.min(100, weatherIndex + 12);
     }
 
+    // Active seasonal warnings and local environmental phenomena:
+    // Degrades weather comfort index to reflect compromised vacation conditions (algae blooms, insect plagues, extreme weather)
+    const seasonalImpact = getSeasonalWarningPenalty(cand.seasonalWarning);
+    if (seasonalImpact) {
+      weatherIndex = Math.max(5, Math.round((weatherIndex - seasonalImpact.weatherPenalty) * 10) / 10);
+    }
+
     // 3. PTO Efficiency (lower PTO consumed is better: 0-100)
     const ptoEfficiencyIndex = normalizeScore(cand.ptoDaysConsumed, minPto, maxPto, false);
 
-    // 4. Travel Friction (distance, driving hours, arbitrage: 0-100)
+    // 4. Travel Friction (distance, driving hours, layovers, arbitrage: 0-100)
     const travelFrictionIndex = cand.frictionBaseScore;
 
     // Multi-objective formula:
@@ -754,6 +795,18 @@ export function optimizeVacationWindows(
       weights.w2_weather * weatherIndex +
       weights.w3_pto * ptoEfficiencyIndex +
       weights.w4_friction * travelFrictionIndex;
+
+    // Layover-weighted scoring penalty on overall score ("vacation factor"):
+    // More transfers / connections = proportionally lower convenience & match score
+    if (cand.flightStops && cand.flightStops > 0) {
+      const layoverScoreDeduction = cand.layoverPenalty ?? (cand.flightStops === 1 ? 5 : 12);
+      finalScoreRaw -= layoverScoreDeduction;
+    }
+
+    // Active seasonal warnings & local environmental phenomena penalty on overall score ("vacation factor"):
+    if (seasonalImpact) {
+      finalScoreRaw -= seasonalImpact.overallScorePenalty;
+    }
 
     // Penalty if window requires school exemption when user has school kids
     if (cand.requiresSchoolExemption) {
@@ -774,6 +827,9 @@ export function optimizeVacationWindows(
       ...cleanCand,
       destinationSafety: safetyAssessment,
       safetyAssessment,
+      seasonalWarningImpact: seasonalImpact,
+      seasonalWarningPenalty: seasonalImpact?.overallScorePenalty || 0,
+      layoverPenalty: cand.layoverPenalty || 0,
       scoreBreakdown: {
         priceIndex,
         weatherIndex,

@@ -9,6 +9,7 @@ import {
 import { BoardType } from '../optimizer/types';
 import { calculatePassengerCostMultiplier } from '../optimizer/child-tiers';
 import { getAirportByIata, calculateGeodesicDistanceKm } from '../airports/airport-service';
+import { resolveFlightRoute } from '../airports/flight-routes';
 
 /**
  * Generates an actionable deep-link directly to Google Flights with origin, destination, and dates prefilled.
@@ -252,7 +253,13 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
     const holidaySurge = getHolidaySurgeMultiplier(startDate, endDate);
     const isMidweekSaving = flightDOWMultiplier <= 0.92;
 
-    baseFlightFare = Math.round(baseFlightFare * flightDOWMultiplier * holidaySurge);
+    // Route logistics: Direct flight corridor vs connecting route with layovers
+    const flightRoute = resolveFlightRoute(originAirport, destinationAirport);
+    const routeMultiplier = flightRoute.isDirect
+      ? flightRoute.directFlightPremiumMultiplier // e.g. 1.18 non-stop direct premium
+      : (1.0 - flightRoute.connectingSavingsDiscount); // e.g. ~15% discount for 1 stop connecting route
+
+    baseFlightFare = Math.round(baseFlightFare * flightDOWMultiplier * holidaySurge * routeMultiplier);
 
     // Arbitrage savings (e.g. flying from non-holiday neighboring state)
     if (isArbitrage) {
@@ -273,8 +280,17 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
       endDate,
       baseAdultFare: baseFlightFare,
       totalFlightCost,
-      airlineCarrier: 'Multiple Airlines (Aggregated)',
-      isDirectFlight: true,
+      airlineCarrier: flightRoute.isDirect
+        ? 'Direct Flight Corridor (Aggregated)'
+        : (flightRoute.stops === 1
+            ? `Connecting via ${flightRoute.layovers[0]?.airportCode || 'Hub'}`
+            : `Connecting (${flightRoute.stops} stops)`),
+      isDirectFlight: flightRoute.isDirect,
+      stops: flightRoute.stops,
+      layovers: flightRoute.layovers,
+      segments: flightRoute.segments,
+      directFlightPremiumMultiplier: flightRoute.directFlightPremiumMultiplier,
+      connectingSavingsDiscount: flightRoute.connectingSavingsDiscount,
       dayOfWeekMultiplier: flightDOWMultiplier,
       isMidweekSaving,
       holidaySurgeMultiplier: holidaySurge,

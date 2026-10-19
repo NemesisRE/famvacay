@@ -171,6 +171,113 @@ export interface SeasonalConstraintWarning {
   phenomenonType?: NaturalPhenomenonType;
 }
 
+export interface SeasonalWarningImpact {
+  weatherPenalty: number;      // Reduction on weather index (0-100)
+  overallScorePenalty: number; // Measurable negative penalty on destination score / vacation factor
+  severity: 'moderate' | 'high' | 'severe';
+  reason: string;
+}
+
+/**
+ * Calculates the measurable score penalty for active seasonal warnings & local environmental phenomena
+ * (e.g. Sargassum algae blooms, extreme heat/monsoon/hurricanes, insect swarms, volcanic vog).
+ */
+export function getSeasonalWarningPenalty(
+  warning: SeasonalConstraintWarning | null | undefined
+): SeasonalWarningImpact | null {
+  if (!warning) return null;
+
+  switch (warning.seasonType) {
+    case 'TYPHOON_HURRICANE':
+      return {
+        weatherPenalty: 28,
+        overallScorePenalty: 14,
+        severity: 'severe',
+        reason: 'Tropical cyclones & squalls severely degrade travel quality and safety.',
+      };
+    case 'MONSOON':
+      return {
+        weatherPenalty: 24,
+        overallScorePenalty: 10,
+        severity: 'high',
+        reason: 'Sustained monsoon rain and high humidity impair outdoor leisure.',
+      };
+    case 'EXTREME_HEAT':
+      return {
+        weatherPenalty: 22,
+        overallScorePenalty: 10,
+        severity: 'high',
+        reason: 'Extreme heat (>38°C) limits daytime recreation.',
+      };
+    case 'NATURAL_PHENOMENON':
+      switch (warning.phenomenonType) {
+        case 'SARGASSUM':
+          return {
+            weatherPenalty: 20,
+            overallScorePenalty: 10,
+            severity: 'high',
+            reason: 'Heavy Sargassum seaweed ruins beach quality and swimming.',
+          };
+        case 'RED_TIDE':
+          return {
+            weatherPenalty: 22,
+            overallScorePenalty: 12,
+            severity: 'severe',
+            reason: 'Harmful algal blooms trigger beach closures and respiratory irritation.',
+          };
+        case 'JELLYFISH':
+          return {
+            weatherPenalty: 16,
+            overallScorePenalty: 8,
+            severity: 'moderate',
+            reason: 'Marine stinger hazard restricts open ocean swimming.',
+          };
+        case 'MIDGE_SANDFLY':
+          return {
+            weatherPenalty: 16,
+            overallScorePenalty: 8,
+            severity: 'moderate',
+            reason: 'High density of biting insects severely impairs outdoor recreation.',
+          };
+        case 'VOLCANIC_VOG':
+          return {
+            weatherPenalty: 18,
+            overallScorePenalty: 9,
+            severity: 'moderate',
+            reason: 'Volcanic vog and sulfur emissions compromise air clarity and health.',
+          };
+        case 'CICADA':
+          return {
+            weatherPenalty: 10,
+            overallScorePenalty: 5,
+            severity: 'moderate',
+            reason: 'High acoustic noise levels and insect abundance.',
+          };
+        default:
+          return {
+            weatherPenalty: 15,
+            overallScorePenalty: 7,
+            severity: 'moderate',
+            reason: 'Active natural phenomenon degrades destination comfort.',
+          };
+      }
+    case 'OVERCROWDED_PEAK':
+      return {
+        weatherPenalty: 8,
+        overallScorePenalty: 6,
+        severity: 'moderate',
+        reason: 'Extreme crowd density and travel congestion degrade relaxation.',
+      };
+    default:
+      return {
+        weatherPenalty: 12,
+        overallScorePenalty: 6,
+        severity: 'moderate',
+        reason: 'Seasonal warning advisory active.',
+      };
+  }
+}
+
 /**
  * Anonymous Gregorian Computus algorithm to calculate Easter Sunday for any year.
  * Used for dynamic calculation of Carnival, Mardi Gras, Holy Week, and Spring Break windows worldwide.
