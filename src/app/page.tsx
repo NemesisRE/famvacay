@@ -47,7 +47,6 @@ import {
 } from 'lucide-react';
 import { differenceInYears, addDays } from 'date-fns';
 import { CandidateWindow, DestinationType, TravelVehicle, BoardType } from '@/lib/optimizer/types';
-import { getDestinationProfile } from '@/lib/optimizer/weather';
 import { curateDistinctAlternativeWindows } from '@/lib/optimizer/curation';
 import { MetricExplanationPopover } from '@/components/metrics/MetricExplanationPopover';
 import { useI18n } from '@/lib/i18n/i18n-context';
@@ -1168,7 +1167,6 @@ export default function HomePage() {
     }
 
     const groups = Array.from(map.entries()).map(([destCode, windows]) => {
-      const profile = getDestinationProfile(destCode);
       const featured = windows[0];
       const styles = getDestinationVacationStyles(destCode, featured.flightDistanceKm);
       const lowestPrice = Math.min(...windows.map((w) => w.estimatedTotalCost));
@@ -1182,7 +1180,7 @@ export default function HomePage() {
         destinationCity: featured.destinationCity,
         destinationCountry: featured.destinationCountry,
         destinationSafety: featured.destinationSafety || featured.safetyAssessment,
-        vacationType: profile?.type,
+        vacationType: styles[0] || 'CITY',
         vacationStyles: styles,
         featuredWindow: featured,
         alternativeWindows,
@@ -1796,7 +1794,15 @@ export default function HomePage() {
                       return (
                         <div
                           key={item.type}
+                          role="button"
+                          tabIndex={0}
                           onClick={() => toggleVacationStyle(item.type)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              toggleVacationStyle(item.type);
+                            }
+                          }}
                           className={`relative flex flex-col justify-between p-2.5 sm:p-3 rounded-xl border text-xs sm:text-sm font-semibold transition cursor-pointer select-none shadow-2xs h-[82px] sm:h-[86px] ${
                             showBeachTempMenu && item.type === 'BEACH' ? 'z-30' : 'z-10'
                           } ${
@@ -1819,7 +1825,7 @@ export default function HomePage() {
                           </span>
 
                           {/* Bottom: Sub-option or category hint */}
-                          <div className="w-full text-left">
+                          <div className="w-full text-left" onClick={(e) => e.stopPropagation()}>
                             {item.type === 'BEACH' ? (
                               isSelected ? (
                                 <BeachTemperaturePopover
@@ -1908,7 +1914,15 @@ export default function HomePage() {
                   return (
                     <div
                       key={v.type}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => toggleVehicle(v.type)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleVehicle(v.type);
+                        }
+                      }}
                       className={`relative flex flex-col justify-between p-2.5 sm:p-3 rounded-xl border text-xs sm:text-sm font-semibold transition cursor-pointer select-none shadow-2xs h-[82px] sm:h-[86px] ${
                         showFlightStopsMenu && v.type === 'PLANE' ? 'z-30' : 'z-10'
                       } ${
@@ -1931,7 +1945,7 @@ export default function HomePage() {
                       </span>
 
                       {/* Bottom: Vehicle Hint or Inline Popover */}
-                      <div className="w-full text-left">
+                      <div className="w-full text-left" onClick={(e) => e.stopPropagation()}>
                         {v.type === 'PLANE' ? (
                           isSelected ? (
                             <FlightStopsPopover

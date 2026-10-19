@@ -30,17 +30,25 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 function detectBrowserLocale(): SupportedLocale {
   if (typeof window === 'undefined') return DEFAULT_LOCALE;
 
-  const stored = localStorage.getItem('famvacay_locale') as SupportedLocale;
-  if (stored && ['en', 'de', 'fr', 'es', 'it'].includes(stored)) {
-    return stored;
+  try {
+    const stored = localStorage.getItem('famvacay_locale') as SupportedLocale;
+    if (stored && ['en', 'de', 'fr', 'es', 'it'].includes(stored)) {
+      return stored;
+    }
+  } catch {
+    // Gracefully handle private browsing or restricted storage access
   }
 
-  const browserLanguages = navigator.languages || [navigator.language];
-  for (const lang of browserLanguages) {
-    const code = lang.split('-')[0].toLowerCase() as SupportedLocale;
-    if (['en', 'de', 'fr', 'es', 'it'].includes(code)) {
-      return code;
+  try {
+    const browserLanguages = navigator.languages || (navigator.language ? [navigator.language] : []);
+    for (const lang of browserLanguages) {
+      const code = lang.split('-')[0].toLowerCase() as SupportedLocale;
+      if (['en', 'de', 'fr', 'es', 'it'].includes(code)) {
+        return code;
+      }
     }
+  } catch {
+    // Non-critical language detection fallback
   }
 
   return DEFAULT_LOCALE;
@@ -50,15 +58,25 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<SupportedLocale>(DEFAULT_LOCALE);
 
   useEffect(() => {
-    const detected = detectBrowserLocale();
-    setLocaleState(detected);
+    try {
+      const detected = detectBrowserLocale();
+      setLocaleState(detected);
+    } catch {
+      // Keep default locale
+    }
   }, []);
 
   const setLocale = (newLocale: SupportedLocale) => {
     setLocaleState(newLocale);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('famvacay_locale', newLocale);
-      document.documentElement.lang = newLocale;
+      try {
+        localStorage.setItem('famvacay_locale', newLocale);
+      } catch {
+        // Ignore localStorage quota or access restrictions
+      }
+      try {
+        document.documentElement.lang = newLocale;
+      } catch {}
     }
   };
 

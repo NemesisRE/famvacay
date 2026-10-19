@@ -21,7 +21,9 @@ export function FlightStopsPopover({
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent | TouchEvent) {
+    if (!isOpen) return;
+
+    function handleClickOutside(event: MouseEvent | TouchEvent | PointerEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         onOpenChange(false);
       }
@@ -33,15 +35,11 @@ export function FlightStopsPopover({
       }
     }
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('touchstart', handleClickOutside);
-      document.addEventListener('keydown', handleKeyDown);
-    }
+    document.addEventListener('pointerdown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('pointerdown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onOpenChange]);
@@ -61,7 +59,6 @@ export function FlightStopsPopover({
           e.stopPropagation();
           onOpenChange(!isOpen);
         }}
-        onTouchStart={(e) => e.stopPropagation()}
         aria-expanded={isOpen}
         aria-haspopup="dialog"
         className={`w-full py-0.5 px-1.5 rounded text-[10px] font-bold flex items-center justify-between border cursor-pointer ${
@@ -87,7 +84,6 @@ export function FlightStopsPopover({
           role="dialog"
           aria-label={t.home.flightTransitPreference}
           onClick={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
           className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1.5 z-50 p-2.5 bg-white rounded-xl shadow-xl border border-blue-200 w-[270px] max-w-[calc(100vw-32px)] text-slate-800 animate-in fade-in slide-in-from-top-1 duration-150"
         >
           <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-blue-100">
@@ -103,7 +99,6 @@ export function FlightStopsPopover({
                   onSelect(undefined);
                   onOpenChange(false);
                 }}
-                onTouchStart={(e) => e.stopPropagation()}
                 className="text-[10px] text-blue-700 hover:text-blue-900 font-semibold cursor-pointer underline"
               >
                 {t.home.flightStopsAny}
@@ -129,7 +124,6 @@ export function FlightStopsPopover({
                     onSelect(opt.val);
                     onOpenChange(false);
                   }}
-                  onTouchStart={(e) => e.stopPropagation()}
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold text-left flex items-center justify-between transition cursor-pointer ${
                     isSelected
                       ? 'bg-blue-600 text-white shadow-2xs font-bold ring-2 ring-blue-500/25'

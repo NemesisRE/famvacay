@@ -82,21 +82,21 @@ export function LocationInput({
     return () => clearTimeout(timer);
   }, [query, isFocused]);
 
-  // Handle outside click or tap to close dropdown ONLY
+  // Handle outside click or tap to close dropdown ONLY when dropdown is open
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent | TouchEvent) {
+    if (!showDropdown) return;
+
+    function handleClickOutside(event: MouseEvent | TouchEvent | PointerEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
         setIsFocused(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
+    document.addEventListener('pointerdown', handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('pointerdown', handleClickOutside);
     };
-  }, []);
+  }, [showDropdown]);
 
   const validateCurrentQuery = async () => {
     const q = query.trim();

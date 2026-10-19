@@ -12,7 +12,9 @@ export function LanguageSelector() {
 
   // Close on outside click or tap
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent | TouchEvent) {
+    if (!isOpen) return;
+
+    function handleClickOutside(event: MouseEvent | TouchEvent | PointerEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
@@ -24,15 +26,11 @@ export function LanguageSelector() {
       }
     }
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('touchstart', handleClickOutside);
-      document.addEventListener('keydown', handleKeyDown);
-    }
+    document.addEventListener('pointerdown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('pointerdown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen]);

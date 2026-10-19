@@ -95,20 +95,20 @@ export function MultiDestinationInput({
     return () => clearTimeout(timer);
   }, [inputVal, locale]);
 
-  // Handle outside click or tap
+  // Handle outside click or tap ONLY when dropdown is open
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent | TouchEvent) {
+    if (!dropdownOpen) return;
+
+    function handleClickOutside(event: MouseEvent | TouchEvent | PointerEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setDropdownOpen(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
+    document.addEventListener('pointerdown', handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('pointerdown', handleClickOutside);
     };
-  }, []);
+  }, [dropdownOpen]);
 
   const addDestination = async (destInput: string) => {
     const clean = destInput.trim();

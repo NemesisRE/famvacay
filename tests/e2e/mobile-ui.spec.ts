@@ -31,7 +31,7 @@ test.describe('Mobile Viewport & UI Responsiveness', () => {
     expect(closedText).toMatch(/^[A-Z]{2}$/); // e.g. "DE" or "EN"
 
     // 2. Open dropdown and verify full language names are displayed
-    await langBtn.click();
+    await langBtn.tap();
     const dropdown = page.locator('div[role="listbox"]');
     await expect(dropdown).toBeVisible();
 
@@ -41,7 +41,7 @@ test.describe('Mobile Viewport & UI Responsiveness', () => {
     await expect(enOption).toBeVisible();
 
     // 3. Switch to English
-    await enOption.click();
+    await enOption.tap();
     await expect(dropdown).not.toBeVisible();
     await expect(langBtn).toHaveText('EN');
 
@@ -51,7 +51,7 @@ test.describe('Mobile Viewport & UI Responsiveness', () => {
 
     const addBlackoutBtn = page.locator('button:has-text("+ Add Blackout Period")');
     await expect(addBlackoutBtn).toBeVisible();
-    await addBlackoutBtn.click();
+    await addBlackoutBtn.tap();
     await expect(easterHolidayBtn).toBeVisible();
 
     // 5. Test vacation style selection & options (Beach and Alpine)
@@ -59,7 +59,7 @@ test.describe('Mobile Viewport & UI Responsiveness', () => {
     // Beach Min Temp button
     const tempBtn = page.locator('button:has-text("Any")').first();
     await expect(tempBtn).toBeVisible();
-    await tempBtn.click();
+    await tempBtn.tap();
 
     const tempPopover = page.locator('div[role="dialog"]');
     await expect(tempPopover).toBeVisible();
@@ -71,21 +71,21 @@ test.describe('Mobile Viewport & UI Responsiveness', () => {
 
     // Select 24°C
     const temp24 = tempPopover.locator('button:has-text("24°C")');
-    await temp24.click();
+    await temp24.tap();
     await expect(tempPopover).not.toBeVisible();
     await expect(page.locator('button:has-text("≥ 24°C")')).toBeVisible();
 
     // Snow Guarantee toggle inside Alpine card
     const snowBtn = page.locator('button:has-text("No Guarantee")').first();
     await expect(snowBtn).toBeVisible();
-    await snowBtn.click();
+    await snowBtn.tap();
     await expect(page.locator('button:has-text("Snow Guarantee")')).toBeVisible();
 
     // 6. Test Travel Vehicle buttons & FlightStopsPopover
     // Airplane is selected by default; open flight transit preference popover
     const flightStopsBtn = page.locator('button[aria-haspopup="dialog"]').filter({ hasText: /Any|Beliebig|Non-Stop|Direkt/ }).first();
     await expect(flightStopsBtn).toBeVisible();
-    await flightStopsBtn.click();
+    await flightStopsBtn.tap();
 
     // Verify popover dialog is visible and stays strictly within mobile viewport boundaries
     const flightStopsPopover = page.locator('div[role="dialog"]').last();
@@ -99,7 +99,7 @@ test.describe('Mobile Viewport & UI Responsiveness', () => {
     // Select "Direct Flights Only (0 Stops)"
     const directOnlyBtn = flightStopsPopover.locator('button:has-text("Direct Flights Only"), button:has-text("Direktflüge")').first();
     await expect(directOnlyBtn).toBeVisible();
-    await directOnlyBtn.click();
+    await directOnlyBtn.tap();
     await expect(flightStopsPopover).not.toBeVisible();
 
     // Verify button label updated
@@ -108,12 +108,12 @@ test.describe('Mobile Viewport & UI Responsiveness', () => {
     // Toggle Car / Camper
     const carBtn = page.locator('div:has-text("Car / Camper"), div:has-text("Auto / Camper")').last();
     await expect(carBtn).toBeVisible();
-    await carBtn.click();
+    await carBtn.tap();
 
     // 7. Test Add Child button
     const addChildBtn = page.locator('button:has-text("+ Add Child"), button:has-text("+ Kind hinzufügen")');
     await expect(addChildBtn).toBeVisible();
-    await addChildBtn.click();
+    await addChildBtn.tap();
     await expect(page.locator('input[type="date"]').first()).toBeVisible();
     await expect(page.locator('button:has-text("Add Child"), button:has-text("Kind hinzufügen")').first()).toBeVisible();
 
