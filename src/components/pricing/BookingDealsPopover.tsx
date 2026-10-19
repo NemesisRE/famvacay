@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   useFloating,
   autoUpdate,
@@ -87,13 +87,14 @@ export function BookingDealsPopover({
     setSelectedPortalIds(portals.map((p) => p.id));
   }, [countryCode]);
 
+  const sDate = startDate || '';
+  const eDate = endDate || '';
+
   if (!pricingDetails) {
     return null;
   }
 
   const { flight, lodging } = pricingDetails;
-  const sDate = startDate || new Date().toISOString().split('T')[0];
-  const eDate = endDate || new Date(Date.now() + 10 * 86400000).toISOString().split('T')[0];
 
   const togglePortal = (portalId: string) => {
     let nextIds: string[];

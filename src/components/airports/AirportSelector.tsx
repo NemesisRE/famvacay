@@ -69,6 +69,10 @@ export function AirportSelector({
       .catch(() => {});
   }, [selectedAirports, airportDetails, locale]);
 
+  const destinationsKey = JSON.stringify(targetDestinations);
+  const coordLat = coordinates?.lat;
+  const coordLon = coordinates?.lon;
+
   // Fetch recommended airports and prune stale airports when coordinates or destinations change
   useEffect(() => {
     let active = true;
@@ -128,7 +132,7 @@ export function AirportSelector({
     return () => {
       active = false;
     };
-  }, [coordinates?.lat, coordinates?.lon, JSON.stringify(targetDestinations), locale]);
+  }, [coordLat, coordLon, destinationsKey, locale]);
 
   // Debounced airport search
   useEffect(() => {
@@ -166,7 +170,7 @@ export function AirportSelector({
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, coordinates?.lat, coordinates?.lon, locale]);
+  }, [searchQuery, coordLat, coordLon, locale]);
 
   // Close dropdown on outside click
   useEffect(() => {

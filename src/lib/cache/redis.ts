@@ -6,11 +6,11 @@
  * - Automatic in-memory fallback for offline/browser/test environments
  */
 
-declare const __non_webpack_require__: any;
+import Redis from 'ioredis';
 
-let redisInstance: any = null;
+let redisInstance: Redis | null = null;
 
-function getRedisClient(): any {
+function getRedisClient(): Redis | null {
   if (typeof window !== 'undefined') {
     return null; // Client-side execution uses memory cache fallback
   }
@@ -20,10 +20,6 @@ function getRedisClient(): any {
   }
 
   try {
-    // Dynamic runtime require prevents bundlers (Webpack / Turbopack)
-    // from tracing Node 'net' and 'tls' modules into client browser bundles.
-    const req = typeof __non_webpack_require__ !== 'undefined' ? __non_webpack_require__ : require;
-    const Redis = req('ioredis');
     const cacheUrl =
       process.env.VALKEY_URL ||
       process.env.DRAGONFLY_URL ||
@@ -108,19 +104,39 @@ export const redis = {
   },
   ping: async () => {
     const client = getRedisClient();
-    return client ? client.ping() : 'PONG';
+    if (!client) return 'PONG';
+    try {
+      return await client.ping();
+    } catch {
+      return 'PONG';
+    }
   },
   get: async (key: string) => {
     const client = getRedisClient();
-    return client ? client.get(key) : null;
+    if (!client) return null;
+    try {
+      return await client.get(key);
+    } catch {
+      return null;
+    }
   },
   set: async (key: string, val: string) => {
     const client = getRedisClient();
-    return client ? client.set(key, val) : null;
+    if (!client) return null;
+    try {
+      return await client.set(key, val);
+    } catch {
+      return null;
+    }
   },
   setex: async (key: string, ttl: number, val: string) => {
     const client = getRedisClient();
-    return client ? client.setex(key, ttl, val) : null;
+    if (!client) return null;
+    try {
+      return await client.setex(key, ttl, val);
+    } catch {
+      return null;
+    }
   },
 };
 

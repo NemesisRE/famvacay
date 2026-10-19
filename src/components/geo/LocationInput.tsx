@@ -42,16 +42,15 @@ export function LocationInput({
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Sync external value changes
-  useEffect(() => {
-    if (value !== query) {
-      setQuery(value);
-      if (value && value.trim().length >= 2) {
-        setIsVerified(true);
-        setValidationWarning(null);
-      }
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
+    setQuery(value);
+    if (value && value.trim().length >= 2) {
+      setIsVerified(true);
+      setValidationWarning(null);
     }
-  }, [value]);
+  }
 
   // Debounced geocoding search
   useEffect(() => {

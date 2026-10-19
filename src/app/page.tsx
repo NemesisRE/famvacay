@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import {
   Plane,
@@ -48,7 +48,7 @@ import {
 import { differenceInYears, addDays } from 'date-fns';
 import { CandidateWindow, DestinationType, TravelVehicle, BoardType } from '@/lib/optimizer/types';
 import { getDestinationProfile } from '@/lib/optimizer/weather';
-import { curateDistinctAlternativeWindows } from '@/lib/optimizer/engine';
+import { curateDistinctAlternativeWindows } from '@/lib/optimizer/curation';
 import { MetricExplanationPopover } from '@/components/metrics/MetricExplanationPopover';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import {
@@ -224,15 +224,18 @@ export default function HomePage() {
     }
   };
 
-  const getFormattedLocalizedDestination = (destCode: string, fallbackName?: string) => {
-    const airport = getAirportByIata(destCode);
-    if (!airport) return fallbackName || destCode;
-    const locAirport = getLocalizedAirportDetails(airport, locale);
-    if (locAirport.city && locAirport.country) {
-      return `${locAirport.city}, ${locAirport.country}`;
-    }
-    return locAirport.name || fallbackName || destCode;
-  };
+  const getFormattedLocalizedDestination = useCallback(
+    (destCode: string, fallbackName?: string) => {
+      const airport = getAirportByIata(destCode);
+      if (!airport) return fallbackName || destCode;
+      const locAirport = getLocalizedAirportDetails(airport, locale);
+      if (locAirport.city && locAirport.country) {
+        return `${locAirport.city}, ${locAirport.country}`;
+      }
+      return locAirport.name || fallbackName || destCode;
+    },
+    [locale]
+  );
 
   // 3. Flight / Origin Airports State
   const [originAirports, setOriginAirports] = useState<string[]>(['FKB', 'STR', 'FRA']);
@@ -1177,7 +1180,7 @@ export default function HomePage() {
     });
 
     return groups;
-  }, [filteredResults, sortBy, locale]);
+  }, [filteredResults, sortBy, locale, getFormattedLocalizedDestination]);
 
   // Available Countries across destination groups
   const availableDestinationCountries = useMemo(() => {
