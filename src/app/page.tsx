@@ -66,6 +66,7 @@ import { FlightDetailsPopover } from '@/components/airports/FlightDetailsPopover
 import { getLocalizedSeasonalWarning } from '@/lib/optimizer/localized-warnings';
 import { DestinationMapModal } from '@/components/destination/DestinationMapModal';
 import { DestinationSafetyPopover } from '@/components/destination/DestinationSafetyPopover';
+import { DestinationCountryMultiSelect } from '@/components/destination/DestinationCountryMultiSelect';
 import { getDestinationVacationStyles } from '@/lib/optimizer/destination-styles';
 import { getAnnualSpecialTimes, SpecialHolidayPeriod } from '@/lib/holidays/special-dates';
 import { BeachTemperaturePopover } from '@/components/preferences/BeachTemperaturePopover';
@@ -1230,6 +1231,17 @@ export default function HomePage() {
     return Array.from(countrySet).sort((a, b) => a.localeCompare(b));
   }, [destinationGroups]);
 
+  // Country counts across destination groups
+  const destinationCountryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    destinationGroups.forEach((g) => {
+      if (g.destinationCountry) {
+        counts[g.destinationCountry] = (counts[g.destinationCountry] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [destinationGroups]);
+
   // Filtered Destination Groups (filtered by search input and country filter)
   const filteredDestinationGroups = useMemo(() => {
     let list = destinationGroups;
@@ -1490,7 +1502,34 @@ export default function HomePage() {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2.5 text-xs text-slate-500">
+          </div>
+
+          {/* Price & Travel Portal Deals Section */}
+          <div className="flex flex-col sm:items-end justify-between gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 text-left sm:text-right">
+            <div>
+              <span className="text-[11px] font-medium text-slate-500 block">
+                {t.home.estFamilyCost}
+              </span>
+              <div className="flex items-baseline gap-2 sm:justify-end flex-wrap">
+                <span className="text-2xl font-black text-slate-900 tracking-tight">
+                  {formatCurrency(win.estimatedTotalCost)}
+                </span>
+                <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">
+                  (~{formatCurrency(win.pricePerPerson)} / {t.home.perPerson})
+                </span>
+              </div>
+              <span className="block text-[10px] text-slate-400 mt-0.5">
+                {t.home.flightAndLodgingIncluded}
+              </span>
+              {win.effectiveCost && win.mealPlanValue && win.mealPlanValue > 0 && win.boardType === 'ALL_INCLUSIVE' && (
+                <div className="text-[10px] text-emerald-700 font-semibold sm:text-right mt-1 flex items-center gap-1 sm:justify-end">
+                  <Utensils className="w-2.5 h-2.5" />
+                  <span>{t.home.boardTypeSavingsBadge}: ~€{win.mealPlanValue}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="w-full sm:w-auto flex flex-wrap items-center gap-2 sm:justify-end mt-1">
               <FlightDetailsPopover
                 originAirport={win.originAirport}
                 destinationAirport={win.destinationAirport}
@@ -1521,35 +1560,6 @@ export default function HomePage() {
                 directFlightPremiumMultiplier={win.directFlightPremium}
                 connectingSavingsDiscount={win.pricingDetails?.flight?.connectingSavingsDiscount}
               />
-            </div>
-          </div>
-
-          {/* Price & Travel Portal Deals Section */}
-          <div className="flex flex-col sm:items-end justify-between gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 text-left sm:text-right">
-            <div>
-              <span className="text-[11px] font-medium text-slate-500 block">
-                {t.home.estFamilyCost}
-              </span>
-              <div className="flex items-baseline gap-2 sm:justify-end flex-wrap">
-                <span className="text-2xl font-black text-slate-900 tracking-tight">
-                  {formatCurrency(win.estimatedTotalCost)}
-                </span>
-                <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">
-                  (~{formatCurrency(win.pricePerPerson)} / {t.home.perPerson})
-                </span>
-              </div>
-              <span className="block text-[10px] text-slate-400 mt-0.5">
-                {t.home.flightAndLodgingIncluded}
-              </span>
-              {win.effectiveCost && win.mealPlanValue && win.mealPlanValue > 0 && win.boardType === 'ALL_INCLUSIVE' && (
-                <div className="text-[10px] text-emerald-700 font-semibold sm:text-right mt-1 flex items-center gap-1 sm:justify-end">
-                  <Utensils className="w-2.5 h-2.5" />
-                  <span>{t.home.boardTypeSavingsBadge}: ~€{win.mealPlanValue}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="w-full sm:w-auto flex sm:justify-end">
               <BookingDealsPopover
                 pricingDetails={win.pricingDetails}
                 estimatedTotalCost={win.estimatedTotalCost}
@@ -2523,19 +2533,21 @@ export default function HomePage() {
                               );
                             })}
                           </select>
-                          {isMonthActive && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedMonth('ALL');
-                                setCurrentPage(1);
-                              }}
-                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
-                              title="Zurücksetzen"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                            {isMonthActive && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedMonth('ALL');
+                                  setCurrentPage(1);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                title="Zurücksetzen"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -2568,19 +2580,21 @@ export default function HomePage() {
                             <option value="NATURE">{t.home.vacationKindNature}</option>
                             <option value="LONGRANGE">{t.home.vacationKindLongrange}</option>
                           </select>
-                          {isStyleActive && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setResultStyleFilter('ALL');
-                                setCurrentPage(1);
-                              }}
-                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
-                              title="Zurücksetzen"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                            {isStyleActive && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setResultStyleFilter('ALL');
+                                  setCurrentPage(1);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                title="Zurücksetzen"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -2613,19 +2627,21 @@ export default function HomePage() {
                             <option value="LONG">{t.home.distLong}</option>
                             <option value="INTERCONTINENTAL">{t.home.distIntercontinental}</option>
                           </select>
-                          {isDistanceActive && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDistanceFilter('ALL');
-                                setCurrentPage(1);
-                              }}
-                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
-                              title="Zurücksetzen"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                            {isDistanceActive && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDistanceFilter('ALL');
+                                  setCurrentPage(1);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                title="Zurücksetzen"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -2657,19 +2673,21 @@ export default function HomePage() {
                             <option value="TRAIN">{t.home.vehicleTrain}</option>
                             <option value="BUS">{t.home.vehicleBus}</option>
                           </select>
-                          {isVehicleActive && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setVehicleFilter('ALL');
-                                setCurrentPage(1);
-                              }}
-                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
-                              title="Zurücksetzen"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                            {isVehicleActive && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setVehicleFilter('ALL');
+                                  setCurrentPage(1);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                title="Zurücksetzen"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -2698,19 +2716,21 @@ export default function HomePage() {
                             <option value="SAFE_ONLY">{t.home.safetyFilterSafeOnly}</option>
                             <option value="ALL">{t.home.safetyFilterAll}</option>
                           </select>
-                          {isSafetyActive && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSafetyFilter('SAFE_ONLY');
-                                setCurrentPage(1);
-                              }}
-                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
-                              title="Zurücksetzen"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                            {isSafetyActive && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSafetyFilter('SAFE_ONLY');
+                                  setCurrentPage(1);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                title="Zurücksetzen"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -2739,19 +2759,21 @@ export default function HomePage() {
                             <option value="CLEAN_ONLY">{t.home.warningsFilterCleanOnly}</option>
                             <option value="ALL">{t.home.warningsFilterAll}</option>
                           </select>
-                          {isWarningActive && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setWarningFilter('CLEAN_ONLY');
-                                setCurrentPage(1);
-                              }}
-                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
-                              title="Zurücksetzen"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                            {isWarningActive && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setWarningFilter('CLEAN_ONLY');
+                                  setCurrentPage(1);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                title="Zurücksetzen"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -2783,19 +2805,21 @@ export default function HomePage() {
                             <option value="BREAKFAST">{t.home.boardTypeBreakfast}</option>
                             <option value="ROOM_ONLY">{t.home.boardTypeRoomOnly}</option>
                           </select>
-                          {isBoardTypeActive && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setBoardTypeFilter('ALL');
-                                setCurrentPage(1);
-                              }}
-                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
-                              title="Zurücksetzen"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                            {isBoardTypeActive && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setBoardTypeFilter('ALL');
+                                  setCurrentPage(1);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                title="Zurücksetzen"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -2826,19 +2850,21 @@ export default function HomePage() {
                             <option value="600">{t.home.overlandDuration10h}</option>
                             <option value="840">{t.home.overlandDuration14h}</option>
                           </select>
-                          {isOverlandDurationActive && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOverlandDurationFilter('ALL');
-                                setCurrentPage(1);
-                              }}
-                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
-                              title="Zurücksetzen"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                            {isOverlandDurationActive && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOverlandDurationFilter('ALL');
+                                  setCurrentPage(1);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                title="Zurücksetzen"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -2868,19 +2894,21 @@ export default function HomePage() {
                             <option value="DIRECT_ONLY">{t.home.flightStopsDirectOnly}</option>
                             <option value="MAX_1_STOP">{t.home.flightStopsMax1}</option>
                           </select>
-                          {isFlightStopsActive && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setFlightStopsFilter('ALL');
-                                setCurrentPage(1);
-                              }}
-                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
-                              title="Zurücksetzen"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                            {isFlightStopsActive && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFlightStopsFilter('ALL');
+                                  setCurrentPage(1);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                title="Zurücksetzen"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -2909,19 +2937,21 @@ export default function HomePage() {
                             <option value="all">{t.home.filterAllDates}</option>
                             <option value="holidaysOnly">{t.home.filterSchoolHolidaysOnly}</option>
                           </select>
-                          {isSchoolHolidayActive && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSchoolHolidayFilter('all');
-                                setCurrentPage(1);
-                              }}
-                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
-                              title="Zurücksetzen"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                            {isSchoolHolidayActive && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSchoolHolidayFilter('all');
+                                  setCurrentPage(1);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                title="Zurücksetzen"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -2949,19 +2979,21 @@ export default function HomePage() {
                                 : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
                             }`}
                           />
-                          {isMaxCostActive && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setMaxCostFilter(undefined);
-                                setCurrentPage(1);
-                              }}
-                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
-                              title="Zurücksetzen"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                            {isMaxCostActive && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMaxCostFilter(undefined);
+                                  setCurrentPage(1);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                title="Zurücksetzen"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -2991,16 +3023,18 @@ export default function HomePage() {
                             <option value="pto">{t.home.sortPto}</option>
                             <option value="duration">{t.home.sortDuration}</option>
                           </select>
-                          {isSortActive && (
-                            <button
-                              type="button"
-                              onClick={() => setSortBy('score')}
-                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
-                              title="Zurücksetzen"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                            {isSortActive && (
+                              <button
+                                type="button"
+                                onClick={() => setSortBy('score')}
+                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                title="Zurücksetzen"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -3057,73 +3091,29 @@ export default function HomePage() {
                           </button>
                         )}
 
-                        {/* Multi-Select Country Pills (Single Unified Solution) */}
+                        {/* Multi-Select Country Dropdown */}
                         {availableDestinationCountries.length > 1 && (
-                          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 text-xs no-scrollbar flex-wrap">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedCountryFilters([])}
-                              className={`px-2.5 py-1 rounded-full text-xs transition cursor-pointer whitespace-nowrap ${
-                                selectedCountryFilters.length === 0
-                                  ? 'bg-blue-600 text-white shadow-xs font-bold'
-                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium'
-                              }`}
-                            >
-                              {t.home.allCountries}
-                            </button>
-                            {availableDestinationCountries.map((c) => {
-                              const count = destinationGroups.filter((g) => g.destinationCountry === c).length;
-                              const isSelected = selectedCountryFilters.includes(c);
-                              return (
-                                <button
-                                  key={c}
-                                  type="button"
-                                  onClick={() => toggleCountryFilter(c)}
-                                  className={`px-2.5 py-1 rounded-full text-xs transition cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                                    isSelected
-                                      ? 'bg-blue-600 text-white shadow-xs font-bold'
-                                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium'
-                                  }`}
-                                  title={isSelected ? `${c} abwählen` : `${c} filtern`}
-                                >
-                                  <span>{c}</span>
-                                  <span
-                                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                                      isSelected
-                                        ? 'bg-blue-700 text-white font-bold'
-                                        : 'bg-slate-200 text-slate-600'
-                                    }`}
-                                  >
-                                    {count}
-                                  </span>
-                                </button>
-                              );
-                            })}
-                          </div>
+                          <DestinationCountryMultiSelect
+                            availableCountries={availableDestinationCountries}
+                            selectedCountries={selectedCountryFilters}
+                            onChange={setSelectedCountryFilters}
+                            countryCounts={destinationCountryCounts}
+                          />
                         )}
                       </div>
 
-                      {/* Right side controls: Count badge & Compact Collapse/Expand All */}
-                      <div className="flex items-center gap-2 text-xs shrink-0 self-end sm:self-auto">
-                        <span className="font-semibold text-slate-600 text-xs whitespace-nowrap">
-                          <span className="font-bold text-blue-700">{filteredDestinationGroups.length}</span>
-                          {destinationGroups.length !== filteredDestinationGroups.length && (
-                            <span className="text-slate-400"> / {destinationGroups.length}</span>
-                          )}{' '}
-                          {t.home.destinationsCountBadge}
-                        </span>
-
-                        {filteredDestinationGroups.length > 0 && (
-                          <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
-                            <button
-                              type="button"
-                              onClick={expandAllDestinations}
-                              title={t.home.expandAllAlternativeDates}
-                              className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 text-blue-700 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer hover:border-blue-300 transition"
-                            >
-                              <ChevronsUpDown className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline text-[11px]">+</span>
-                            </button>
+                      {/* Right side controls: Compact Collapse/Expand All */}
+                      {filteredDestinationGroups.length > 0 && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={expandAllDestinations}
+                            title={t.home.expandAllAlternativeDates}
+                            className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 text-blue-700 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer hover:border-blue-300 transition"
+                          >
+                            <ChevronsUpDown className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline text-[11px]">+</span>
+                          </button>
                             <button
                               type="button"
                               onClick={collapseAllDestinations}
@@ -3137,7 +3127,6 @@ export default function HomePage() {
                         )}
                       </div>
                     </div>
-                  </div>
 
                   {/* Empty state when destination filter matches 0 */}
                   {filteredDestinationGroups.length === 0 ? (
