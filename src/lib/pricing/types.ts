@@ -26,6 +26,8 @@ export interface PricingLodgingQuote {
   nightlyRate: number;
   totalLodgingCost: number;
   propertyType?: string; // e.g. 'Family Resort', 'Apartment', 'Boutique Hotel'
+  boardType?: import('../optimizer/types').BoardType;
+  mealPlanValue?: number;
 }
 
 export interface DeepLinkUrls {
@@ -39,6 +41,9 @@ export interface AggregatedTripPricing {
   lodging: PricingLodgingQuote;
   totalCost: number;
   pricePerPerson: number;
+  boardType?: import('../optimizer/types').BoardType;
+  mealPlanValue?: number;
+  effectiveCost?: number;
   providerSource: string; // 'PortalAggregator' | 'AmadeusLive' | 'BenchmarkEstimator'
   isCachedBenchmark: boolean;
   deepLinks: DeepLinkUrls;

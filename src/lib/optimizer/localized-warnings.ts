@@ -61,6 +61,45 @@ export function getLocalizedSeasonalWarning(
           : (warning.fallbackMessage || t.home.seasonWarningCrowdedPeakDesc),
       };
     }
+    case 'NATURAL_PHENOMENON': {
+      switch (warning.phenomenonType) {
+        case 'SARGASSUM':
+          return {
+            title: t.home.seasonWarningSargassumTitle || 'Sargassum Seaweed Bloom',
+            description: t.home.seasonWarningSargassumDesc || warning.fallbackMessage,
+          };
+        case 'RED_TIDE':
+          return {
+            title: t.home.seasonWarningRedTideTitle || 'Red Tide / Algal Bloom',
+            description: t.home.seasonWarningRedTideDesc || warning.fallbackMessage,
+          };
+        case 'JELLYFISH':
+          return {
+            title: t.home.seasonWarningJellyfishTitle || 'Marine Stinger / Jellyfish Swarms',
+            description: t.home.seasonWarningJellyfishDesc || warning.fallbackMessage,
+          };
+        case 'MIDGE_SANDFLY':
+          return {
+            title: t.home.seasonWarningMidgeTitle || 'Midge & Sandfly Outbreak',
+            description: t.home.seasonWarningMidgeDesc || warning.fallbackMessage,
+          };
+        case 'CICADA':
+          return {
+            title: t.home.seasonWarningCicadaTitle || 'Periodical Cicada Emergence',
+            description: t.home.seasonWarningCicadaDesc || warning.fallbackMessage,
+          };
+        case 'VOLCANIC_VOG':
+          return {
+            title: t.home.seasonWarningVogTitle || 'Volcanic Activity & Vog Advisory',
+            description: t.home.seasonWarningVogDesc || warning.fallbackMessage,
+          };
+        default:
+          return {
+            title: t.home.seasonWarningNaturalPhenomenonTitle || 'Natural Phenomenon',
+            description: warning.fallbackMessage,
+          };
+      }
+    }
     default:
       return {
         title: warning.seasonType,

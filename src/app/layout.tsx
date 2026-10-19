@@ -7,8 +7,8 @@ import { LanguageSelector } from '@/components/language-selector';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'FamVacay - Family Vacation Optimizer',
-  description: 'Self-hostable vacation window optimization engine leveraging school holiday arbitrage, weather models, and PTO bridge days.',
+  title: 'FamVacay - Vacation Optimizer',
+  description: 'Self-hostable vacation window optimization engine leveraging school holidays, departure savings, weather models, and PTO bridge days.',
 };
 
 export default function RootLayout({
@@ -41,7 +41,7 @@ export default function RootLayout({
             </main>
             <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
-                <span>FamVacay — Family Vacation &amp; Holiday Arbitrage Engine</span>
+                <span>FamVacay — Vacation Planning &amp; Travel Optimization</span>
                 <span className="hidden sm:inline">•</span>
                 <a
                   href="https://github.com/example/famvac"

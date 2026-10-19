@@ -44,6 +44,8 @@ export interface BlackoutRange {
   reason?: string;
 }
 
+export type BoardType = 'ALL_INCLUSIVE' | 'HALF_BOARD' | 'BREAKFAST' | 'ROOM_ONLY';
+
 export interface TripPlanInput {
   id?: string;
   destinationType?: DestinationType;
@@ -61,6 +63,8 @@ export interface TripPlanInput {
   travelVehicles?: TravelVehicle[];  // Multiple selectable travel modes (e.g. ['PLANE', 'CAR', 'TRAIN'])
   minBeachTemp?: number;             // Minimum daytime temperature for sun/beach vacations (e.g. 20, 22, 25°C)
   requireSnow?: boolean;             // If true, strictly requires snow / winter sports conditions for alpine vacations
+  preferredBoardType?: BoardType;    // Board type preference (e.g. 'ALL_INCLUSIVE', 'BREAKFAST')
+  maxOverlandTravelMinutes?: number; // Maximum overland travel duration in minutes (e.g. 360 for 6h)
   userProfile: UserProfileInput;
   searchBlackouts?: BlackoutRange[]; // Additional search-specific blackouts
 }
@@ -143,8 +147,14 @@ export interface CandidateWindow {
   availableVehicles?: TravelVehicle[];
   vehicleDetails?: VehicleTravelMetrics;
 
-  // Travel Safety & Security Assessment (Amadeus Safe Place / Travel Advisory)
+  // Travel Safety & Security Assessment (baseline destination-level attribute)
+  destinationSafety?: import('../safety/safety-service').DestinationSafetyAssessment;
   safetyAssessment?: import('../safety/safety-service').DestinationSafetyAssessment;
+
+  // Board Type & Fair Meal Plan Value Calculation
+  boardType?: BoardType;
+  mealPlanValue?: number;
+  effectiveCost?: number;
 
   // Normalized scores (0 - 100)
   scoreBreakdown: {

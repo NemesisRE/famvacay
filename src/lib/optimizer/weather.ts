@@ -145,14 +145,30 @@ export const POPULAR_DESTINATIONS: Record<string, DestinationProfile> = new Prox
   }
 );
 
+export type SeasonalWarningType =
+  | 'MONSOON'
+  | 'EXTREME_HEAT'
+  | 'TYPHOON_HURRICANE'
+  | 'OVERCROWDED_PEAK'
+  | 'NATURAL_PHENOMENON';
+
+export type NaturalPhenomenonType =
+  | 'SARGASSUM'
+  | 'RED_TIDE'
+  | 'JELLYFISH'
+  | 'MIDGE_SANDFLY'
+  | 'CICADA'
+  | 'VOLCANIC_VOG';
+
 export interface SeasonalConstraintWarning {
   destinationCode: string;
-  seasonType: 'MONSOON' | 'EXTREME_HEAT' | 'TYPHOON_HURRICANE' | 'OVERCROWDED_PEAK';
+  seasonType: SeasonalWarningType;
   monthRange: number[]; // Months 0-11
   messageKey: string;
   fallbackMessage: string;
   eventName?: string;
   eventKey?: string;
+  phenomenonType?: NaturalPhenomenonType;
 }
 
 /**
@@ -589,6 +605,163 @@ export function getDestinationSeasonalWarning(
       monthRange: [5, 6, 7, 8, 9],
       messageKey: 'seasonWarningMonsoon',
       fallbackMessage: `Monsoon season: Heavy tropical downpours and high humidity (${effectiveRainyDays} rain days).`,
+    };
+  }
+
+  // 6. Seasonal & Local Natural Phenomenon Warnings
+  // A) Sargassum Seaweed Blooms (Caribbean & Gulf of Mexico coastlines in spring/summer)
+  const isSargassumCorridor =
+    lat >= 10 && lat <= 26 && lon >= -90 && lon <= -58 && altitudeMeters <= 120;
+  const isSargassumSeason = monthIndex >= 3 && monthIndex <= 7; // April to August
+  if (isSargassumCorridor && isSargassumSeason && (weather.waterTempC || 0) >= 24) {
+    return {
+      destinationCode,
+      seasonType: 'NATURAL_PHENOMENON',
+      phenomenonType: 'SARGASSUM',
+      monthRange: [3, 4, 5, 6, 7],
+      messageKey: 'seasonWarningSargassum',
+      fallbackMessage:
+        'Sargassum seaweed bloom: Heavy brown seaweed accumulation on Atlantic and Caribbean beaches, organic odor, and periodic swimming restrictions.',
+    };
+  }
+
+  // B) Red Tide / Harmful Algal Blooms (Gulf Coast of Florida & Texas in late summer/autumn)
+  const isRedTideCorridor =
+    lat >= 24 && lat <= 30.5 && lon >= -98 && lon <= -81 && altitudeMeters <= 100;
+  const isRedTideSeason = monthIndex >= 7 && monthIndex <= 10; // August to November
+  if (isRedTideCorridor && isRedTideSeason) {
+    return {
+      destinationCode,
+      seasonType: 'NATURAL_PHENOMENON',
+      phenomenonType: 'RED_TIDE',
+      monthRange: [7, 8, 9, 10],
+      messageKey: 'seasonWarningRedTide',
+      fallbackMessage:
+        'Red tide (harmful algal bloom): Elevated Karenia brevis concentrations can trigger respiratory irritation, beach odor, and localized swimming advisories.',
+    };
+  }
+
+  // C) Jellyfish Swarms (Tropical Stinger Season in Northern Australia OR Mauve Stinger heatwaves in Mediterranean)
+  const isAusStingerZone =
+    lat <= -10 && lat >= -26 && lon >= 120 && lon <= 155;
+  const isAusStingerSeason = monthIndex >= 10 || monthIndex <= 4; // Nov to May
+  if (isAusStingerZone && isAusStingerSeason) {
+    return {
+      destinationCode,
+      seasonType: 'NATURAL_PHENOMENON',
+      phenomenonType: 'JELLYFISH',
+      monthRange: [10, 11, 0, 1, 2, 3, 4],
+      messageKey: 'seasonWarningJellyfish',
+      fallbackMessage:
+        'Marine stinger season: Hazardous box jellyfish and Irukandji present in coastal waters. Stinger suits and netted beach enclosures advised.',
+    };
+  }
+
+  const isMedJellyfishZone =
+    lat >= 35 && lat <= 44 && lon >= -6 && lon <= 25 && altitudeMeters <= 100;
+  const isMedJellyfishSeason = (monthIndex === 6 || monthIndex === 7) && (weather.waterTempC || 0) >= 28;
+  if (isMedJellyfishZone && isMedJellyfishSeason) {
+    return {
+      destinationCode,
+      seasonType: 'NATURAL_PHENOMENON',
+      phenomenonType: 'JELLYFISH',
+      monthRange: [6, 7],
+      messageKey: 'seasonWarningJellyfish',
+      fallbackMessage:
+        'Pelagia jellyfish swarms: Warm coastal waters trigger seasonal mauve stinger blooms. Check local beach flags and jellyfish safety nets.',
+    };
+  }
+
+  // D) Midge & Sandfly Outbreaks (Scottish Highlands in summer OR New Zealand South Island in summer)
+  const isHighlandMidgeZone =
+    lat >= 56 && lat <= 59.5 && lon >= -8 && lon <= -3;
+  const isHighlandMidgeSeason = monthIndex >= 4 && monthIndex <= 7; // Late May - August
+  if (isHighlandMidgeZone && isHighlandMidgeSeason) {
+    return {
+      destinationCode,
+      seasonType: 'NATURAL_PHENOMENON',
+      phenomenonType: 'MIDGE_SANDFLY',
+      monthRange: [4, 5, 6, 7],
+      messageKey: 'seasonWarningMidge',
+      fallbackMessage:
+        'Highland midge season: Dense biting midge swarms common in mornings, evenings, and calm overcast weather. Insect repellent recommended.',
+    };
+  }
+
+  const isNZSandflyZone =
+    lat <= -41 && lat >= -47 && lon >= 166 && lon <= 173;
+  const isNZSandflySeason = monthIndex === 11 || monthIndex === 0 || monthIndex === 1; // Dec - Feb
+  if (isNZSandflyZone && isNZSandflySeason) {
+    return {
+      destinationCode,
+      seasonType: 'NATURAL_PHENOMENON',
+      phenomenonType: 'MIDGE_SANDFLY',
+      monthRange: [11, 0, 1],
+      messageKey: 'seasonWarningMidge',
+      fallbackMessage:
+        'Sandfly active season: Biting blackflies / sandflies prevalent near lakes, rivers, and coastal fjords. DEET or picaridin insect repellent advised.',
+    };
+  }
+
+  // E) Periodical Cicada Brood Emergences (Eastern & Midwestern United States in May - June)
+  const isCicadaZone =
+    lat >= 35 && lat <= 42.5 && lon >= -92 && lon <= -75 && countryCode === 'US';
+  const isCicadaSeason = monthIndex === 4 || monthIndex === 5; // May - June
+  if (isCicadaZone && isCicadaSeason) {
+    return {
+      destinationCode,
+      seasonType: 'NATURAL_PHENOMENON',
+      phenomenonType: 'CICADA',
+      monthRange: [4, 5],
+      messageKey: 'seasonWarningCicada',
+      fallbackMessage:
+        'Periodical cicada emergence: High densities of singing cicadas in wooded parks and suburban nature trails, reaching acoustic volumes over 90 dB.',
+    };
+  }
+
+  // F) Volcanic Activity & Volcanic Smog (Vog)
+  // Hawaii Big Island (KOA, ITO)
+  const isHawaiiVog =
+    lat >= 19 && lat <= 20.5 && lon >= -156.5 && lon <= -154.5;
+  if (isHawaiiVog) {
+    return {
+      destinationCode,
+      seasonType: 'NATURAL_PHENOMENON',
+      phenomenonType: 'VOLCANIC_VOG',
+      monthRange: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      messageKey: 'seasonWarningVog',
+      fallbackMessage:
+        'Volcanic smog (Vog) advisory: Sulfur dioxide emissions from active volcanic vents can cause haze and respiratory sensitivity downwind.',
+    };
+  }
+
+  // Reykjanes / Iceland volcanic rift (KEF)
+  const isIcelandVolcanic =
+    lat >= 63.8 && lat <= 64.5 && lon >= -23 && lon <= -21;
+  if (isIcelandVolcanic) {
+    return {
+      destinationCode,
+      seasonType: 'NATURAL_PHENOMENON',
+      phenomenonType: 'VOLCANIC_VOG',
+      monthRange: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      messageKey: 'seasonWarningVog',
+      fallbackMessage:
+        'Volcanic fissure & gas emission alert: Localized seismic activity and sulfur dioxide plumes near the Reykjanes volcanic systems.',
+    };
+  }
+
+  // Mount Etna / Sicily (CTA)
+  const isEtnaVolcanic =
+    lat >= 37.3 && lat <= 38.0 && lon >= 14.8 && lon <= 15.4;
+  if (isEtnaVolcanic) {
+    return {
+      destinationCode,
+      seasonType: 'NATURAL_PHENOMENON',
+      phenomenonType: 'VOLCANIC_VOG',
+      monthRange: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      messageKey: 'seasonWarningVog',
+      fallbackMessage:
+        'Mount Etna volcanic activity: Periodic ash plumes, summit degassing, and localized airspace observation notices.',
     };
   }
 

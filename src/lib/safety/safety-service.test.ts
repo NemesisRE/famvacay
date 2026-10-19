@@ -15,9 +15,12 @@ describe('Destination Safety & Security Service (Auswärtiges Amt & US State Dep
     // Mallorca / Spain
     expect(isDestinationSafeForVacation('PMI', 'ES')).toBe(true);
     const pmiAssessment = getDestinationSafetyAssessment('PMI', 'ES');
+    expect(pmiAssessment.isSafe).toBe(true);
     expect(pmiAssessment.isSafeForFamilies).toBe(true);
+    expect(pmiAssessment.countryCode).toBe('ES');
     expect(pmiAssessment.score).toBeGreaterThanOrEqual(75);
     expect(pmiAssessment.advisoryLevel).toBeLessThanOrEqual(2);
+    expect(pmiAssessment.advisoryTitle).toBeDefined();
 
     // Austria / Alps
     expect(isDestinationSafeForVacation('INN', 'AT')).toBe(true);

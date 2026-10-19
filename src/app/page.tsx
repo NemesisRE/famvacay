@@ -43,11 +43,13 @@ import {
   ChevronsUpDown,
   ChevronsDownUp,
   ShieldCheck,
+  Utensils,
 } from 'lucide-react';
 import { differenceInYears, addDays } from 'date-fns';
-import { CandidateWindow, DestinationType, TravelVehicle } from '@/lib/optimizer/types';
+import { CandidateWindow, DestinationType, TravelVehicle, BoardType } from '@/lib/optimizer/types';
 import { getDestinationProfile } from '@/lib/optimizer/weather';
 import { curateDistinctAlternativeWindows } from '@/lib/optimizer/engine';
+import { MetricExplanationPopover } from '@/components/metrics/MetricExplanationPopover';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import {
   COUNTRIES,
@@ -263,6 +265,8 @@ export default function HomePage() {
   const [minBeachTemp, setMinBeachTemp] = useState<number | undefined>(undefined);
   const [requireSnow, setRequireSnow] = useState<boolean>(false);
   const [showBeachTempMenu, setShowBeachTempMenu] = useState(false);
+  const [preferredBoardType, setPreferredBoardType] = useState<BoardType | undefined>(undefined);
+  const [maxOverlandDurationHours, setMaxOverlandDurationHours] = useState<number | undefined>(undefined);
 
   // 7. Blackout Dates (Starts empty by default, loaded from profile if configured)
   const [searchBlackouts, setSearchBlackouts] = useState<
@@ -300,6 +304,10 @@ export default function HomePage() {
   const [resultStyleFilter, setResultStyleFilter] = useState<DestinationType>('ALL');
   const [distanceFilter, setDistanceFilter] = useState<string>('ALL');
   const [vehicleFilter, setVehicleFilter] = useState<string>('ALL');
+  const [safetyFilter, setSafetyFilter] = useState<'SAFE_ONLY' | 'ALL'>('SAFE_ONLY');
+  const [warningFilter, setWarningFilter] = useState<'CLEAN_ONLY' | 'ALL'>('CLEAN_ONLY');
+  const [boardTypeFilter, setBoardTypeFilter] = useState<string>('ALL');
+  const [overlandDurationFilter, setOverlandDurationFilter] = useState<string>('ALL');
   const [showResultFilters, setShowResultFilters] = useState<boolean>(false);
   const [isDestinationSearchOpen, setIsDestinationSearchOpen] = useState<boolean>(false);
 
@@ -309,6 +317,10 @@ export default function HomePage() {
     if (resultStyleFilter !== 'ALL') count++;
     if (distanceFilter !== 'ALL') count++;
     if (vehicleFilter !== 'ALL') count++;
+    if (safetyFilter !== 'SAFE_ONLY') count++;
+    if (warningFilter !== 'CLEAN_ONLY') count++;
+    if (boardTypeFilter !== 'ALL') count++;
+    if (overlandDurationFilter !== 'ALL') count++;
     if (schoolHolidayFilter !== 'all') count++;
     if (maxCostFilter !== undefined && maxCostFilter > 0) count++;
     if (sortBy !== 'score') count++;
@@ -318,6 +330,10 @@ export default function HomePage() {
     resultStyleFilter,
     distanceFilter,
     vehicleFilter,
+    safetyFilter,
+    warningFilter,
+    boardTypeFilter,
+    overlandDurationFilter,
     schoolHolidayFilter,
     maxCostFilter,
     sortBy,
@@ -328,6 +344,10 @@ export default function HomePage() {
     setResultStyleFilter('ALL');
     setDistanceFilter('ALL');
     setVehicleFilter('ALL');
+    setSafetyFilter('SAFE_ONLY');
+    setWarningFilter('CLEAN_ONLY');
+    setBoardTypeFilter('ALL');
+    setOverlandDurationFilter('ALL');
     setSchoolHolidayFilter('all');
     setMaxCostFilter(undefined);
     setSortBy('score');
@@ -410,6 +430,8 @@ export default function HomePage() {
         }
         if (typeof parsed.minBeachTemp === 'number') setMinBeachTemp(parsed.minBeachTemp);
         if (typeof parsed.requireSnow === 'boolean') setRequireSnow(parsed.requireSnow);
+        if (parsed.preferredBoardType) setPreferredBoardType(parsed.preferredBoardType);
+        if (typeof parsed.maxOverlandDurationHours === 'number') setMaxOverlandDurationHours(parsed.maxOverlandDurationHours);
         if (Array.isArray(parsed.searchBlackouts)) setSearchBlackouts(parsed.searchBlackouts);
       }
 
@@ -427,6 +449,10 @@ export default function HomePage() {
         if (parsed.resultStyleFilter) setResultStyleFilter(parsed.resultStyleFilter);
         if (parsed.distanceFilter) setDistanceFilter(parsed.distanceFilter);
         if (parsed.vehicleFilter) setVehicleFilter(parsed.vehicleFilter);
+        if (parsed.safetyFilter) setSafetyFilter(parsed.safetyFilter);
+        if (parsed.warningFilter) setWarningFilter(parsed.warningFilter);
+        if (parsed.boardTypeFilter) setBoardTypeFilter(parsed.boardTypeFilter);
+        if (parsed.overlandDurationFilter) setOverlandDurationFilter(parsed.overlandDurationFilter);
       }
 
       const savedResults = localStorage.getItem('famvac_cached_results');
@@ -468,6 +494,8 @@ export default function HomePage() {
         travelVehicle: selectedVehicles[0] || 'PLANE',
         minBeachTemp,
         requireSnow,
+        preferredBoardType,
+        maxOverlandDurationHours,
         searchBlackouts,
       };
       localStorage.setItem('famvac_form_state', JSON.stringify(stateToSave));
@@ -493,6 +521,8 @@ export default function HomePage() {
     selectedVehicles,
     minBeachTemp,
     requireSnow,
+    preferredBoardType,
+    maxOverlandDurationHours,
     searchBlackouts,
   ]);
 
@@ -512,6 +542,10 @@ export default function HomePage() {
         resultStyleFilter,
         distanceFilter,
         vehicleFilter,
+        safetyFilter,
+        warningFilter,
+        boardTypeFilter,
+        overlandDurationFilter,
       };
       localStorage.setItem('famvac_filter_settings', JSON.stringify(filtersToSave));
     } catch {
@@ -530,6 +564,10 @@ export default function HomePage() {
     resultStyleFilter,
     distanceFilter,
     vehicleFilter,
+    safetyFilter,
+    warningFilter,
+    boardTypeFilter,
+    overlandDurationFilter,
   ]);
 
   const handleResetForm = () => {
@@ -665,6 +703,21 @@ export default function HomePage() {
           }
           if (Array.isArray(p.travelModes)) {
             setTravelModes(p.travelModes);
+          }
+          if (p.maxTravelHours !== null && p.maxTravelHours !== undefined) {
+            setMaxOverlandDurationHours(Number(p.maxTravelHours));
+          }
+          if (p.scoringWeights) {
+            const sw = typeof p.scoringWeights === 'string' ? JSON.parse(p.scoringWeights) : p.scoringWeights;
+            if (sw.preferredBoardType) {
+              setPreferredBoardType(sw.preferredBoardType);
+            }
+            if (sw.preferredVacationStyle && sw.preferredVacationStyle !== 'ALL') {
+              setSelectedStyles([sw.preferredVacationStyle]);
+            }
+            if ((p.maxTravelHours === null || p.maxTravelHours === undefined) && sw.maxOverlandTravelMinutes) {
+              setMaxOverlandDurationHours(Math.round(sw.maxOverlandTravelMinutes / 60));
+            }
           }
 
           setProfileLoaded(true);
@@ -826,6 +879,14 @@ export default function HomePage() {
         homeLocation: departureLocation,
         federalState,
         originAirports,
+        maxDrivingHours,
+        maxTravelHours: maxOverlandDurationHours,
+        travelModes: selectedVehicles,
+        scoringWeights: {
+          preferredBoardType,
+          preferredVacationStyle: selectedStyles[0] || 'ALL',
+          maxOverlandTravelMinutes: maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
+        },
         blackoutRanges: validBlackouts,
         members: membersToSave,
       };
@@ -883,6 +944,8 @@ export default function HomePage() {
         destinationType: hasDestinations ? undefined : (selectedStyles.length === 1 && !isAllStylesSelected ? selectedStyles[0] : undefined),
         minBeachTemp: (!hasDestinations && isBeachSelected) ? minBeachTemp : undefined,
         requireSnow: (!hasDestinations && isAlpineSelected) ? requireSnow : false,
+        preferredBoardType,
+        maxOverlandTravelMinutes: maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
         durationDays: minDur,
         durationDaysMin: minDur,
         durationDaysMax: maxDur,
@@ -986,6 +1049,30 @@ export default function HomePage() {
       });
     }
 
+    if (safetyFilter === 'SAFE_ONLY') {
+      list = list.filter((w) => {
+        const s = w.destinationSafety || w.safetyAssessment;
+        return s ? s.isSafe : true;
+      });
+    }
+
+    if (warningFilter === 'CLEAN_ONLY') {
+      list = list.filter((w) => !w.seasonalWarning);
+    }
+
+    if (boardTypeFilter !== 'ALL') {
+      list = list.filter((w) => w.boardType === boardTypeFilter);
+    }
+
+    if (overlandDurationFilter !== 'ALL') {
+      const maxMinutes = Number(overlandDurationFilter);
+      list = list.filter((w) => {
+        if (w.travelVehicle === 'PLANE') return true;
+        if (!w.vehicleDetails?.durationMinutes) return true;
+        return w.vehicleDetails.durationMinutes <= maxMinutes;
+      });
+    }
+
     if (schoolHolidayFilter === 'holidaysOnly') {
       list = list.filter((w) => !w.requiresSchoolExemption);
     }
@@ -1013,7 +1100,20 @@ export default function HomePage() {
     });
 
     return list;
-  }, [results, selectedMonth, resultStyleFilter, distanceFilter, vehicleFilter, schoolHolidayFilter, maxCostFilter, sortBy]);
+  }, [
+    results,
+    selectedMonth,
+    resultStyleFilter,
+    distanceFilter,
+    vehicleFilter,
+    safetyFilter,
+    warningFilter,
+    boardTypeFilter,
+    overlandDurationFilter,
+    schoolHolidayFilter,
+    maxCostFilter,
+    sortBy,
+  ]);
 
   const totalPages = Math.max(1, Math.ceil(filteredResults.length / pageSize));
   const displayedResults = useMemo(() => {
@@ -1332,10 +1432,37 @@ export default function HomePage() {
                   {win.weather.waterTempC}°C {t.home.waterTempLabel}
                 </span>
               )}
-              {win.safetyAssessment && win.safetyAssessment.isSafeForFamilies && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  {t.home.safeDestinationBadge}
+              {(() => {
+                const safety = win.destinationSafety || win.safetyAssessment;
+                if (!safety) return null;
+                if (safety.isSafe) {
+                  return (
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                      {t.home.safeDestinationBadge}
+                    </span>
+                  );
+                }
+                return (
+                  <span
+                    className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300 flex items-center gap-1"
+                    title={safety.warningDetails || safety.safetyLabel}
+                  >
+                    <AlertCircle className="w-3 h-3 text-amber-600" />
+                    {safety.advisoryTitle || safety.safetyLabel}
+                  </span>
+                );
+              })()}
+              {win.boardType && (
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-800 border border-violet-200 flex items-center gap-1">
+                  <Utensils className="w-3 h-3 text-violet-600" />
+                  {win.boardType === 'ALL_INCLUSIVE'
+                    ? t.home.boardTypeAllInclusive
+                    : win.boardType === 'HALF_BOARD'
+                    ? t.home.boardTypeHalfBoard
+                    : win.boardType === 'BREAKFAST'
+                    ? t.home.boardTypeBreakfast
+                    : t.home.boardTypeRoomOnly}
                 </span>
               )}
             </div>
@@ -1382,6 +1509,12 @@ export default function HomePage() {
                 <span className="text-2xl font-black text-slate-900 tracking-tight">
                   {formatCurrency(win.estimatedTotalCost)}
                 </span>
+                {win.effectiveCost && win.mealPlanValue && win.mealPlanValue > 0 && win.boardType === 'ALL_INCLUSIVE' && (
+                  <div className="text-[10px] text-emerald-700 font-semibold sm:text-right mt-0.5 flex items-center gap-1 sm:justify-end">
+                    <Utensils className="w-2.5 h-2.5" />
+                    <span>{t.home.boardTypeSavingsBadge}: ~€{win.mealPlanValue}</span>
+                  </div>
+                )}
               </div>
               <div className="text-right text-[11px] text-slate-400">
                 <span>~{formatCurrency(win.pricePerPerson)} / {t.home.perPerson}</span>
@@ -1446,7 +1579,7 @@ export default function HomePage() {
           );
         })()}
 
-        {/* Metrics Bar */}
+        {/* Metrics Bar with MetricExplanationPopover */}
         <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
           <div className="bg-slate-50 rounded-lg p-2.5 sm:p-2 flex sm:flex-col items-center sm:items-stretch justify-between sm:text-center">
             <span className="text-slate-500 text-xs sm:text-[10px] font-medium">{t.home.ptoConsumed}</span>
@@ -1460,24 +1593,34 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="bg-slate-50 rounded-lg p-2.5 sm:p-2 flex sm:flex-col items-center sm:items-stretch justify-between sm:text-center">
-            <span className="text-slate-500 text-xs sm:text-[10px] font-medium">{t.home.ptoRatio}</span>
-            <span className="font-bold text-slate-800 text-right sm:text-center">
-              {win.ptoEfficiencyRatio}x
-            </span>
-          </div>
-
-          <div className="bg-indigo-50/80 rounded-lg p-2.5 sm:p-2 flex sm:flex-col items-center sm:items-stretch justify-between sm:text-center border border-indigo-100/60">
-            <span className="text-indigo-700 text-xs sm:text-[10px] font-semibold">{t.home.score}</span>
-            <div className="flex items-center gap-1.5 sm:justify-center">
-              <span className="font-extrabold text-indigo-900 text-sm">
-                {win.finalScore} / 100
+          <MetricExplanationPopover window={win} trigger="ptoRatio" className="w-full">
+            <div className="bg-slate-50 hover:bg-slate-100/90 transition rounded-lg p-2.5 sm:p-2 flex sm:flex-col items-center sm:items-stretch justify-between sm:text-center group border border-transparent hover:border-slate-300">
+              <span className="text-slate-500 text-xs sm:text-[10px] font-medium flex items-center justify-between sm:justify-center gap-1">
+                {t.home.ptoRatio}
+                <Info className="w-3 h-3 text-slate-400 opacity-60 group-hover:opacity-100" />
               </span>
-              {options?.rank !== undefined && (
-                <span className="text-[10px] font-bold text-indigo-700 bg-white px-1.5 py-0.5 rounded border border-indigo-200">#{options.rank}</span>
-              )}
+              <span className="font-bold text-slate-800 text-right sm:text-center">
+                {win.ptoEfficiencyRatio}x
+              </span>
             </div>
-          </div>
+          </MetricExplanationPopover>
+
+          <MetricExplanationPopover window={win} trigger="score" className="w-full">
+            <div className="bg-indigo-50/80 hover:bg-indigo-100/90 transition rounded-lg p-2.5 sm:p-2 flex sm:flex-col items-center sm:items-stretch justify-between sm:text-center border border-indigo-100/60 hover:border-indigo-300 group">
+              <span className="text-indigo-700 text-xs sm:text-[10px] font-semibold flex items-center justify-between sm:justify-center gap-1">
+                {t.home.score}
+                <Info className="w-3 h-3 text-indigo-400 opacity-60 group-hover:opacity-100" />
+              </span>
+              <div className="flex items-center gap-1.5 sm:justify-center">
+                <span className="font-extrabold text-indigo-900 text-sm">
+                  {win.finalScore} / 100
+                </span>
+                {options?.rank !== undefined && (
+                  <span className="text-[10px] font-bold text-indigo-700 bg-white px-1.5 py-0.5 rounded border border-indigo-200">#{options.rank}</span>
+                )}
+              </div>
+            </div>
+          </MetricExplanationPopover>
         </div>
 
         {win.isCachedBenchmark && (
@@ -1770,6 +1913,44 @@ export default function HomePage() {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* Preferred Board Type & Max Overland Travel Time */}
+            <div className="pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                  <Utensils className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>{t.home.filterByBoardType}</span>
+                </label>
+                <select
+                  value={preferredBoardType || 'ALL'}
+                  onChange={(e) => setPreferredBoardType(e.target.value === 'ALL' ? undefined : (e.target.value as BoardType))}
+                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs font-medium text-slate-800"
+                >
+                  <option value="ALL">{t.home.allBoardTypes}</option>
+                  <option value="ALL_INCLUSIVE">{t.home.boardTypeAllInclusive}</option>
+                  <option value="HALF_BOARD">{t.home.boardTypeHalfBoard}</option>
+                  <option value="BREAKFAST">{t.home.boardTypeBreakfast}</option>
+                  <option value="ROOM_ONLY">{t.home.boardTypeRoomOnly}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                  <Car className="w-3.5 h-3.5 text-teal-600" />
+                  <span>{t.home.filterByOverlandDuration}</span>
+                </label>
+                <select
+                  value={maxOverlandDurationHours ? String(maxOverlandDurationHours) : 'ALL'}
+                  onChange={(e) => setMaxOverlandDurationHours(e.target.value === 'ALL' ? undefined : Number(e.target.value))}
+                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs font-medium text-slate-800"
+                >
+                  <option value="ALL">{t.home.overlandDurationAny}</option>
+                  <option value="6">{t.home.overlandDuration6h}</option>
+                  <option value="10">{t.home.overlandDuration10h}</option>
+                  <option value="14">{t.home.overlandDuration14h}</option>
+                </select>
               </div>
             </div>
 
@@ -2334,7 +2515,88 @@ export default function HomePage() {
                       </select>
                     </div>
 
-                    {/* Line 5: School Calendar Filter */}
+                    {/* Line 5: Destination Safety Filter */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
+                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>{t.home.filterBySafety}</span>
+                      </label>
+                      <select
+                        value={safetyFilter}
+                        onChange={(e) => {
+                          setSafetyFilter(e.target.value as any);
+                          setCurrentPage(1);
+                        }}
+                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
+                      >
+                        <option value="SAFE_ONLY">{t.home.safetyFilterSafeOnly}</option>
+                        <option value="ALL">{t.home.safetyFilterAll}</option>
+                      </select>
+                    </div>
+
+                    {/* Line 6: Seasonal Warnings Filter */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
+                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                        <span>{t.home.filterByWarnings}</span>
+                      </label>
+                      <select
+                        value={warningFilter}
+                        onChange={(e) => {
+                          setWarningFilter(e.target.value as any);
+                          setCurrentPage(1);
+                        }}
+                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
+                      >
+                        <option value="CLEAN_ONLY">{t.home.warningsFilterCleanOnly}</option>
+                        <option value="ALL">{t.home.warningsFilterAll}</option>
+                      </select>
+                    </div>
+
+                    {/* Line 7: Board Type Filter */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
+                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                        <Utensils className="w-3.5 h-3.5 text-violet-600" />
+                        <span>{t.home.filterByBoardType}</span>
+                      </label>
+                      <select
+                        value={boardTypeFilter}
+                        onChange={(e) => {
+                          setBoardTypeFilter(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
+                      >
+                        <option value="ALL">{t.home.allBoardTypes}</option>
+                        <option value="ALL_INCLUSIVE">{t.home.boardTypeAllInclusive}</option>
+                        <option value="HALF_BOARD">{t.home.boardTypeHalfBoard}</option>
+                        <option value="BREAKFAST">{t.home.boardTypeBreakfast}</option>
+                        <option value="ROOM_ONLY">{t.home.boardTypeRoomOnly}</option>
+                      </select>
+                    </div>
+
+                    {/* Line 8: Max Overland Duration Filter */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
+                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                        <Car className="w-3.5 h-3.5 text-teal-600" />
+                        <span>{t.home.filterByOverlandDuration}</span>
+                      </label>
+                      <select
+                        value={overlandDurationFilter}
+                        onChange={(e) => {
+                          setOverlandDurationFilter(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
+                      >
+                        <option value="ALL">{t.home.overlandDurationAny}</option>
+                        <option value="360">{t.home.overlandDuration6h}</option>
+                        <option value="600">{t.home.overlandDuration10h}</option>
+                        <option value="840">{t.home.overlandDuration14h}</option>
+                      </select>
+                    </div>
+
+                    {/* Line 9: School Calendar Filter */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
                       <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
                         <Award className="w-3.5 h-3.5 text-blue-600" />

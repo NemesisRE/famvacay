@@ -496,6 +496,15 @@ export function optimizeVacationWindows(
             destAirportObj?.isHighSpeedRailConnected
           );
 
+          // Non-flight transit duration filter
+          if (
+            activeVehicle !== 'PLANE' &&
+            input.maxOverlandTravelMinutes &&
+            vehicleDetails.durationMinutes > input.maxOverlandTravelMinutes
+          ) {
+            continue;
+          }
+
           // Dynamic weather assessment
           const weather = getEstimatedClimate(dest, monthIndex);
           const travelYear = parseInt(startStr.split('-')[0], 10) || 2026;
@@ -533,7 +542,7 @@ export function optimizeVacationWindows(
             }
           }
 
-          // Modular Pricing Engine with deep-links and realistic quotes
+          // Modular Pricing Engine with deep-links, realistic quotes, and board type modeling
           const pricingDetails = getSynchronousTripPricing({
             originAirport: origin,
             destinationAirport: dest,
@@ -546,6 +555,7 @@ export function optimizeVacationWindows(
               cabinClass: (userProfile.preferredCabinClass as any) || 'ECONOMY',
             },
             isArbitrage: Boolean(arbitrageNote),
+            preferredBoardType: input.preferredBoardType,
           });
 
           let totalCost = pricingDetails.totalCost;
@@ -560,6 +570,10 @@ export function optimizeVacationWindows(
             pricingDetails.totalCost = totalCost;
             pricingDetails.pricePerPerson = perPersonCost;
           }
+
+          const effectiveCost =
+            pricingDetails.effectiveCost ??
+            Math.max(0, totalCost - Math.round((pricingDetails.mealPlanValue || 0) * 0.75));
 
           // Budget check
           if (input.maxBudgetTotal && totalCost > input.maxBudgetTotal) {
@@ -596,6 +610,9 @@ export function optimizeVacationWindows(
             pricePerPerson: perPersonCost,
             isCachedBenchmark: pricingDetails.isCachedBenchmark,
             pricingDetails,
+            boardType: pricingDetails.boardType,
+            mealPlanValue: pricingDetails.mealPlanValue,
+            effectiveCost,
             weather,
             seasonalWarning,
             isArbitrageOpportunity: Boolean(arbitrageNote),
@@ -678,10 +695,10 @@ export function optimizeVacationWindows(
     return [];
   }
 
-  // Find min/max for dynamic normalizations
-  const prices = eligibleCandidates.map((c) => c.estimatedTotalCost);
-  const minPrice = Math.min(...prices);
-  const maxPrice = Math.max(...prices);
+  // Find min/max for dynamic normalizations (factoring in meal plan value for fair comparisons)
+  const effectiveCosts = eligibleCandidates.map((c) => c.effectiveCost ?? c.estimatedTotalCost);
+  const minCost = Math.min(...effectiveCosts);
+  const maxCost = Math.max(...effectiveCosts);
 
   const ptos = eligibleCandidates.map((c) => c.ptoDaysConsumed);
   const minPto = Math.min(...ptos);
@@ -689,8 +706,8 @@ export function optimizeVacationWindows(
 
   // Score candidate windows
   const scoredWindows: CandidateWindow[] = eligibleCandidates.map((cand) => {
-    // 1. Price Index (lower price is better: 0-100)
-    const priceIndex = normalizeScore(cand.estimatedTotalCost, minPrice, maxPrice, false);
+    // 1. Price Index factoring in meal plan value (lower effective cost is better: 0-100)
+    const priceIndex = normalizeScore(cand.effectiveCost ?? cand.estimatedTotalCost, minCost, maxCost, false);
 
     // 2. Weather Index (temperature comfort calibrated to vacation style and rain risk: 0-100)
     const monthIndex = parseISO(cand.startDate).getMonth();
@@ -755,6 +772,7 @@ export function optimizeVacationWindows(
 
     return {
       ...cleanCand,
+      destinationSafety: safetyAssessment,
       safetyAssessment,
       scoreBreakdown: {
         priceIndex,

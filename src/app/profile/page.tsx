@@ -59,6 +59,10 @@ export default function FamilyProfilePage() {
   const [climatePreference, setClimatePreference] = useState('MODERATE');
   const [passportCheckRequired, setPassportCheckRequired] = useState(true);
   const [travelModes, setTravelModes] = useState<string[]>(['FLIGHT', 'CAR']);
+  const [preferredBoardType, setPreferredBoardType] = useState<string>('ALL');
+  const [maxOverlandDurationHours, setMaxOverlandDurationHours] = useState<number>(8);
+  const [preferredVacationStyle, setPreferredVacationStyle] = useState<string>('ALL');
+  const [scoringWeights, setScoringWeights] = useState<any>({});
   const [blackoutRanges, setBlackoutRanges] = useState<BlackoutRangeForm[]>([]);
 
   const toggleTravelMode = (mode: string) => {
@@ -141,6 +145,22 @@ export default function FamilyProfilePage() {
             setPassportCheckRequired(p.passportCheckRequired ?? true);
             if (Array.isArray(p.travelModes) && p.travelModes.length > 0) {
               setTravelModes(p.travelModes);
+            }
+            if (p.maxTravelHours !== null && p.maxTravelHours !== undefined) {
+              setMaxOverlandDurationHours(Number(p.maxTravelHours));
+            }
+            if (p.scoringWeights) {
+              const sw = typeof p.scoringWeights === 'string' ? JSON.parse(p.scoringWeights) : p.scoringWeights;
+              setScoringWeights(sw);
+              if (sw.preferredBoardType) {
+                setPreferredBoardType(sw.preferredBoardType);
+              }
+              if (sw.preferredVacationStyle) {
+                setPreferredVacationStyle(sw.preferredVacationStyle);
+              }
+              if ((p.maxTravelHours === null || p.maxTravelHours === undefined) && sw.maxOverlandTravelMinutes) {
+                setMaxOverlandDurationHours(Math.round(sw.maxOverlandTravelMinutes / 60));
+              }
             }
 
             if (Array.isArray(p.blackoutRanges)) {
@@ -236,6 +256,13 @@ export default function FamilyProfilePage() {
     setMessage(null);
 
     try {
+      const updatedScoringWeights = {
+        ...scoringWeights,
+        preferredBoardType,
+        preferredVacationStyle,
+        maxOverlandTravelMinutes: maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
+      };
+
       const res = await fetch('/api/family-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -245,10 +272,12 @@ export default function FamilyProfilePage() {
           federalState,
           originAirports,
           maxDrivingHours,
+          maxTravelHours: maxOverlandDurationHours,
           preferredCabinClass,
           climatePreference,
           passportCheckRequired,
           travelModes,
+          scoringWeights: updatedScoringWeights,
           members,
           blackoutRanges: blackoutRanges.filter((b) => b.startDate && b.endDate),
         }),
@@ -470,6 +499,59 @@ export default function FamilyProfilePage() {
                   <option value="WARM">{t.profile.warm}</option>
                   <option value="MODERATE">{t.profile.moderate}</option>
                   <option value="COOL">{t.profile.cool}</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  {t.profile.preferredBoardTypeLabel}
+                </label>
+                <select
+                  value={preferredBoardType}
+                  onChange={(e) => setPreferredBoardType(e.target.value)}
+                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="ALL">{t.home.allBoardTypes}</option>
+                  <option value="ALL_INCLUSIVE">{t.home.boardTypeAllInclusive}</option>
+                  <option value="HALF_BOARD">{t.home.boardTypeHalfBoard}</option>
+                  <option value="BREAKFAST">{t.home.boardTypeBreakfast}</option>
+                  <option value="ROOM_ONLY">{t.home.boardTypeRoomOnly}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                  {t.profile.maxOverlandDurationLabel}
+                </label>
+                <input
+                  type="number"
+                  step="1"
+                  min="1"
+                  max="48"
+                  value={maxOverlandDurationHours}
+                  onChange={(e) => setMaxOverlandDurationHours(Number(e.target.value))}
+                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  {t.profile.preferredVacationStyleLabel}
+                </label>
+                <select
+                  value={preferredVacationStyle}
+                  onChange={(e) => setPreferredVacationStyle(e.target.value)}
+                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="ALL">{t.home.vacationKindAll}</option>
+                  <option value="BEACH">{t.home.vacationKindBeach}</option>
+                  <option value="CITY">{t.home.vacationKindCity}</option>
+                  <option value="NATURE">{t.home.vacationKindNature}</option>
+                  <option value="SKI">{t.home.vacationKindAlpine}</option>
+                  <option value="LONGRANGE">{t.home.vacationKindLongrange}</option>
                 </select>
               </div>
             </div>

@@ -6,6 +6,7 @@ import {
   PricingPartyComposition,
   TravelPricingProvider,
 } from './types';
+import { BoardType } from '../optimizer/types';
 import { calculatePassengerCostMultiplier } from '../optimizer/child-tiers';
 import { getAirportByIata, calculateGeodesicDistanceKm } from '../airports/airport-service';
 
@@ -101,9 +102,75 @@ export function getHolidaySurgeMultiplier(startDate: string, endDate: string): n
   return 1.0;
 }
 
+export function resolveDestinationBoardType(
+  destinationCode: string,
+  userPreference?: BoardType
+): BoardType {
+  if (userPreference) return userPreference;
+
+  const code = (destinationCode || '').toUpperCase();
+
+  // All-inclusive dominant resort destinations
+  const ALL_INCLUSIVE_HUBS = new Set([
+    'PUJ', 'SDQ', 'CUN', 'CZM', 'MBJ', 'VRA', 'POP', 'LRM',
+    'HRG', 'SSH', 'RMF', 'AAC',
+    'AYT', 'BJV', 'DLM', 'GZP',
+    'DJE', 'NBE', 'MIR',
+    'MLE', 'SEZ', 'ZNZ', 'MBA'
+  ]);
+
+  if (ALL_INCLUSIVE_HUBS.has(code)) return 'ALL_INCLUSIVE';
+
+  // Half-board dominant destinations (Alpine ski / mountain, resort islands)
+  const HALF_BOARD_HUBS = new Set([
+    'INN', 'SZG', 'BZO',
+    'HER', 'RHO', 'KGS', 'CFU', 'CHQ',
+    'PMI', 'IBZ', 'MAH', 'TFS', 'LPA', 'FUE', 'ACE', 'FNC',
+    'DBV', 'SPU', 'ZAD', 'OLB', 'CAG'
+  ]);
+
+  if (HALF_BOARD_HUBS.has(code)) return 'HALF_BOARD';
+
+  // European city breaks and cultural hubs typically offer Breakfast included
+  return 'BREAKFAST';
+}
+
+export function calculateMealPlanDailyValue(
+  boardType: BoardType,
+  adults: number,
+  childrenAges: number[]
+): { dailyAdult: number; dailyChild: number; totalDaily: number } {
+  let dailyAdult = 0;
+  let dailyChild = 0;
+
+  switch (boardType) {
+    case 'ALL_INCLUSIVE':
+      dailyAdult = 55;
+      dailyChild = 30;
+      break;
+    case 'HALF_BOARD':
+      dailyAdult = 32;
+      dailyChild = 18;
+      break;
+    case 'BREAKFAST':
+      dailyAdult = 14;
+      dailyChild = 8;
+      break;
+    case 'ROOM_ONLY':
+    default:
+      dailyAdult = 0;
+      dailyChild = 0;
+      break;
+  }
+
+  const childCount = childrenAges.length;
+  const totalDaily = adults * dailyAdult + childCount * dailyChild;
+  return { dailyAdult, dailyChild, totalDaily };
+}
+
 /**
  * Realistic Portal Aggregator Pricing Provider.
- * Models market pricing based on seasonal demand curves, passenger age tiers, cabin class, and accommodation lengths.
+ * Models market pricing based on seasonal demand curves, passenger age tiers, cabin class, accommodation lengths, and board types.
  */
 export class PortalAggregatorProvider implements TravelPricingProvider {
   readonly name = 'PortalAggregator';
@@ -116,6 +183,7 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
     durationDays: number;
     party: PricingPartyComposition;
     isArbitrage?: boolean;
+    preferredBoardType?: BoardType;
   }): Promise<AggregatedTripPricing> {
     return this.calculatePricingSync(params);
   }
@@ -128,6 +196,7 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
     durationDays: number;
     party: PricingPartyComposition;
     isArbitrage?: boolean;
+    preferredBoardType?: BoardType;
   }): AggregatedTripPricing {
     const {
       originAirport,
@@ -248,6 +317,21 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
       if (d === 5 || d === 6) weekendNights++;
       curDate.setDate(curDate.getDate() + 1);
     }
+    const boardType = resolveDestinationBoardType(destinationAirport, params.preferredBoardType);
+    const mealValueMeta = calculateMealPlanDailyValue(boardType, party.adults || 2, party.childrenAges || []);
+    const totalMealValue = mealValueMeta.totalDaily * nights;
+
+    // Adjust rate if user explicitly chose an upgraded/downgraded board type
+    if (params.preferredBoardType) {
+      if (params.preferredBoardType === 'ALL_INCLUSIVE') {
+        nightlyRate = Math.round(nightlyRate * 1.45);
+      } else if (params.preferredBoardType === 'HALF_BOARD') {
+        nightlyRate = Math.round(nightlyRate * 1.22);
+      } else if (params.preferredBoardType === 'ROOM_ONLY') {
+        nightlyRate = Math.round(nightlyRate * 0.88);
+      }
+    }
+
     const weekdayNights = Math.max(0, nights - weekendNights);
     const lodgingHolidaySurge = holidaySurge > 1 ? 1.25 : 1.0;
     const totalLodgingCost = Math.round(
@@ -262,11 +346,14 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
       nightlyRate,
       totalLodgingCost,
       propertyType: party.childrenAges.length > 2 ? 'Family Suite / 2-Bedroom Apartment' : 'Family Hotel / Resort',
+      boardType,
+      mealPlanValue: totalMealValue,
     };
 
     const totalCost = totalFlightCost + totalLodgingCost;
     const totalPassengers = Math.max(1, party.adults + party.childrenAges.length);
     const pricePerPerson = Math.round(totalCost / totalPassengers);
+    const effectiveCost = Math.max(0, totalCost - Math.round(totalMealValue * 0.75));
 
     const deepLinks: DeepLinkUrls = {
       googleFlights: generateGoogleFlightsLink(originAirport, destinationAirport, startDate, endDate),
@@ -292,6 +379,9 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
       lodging: lodgingQuote,
       totalCost,
       pricePerPerson,
+      boardType,
+      mealPlanValue: totalMealValue,
+      effectiveCost,
       providerSource: 'PortalAggregator',
       isCachedBenchmark: true,
       deepLinks,
@@ -317,6 +407,7 @@ export class AmadeusPricingProvider implements TravelPricingProvider {
     durationDays: number;
     party: PricingPartyComposition;
     isArbitrage?: boolean;
+    preferredBoardType?: BoardType;
   }): Promise<AggregatedTripPricing> {
     const clientId = process.env.AMADEUS_CLIENT_ID;
     const clientSecret = process.env.AMADEUS_CLIENT_SECRET;
@@ -351,6 +442,7 @@ export function getSynchronousTripPricing(params: {
   durationDays: number;
   party: PricingPartyComposition;
   isArbitrage?: boolean;
+  preferredBoardType?: BoardType;
 }): AggregatedTripPricing {
   const aggregator = new PortalAggregatorProvider();
   return aggregator.calculatePricingSync(params);

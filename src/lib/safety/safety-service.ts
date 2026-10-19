@@ -20,11 +20,18 @@ export type SafetyLevel = 'SAFE' | 'CAUTION' | 'WARNING' | 'DANGER';
 export interface DestinationSafetyAssessment {
   score: number; // 0 - 100 (higher = safer)
   level: SafetyLevel;
+  isSafe: boolean;
   isSafeForFamilies: boolean;
   advisoryLevel: 1 | 2 | 3 | 4;
   safetyLabel: string;
   source?: string;
   warningDetails?: string;
+  countryName?: string;
+  countryCode?: string;
+  hasGermanWarning?: boolean;
+  hasGermanPartialWarning?: boolean;
+  usStateDeptLevel?: 1 | 2 | 3 | 4;
+  advisoryTitle?: string;
 }
 
 export interface TravelAdvisoryCacheEntry {
@@ -391,11 +398,18 @@ export function getDestinationSafetyAssessment(
     return {
       score: 15,
       level: 'DANGER',
+      isSafe: false,
       isSafeForFamilies: false,
       advisoryLevel: 4,
       safetyLabel: 'Reisewarnung / Extreme Danger',
       source: 'Auswärtiges Amt / US State Dept',
       warningDetails: 'Destination is located in an active conflict or severe crisis zone.',
+      countryCode: iso,
+      countryName: entry?.countryName || countryCodeOrName,
+      hasGermanWarning: true,
+      hasGermanPartialWarning: false,
+      usStateDeptLevel: 4,
+      advisoryTitle: 'Level 4: Do Not Travel (High-Risk Conflict Zone)',
     };
   }
 
@@ -414,9 +428,19 @@ export function getDestinationSafetyAssessment(
       advisory = 2;
     }
 
+    const defaultTitle =
+      advisory === 4
+        ? 'Level 4: Do Not Travel'
+        : advisory === 3
+        ? 'Level 3: Reconsider Travel'
+        : advisory === 2
+        ? 'Level 2: Exercise Increased Caution'
+        : 'Level 1: Exercise Normal Precautions';
+
     return {
       score: entry.safetyScore,
       level,
+      isSafe: entry.isSafeForFamilies,
       isSafeForFamilies: entry.isSafeForFamilies,
       advisoryLevel: advisory,
       safetyLabel:
@@ -429,16 +453,29 @@ export function getDestinationSafetyAssessment(
           : 'Reisewarnung',
       source: 'Auswärtiges Amt & US State Dept',
       warningDetails: entry.usTitle,
+      countryCode: iso,
+      countryName: entry.countryName,
+      hasGermanWarning: entry.hasGermanWarning,
+      hasGermanPartialWarning: entry.hasGermanPartialWarning,
+      usStateDeptLevel: entry.usStateDeptLevel,
+      advisoryTitle: entry.usTitle || defaultTitle,
     };
   }
 
   return {
     score: 92,
     level: 'SAFE',
+    isSafe: true,
     isSafeForFamilies: true,
     advisoryLevel: 1,
     safetyLabel: 'Sicheres Reiseziel',
     source: 'Auswärtiges Amt & US State Dept (Keine Reisewarnung)',
+    countryCode: iso,
+    countryName: countryCodeOrName,
+    hasGermanWarning: false,
+    hasGermanPartialWarning: false,
+    usStateDeptLevel: 1,
+    advisoryTitle: 'Level 1: Exercise Normal Precautions',
   };
 }
 
