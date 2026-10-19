@@ -9,7 +9,8 @@ const envSchema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
   TRUSTED_PROXY_HOPS: z.coerce.number().min(1).default(1),
-  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  VALKEY_URL: z.string().optional(),
+  DRAGONFLY_URL: z.string().optional(),
   REDIS_URL: z.string().default('redis://localhost:6379'),
   NEXTAUTH_SECRET: z.string().optional(),
   ALLOWED_ORIGINS: z.string().optional(),

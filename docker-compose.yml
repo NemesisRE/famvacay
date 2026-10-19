@@ -44,7 +44,8 @@ services:
       - APP_URL=${APP_URL:-http://localhost:3000}
       - TRUST_PROXY=${TRUST_PROXY:-true}
       - TRUSTED_PROXY_HOPS=${TRUSTED_PROXY_HOPS:-1}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-famvacay}:${POSTGRES_PASSWORD:-supersecret123}@postgres:5432/${POSTGRES_DB:-famvacay_db}?schema=public
+      - VALKEY_URL=redis://cache:6379
+      - DRAGONFLY_URL=redis://cache:6379
       - REDIS_URL=redis://cache:6379
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-changeme-production-secret-min32chars}
       - NEXTAUTH_URL=${APP_URL:-http://localhost:3000}
@@ -114,12 +115,12 @@ services:
       retries: 5
       start_period: 10s
 
-  # Cache & Rate Limiting store (Redis / Valkey protocol compatible)
+  # Cache & Rate Limiting store (Valkey / Dragonfly / Redis wire-compatible)
   cache:
-    image: redis:7-alpine
+    image: valkey/valkey:8-alpine
     container_name: famvacay-cache
     restart: unless-stopped
-    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    command: ["valkey-server", "--save", "60", "1", "--loglevel", "warning"]
     expose:
       - "6379" # STRICT: No host port binding
     volumes:
@@ -137,7 +138,7 @@ services:
           cpus: "0.05"
           memory: 64M
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5

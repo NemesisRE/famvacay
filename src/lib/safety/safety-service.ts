@@ -3,13 +3,14 @@
  * Dynamically ingests official government travel warnings from:
  * 1. Auswärtiges Amt Open Data API: https://www.auswaertiges-amt.de/opendata/travelwarning
  * 2. US Department of State Travel Advisories API: https://cadataapi.state.gov/api/TravelAdvisories
- * 
+ *
  * Features an intelligent cache with 6-hour TTL to prevent redundant requests and rate limits.
  */
 
 import countries from 'i18n-iso-countries';
 import enCountries from 'i18n-iso-countries/langs/en.json';
 import deCountries from 'i18n-iso-countries/langs/de.json';
+import { getCached, setCached } from '@/lib/cache/redis';
 
 countries.registerLocale(enCountries);
 countries.registerLocale(deCountries);
@@ -37,67 +38,18 @@ export interface TravelAdvisoryCacheEntry {
   safetyScore: number;
 }
 
-interface AdvisoryCacheStore {
+export interface AdvisoryCacheStore {
   timestamp: number;
   entries: Record<string, TravelAdvisoryCacheEntry>;
 }
 
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const CACHE_TTL_SECONDS = 6 * 60 * 60; // 21,600 seconds
+const TRAVEL_ADVISORIES_CACHE_KEY = 'famvac:travel-advisories';
 
 // In-memory cache singleton
 let memoryCache: AdvisoryCacheStore | null = null;
 let activeFetchPromise: Promise<AdvisoryCacheStore> | null = null;
-
-/**
- * Built-in baseline travel warning snapshot.
- * Ensures instant synchronous operations and offline/test reliability.
- */
-const DEFAULT_SAFETY_BASELINE: Record<string, TravelAdvisoryCacheEntry> = {
-  // Level 4 (Do Not Travel / Official Reisewarnung)
-  UA: { isoCode: 'UA', countryName: 'Ukraine', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 15 },
-  RU: { isoCode: 'RU', countryName: 'Russische Föderation', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 20 },
-  BY: { isoCode: 'BY', countryName: 'Belarus', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 25 },
-  SY: { isoCode: 'SY', countryName: 'Syrien', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 10 },
-  YE: { isoCode: 'YE', countryName: 'Jemen', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 10 },
-  AF: { isoCode: 'AF', countryName: 'Afghanistan', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 10 },
-  IQ: { isoCode: 'IQ', countryName: 'Irak', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 20 },
-  IR: { isoCode: 'IR', countryName: 'Iran', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 20 },
-  SO: { isoCode: 'SO', countryName: 'Somalia', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 10 },
-  SD: { isoCode: 'SD', countryName: 'Sudan', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 15 },
-  SS: { isoCode: 'SS', countryName: 'Südsudan', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 15 },
-  LY: { isoCode: 'LY', countryName: 'Libyen', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 15 },
-  ML: { isoCode: 'ML', countryName: 'Mali', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 20 },
-  BF: { isoCode: 'BF', countryName: 'Burkina Faso', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 20 },
-  HT: { isoCode: 'HT', countryName: 'Haiti', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 15 },
-  VE: { isoCode: 'VE', countryName: 'Venezuela', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 25 },
-  MM: { isoCode: 'MM', countryName: 'Myanmar', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 25 },
-  KP: { isoCode: 'KP', countryName: 'Nordkorea', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 10 },
-  LB: { isoCode: 'LB', countryName: 'Libanon', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 25 },
-  PS: { isoCode: 'PS', countryName: 'Palästinensische Gebiete', hasGermanWarning: true, hasGermanPartialWarning: false, usStateDeptLevel: 4, isSafeForFamilies: false, safetyScore: 20 },
-
-  // Safe Family Vacation Havens (Level 1 / 2)
-  ES: { isoCode: 'ES', countryName: 'Spanien', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 2, isSafeForFamilies: true, safetyScore: 88 },
-  IT: { isoCode: 'IT', countryName: 'Italien', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 2, isSafeForFamilies: true, safetyScore: 88 },
-  GR: { isoCode: 'GR', countryName: 'Griechenland', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 1, isSafeForFamilies: true, safetyScore: 89 },
-  PT: { isoCode: 'PT', countryName: 'Portugal', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 1, isSafeForFamilies: true, safetyScore: 92 },
-  FR: { isoCode: 'FR', countryName: 'Frankreich', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 2, isSafeForFamilies: true, safetyScore: 83 },
-  DE: { isoCode: 'DE', countryName: 'Deutschland', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 2, isSafeForFamilies: true, safetyScore: 90 },
-  AT: { isoCode: 'AT', countryName: 'Österreich', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 1, isSafeForFamilies: true, safetyScore: 95 },
-  CH: { isoCode: 'CH', countryName: 'Schweiz', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 1, isSafeForFamilies: true, safetyScore: 96 },
-  NL: { isoCode: 'NL', countryName: 'Niederlande', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 1, isSafeForFamilies: true, safetyScore: 91 },
-  DK: { isoCode: 'DK', countryName: 'Dänemark', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 1, isSafeForFamilies: true, safetyScore: 95 },
-  NO: { isoCode: 'NO', countryName: 'Norwegen', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 1, isSafeForFamilies: true, safetyScore: 95 },
-  SE: { isoCode: 'SE', countryName: 'Schweden', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 2, isSafeForFamilies: true, safetyScore: 89 },
-  HR: { isoCode: 'HR', countryName: 'Kroatien', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 1, isSafeForFamilies: true, safetyScore: 90 },
-  CY: { isoCode: 'CY', countryName: 'Zypern', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 1, isSafeForFamilies: true, safetyScore: 90 },
-  MT: { isoCode: 'MT', countryName: 'Malta', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 1, isSafeForFamilies: true, safetyScore: 91 },
-  JP: { isoCode: 'JP', countryName: 'Japan', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 1, isSafeForFamilies: true, safetyScore: 95 },
-  SG: { isoCode: 'SG', countryName: 'Singapur', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 1, isSafeForFamilies: true, safetyScore: 96 },
-  AE: { isoCode: 'AE', countryName: 'Vereinigte Arabische Emirate', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 2, isSafeForFamilies: true, safetyScore: 91 },
-  TH: { isoCode: 'TH', countryName: 'Thailand', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 1, isSafeForFamilies: true, safetyScore: 80 },
-  US: { isoCode: 'US', countryName: 'Vereinigte Staaten', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 1, isSafeForFamilies: true, safetyScore: 82 },
-  CA: { isoCode: 'CA', countryName: 'Kanada', hasGermanWarning: false, hasGermanPartialWarning: false, usStateDeptLevel: 1, isSafeForFamilies: true, safetyScore: 91 },
-};
 
 /**
  * High-risk airports in active conflict regions
@@ -112,82 +64,134 @@ const HIGH_RISK_AIRPORT_CODES = new Set<string>([
   'NIM', 'NDJ', 'BEY',
 ]);
 
-function getFsAndPath() {
-  if (typeof window !== 'undefined') return { fs: null, path: null };
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    return { fs, path };
-  } catch {
-    return { fs: null, path: null };
-  }
-}
-
-function getCacheFilePath(): string {
-  const { path } = getFsAndPath();
-  if (path && typeof process !== 'undefined' && process.cwd) {
-    return path.join(process.cwd(), '.next', 'cache', 'travel-advisories.json');
-  }
-  return '.next/cache/travel-advisories.json';
-}
-
 /**
- * Reads cached advisories from disk or memory
+ * Reads cached advisories from in-memory cache
  */
 function getCachedAdvisories(): AdvisoryCacheStore {
-  if (memoryCache && Date.now() - memoryCache.timestamp < CACHE_TTL_MS) {
+  if (memoryCache && Date.now() - memoryCache.timestamp < CACHE_TTL_MS && Object.keys(memoryCache.entries).length > 0) {
     return memoryCache;
   }
 
-  // Attempt reading from disk cache
-  try {
-    const { fs } = getFsAndPath();
-    const cachePath = getCacheFilePath();
-    if (fs && fs.existsSync(cachePath)) {
-      const content = fs.readFileSync(cachePath, 'utf-8');
-      const parsed: AdvisoryCacheStore = JSON.parse(content);
-      if (parsed && typeof parsed.timestamp === 'number' && Date.now() - parsed.timestamp < CACHE_TTL_MS) {
-        memoryCache = parsed;
-        return parsed;
-      }
-    }
-  } catch {
-    // Non-critical cache read fallback
-  }
-
-  // Initialize with built-in baseline if cache is missing or expired
   if (!memoryCache) {
     memoryCache = {
       timestamp: 0,
-      entries: { ...DEFAULT_SAFETY_BASELINE },
+      entries: {},
     };
   }
 
-  // Trigger background refresh if expired without blocking synchronous execution
-  if (Date.now() - memoryCache.timestamp >= CACHE_TTL_MS) {
-    refreshTravelAdvisories().catch(() => {});
+  // Trigger background refresh if expired or empty
+  if (Date.now() - memoryCache.timestamp >= CACHE_TTL_MS || Object.keys(memoryCache.entries).length === 0) {
+    ensureTravelAdvisoriesLoaded().catch(() => {});
   }
 
   return memoryCache;
 }
 
 /**
- * Saves advisories to memory and persistent disk cache
+ * Saves advisories to memory and persistent Valkey / Dragonfly / Redis cache
  */
-function saveCachedAdvisories(store: AdvisoryCacheStore): void {
+async function saveCachedAdvisories(store: AdvisoryCacheStore): Promise<void> {
   memoryCache = store;
   try {
-    const { fs, path } = getFsAndPath();
-    if (!fs || !path) return;
-    const cachePath = getCacheFilePath();
-    const dir = path.dirname(cachePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(cachePath, JSON.stringify(store), 'utf-8');
-  } catch {
-    // Non-critical disk write fallback
+    await setCached(TRAVEL_ADVISORIES_CACHE_KEY, store, CACHE_TTL_SECONDS);
+  } catch (err) {
+    console.warn('[SafetyService] Failed to cache advisories in cache engine:', err);
   }
+}
+
+/**
+ * Ensures travel advisories are loaded into memory, checking the cache engine first.
+ */
+export async function ensureTravelAdvisoriesLoaded(): Promise<AdvisoryCacheStore> {
+  if (memoryCache && Date.now() - memoryCache.timestamp < CACHE_TTL_MS && Object.keys(memoryCache.entries).length > 0) {
+    return memoryCache;
+  }
+
+  try {
+    const cached = await getCached<AdvisoryCacheStore>(TRAVEL_ADVISORIES_CACHE_KEY);
+    if (cached && typeof cached.timestamp === 'number' && Date.now() - cached.timestamp < CACHE_TTL_MS && Object.keys(cached.entries || {}).length > 0) {
+      memoryCache = cached;
+      return cached;
+    }
+  } catch {
+    // Non-critical cache read fallback
+  }
+
+  return refreshTravelAdvisories();
+}
+
+/**
+ * Fetches German Foreign Office (Auswärtiges Amt) Open Data travel warnings
+ */
+async function fetchAuswaertigesAmtWarnings(): Promise<Record<string, any> | null> {
+  try {
+    const res = await fetch('https://www.auswaertiges-amt.de/opendata/travelwarning', {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) FamVacay/1.0',
+      },
+      signal: AbortSignal.timeout(7000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data?.response || null;
+    }
+  } catch (err) {
+    console.warn('[SafetyService] Auswärtiges Amt API request failed:', err);
+  }
+  return null;
+}
+
+/**
+ * Fetches US Department of State Travel Advisories using official JSON or XML/RSS feeds
+ */
+async function fetchUSStateDeptAdvisories(): Promise<Array<{ Title: string }>> {
+  // 1. Try official JSON API
+  try {
+    const res = await fetch('https://cadataapi.state.gov/api/TravelAdvisories', {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) FamVacay/1.0',
+      },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (res.ok) {
+      const text = await res.text();
+      if (!text.trim().startsWith('<')) {
+        const json = JSON.parse(text);
+        if (Array.isArray(json) && json.length > 0) return json;
+      }
+    }
+  } catch {
+    // Proceed to robust RSS fallback
+  }
+
+  // 2. Official RSS feed fallback from travel.state.gov (immune to Cloudflare bot challenge)
+  try {
+    const res = await fetch('https://travel.state.gov/_res/rss/TAsTWs.xml', {
+      headers: {
+        Accept: 'application/xml, text/xml, */*',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) FamVacay/1.0',
+      },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (res.ok) {
+      const xml = await res.text();
+      const items: Array<{ Title: string }> = [];
+      const titleMatches = xml.matchAll(/<title>([^<]+)<\/title>/g);
+      for (const match of titleMatches) {
+        const title = match[1].trim();
+        if (title && /Level\s*[1-4]/i.test(title)) {
+          items.push({ Title: title });
+        }
+      }
+      if (items.length > 0) return items;
+    }
+  } catch (err) {
+    console.warn('[SafetyService] US State Dept advisory fetch failed:', err);
+  }
+
+  return [];
 }
 
 /**
@@ -195,7 +199,7 @@ function saveCachedAdvisories(store: AdvisoryCacheStore): void {
  * populating the cache.
  */
 export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCacheStore> {
-  if (!force && memoryCache && Date.now() - memoryCache.timestamp < CACHE_TTL_MS) {
+  if (!force && memoryCache && Date.now() - memoryCache.timestamp < CACHE_TTL_MS && Object.keys(memoryCache.entries).length > 0) {
     return memoryCache;
   }
 
@@ -205,24 +209,16 @@ export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCa
 
   activeFetchPromise = (async () => {
     try {
-      const [resAA, resUS] = await Promise.allSettled([
-        fetch('https://www.auswaertiges-amt.de/opendata/travelwarning', {
-          headers: { Accept: 'application/json' },
-          signal: AbortSignal.timeout(6000),
-        }).then((r) => (r.ok ? r.json() : null)),
-        fetch('https://cadataapi.state.gov/api/TravelAdvisories', {
-          headers: { Accept: 'application/json' },
-          signal: AbortSignal.timeout(6000),
-        }).then((r) => (r.ok ? r.json() : null)),
+      const [aaData, usData] = await Promise.all([
+        fetchAuswaertigesAmtWarnings(),
+        fetchUSStateDeptAdvisories(),
       ]);
 
-      const entries: Record<string, TravelAdvisoryCacheEntry> = {
-        ...DEFAULT_SAFETY_BASELINE,
-      };
+      const entries: Record<string, TravelAdvisoryCacheEntry> = {};
 
       // 1. Parse German Foreign Office (Auswärtiges Amt) warnings
-      if (resAA.status === 'fulfilled' && resAA.value && resAA.value.response) {
-        for (const [key, item] of Object.entries<any>(resAA.value.response)) {
+      if (aaData) {
+        for (const [key, item] of Object.entries<any>(aaData)) {
           if (!item || !item.countryCode) continue;
           const iso = item.countryCode.toUpperCase();
           const hasWarning = Boolean(item.warning);
@@ -247,8 +243,8 @@ export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCa
       }
 
       // 2. Parse US Department of State Travel Advisories
-      if (resUS.status === 'fulfilled' && Array.isArray(resUS.value)) {
-        for (const item of resUS.value) {
+      if (Array.isArray(usData) && usData.length > 0) {
+        for (const item of usData) {
           if (!item || !item.Title) continue;
           const title = item.Title as string;
 
@@ -317,7 +313,7 @@ export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCa
         entries,
       };
 
-      saveCachedAdvisories(store);
+      await saveCachedAdvisories(store);
       return store;
     } catch (err) {
       console.warn('[SafetyService] Failed to fetch live travel advisories, using cached fallback:', err);
@@ -368,12 +364,6 @@ export function isDestinationSafeForVacation(
     return entry.isSafeForFamilies;
   }
 
-  // If country is not in cache, check baseline or fallback safe
-  const baseline = DEFAULT_SAFETY_BASELINE[iso];
-  if (baseline) {
-    return baseline.isSafeForFamilies;
-  }
-
   return true;
 }
 
@@ -387,7 +377,7 @@ export function getDestinationSafetyAssessment(
   const apCode = (airportCode || '').trim().toUpperCase();
   const iso = resolveIsoCountryCode(countryCodeOrName);
   const cache = getCachedAdvisories();
-  const entry = cache.entries[iso] || DEFAULT_SAFETY_BASELINE[iso];
+  const entry = cache.entries[iso];
 
   if (HIGH_RISK_AIRPORT_CODES.has(apCode)) {
     return {
@@ -435,11 +425,16 @@ export function getDestinationSafetyAssessment(
   }
 
   return {
-    score: 85,
+    score: 92,
     level: 'SAFE',
     isSafeForFamilies: true,
     advisoryLevel: 1,
     safetyLabel: 'Sicheres Reiseziel',
-    source: 'Auswärtiges Amt',
+    source: 'Auswärtiges Amt & US State Dept (Keine Reisewarnung)',
   };
+}
+
+// Background prime cache on server startup
+if (typeof window === 'undefined') {
+  ensureTravelAdvisoriesLoaded().catch(() => {});
 }

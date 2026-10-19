@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { TripPlanInput } from '@/lib/optimizer/types';
 import { optimizeVacationWindows } from '@/lib/optimizer/engine';
 import { getSchoolHolidays, getPublicHolidays } from '@/lib/integrations/open-holidays';
 import { getAirportByIata } from '@/lib/airports/airport-service';
+import { getCached, setCached } from '@/lib/cache/redis';
+import { ensureTravelAdvisoriesLoaded } from '@/lib/safety/safety-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,18 +24,21 @@ export async function POST(req: NextRequest) {
       body.durationDays = body.durationDaysMin;
     }
 
-    // Ensure all user-specified target destinations are dynamically resolved and cached
-    if (body.targetDestinations && body.targetDestinations.length > 0) {
-      const { validateDestinationInput } = await import('@/lib/optimizer/destinations');
-      await Promise.all(
-        body.targetDestinations.map(async (dest) => {
-          try {
-            await validateDestinationInput(dest, 'en');
-          } catch {
-            // Ignore pre-validation error and let optimizer handle offline fallback
-          }
-        })
-      );
+    // Check Valkey / Dragonfly cache for instant result output
+    const queryHash = crypto
+      .createHash('sha256')
+      .update(JSON.stringify(body))
+      .digest('hex');
+    const cacheKey = `famvac:opt:${queryHash}`;
+
+    const cachedResults = await getCached<any>(cacheKey);
+    if (cachedResults) {
+      return NextResponse.json(cachedResults, {
+        headers: {
+          'X-Famvac-Cache': 'HIT',
+          'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=30',
+        },
+      });
     }
 
     const homeState = body.userProfile.federalState || 'DE-BW';
@@ -54,11 +60,14 @@ export async function POST(req: NextRequest) {
       years.push(y);
     }
 
-    // Parallel fetch school and public holidays for states across all spanned years
     const schoolHolidaysByState: Record<string, any> = {};
     const publicHolidaysByState: Record<string, any> = {};
 
-    await Promise.all(
+    // Parallelize all async I/O:
+    // 1. School & public holiday fetches across states & years
+    // 2. Target destinations validation
+    // 3. Travel safety advisories ingestion into cache
+    const holidayFetchPromise = Promise.all(
       Array.from(statesToFetch).map(async (state) => {
         const schoolLists = await Promise.all(years.map((y) => getSchoolHolidays(state, y)));
         const publicLists = await Promise.all(years.map((y) => getPublicHolidays(state, y)));
@@ -83,6 +92,30 @@ export async function POST(req: NextRequest) {
       })
     );
 
+    const destinationValidationPromise =
+      body.targetDestinations && body.targetDestinations.length > 0
+        ? (async () => {
+            const { validateDestinationInput } = await import('@/lib/optimizer/destinations');
+            await Promise.all(
+              body.targetDestinations!.map(async (dest) => {
+                try {
+                  await validateDestinationInput(dest, 'en');
+                } catch {
+                  // Ignore pre-validation error and let optimizer handle offline fallback
+                }
+              })
+            );
+          })()
+        : Promise.resolve();
+
+    const safetyAdvisoriesPromise = ensureTravelAdvisoriesLoaded().catch(() => {});
+
+    await Promise.all([
+      holidayFetchPromise,
+      destinationValidationPromise,
+      safetyAdvisoriesPromise,
+    ]);
+
     // Run constraint satisfaction & multi-objective scoring
     const results = optimizeVacationWindows(
       body,
@@ -90,10 +123,20 @@ export async function POST(req: NextRequest) {
       publicHolidaysByState
     );
 
-    return NextResponse.json({
+    const responsePayload = {
       success: true,
       count: results.length,
       windows: results,
+    };
+
+    // Cache computed results in Valkey for 10 minutes (600s)
+    await setCached(cacheKey, responsePayload, 600).catch(() => {});
+
+    return NextResponse.json(responsePayload, {
+      headers: {
+        'X-Famvac-Cache': 'MISS',
+        'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=30',
+      },
     });
   } catch (error: any) {
     console.error('[API /api/vacations/optimize] Error:', error);

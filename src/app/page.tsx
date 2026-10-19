@@ -68,6 +68,7 @@ import { getLocalizedSeasonalWarning } from '@/lib/optimizer/localized-warnings'
 import { DestinationMapModal } from '@/components/destination/DestinationMapModal';
 import { getDestinationVacationStyles } from '@/lib/optimizer/destinations';
 import { getAnnualSpecialTimes, SpecialHolidayPeriod } from '@/lib/holidays/special-dates';
+import { BeachTemperaturePopover } from '@/components/preferences/BeachTemperaturePopover';
 
 export default function HomePage() {
   const { data: session, status } = useSession();
@@ -262,23 +263,12 @@ export default function HomePage() {
   const [minBeachTemp, setMinBeachTemp] = useState<number | undefined>(undefined);
   const [requireSnow, setRequireSnow] = useState<boolean>(false);
   const [showBeachTempMenu, setShowBeachTempMenu] = useState(false);
-  const beachTempMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!showBeachTempMenu) return;
-    const handleClickOutside = (event: MouseEvent) => {
-      if (beachTempMenuRef.current && !beachTempMenuRef.current.contains(event.target as Node)) {
-        setShowBeachTempMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showBeachTempMenu]);
 
   // 7. Blackout Dates (Starts empty by default, loaded from profile if configured)
   const [searchBlackouts, setSearchBlackouts] = useState<
     { startDate: string; endDate: string; reason?: string }[]
   >([]);
+  const [isAddingBlackout, setIsAddingBlackout] = useState(false);
 
   // Profile preferences & travel comfort state
   const [maxDrivingHours, setMaxDrivingHours] = useState<number | undefined>(undefined);
@@ -734,11 +724,16 @@ export default function HomePage() {
   };
 
   const addBlackout = () => {
+    setIsAddingBlackout(true);
     setSearchBlackouts([...searchBlackouts, { startDate: '', endDate: '', reason: '' }]);
   };
 
   const removeBlackout = (index: number) => {
-    setSearchBlackouts(searchBlackouts.filter((_, i) => i !== index));
+    const next = searchBlackouts.filter((_, i) => i !== index);
+    setSearchBlackouts(next);
+    if (next.length === 0) {
+      setIsAddingBlackout(false);
+    }
   };
 
   const updateBlackout = (index: number, field: 'startDate' | 'endDate' | 'reason', val: string) => {
@@ -777,8 +772,13 @@ export default function HomePage() {
       (b) => b.startDate === period.startDate && b.endDate === period.endDate
     );
     if (existingIdx >= 0) {
-      setSearchBlackouts((prev) => prev.filter((_, i) => i !== existingIdx));
+      const next = searchBlackouts.filter((_, i) => i !== existingIdx);
+      setSearchBlackouts(next);
+      if (next.length === 0) {
+        setIsAddingBlackout(false);
+      }
     } else {
+      setIsAddingBlackout(true);
       setSearchBlackouts((prev) => [
         ...prev,
         {
@@ -1651,25 +1651,13 @@ export default function HomePage() {
                           <div className="w-full text-left">
                             {item.type === 'BEACH' ? (
                               isSelected ? (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowBeachTempMenu((prev) => !prev);
-                                  }}
-                                  className={`w-full py-0.5 px-1.5 rounded text-[10px] font-bold flex items-center justify-between border cursor-pointer ${
-                                    minBeachTemp !== undefined
-                                      ? 'bg-amber-400 text-slate-900 border-amber-500 shadow-2xs'
-                                      : 'bg-white/20 hover:bg-white/30 text-white border-white/30'
-                                  }`}
-                                  title={t.home.minBeachTempLabel}
-                                >
-                                  <span className="flex items-center gap-1 truncate">
-                                    <Thermometer className={`w-2.5 h-2.5 flex-shrink-0 ${minBeachTemp !== undefined ? 'text-slate-900' : 'text-amber-200'}`} />
-                                    <span className="truncate">{minBeachTemp !== undefined ? `≥ ${minBeachTemp}°C` : t.home.minBeachTempAny}</span>
-                                  </span>
-                                  <ChevronDown className="w-2.5 h-2.5 flex-shrink-0 opacity-80" />
-                                </button>
+                                <BeachTemperaturePopover
+                                  minBeachTemp={minBeachTemp}
+                                  onSelect={setMinBeachTemp}
+                                  isOpen={showBeachTempMenu}
+                                  onOpenChange={setShowBeachTempMenu}
+                                  t={t}
+                                />
                               ) : (
                                 <span className="text-[10px] text-slate-400 truncate block">
                                   {locale.startsWith('de') ? 'Sonne & Meer' : 'Sun & seaside'}
@@ -1723,66 +1711,6 @@ export default function HomePage() {
                               </span>
                             )}
                           </div>
-
-                          {/* Popover for Beach Temperature */}
-                          {item.type === 'BEACH' && isSelected && showBeachTempMenu && (
-                            <div
-                              ref={beachTempMenuRef}
-                              onClick={(e) => e.stopPropagation()}
-                              className="absolute left-0 top-full mt-1.5 z-50 p-2.5 bg-white rounded-xl shadow-xl border border-amber-200 min-w-[240px] text-slate-800 animate-in fade-in slide-in-from-top-1 duration-150"
-                            >
-                              <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-amber-100">
-                                <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                                  <Thermometer className="w-3.5 h-3.5 text-amber-600" />
-                                  {t.home.minBeachTempLabel}
-                                </span>
-                                {minBeachTemp !== undefined && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setMinBeachTemp(undefined);
-                                      setShowBeachTempMenu(false);
-                                    }}
-                                    className="text-[10px] text-amber-700 hover:text-amber-900 font-semibold cursor-pointer underline"
-                                  >
-                                    {t.home.minBeachTempAny}
-                                  </button>
-                                )}
-                              </div>
-                              <p className="text-[11px] text-amber-800/80 mb-2 leading-tight">
-                                {t.home.minBeachTempHint}
-                              </p>
-                              <div className="grid grid-cols-3 gap-1.5">
-                                {[
-                                  { val: undefined, label: t.home.minBeachTempAny },
-                                  { val: 20, label: '≥ 20°C' },
-                                  { val: 22, label: '≥ 22°C' },
-                                  { val: 24, label: '≥ 24°C' },
-                                  { val: 26, label: '≥ 26°C' },
-                                  { val: 28, label: '≥ 28°C' },
-                                ].map((opt) => {
-                                  const isTempSelected = minBeachTemp === opt.val;
-                                  return (
-                                    <button
-                                      key={opt.label}
-                                      type="button"
-                                      onClick={() => {
-                                        setMinBeachTemp(opt.val);
-                                        setShowBeachTempMenu(false);
-                                      }}
-                                      className={`px-2 py-1.5 rounded-lg text-xs font-semibold text-center transition cursor-pointer ${
-                                        isTempSelected
-                                          ? 'bg-amber-600 text-white shadow-2xs font-bold ring-2 ring-amber-500/25'
-                                          : 'bg-amber-50/80 text-amber-900 hover:bg-amber-100 border border-amber-200/60'
-                                      }`}
-                                    >
-                                      {opt.label}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
                         </div>
                       );
                     })}
@@ -2011,45 +1939,8 @@ export default function HomePage() {
                   )}
                 </div>
 
-                {/* Quick Add Special Moving Periods (Ostern, Pfingsten, Himmelfahrt, Fronleichnam, Silvester) */}
-                {annualSpecialTimes.length > 0 && (
-                  <div className="space-y-1.5">
-                    <span className="block text-[10px] font-bold uppercase tracking-wider text-amber-900/75">
-                      {t.home.quickSpecialTimes}:
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {annualSpecialTimes.map((period) => {
-                        const isSelected = searchBlackouts.some(
-                          (b) => b.startDate === period.startDate && b.endDate === period.endDate
-                        );
-                        return (
-                          <button
-                            key={`${period.id}-${period.startDate}`}
-                            type="button"
-                            onClick={() => toggleSpecialPeriod(period)}
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
-                              isSelected
-                                ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
-                                : 'bg-white/80 hover:bg-white text-amber-900 border-amber-200/90 hover:border-amber-300 shadow-2xs'
-                            }`}
-                            title={`${period.name} (${period.startDate} - ${period.endDate}): ${period.description}`}
-                          >
-                            <span>{period.icon}</span>
-                            <span>{period.displayName}</span>
-                            {isSelected ? (
-                              <Check className="w-3 h-3 ml-0.5" />
-                            ) : (
-                              <Plus className="w-3 h-3 ml-0.5 text-amber-600" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Blackout List */}
-                {searchBlackouts.length === 0 ? (
+                {/* Blackout List & Presets: Only show holiday buttons when user is adding or has blackout periods */}
+                {searchBlackouts.length === 0 && !isAddingBlackout ? (
                   <div className="p-2.5 bg-amber-50/50 rounded-xl border border-dashed border-amber-300 text-center">
                     <p className="text-xs text-amber-800/80">{t.home.noBlackouts}</p>
                     <button
@@ -2061,63 +1952,102 @@ export default function HomePage() {
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-1.5">
-                    {searchBlackouts.map((b, idx) => (
-                      <div
-                        key={idx}
-                        className="px-2.5 py-1.5 bg-white/95 rounded-lg border border-amber-200/90 flex flex-wrap sm:flex-nowrap items-center gap-2 text-xs transition-all hover:bg-white hover:border-amber-300 shadow-xs"
-                      >
-                        {/* Number & Date Range */}
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <span className="text-[11px] font-bold text-amber-800 bg-amber-100/70 border border-amber-300/80 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0">
-                            {idx + 1}
-                          </span>
-                          <input
-                            type="date"
-                            min={todayStr}
-                            value={b.startDate}
-                            onChange={(e) => updateBlackout(idx, 'startDate', e.target.value)}
-                            className="text-xs rounded border border-slate-300 px-2 py-1 bg-white outline-none w-28 sm:w-32 focus:ring-1 focus:ring-amber-500"
-                          />
-                          <span className="text-slate-400 font-medium text-xs flex-shrink-0">→</span>
-                          <input
-                            type="date"
-                            min={b.startDate || todayStr}
-                            value={b.endDate}
-                            onChange={(e) => updateBlackout(idx, 'endDate', e.target.value)}
-                            className="text-xs rounded border border-slate-300 px-2 py-1 bg-white outline-none w-28 sm:w-32 focus:ring-1 focus:ring-amber-500"
-                          />
-                        </div>
-
-                        {/* Optional Reason & Delete */}
-                        <div className="flex items-center gap-1.5 flex-grow min-w-[120px]">
-                          <input
-                            type="text"
-                            placeholder={t.home.blackoutReasonPlaceholder}
-                            value={b.reason || ''}
-                            onChange={(e) => updateBlackout(idx, 'reason', e.target.value)}
-                            className="w-full text-xs rounded border border-slate-300 px-2 py-1 bg-white outline-none focus:ring-1 focus:ring-amber-500"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeBlackout(idx)}
-                            className="p-1 text-slate-400 hover:text-red-600 transition cursor-pointer flex-shrink-0"
-                            title={t.home.removeBlackout}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                  <div className="space-y-3">
+                    {/* Quick Add Special Moving Periods (Ostern, Pfingsten, Himmelfahrt, Fronleichnam, Silvester) */}
+                    {annualSpecialTimes.length > 0 && (
+                      <div className="space-y-1.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-amber-900/75">
+                          {t.home.quickSpecialTimes}:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {annualSpecialTimes.map((period) => {
+                            const isSelected = searchBlackouts.some(
+                              (b) => b.startDate === period.startDate && b.endDate === period.endDate
+                            );
+                            return (
+                              <button
+                                key={`${period.id}-${period.startDate}`}
+                                type="button"
+                                onClick={() => toggleSpecialPeriod(period)}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                                    : 'bg-white/80 hover:bg-white text-amber-900 border-amber-200/90 hover:border-amber-300 shadow-2xs'
+                                }`}
+                                title={`${period.name} (${period.startDate} - ${period.endDate}): ${period.description}`}
+                              >
+                                <span>{period.icon}</span>
+                                <span>{period.displayName}</span>
+                                {isSelected ? (
+                                  <Check className="w-3 h-3 ml-0.5" />
+                                ) : (
+                                  <Plus className="w-3 h-3 ml-0.5 text-amber-600" />
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
-                    ))}
+                    )}
 
-                    <button
-                      type="button"
-                      onClick={addBlackout}
-                      className="w-full mt-2 py-1.5 px-3 rounded-lg border border-dashed border-amber-300 bg-amber-50/60 hover:bg-amber-100/70 text-amber-900 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      {t.home.addBlackout}
-                    </button>
+                    <div className="space-y-1.5">
+                      {searchBlackouts.map((b, idx) => (
+                        <div
+                          key={idx}
+                          className="px-2.5 py-1.5 bg-white/95 rounded-lg border border-amber-200/90 flex flex-wrap sm:flex-nowrap items-center gap-2 text-xs transition-all hover:bg-white hover:border-amber-300 shadow-xs"
+                        >
+                          {/* Number & Date Range */}
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className="text-[11px] font-bold text-amber-800 bg-amber-100/70 border border-amber-300/80 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0">
+                              {idx + 1}
+                            </span>
+                            <input
+                              type="date"
+                              min={todayStr}
+                              value={b.startDate}
+                              onChange={(e) => updateBlackout(idx, 'startDate', e.target.value)}
+                              className="text-xs rounded border border-slate-300 px-2 py-1 bg-white outline-none w-28 sm:w-32 focus:ring-1 focus:ring-amber-500"
+                            />
+                            <span className="text-slate-400 font-medium text-xs flex-shrink-0">→</span>
+                            <input
+                              type="date"
+                              min={b.startDate || todayStr}
+                              value={b.endDate}
+                              onChange={(e) => updateBlackout(idx, 'endDate', e.target.value)}
+                              className="text-xs rounded border border-slate-300 px-2 py-1 bg-white outline-none w-28 sm:w-32 focus:ring-1 focus:ring-amber-500"
+                            />
+                          </div>
+
+                          {/* Optional Reason & Delete */}
+                          <div className="flex items-center gap-1.5 flex-grow min-w-[120px]">
+                            <input
+                              type="text"
+                              placeholder={t.home.blackoutReasonPlaceholder}
+                              value={b.reason || ''}
+                              onChange={(e) => updateBlackout(idx, 'reason', e.target.value)}
+                              className="w-full text-xs rounded border border-slate-300 px-2 py-1 bg-white outline-none focus:ring-1 focus:ring-amber-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeBlackout(idx)}
+                              className="p-1 text-slate-400 hover:text-red-600 transition cursor-pointer flex-shrink-0"
+                              title={t.home.removeBlackout}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      <button
+                        type="button"
+                        onClick={addBlackout}
+                        className="w-full mt-2 py-1.5 px-3 rounded-lg border border-dashed border-amber-300 bg-amber-50/60 hover:bg-amber-100/70 text-amber-900 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        {t.home.addBlackout}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

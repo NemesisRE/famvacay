@@ -1,10 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import {
   isDestinationSafeForVacation,
   getDestinationSafetyAssessment,
+  refreshTravelAdvisories,
 } from './safety-service';
 
-describe('Destination Safety & Security Service (Amadeus Safe Place / Travel Advisory)', () => {
+describe('Destination Safety & Security Service (Auswärtiges Amt & US State Dept Live APIs)', () => {
+  beforeAll(async () => {
+    // Ingest official live data from Auswärtiges Amt & US State Department
+    await refreshTravelAdvisories(true);
+  }, 15000);
+
   it('identifies safe family vacation destinations with high scores (Level 1 / 2)', () => {
     // Mallorca / Spain
     expect(isDestinationSafeForVacation('PMI', 'ES')).toBe(true);
@@ -24,14 +30,26 @@ describe('Destination Safety & Security Service (Amadeus Safe Place / Travel Adv
     expect(hndAssessment.isSafeForFamilies).toBe(true);
     expect(hndAssessment.score).toBeGreaterThanOrEqual(75);
 
-    // United Arab Emirates / Dubai
-    expect(isDestinationSafeForVacation('DXB', 'AE')).toBe(true);
+    // Portugal / Lisbon
+    expect(isDestinationSafeForVacation('LIS', 'PT')).toBe(true);
+    const lisAssessment = getDestinationSafetyAssessment('LIS', 'PT');
+    expect(lisAssessment.isSafeForFamilies).toBe(true);
+    expect(lisAssessment.score).toBeGreaterThanOrEqual(85);
 
     // Thailand (Phuket / Bangkok)
     expect(isDestinationSafeForVacation('BKK', 'TH')).toBe(true);
     const bkkAssessment = getDestinationSafetyAssessment('BKK', 'TH');
     expect(bkkAssessment.isSafeForFamilies).toBe(true);
     expect(bkkAssessment.advisoryLevel).toBeLessThanOrEqual(2);
+  });
+
+  it('correctly assesses countries with Level 3 Reconsider Travel (e.g. UAE)', () => {
+    // UAE is designated Level 3: Reconsider Travel by US State Department
+    expect(isDestinationSafeForVacation('DXB', 'AE')).toBe(false);
+    const dxbAssessment = getDestinationSafetyAssessment('DXB', 'AE');
+    expect(dxbAssessment.isSafeForFamilies).toBe(false);
+    expect(dxbAssessment.advisoryLevel).toBe(3);
+    expect(dxbAssessment.level).toBe('WARNING');
   });
 
   it('strictly rejects high-risk countries and active conflict zones from flex search', () => {
