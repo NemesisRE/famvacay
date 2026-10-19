@@ -42,15 +42,14 @@ export function LocationInput({
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const [prevValue, setPrevValue] = useState(value);
-  if (value !== prevValue) {
-    setPrevValue(value);
+  // Sync external value changes
+  useEffect(() => {
     setQuery(value);
     if (value && value.trim().length >= 2) {
       setIsVerified(true);
       setValidationWarning(null);
     }
-  }
+  }, [value]);
 
   // Debounced geocoding search
   useEffect(() => {
@@ -83,16 +82,20 @@ export function LocationInput({
     return () => clearTimeout(timer);
   }, [query, isFocused]);
 
-  // Handle outside click to close dropdown ONLY
+  // Handle outside click or tap to close dropdown ONLY
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
         setIsFocused(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   const validateCurrentQuery = async () => {

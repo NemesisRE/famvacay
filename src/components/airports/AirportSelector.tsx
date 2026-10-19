@@ -47,27 +47,40 @@ export function AirportSelector({
 
   // Airport details cache for selected chips and suggestion synchronization
   const [airportDetails, setAirportDetails] = useState<Record<string, AirportItem>>({});
+  const airportDetailsRef = useRef(airportDetails);
+  airportDetailsRef.current = airportDetails;
+  const requestedCodesRef = useRef<Set<string>>(new Set());
 
   // Ensure all selected airports have full localized metadata loaded
   useEffect(() => {
-    const missing = selectedAirports.filter((code) => !airportDetails[code]);
+    const missing = selectedAirports.filter(
+      (code) => !airportDetailsRef.current[code] && !requestedCodesRef.current.has(`${locale}:${code}`)
+    );
     if (missing.length === 0) return;
+
+    for (const code of missing) {
+      requestedCodesRef.current.add(`${locale}:${code}`);
+    }
 
     fetch(`/api/airports/search?codes=${encodeURIComponent(missing.join(','))}&locale=${locale}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data?.airports) {
+        if (data?.airports && data.airports.length > 0) {
           setAirportDetails((prev) => {
+            let changed = false;
             const updated = { ...prev };
             for (const ap of data.airports) {
-              updated[ap.code] = ap;
+              if (!prev[ap.code] || prev[ap.code].name !== ap.name) {
+                updated[ap.code] = ap;
+                changed = true;
+              }
             }
-            return updated;
+            return changed ? updated : prev;
           });
         }
       })
       .catch(() => {});
-  }, [selectedAirports, airportDetails, locale]);
+  }, [selectedAirports, locale]);
 
   const destinationsKey = JSON.stringify(targetDestinations);
   const coordLat = coordinates?.lat;
@@ -100,11 +113,15 @@ export function AirportSelector({
 
             // Populate airport details cache
             setAirportDetails((prev) => {
+              let changed = false;
               const updated = { ...prev };
               for (const ap of data.airports) {
-                updated[ap.code] = ap;
+                if (!prev[ap.code] || prev[ap.code].name !== ap.name) {
+                  updated[ap.code] = ap;
+                  changed = true;
+                }
               }
-              return updated;
+              return changed ? updated : prev;
             });
 
             // Automatically synchronize pruned airports if selection became stale
@@ -155,11 +172,15 @@ export function AirportSelector({
           setShowDropdown(true);
 
           setAirportDetails((prev) => {
+            let changed = false;
             const updated = { ...prev };
             for (const ap of data.airports || []) {
-              updated[ap.code] = ap;
+              if (!prev[ap.code] || prev[ap.code].name !== ap.name) {
+                updated[ap.code] = ap;
+                changed = true;
+              }
             }
-            return updated;
+            return changed ? updated : prev;
           });
         }
       } catch (err) {
@@ -172,9 +193,9 @@ export function AirportSelector({
     return () => clearTimeout(timer);
   }, [searchQuery, coordLat, coordLon, locale]);
 
-  // Close dropdown on outside click
+  // Close dropdown on outside click or touch
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (
         searchContainerRef.current &&
         !searchContainerRef.current.contains(event.target as Node)
@@ -183,7 +204,11 @@ export function AirportSelector({
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   const handleSelectAirport = (code: string) => {

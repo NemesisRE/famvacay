@@ -18,6 +18,10 @@ test.describe('Mobile Viewport & UI Responsiveness', () => {
       consoleErrors.push(err.message);
     });
 
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
     await page.goto('/');
 
     // 1. Verify language dropdown displays ONLY short code when closed
@@ -77,19 +81,49 @@ test.describe('Mobile Viewport & UI Responsiveness', () => {
     await snowBtn.click();
     await expect(page.locator('button:has-text("Snow Guarantee")')).toBeVisible();
 
-    // 6. Test Travel Vehicle buttons
-    const carBtn = page.locator('div:has-text("Car / Camper")').last();
+    // 6. Test Travel Vehicle buttons & FlightStopsPopover
+    // Airplane is selected by default; open flight transit preference popover
+    const flightStopsBtn = page.locator('button[aria-haspopup="dialog"]').filter({ hasText: /Any|Beliebig|Non-Stop|Direkt/ }).first();
+    await expect(flightStopsBtn).toBeVisible();
+    await flightStopsBtn.click();
+
+    // Verify popover dialog is visible and stays strictly within mobile viewport boundaries
+    const flightStopsPopover = page.locator('div[role="dialog"]').last();
+    await expect(flightStopsPopover).toBeVisible();
+    const flightBox = await flightStopsPopover.boundingBox();
+    if (flightBox) {
+      expect(flightBox.x).toBeGreaterThanOrEqual(0);
+      expect(flightBox.x + flightBox.width).toBeLessThanOrEqual(385);
+    }
+
+    // Select "Direct Flights Only (0 Stops)"
+    const directOnlyBtn = flightStopsPopover.locator('button:has-text("Direct Flights Only"), button:has-text("Direktflüge")').first();
+    await expect(directOnlyBtn).toBeVisible();
+    await directOnlyBtn.click();
+    await expect(flightStopsPopover).not.toBeVisible();
+
+    // Verify button label updated
+    await expect(page.locator('button:has-text("Non-Stop")').first()).toBeVisible();
+
+    // Toggle Car / Camper
+    const carBtn = page.locator('div:has-text("Car / Camper"), div:has-text("Auto / Camper")').last();
     await expect(carBtn).toBeVisible();
     await carBtn.click();
 
     // 7. Test Add Child button
-    const addChildBtn = page.locator('button:has-text("+ Add Child")');
+    const addChildBtn = page.locator('button:has-text("+ Add Child"), button:has-text("+ Kind hinzufügen")');
     await expect(addChildBtn).toBeVisible();
     await addChildBtn.click();
     await expect(page.locator('input[type="date"]').first()).toBeVisible();
-    await expect(page.locator('button:has-text("Add Child")')).toBeVisible();
+    await expect(page.locator('button:has-text("Add Child"), button:has-text("Kind hinzufügen")').first()).toBeVisible();
 
-    // 8. Verify ZERO browser/hydration errors
+    // 8. Test Location Input search on mobile
+    const locationInput = page.locator('input[placeholder*="Karlsruhe"], input[placeholder*="Munich"]').first();
+    await expect(locationInput).toBeVisible();
+    await locationInput.fill('Berlin');
+    await page.waitForTimeout(400);
+
+    // 9. Verify ZERO browser/hydration errors
     expect(consoleErrors).toEqual([]);
   });
 });

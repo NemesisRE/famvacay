@@ -1798,6 +1798,8 @@ export default function HomePage() {
                           key={item.type}
                           onClick={() => toggleVacationStyle(item.type)}
                           className={`relative flex flex-col justify-between p-2.5 sm:p-3 rounded-xl border text-xs sm:text-sm font-semibold transition cursor-pointer select-none shadow-2xs h-[82px] sm:h-[86px] ${
+                            showBeachTempMenu && item.type === 'BEACH' ? 'z-30' : 'z-10'
+                          } ${
                             isSelected
                               ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-600/25'
                               : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
@@ -1908,6 +1910,8 @@ export default function HomePage() {
                       key={v.type}
                       onClick={() => toggleVehicle(v.type)}
                       className={`relative flex flex-col justify-between p-2.5 sm:p-3 rounded-xl border text-xs sm:text-sm font-semibold transition cursor-pointer select-none shadow-2xs h-[82px] sm:h-[86px] ${
+                        showFlightStopsMenu && v.type === 'PLANE' ? 'z-30' : 'z-10'
+                      } ${
                         isSelected
                           ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-600/25'
                           : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300'

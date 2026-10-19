@@ -54,6 +54,7 @@ export function BeachTemperaturePopover({
           e.stopPropagation();
           onOpenChange(!isOpen);
         }}
+        onTouchStart={(e) => e.stopPropagation()}
         aria-expanded={isOpen}
         aria-haspopup="dialog"
         className={`w-full py-0.5 px-1.5 rounded text-[10px] font-bold flex items-center justify-between border cursor-pointer ${
@@ -81,6 +82,7 @@ export function BeachTemperaturePopover({
           role="dialog"
           aria-label={t.home.minBeachTempLabel}
           onClick={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
           className="absolute right-0 top-full mt-1.5 z-50 p-2.5 bg-white rounded-xl shadow-xl border border-amber-200 w-[240px] max-w-[calc(100vw-32px)] text-slate-800 animate-in fade-in slide-in-from-top-1 duration-150"
         >
           <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-amber-100">
@@ -96,6 +98,7 @@ export function BeachTemperaturePopover({
                   onSelect(undefined);
                   onOpenChange(false);
                 }}
+                onTouchStart={(e) => e.stopPropagation()}
                 className="text-[10px] text-amber-700 hover:text-amber-900 font-semibold cursor-pointer underline"
               >
                 {t.home.minBeachTempAny}
@@ -124,6 +127,7 @@ export function BeachTemperaturePopover({
                     onSelect(opt.val);
                     onOpenChange(false);
                   }}
+                  onTouchStart={(e) => e.stopPropagation()}
                   className={`px-2 py-1.5 rounded-lg text-xs font-semibold text-center transition cursor-pointer ${
                     isTempSelected
                       ? 'bg-amber-600 text-white shadow-2xs font-bold ring-2 ring-amber-500/25'

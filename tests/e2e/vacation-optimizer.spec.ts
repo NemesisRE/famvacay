@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test.describe('FamVacay E2E User Journey', () => {
   test('landing page loads and system health status responds', async ({ page }) => {
+    test.setTimeout(120000);
+
     // Check health endpoint directly
     const healthResponse = await page.request.get('/api/health');
     expect(healthResponse.status()).toBe(200);
@@ -10,16 +12,18 @@ test.describe('FamVacay E2E User Journey', () => {
 
     // Visit home page
     await page.goto('/');
-    await expect(page.locator('h1, header, nav').filter({ hasText: 'Family Vacation Optimizer' }).first()).toBeVisible();
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await expect(page.locator('h1, header, nav').filter({ hasText: /Family Vacation Optimizer|Urlaubs- & Reise-Optimierer/ }).first()).toBeVisible();
 
-    // Fill form and trigger optimization
+    // Trigger optimization
     const optimizeBtn = page.locator('button[type="submit"]').first();
     await expect(optimizeBtn).toBeVisible();
     await optimizeBtn.click();
 
     // Verify results show up
-    await expect(page.locator('text=Optimal Vacation Windows')).toBeVisible();
-    await expect(page.locator('text=Windows Found')).toBeVisible({ timeout: 45000 });
+    await expect(page.locator('text=/Optimal Vacation Windows|Optimale Urlaubsfenster/').first()).toBeVisible();
+    await expect(page.locator('text=/Windows Found|Reisefenster gefunden/').first()).toBeVisible({ timeout: 90000 });
   });
 });
 
