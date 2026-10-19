@@ -46,13 +46,17 @@ WORKDIR /app
 
 RUN apk add --no-cache openssl libc6-compat
 
+# Non-root user nextjs (UID/GID 10001) matching runner and k8s securityContext
+RUN addgroup --system --gid 10001 nodejs && \
+    adduser --system --uid 10001 nextjs
+
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
-RUN npm install -g prisma@5.22.0
+RUN npm install -g prisma@6.19.3
 
-COPY prisma ./prisma/
+COPY --chown=nextjs:nodejs prisma ./prisma/
 
-USER node
+USER nextjs
 ENTRYPOINT ["prisma"]
 CMD ["migrate", "deploy"]
 

@@ -36,11 +36,17 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      - name: Lint Codebase (ESLint)
+        run: npm run lint
+
       - name: Typecheck TypeScript
         run: npm run typecheck
 
       - name: Run i18n Key Parity Check
         run: npx vitest run tests/i18n-key-parity.test.ts
+
+      - name: Production Security & Dependency Audit
+        run: npm audit --omit=dev --audit-level=high
 
   test-unit:
     name: Unit & Coverage Tests (Vitest)
@@ -102,7 +108,7 @@ jobs:
 
   docker-build:
     name: Multi-Arch Container Build & Attestation
-    needs: [lint-and-typecheck, test-unit]
+    needs: [lint-and-typecheck, test-unit, test-e2e]
     runs-on: ubuntu-latest
     permissions:
       contents: read
