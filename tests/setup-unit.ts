@@ -8,8 +8,7 @@ import { beforeAll, afterAll } from 'vitest';
 
 const originalFetch = global.fetch;
 
-beforeAll(() => {
-  global.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+global.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
     // 1. Nominatim Geocoding Mock
@@ -408,10 +407,121 @@ beforeAll(() => {
       );
     }
 
-    return originalFetch(input, init);
-  };
-});
+    // 5. Auswärtiges Amt (German Foreign Office) Travel Warnings Mock
+    if (urlStr.includes('auswaertiges-amt.de')) {
+      const mockAa: Record<string, any> = {
+        DE: { countryCode: 'DE', countryName: 'Deutschland', warning: false },
+        ES: { countryCode: 'ES', countryName: 'Spanien', warning: false },
+        AT: { countryCode: 'AT', countryName: 'Österreich', warning: false },
+        CH: { countryCode: 'CH', countryName: 'Schweiz', warning: false },
+        IT: { countryCode: 'IT', countryName: 'Italien', warning: false },
+        FR: { countryCode: 'FR', countryName: 'Frankreich', warning: false },
+        PT: { countryCode: 'PT', countryName: 'Portugal', warning: false },
+        GR: { countryCode: 'GR', countryName: 'Griechenland', warning: false },
+        HR: { countryCode: 'HR', countryName: 'Kroatien', warning: false },
+        NL: { countryCode: 'NL', countryName: 'Niederlande', warning: false },
+        BE: { countryCode: 'BE', countryName: 'Belgien', warning: false },
+        LU: { countryCode: 'LU', countryName: 'Luxemburg', warning: false },
+        GB: { countryCode: 'GB', countryName: 'Vereinigtes Königreich', warning: false },
+        IE: { countryCode: 'IE', countryName: 'Irland', warning: false },
+        DK: { countryCode: 'DK', countryName: 'Dänemark', warning: false },
+        NO: { countryCode: 'NO', countryName: 'Norwegen', warning: false },
+        SE: { countryCode: 'SE', countryName: 'Schweden', warning: false },
+        FI: { countryCode: 'FI', countryName: 'Finnland', warning: false },
+        IS: { countryCode: 'IS', countryName: 'Island', warning: false },
+        PL: { countryCode: 'PL', countryName: 'Polen', warning: false },
+        CZ: { countryCode: 'CZ', countryName: 'Tschechien', warning: false },
+        SK: { countryCode: 'SK', countryName: 'Slowakei', warning: false },
+        HU: { countryCode: 'HU', countryName: 'Ungarn', warning: false },
+        SI: { countryCode: 'SI', countryName: 'Slowenien', warning: false },
+        RO: { countryCode: 'RO', countryName: 'Rumänien', warning: false },
+        BG: { countryCode: 'BG', countryName: 'Bulgarien', warning: false },
+        CY: { countryCode: 'CY', countryName: 'Zypern', warning: false },
+        MT: { countryCode: 'MT', countryName: 'Malta', warning: false },
+        EE: { countryCode: 'EE', countryName: 'Estland', warning: false },
+        LV: { countryCode: 'LV', countryName: 'Lettland', warning: false },
+        LT: { countryCode: 'LT', countryName: 'Litauen', warning: false },
+        JP: { countryCode: 'JP', countryName: 'Japan', warning: false },
+        KR: { countryCode: 'KR', countryName: 'Südkorea', warning: false },
+        TH: { countryCode: 'TH', countryName: 'Thailand', warning: false },
+        VN: { countryCode: 'VN', countryName: 'Vietnam', warning: false },
+        ID: { countryCode: 'ID', countryName: 'Indonesien', warning: false },
+        SG: { countryCode: 'SG', countryName: 'Singapur', warning: false },
+        MY: { countryCode: 'MY', countryName: 'Malaysia', warning: false },
+        AU: { countryCode: 'AU', countryName: 'Australien', warning: false },
+        NZ: { countryCode: 'NZ', countryName: 'Neuseeland', warning: false },
+        US: { countryCode: 'US', countryName: 'Vereinigte Staaten', warning: false },
+        CA: { countryCode: 'CA', countryName: 'Kanada', warning: false },
+        MX: { countryCode: 'MX', countryName: 'Mexiko', warning: false },
+        CR: { countryCode: 'CR', countryName: 'Costa Rica', warning: false },
+        DO: { countryCode: 'DO', countryName: 'Dominikanische Republik', warning: false },
+        BS: { countryCode: 'BS', countryName: 'Bahamas', warning: false },
+        ZA: { countryCode: 'ZA', countryName: 'Südafrika', warning: false },
+        MU: { countryCode: 'MU', countryName: 'Mauritius', warning: false },
+        SC: { countryCode: 'SC', countryName: 'Seychellen', warning: false },
+        MV: { countryCode: 'MV', countryName: 'Malediven', warning: false },
+        AE: { countryCode: 'AE', countryName: 'Vereinigte Arabische Emirate', warning: false, partialWarning: true },
+        EG: { countryCode: 'EG', countryName: 'Ägypten', warning: false, partialWarning: true },
+        TR: { countryCode: 'TR', countryName: 'Türkei', warning: false, partialWarning: true },
+        TN: { countryCode: 'TN', countryName: 'Tunesien', warning: false, partialWarning: true },
+        MA: { countryCode: 'MA', countryName: 'Marokko', warning: false, partialWarning: true },
+        JO: { countryCode: 'JO', countryName: 'Jordanien', warning: false, partialWarning: true },
+        OM: { countryCode: 'OM', countryName: 'Oman', warning: false },
+        QA: { countryCode: 'QA', countryName: 'Katar', warning: false },
+        UA: { countryCode: 'UA', countryName: 'Ukraine', warning: true },
+        RU: { countryCode: 'RU', countryName: 'Russland', warning: true },
+        BY: { countryCode: 'BY', countryName: 'Belarus', warning: true },
+        SY: { countryCode: 'SY', countryName: 'Syrien', warning: true },
+        YE: { countryCode: 'YE', countryName: 'Jemen', warning: true },
+        AF: { countryCode: 'AF', countryName: 'Afghanistan', warning: true },
+        IQ: { countryCode: 'IQ', countryName: 'Irak', warning: true },
+        IR: { countryCode: 'IR', countryName: 'Iran', warning: true },
+        SO: { countryCode: 'SO', countryName: 'Somalia', warning: true },
+        SD: { countryCode: 'SD', countryName: 'Sudan', warning: true },
+        LY: { countryCode: 'LY', countryName: 'Libyen', warning: true },
+        HT: { countryCode: 'HT', countryName: 'Haiti', warning: true },
+        LB: { countryCode: 'LB', countryName: 'Libanon', warning: true },
+      };
 
-afterAll(() => {
-  global.fetch = originalFetch;
-});
+      return new Response(JSON.stringify({ response: mockAa }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // 6. US Department of State Travel Advisories Mock
+    if (urlStr.includes('cadataapi.state.gov') || urlStr.includes('travel.state.gov')) {
+      const mockUs = [
+        { Title: 'Ukraine - Level 4: Do Not Travel' },
+        { Title: 'Russia - Level 4: Do Not Travel' },
+        { Title: 'Belarus - Level 4: Do Not Travel' },
+        { Title: 'Syria - Level 4: Do Not Travel' },
+        { Title: 'Yemen - Level 4: Do Not Travel' },
+        { Title: 'Afghanistan - Level 4: Do Not Travel' },
+        { Title: 'Iraq - Level 4: Do Not Travel' },
+        { Title: 'Somalia - Level 4: Do Not Travel' },
+        { Title: 'Sudan - Level 4: Do Not Travel' },
+        { Title: 'Libya - Level 4: Do Not Travel' },
+        { Title: 'Haiti - Level 4: Do Not Travel' },
+        { Title: 'Lebanon - Level 4: Do Not Travel' },
+        { Title: 'United Arab Emirates - Level 3: Reconsider Travel' },
+        { Title: 'Egypt - Level 3: Reconsider Travel' },
+        { Title: 'Spain - Level 1: Exercise Normal Precautions' },
+        { Title: 'Austria - Level 1: Exercise Normal Precautions' },
+        { Title: 'Japan - Level 1: Exercise Normal Precautions' },
+        { Title: 'Portugal - Level 1: Exercise Normal Precautions' },
+        { Title: 'Thailand - Level 1: Exercise Normal Precautions' },
+        { Title: 'Germany - Level 1: Exercise Normal Precautions' },
+        { Title: 'France - Level 2: Exercise Increased Caution' },
+        { Title: 'United Kingdom - Level 2: Exercise Increased Caution' },
+        { Title: 'Italy - Level 2: Exercise Increased Caution' },
+      ];
+
+      return new Response(JSON.stringify(mockUs), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    return originalFetch(input, init);
+};
