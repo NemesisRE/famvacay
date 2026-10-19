@@ -68,6 +68,7 @@ import { BookingDealsPopover } from '@/components/pricing/BookingDealsPopover';
 import { FlightDetailsPopover } from '@/components/airports/FlightDetailsPopover';
 import { getLocalizedSeasonalWarning } from '@/lib/optimizer/localized-warnings';
 import { DestinationMapModal } from '@/components/destination/DestinationMapModal';
+import { DestinationSafetyPopover } from '@/components/destination/DestinationSafetyPopover';
 import { getDestinationVacationStyles } from '@/lib/optimizer/destination-styles';
 import { getAnnualSpecialTimes, SpecialHolidayPeriod } from '@/lib/holidays/special-dates';
 import { BeachTemperaturePopover } from '@/components/preferences/BeachTemperaturePopover';
@@ -1146,6 +1147,7 @@ export default function HomePage() {
         destinationName: destName,
         destinationCity: featured.destinationCity,
         destinationCountry: featured.destinationCountry,
+        destinationSafety: featured.destinationSafety || featured.safetyAssessment,
         vacationType: profile?.type,
         vacationStyles: styles,
         featuredWindow: featured,
@@ -1403,6 +1405,11 @@ export default function HomePage() {
                     ) : null}
                   </span>
                 )}
+                <DestinationSafetyPopover
+                  safety={win.destinationSafety || win.safetyAssessment}
+                  destinationName={getFormattedLocalizedDestination(win.destinationAirport, win.destinationName)}
+                  countryName={win.destinationCountry}
+                />
               </div>
             )}
 
@@ -1432,27 +1439,6 @@ export default function HomePage() {
                   {win.weather.waterTempC}°C {t.home.waterTempLabel}
                 </span>
               )}
-              {(() => {
-                const safety = win.destinationSafety || win.safetyAssessment;
-                if (!safety) return null;
-                if (safety.isSafe) {
-                  return (
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                      {t.home.safeDestinationBadge}
-                    </span>
-                  );
-                }
-                return (
-                  <span
-                    className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300 flex items-center gap-1"
-                    title={safety.warningDetails || safety.safetyLabel}
-                  >
-                    <AlertCircle className="w-3 h-3 text-amber-600" />
-                    {safety.advisoryTitle || safety.safetyLabel}
-                  </span>
-                );
-              })()}
               {win.boardType && (
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-800 border border-violet-200 flex items-center gap-1">
                   <Utensils className="w-3 h-3 text-violet-600" />
@@ -2865,6 +2851,11 @@ export default function HomePage() {
                                     ) : null}
                                   </span>
                                 )}
+                                <DestinationSafetyPopover
+                                  safety={group.destinationSafety || group.featuredWindow.destinationSafety || group.featuredWindow.safetyAssessment}
+                                  destinationName={group.destinationName}
+                                  countryName={group.destinationCountry}
+                                />
                               </div>
                             </div>
                           </div>

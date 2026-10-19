@@ -193,6 +193,18 @@ export interface TranslationDictionary {
     safetyAdvisoryDetail: string;
     safetyUsLevel: string;
     safetyGermanWarning: string;
+    safetyPopoutTitle: string;
+    safetyPopoutSubtitle: string;
+    safetyScoreLabel: string;
+    safetyStatusSafe: string;
+    safetyStatusCaution: string;
+    safetyStatusWarning: string;
+    safetyStatusDanger: string;
+    safetyGermanNoWarning: string;
+    safetyGermanPartialWarning: string;
+    safetyGermanFullWarning: string;
+    safetySpecificRisks: string;
+    safetyDataSource: string;
     seasonEventEaster: string;
     seasonEventSpringBreakEaster: string;
     seasonEventCarnival: string;
