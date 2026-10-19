@@ -2,7 +2,19 @@ const os = require('os');
 
 /** @type {import('next').NextConfig} */
 function getAllowedOrigins() {
-  const origins = ['famvacay.us', 'localhost', 'localhost:3000', '127.0.0.1', '127.0.0.1:3000', '0.0.0.0'];
+  const origins = [
+    'famvacay.us',
+    '*.famvacay.us',
+    'localhost',
+    'localhost:3000',
+    '127.0.0.1',
+    '127.0.0.1:3000',
+    '0.0.0.0',
+    '*.local',
+    '*.lan',
+    '*.home',
+    '*.internal',
+  ];
 
   try {
     const ifaces = os.networkInterfaces();
@@ -29,6 +41,9 @@ function getAllowedOrigins() {
       const parsed = new URL(appUrl);
       if (parsed.host && !origins.includes(parsed.host)) {
         origins.push(parsed.host);
+      }
+      if (parsed.hostname && !origins.includes(parsed.hostname)) {
+        origins.push(parsed.hostname);
       }
     } catch {
       const cleaned = appUrl.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
@@ -91,7 +106,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' https:",
+              "connect-src 'self' https: ws: wss:",
               "frame-src 'self' https://maps.google.com https://www.google.com https://www.openstreetmap.org",
               "frame-ancestors 'none'",
             ].join('; '),
