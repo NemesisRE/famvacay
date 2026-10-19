@@ -38,8 +38,6 @@ import {
   X,
   RotateCcw,
   Snowflake,
-  Thermometer,
-  Waves,
   ChevronsUpDown,
   ChevronsDownUp,
   ShieldCheck,
@@ -1465,11 +1463,11 @@ export default function HomePage() {
                   {win.weather.snowDepthCm ? ` (~${win.weather.snowDepthCm} cm)` : ''}
                 </span>
               )}
-              {win.weather?.waterTempC !== null && win.weather?.waterTempC !== undefined && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 flex items-center gap-1">
-                  <Waves className="w-3 h-3 text-teal-600" />
-                  {win.weather.waterTempC}°C {t.home.waterTempLabel}
-                </span>
+              {win.weather && (
+                <ClimateDetailsPopover
+                  destinationAirport={win.destinationAirport}
+                  weather={win.weather}
+                />
               )}
               {win.boardType && (
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-800 border border-violet-200 flex items-center gap-1">
@@ -1515,11 +1513,6 @@ export default function HomePage() {
                 directFlightPremiumMultiplier={win.directFlightPremium}
                 connectingSavingsDiscount={win.pricingDetails?.flight?.connectingSavingsDiscount}
               />
-              <span>•</span>
-              <ClimateDetailsPopover
-                destinationAirport={win.destinationAirport}
-                weather={win.weather}
-              />
             </div>
           </div>
 
@@ -1540,8 +1533,10 @@ export default function HomePage() {
                   </div>
                 )}
               </div>
-              <div className="text-right text-[11px] text-slate-400">
-                <span>~{formatCurrency(win.pricePerPerson)} / {t.home.perPerson}</span>
+              <div className="text-right text-[11px] text-slate-500 flex-shrink-0 whitespace-nowrap">
+                <span className="font-medium text-slate-600 block">
+                  ~{formatCurrency(win.pricePerPerson)} / {t.home.perPerson}
+                </span>
                 <span className="block text-[10px] text-slate-400">
                   ({t.home.flightAndLodgingIncluded})
                 </span>
@@ -1604,28 +1599,25 @@ export default function HomePage() {
         })()}
 
         {/* Metrics Bar with MetricExplanationPopover */}
-        <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-          <div className="bg-slate-50 rounded-lg p-2.5 sm:p-2 flex sm:flex-col items-center sm:items-stretch justify-between sm:text-center">
-            <span className="text-slate-500 text-xs sm:text-[10px] font-medium">{t.home.ptoConsumed}</span>
-            <div className="text-right sm:text-center">
-              <span className="font-bold text-slate-800 sm:block">
-                {win.ptoDaysConsumed} {t.home.days}
-              </span>
-              <span className="text-[10px] text-emerald-600 font-medium sm:block ml-1.5 sm:ml-0">
-                ({win.publicHolidaysCount} {t.home.ptoSaved})
-              </span>
-            </div>
-          </div>
-
+        <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
           <MetricExplanationPopover window={win} trigger="ptoRatio" className="w-full">
             <div className="bg-slate-50 hover:bg-slate-100/90 transition rounded-lg p-2.5 sm:p-2 flex sm:flex-col items-center sm:items-stretch justify-between sm:text-center group border border-transparent hover:border-slate-300">
               <span className="text-slate-500 text-xs sm:text-[10px] font-medium flex items-center justify-between sm:justify-center gap-1">
-                {t.home.ptoRatio}
-                <Info className="w-3 h-3 text-slate-400 opacity-60 group-hover:opacity-100" />
+                <span>{t.home.ptoConsumed} &amp; {t.home.ptoRatio}</span>
+                <Info className="w-3 h-3 text-slate-400 opacity-60 group-hover:opacity-100 flex-shrink-0" />
               </span>
-              <span className="font-bold text-slate-800 text-right sm:text-center">
-                {win.ptoEfficiencyRatio}x
-              </span>
+              <div className="flex items-center gap-1.5 sm:justify-center mt-0.5">
+                <span className="font-bold text-slate-800">
+                  {win.ptoDaysConsumed} {t.home.days}
+                </span>
+                <span className="text-[10px] text-emerald-600 font-medium">
+                  ({win.publicHolidaysCount} {t.home.ptoSaved})
+                </span>
+                <span className="text-slate-300 mx-0.5">•</span>
+                <span className="font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded text-[11px]">
+                  {win.ptoEfficiencyRatio}x
+                </span>
+              </div>
             </div>
           </MetricExplanationPopover>
 
@@ -1633,9 +1625,9 @@ export default function HomePage() {
             <div className="bg-indigo-50/80 hover:bg-indigo-100/90 transition rounded-lg p-2.5 sm:p-2 flex sm:flex-col items-center sm:items-stretch justify-between sm:text-center border border-indigo-100/60 hover:border-indigo-300 group">
               <span className="text-indigo-700 text-xs sm:text-[10px] font-semibold flex items-center justify-between sm:justify-center gap-1">
                 {t.home.score}
-                <Info className="w-3 h-3 text-indigo-400 opacity-60 group-hover:opacity-100" />
+                <Info className="w-3 h-3 text-indigo-400 opacity-60 group-hover:opacity-100 flex-shrink-0" />
               </span>
-              <div className="flex items-center gap-1.5 sm:justify-center">
+              <div className="flex items-center gap-1.5 sm:justify-center mt-0.5">
                 <span className="font-extrabold text-indigo-900 text-sm">
                   {win.finalScore} / 100
                 </span>
@@ -1715,54 +1707,52 @@ export default function HomePage() {
                 placeholder={t.home.departureLocationPlaceholder}
               />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    {t.home.countryLabel}
-                  </label>
-                  <select
-                    suppressHydrationWarning
-                    value={country}
-                    onChange={(e) => handleCountryChange(e.target.value)}
-                    className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                  >
-                    {allCountries.map((c) => (
-                      <option key={c.code} value={c.code} suppressHydrationWarning>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    {t.home.homeStateLabel}
-                  </label>
-                  <select
-                    suppressHydrationWarning
-                    value={federalState}
-                    onChange={(e) => setFederalState(e.target.value)}
-                    className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                  >
-                    {(COUNTRIES[country]?.subdivisions || []).length > 0 ? (
-                      (COUNTRIES[country]?.subdivisions || []).map((sub) => (
-                        <option key={sub.code} value={sub.code} suppressHydrationWarning>
-                          {sub.name} ({sub.code})
-                        </option>
-                      ))
-                    ) : (
-                      <option value={country} suppressHydrationWarning>
-                        {mounted ? getLocalizedCountryName(country, locale) : (COUNTRIES[country]?.name || country)}
-                      </option>
-                    )}
-                  </select>
-                </div>
-
-                <p className="text-[11px] text-slate-500 flex items-center gap-1.5 pt-1 sm:col-span-2">
-                  <Info className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                  <span>{t.home.holidayScopeNotice}</span>
-                </p>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  {t.home.countryLabel}
+                </label>
+                <select
+                  suppressHydrationWarning
+                  value={country}
+                  onChange={(e) => handleCountryChange(e.target.value)}
+                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                >
+                  {allCountries.map((c) => (
+                    <option key={c.code} value={c.code} suppressHydrationWarning>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  {t.home.homeStateLabel}
+                </label>
+                <select
+                  suppressHydrationWarning
+                  value={federalState}
+                  onChange={(e) => setFederalState(e.target.value)}
+                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                >
+                  {(COUNTRIES[country]?.subdivisions || []).length > 0 ? (
+                    (COUNTRIES[country]?.subdivisions || []).map((sub) => (
+                      <option key={sub.code} value={sub.code} suppressHydrationWarning>
+                        {sub.name} ({sub.code})
+                      </option>
+                    ))
+                  ) : (
+                    <option value={country} suppressHydrationWarning>
+                      {mounted ? getLocalizedCountryName(country, locale) : (COUNTRIES[country]?.name || country)}
+                    </option>
+                  )}
+                </select>
+              </div>
+
+              <p className="text-[11px] text-slate-500 flex items-center gap-1.5 pt-0.5">
+                <Info className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                <span>{t.home.holidayScopeNotice}</span>
+              </p>
             </div>
 
             {/* Step 2: Travel Destinations & Vacation Style */}
@@ -2901,7 +2891,7 @@ export default function HomePage() {
                   ) : (
                     /* Destination Cards List */
                     <div className="space-y-6">
-                      {filteredDestinationGroups.map((group) => {
+                      {filteredDestinationGroups.map((group, groupIdx) => {
                     const isExpanded = expandedDestinations[group.destinationCode];
                     return (
                       <div
@@ -2993,17 +2983,19 @@ export default function HomePage() {
                                 <MapPin className="w-3.5 h-3.5 text-blue-600" />
                                 <span>{t.home.showOnMap}</span>
                               </button>
-                              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs">
-                                <Sparkles className="w-3 h-3 text-emerald-600" />
-                                {t.home.destGroupFeaturedBadge}
-                              </span>
+                              {groupIdx === 0 && (
+                                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs">
+                                  <Sparkles className="w-3 h-3 text-emerald-600" />
+                                  {t.home.destGroupFeaturedBadge}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
 
                         {/* Featured Top-Scoring Vacation Window */}
                         <div className="p-4 bg-white">
-                          {renderVacationCard(group.featuredWindow, { rank: 1, hideDestinationHeader: true })}
+                          {renderVacationCard(group.featuredWindow, { rank: groupIdx + 1, hideDestinationHeader: true })}
                         </div>
 
                         {/* Alternative Dates Accordion */}
