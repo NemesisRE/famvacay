@@ -2,7 +2,7 @@ const os = require('os');
 
 /** @type {import('next').NextConfig} */
 function getAllowedOrigins() {
-  const origins = ['localhost:3000', '127.0.0.1:3000'];
+  const origins = ['localhost', 'localhost:3000', '127.0.0.1', '127.0.0.1:3000', '0.0.0.0', 'marvin.kurz.casa'];
 
   try {
     const ifaces = os.networkInterfaces();
@@ -10,8 +10,12 @@ function getAllowedOrigins() {
       for (const net of ifaces[name] || []) {
         if (net.family === 'IPv4') {
           const originWithPort = `${net.address}:3000`;
+          const rawIp = net.address;
           if (!origins.includes(originWithPort)) {
             origins.push(originWithPort);
+          }
+          if (!origins.includes(rawIp)) {
+            origins.push(rawIp);
           }
         }
       }
@@ -51,6 +55,8 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   poweredByHeader: false,
+  serverExternalPackages: ['ioredis'],
+  allowedDevOrigins: getAllowedOrigins(),
   experimental: {
     serverActions: {
       allowedOrigins: getAllowedOrigins(),

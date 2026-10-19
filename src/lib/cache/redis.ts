@@ -6,10 +6,11 @@
  * - Automatic in-memory fallback for offline/browser/test environments
  */
 
-let redisInstance: any = null;
-let redisPromise: Promise<any> | null = null;
+declare const __non_webpack_require__: any;
 
-async function getRedisClient(): Promise<any> {
+let redisInstance: any = null;
+
+function getRedisClient(): any {
   if (typeof window !== 'undefined') {
     return null; // Client-side execution uses memory cache fallback
   }
@@ -18,41 +19,38 @@ async function getRedisClient(): Promise<any> {
     return redisInstance;
   }
 
-  if (!redisPromise) {
-    redisPromise = (async () => {
-      try {
-        const { default: Redis } = await import('ioredis');
-        const cacheUrl =
-          process.env.VALKEY_URL ||
-          process.env.DRAGONFLY_URL ||
-          process.env.REDIS_URL ||
-          'redis://localhost:6379';
+  try {
+    // Dynamic runtime require prevents bundlers (Webpack / Turbopack)
+    // from tracing Node 'net' and 'tls' modules into client browser bundles.
+    const req = typeof __non_webpack_require__ !== 'undefined' ? __non_webpack_require__ : require;
+    const Redis = req('ioredis');
+    const cacheUrl =
+      process.env.VALKEY_URL ||
+      process.env.DRAGONFLY_URL ||
+      process.env.REDIS_URL ||
+      'redis://localhost:6379';
 
-        const client = new Redis(cacheUrl, {
-          maxRetriesPerRequest: 3,
-          retryStrategy(times) {
-            if (times > 5) {
-              return null;
-            }
-            return Math.min(times * 100, 2000);
-          },
-          lazyConnect: true,
-        });
+    const client = new Redis(cacheUrl, {
+      maxRetriesPerRequest: 3,
+      retryStrategy(times: number) {
+        if (times > 5) {
+          return null;
+        }
+        return Math.min(times * 100, 2000);
+      },
+      lazyConnect: true,
+    });
 
-        client.on('error', (err: any) => {
-          console.warn('[Cache] Connection warning (Valkey/Dragonfly/Redis):', err.message);
-        });
+    client.on('error', (err: any) => {
+      console.warn('[Cache] Connection warning (Valkey/Dragonfly/Redis):', err.message);
+    });
 
-        redisInstance = client;
-        return client;
-      } catch (err: any) {
-        console.warn('[Cache] Could not initialize ioredis driver:', err.message);
-        return null;
-      }
-    })();
+    redisInstance = client;
+    return client;
+  } catch (err: any) {
+    console.warn('[Cache] Could not initialize ioredis driver:', err.message);
+    return null;
   }
-
-  return redisPromise;
 }
 
 /**
@@ -61,14 +59,12 @@ async function getRedisClient(): Promise<any> {
 const memoryCache = new Map<string, { value: string; expiry: number }>();
 
 export async function getCached<T>(key: string): Promise<T | null> {
-  if (typeof window === 'undefined') {
+  const client = getRedisClient();
+  if (client && (client.status === 'ready' || client.status === 'connecting')) {
     try {
-      const client = await getRedisClient();
-      if (client && (client.status === 'ready' || client.status === 'connecting')) {
-        const data = await client.get(key);
-        if (data) {
-          return JSON.parse(data) as T;
-        }
+      const data = await client.get(key);
+      if (data) {
+        return JSON.parse(data) as T;
       }
     } catch {
       // Redis / Valkey failed, proceed to memory fallback
@@ -89,13 +85,11 @@ export async function getCached<T>(key: string): Promise<T | null> {
 
 export async function setCached<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
   const serialized = JSON.stringify(value);
+  const client = getRedisClient();
 
-  if (typeof window === 'undefined') {
+  if (client && (client.status === 'ready' || client.status === 'connecting')) {
     try {
-      const client = await getRedisClient();
-      if (client && (client.status === 'ready' || client.status === 'connecting')) {
-        await client.setex(key, ttlSeconds, serialized);
-      }
+      await client.setex(key, ttlSeconds, serialized);
     } catch {
       // Redis / Valkey failed, proceed to memory fallback
     }
@@ -109,22 +103,23 @@ export async function setCached<T>(key: string, value: T, ttlSeconds: number): P
 
 export const redis = {
   get status() {
-    return redisInstance ? redisInstance.status : 'ready';
+    const client = getRedisClient();
+    return client ? client.status : 'ready';
   },
   ping: async () => {
-    const client = await getRedisClient();
+    const client = getRedisClient();
     return client ? client.ping() : 'PONG';
   },
   get: async (key: string) => {
-    const client = await getRedisClient();
+    const client = getRedisClient();
     return client ? client.get(key) : null;
   },
   set: async (key: string, val: string) => {
-    const client = await getRedisClient();
+    const client = getRedisClient();
     return client ? client.set(key, val) : null;
   },
   setex: async (key: string, ttl: number, val: string) => {
-    const client = await getRedisClient();
+    const client = getRedisClient();
     return client ? client.setex(key, ttl, val) : null;
   },
 };

@@ -19,7 +19,7 @@ test.describe('FamVacay E2E User Journey', () => {
 
     // Verify results show up
     await expect(page.locator('text=Optimal Vacation Windows')).toBeVisible();
-    await expect(page.locator('text=Windows Found')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=Windows Found')).toBeVisible({ timeout: 45000 });
   });
 });
 

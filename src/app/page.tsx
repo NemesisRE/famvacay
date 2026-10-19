@@ -66,7 +66,7 @@ import { BookingDealsPopover } from '@/components/pricing/BookingDealsPopover';
 import { FlightDetailsPopover } from '@/components/airports/FlightDetailsPopover';
 import { getLocalizedSeasonalWarning } from '@/lib/optimizer/localized-warnings';
 import { DestinationMapModal } from '@/components/destination/DestinationMapModal';
-import { getDestinationVacationStyles } from '@/lib/optimizer/destinations';
+import { getDestinationVacationStyles } from '@/lib/optimizer/destination-styles';
 import { getAnnualSpecialTimes, SpecialHolidayPeriod } from '@/lib/holidays/special-dates';
 import { BeachTemperaturePopover } from '@/components/preferences/BeachTemperaturePopover';
 

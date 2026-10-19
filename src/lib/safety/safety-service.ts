@@ -79,8 +79,8 @@ function getCachedAdvisories(): AdvisoryCacheStore {
     };
   }
 
-  // Trigger background refresh if expired or empty
-  if (Date.now() - memoryCache.timestamp >= CACHE_TTL_MS || Object.keys(memoryCache.entries).length === 0) {
+  // Trigger background refresh on server only if expired or empty
+  if (typeof window === 'undefined' && (Date.now() - memoryCache.timestamp >= CACHE_TTL_MS || Object.keys(memoryCache.entries).length === 0)) {
     ensureTravelAdvisoriesLoaded().catch(() => {});
   }
 
@@ -103,6 +103,10 @@ async function saveCachedAdvisories(store: AdvisoryCacheStore): Promise<void> {
  * Ensures travel advisories are loaded into memory, checking the cache engine first.
  */
 export async function ensureTravelAdvisoriesLoaded(): Promise<AdvisoryCacheStore> {
+  if (typeof window !== 'undefined') {
+    return memoryCache || { timestamp: 0, entries: {} };
+  }
+
   if (memoryCache && Date.now() - memoryCache.timestamp < CACHE_TTL_MS && Object.keys(memoryCache.entries).length > 0) {
     return memoryCache;
   }
@@ -199,6 +203,10 @@ async function fetchUSStateDeptAdvisories(): Promise<Array<{ Title: string }>> {
  * populating the cache.
  */
 export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCacheStore> {
+  if (typeof window !== 'undefined') {
+    return memoryCache || { timestamp: 0, entries: {} };
+  }
+
   if (!force && memoryCache && Date.now() - memoryCache.timestamp < CACHE_TTL_MS && Object.keys(memoryCache.entries).length > 0) {
     return memoryCache;
   }
