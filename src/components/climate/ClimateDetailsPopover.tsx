@@ -57,18 +57,17 @@ export function ClimateDetailsPopover({
 
   return (
     <div className={`inline-block ${className}`}>
-      {/* Trigger Button: Smooth, anchored reference */}
+      {/* Trigger Button: Smooth, anchored reference with badge styling */}
       <button
         ref={refs.setReference}
         {...getReferenceProps()}
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-1 font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-md border border-amber-200/80 transition-colors cursor-pointer group"
+        className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors flex items-center gap-1 cursor-pointer group shadow-2xs"
         title="View climate insights & historical weather details"
       >
-        <Sun className="w-3.5 h-3.5 text-amber-500 group-hover:rotate-45 transition-transform" />
+        <Sun className="w-3 h-3 text-amber-500 group-hover:rotate-45 transition-transform flex-shrink-0" />
         <span>{weather.avgTempC}°C</span>
-        <Info className="w-3 h-3 text-amber-400 opacity-60 group-hover:opacity-100 ml-0.5" />
       </button>
 
       {/* Popover Card anchored via Floating UI FloatingPortal */}

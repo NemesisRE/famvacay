@@ -304,7 +304,14 @@ export default function HomePage() {
   const [expandedDestinations, setExpandedDestinations] = useState<Record<string, boolean>>({});
   const [expandedTimeframes, setExpandedTimeframes] = useState<Record<string, boolean>>({});
   const [destinationSearchFilter, setDestinationSearchFilter] = useState<string>('');
-  const [destinationCountryFilter, setDestinationCountryFilter] = useState<string>('ALL');
+  const [selectedCountryFilters, setSelectedCountryFilters] = useState<string[]>([]);
+  const toggleCountryFilter = (countryName: string) => {
+    setSelectedCountryFilters((prev) =>
+      prev.includes(countryName)
+        ? prev.filter((c) => c !== countryName)
+        : [...prev, countryName]
+    );
+  };
   const [resultStyleFilter, setResultStyleFilter] = useState<DestinationType>('ALL');
   const [distanceFilter, setDistanceFilter] = useState<string>('ALL');
   const [vehicleFilter, setVehicleFilter] = useState<string>('ALL');
@@ -454,7 +461,11 @@ export default function HomePage() {
         if (parsed.sortBy) setSortBy(parsed.sortBy);
         if (parsed.pageSize) setPageSize(parsed.pageSize);
         if (parsed.destinationSearchFilter !== undefined) setDestinationSearchFilter(parsed.destinationSearchFilter);
-        if (parsed.destinationCountryFilter) setDestinationCountryFilter(parsed.destinationCountryFilter);
+        if (parsed.selectedCountryFilters && Array.isArray(parsed.selectedCountryFilters)) {
+          setSelectedCountryFilters(parsed.selectedCountryFilters);
+        } else if (parsed.destinationCountryFilter && parsed.destinationCountryFilter !== 'ALL') {
+          setSelectedCountryFilters([parsed.destinationCountryFilter]);
+        }
         if (parsed.resultStyleFilter) setResultStyleFilter(parsed.resultStyleFilter);
         if (parsed.distanceFilter) setDistanceFilter(parsed.distanceFilter);
         if (parsed.vehicleFilter) setVehicleFilter(parsed.vehicleFilter);
@@ -550,7 +561,7 @@ export default function HomePage() {
         sortBy,
         pageSize,
         destinationSearchFilter,
-        destinationCountryFilter,
+        selectedCountryFilters,
         resultStyleFilter,
         distanceFilter,
         vehicleFilter,
@@ -573,7 +584,7 @@ export default function HomePage() {
     sortBy,
     pageSize,
     destinationSearchFilter,
-    destinationCountryFilter,
+    selectedCountryFilters,
     resultStyleFilter,
     distanceFilter,
     vehicleFilter,
@@ -1223,10 +1234,10 @@ export default function HomePage() {
   const filteredDestinationGroups = useMemo(() => {
     let list = destinationGroups;
 
-    if (destinationCountryFilter !== 'ALL') {
+    if (selectedCountryFilters.length > 0) {
       list = list.filter((g) => {
-        const c = g.destinationCountry || '';
-        return c.toLowerCase() === destinationCountryFilter.toLowerCase();
+        const c = (g.destinationCountry || '').toLowerCase();
+        return selectedCountryFilters.some((sc) => sc.toLowerCase() === c);
       });
     }
 
@@ -1242,7 +1253,7 @@ export default function HomePage() {
     }
 
     return list;
-  }, [destinationGroups, destinationSearchFilter, destinationCountryFilter]);
+  }, [destinationGroups, destinationSearchFilter, selectedCountryFilters]);
 
   const expandAllDestinations = () => {
     const all: Record<string, boolean> = {};
@@ -1399,15 +1410,12 @@ export default function HomePage() {
                       originAirport: win.originAirport,
                     })
                   }
-                  className="inline-flex items-center gap-1.5 text-blue-700 hover:text-blue-900 hover:underline cursor-pointer group text-left"
+                  className="inline-flex items-center gap-1.5 text-slate-900 hover:text-blue-600 cursor-pointer group text-left transition-colors"
                   title={t.home.showOnMap}
                 >
-                  <MapPin className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform flex-shrink-0" />
-                  <span className="font-extrabold text-slate-900 text-sm">
+                  <MapPin className="w-3.5 h-3.5 text-blue-600 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all flex-shrink-0" />
+                  <span className="font-extrabold text-slate-900 group-hover:text-blue-600 group-hover:underline text-sm transition-colors">
                     {getFormattedLocalizedDestination(win.destinationAirport, win.destinationName)}
-                  </span>
-                  <span className="text-[10px] font-normal text-blue-500">
-                    ({t.home.showOnMap})
                   </span>
                 </button>
                 {getDedupedStyleMetas(getDestinationVacationStyles(win.destinationAirport, win.flightDistanceKm)).map((meta) => {
@@ -1517,30 +1525,28 @@ export default function HomePage() {
           </div>
 
           {/* Price & Travel Portal Deals Section */}
-          <div className="flex flex-col sm:items-end justify-between gap-2.5 sm:gap-1.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-            <div className="flex items-baseline justify-between sm:justify-end sm:text-right gap-3">
-              <div>
-                <span className="text-[11px] text-slate-500 block">
-                  {t.home.estFamilyCost}
-                </span>
+          <div className="flex flex-col sm:items-end justify-between gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 text-left sm:text-right">
+            <div>
+              <span className="text-[11px] font-medium text-slate-500 block">
+                {t.home.estFamilyCost}
+              </span>
+              <div className="flex items-baseline gap-2 sm:justify-end flex-wrap">
                 <span className="text-2xl font-black text-slate-900 tracking-tight">
                   {formatCurrency(win.estimatedTotalCost)}
                 </span>
-                {win.effectiveCost && win.mealPlanValue && win.mealPlanValue > 0 && win.boardType === 'ALL_INCLUSIVE' && (
-                  <div className="text-[10px] text-emerald-700 font-semibold sm:text-right mt-0.5 flex items-center gap-1 sm:justify-end">
-                    <Utensils className="w-2.5 h-2.5" />
-                    <span>{t.home.boardTypeSavingsBadge}: ~€{win.mealPlanValue}</span>
-                  </div>
-                )}
-              </div>
-              <div className="text-right text-[11px] text-slate-500 flex-shrink-0 whitespace-nowrap">
-                <span className="font-medium text-slate-600 block">
-                  ~{formatCurrency(win.pricePerPerson)} / {t.home.perPerson}
-                </span>
-                <span className="block text-[10px] text-slate-400">
-                  ({t.home.flightAndLodgingIncluded})
+                <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">
+                  (~{formatCurrency(win.pricePerPerson)} / {t.home.perPerson})
                 </span>
               </div>
+              <span className="block text-[10px] text-slate-400 mt-0.5">
+                {t.home.flightAndLodgingIncluded}
+              </span>
+              {win.effectiveCost && win.mealPlanValue && win.mealPlanValue > 0 && win.boardType === 'ALL_INCLUSIVE' && (
+                <div className="text-[10px] text-emerald-700 font-semibold sm:text-right mt-1 flex items-center gap-1 sm:justify-end">
+                  <Utensils className="w-2.5 h-2.5" />
+                  <span>{t.home.boardTypeSavingsBadge}: ~€{win.mealPlanValue}</span>
+                </div>
+              )}
             </div>
 
             <div className="w-full sm:w-auto flex sm:justify-end">
@@ -2466,264 +2472,540 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Collapsible Filter Panel: One clean filter per line */}
-                {showResultFilters && (
-                  <div className="pt-3 border-t border-slate-100 space-y-2.5">
-                    {/* Line 1: Month Filter */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
-                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                        <span>{t.home.filterByMonth}</span>
-                      </label>
-                      <select
-                        value={selectedMonth}
-                        onChange={(e) => {
-                          setSelectedMonth(e.target.value);
-                          setCurrentPage(1);
-                        }}
-                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
-                      >
-                        <option value="ALL">{t.home.allMonths}</option>
-                        {availableMonths.map((m) => {
-                          const monthName = formatDate(new Date(2026, parseInt(m, 10) - 1, 1), {
-                            month: 'long',
-                          });
-                          return (
-                            <option key={m} value={m}>
-                              {monthName}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </div>
+                {/* Collapsible Filter Panel: Highlight active non-default filters clearly */}
+                {showResultFilters && (() => {
+                  const isMonthActive = selectedMonth !== 'ALL';
+                  const isStyleActive = resultStyleFilter !== 'ALL';
+                  const isDistanceActive = distanceFilter !== 'ALL';
+                  const isVehicleActive = vehicleFilter !== 'ALL';
+                  const isSafetyActive = safetyFilter !== 'SAFE_ONLY';
+                  const isWarningActive = warningFilter !== 'CLEAN_ONLY';
+                  const isBoardTypeActive = boardTypeFilter !== 'ALL';
+                  const isOverlandDurationActive = overlandDurationFilter !== 'ALL';
+                  const isFlightStopsActive = flightStopsFilter !== 'ALL';
+                  const isSchoolHolidayActive = schoolHolidayFilter !== 'all';
+                  const isMaxCostActive = maxCostFilter !== undefined && maxCostFilter > 0;
+                  const isSortActive = sortBy !== 'score';
 
-                    {/* Line 2: Vacation Style Filter */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
-                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                        <Compass className="w-3.5 h-3.5 text-blue-600" />
-                        <span>{t.home.filterByVacationStyle}</span>
-                      </label>
-                      <select
-                        value={resultStyleFilter}
-                        onChange={(e) => {
-                          setResultStyleFilter(e.target.value as DestinationType);
-                          setCurrentPage(1);
-                        }}
-                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
-                      >
-                        <option value="ALL">{t.home.vacationKindAll}</option>
-                        <option value="BEACH">{t.home.vacationKindBeach}</option>
-                        <option value="ALPINE">{t.home.vacationKindAlpine}</option>
-                        <option value="CITY">{t.home.vacationKindCity}</option>
-                        <option value="NATURE">{t.home.vacationKindNature}</option>
-                        <option value="LONGRANGE">{t.home.vacationKindLongrange}</option>
-                      </select>
-                    </div>
+                  return (
+                    <div className="pt-3 border-t border-slate-100 space-y-2">
+                      {/* Line 1: Month Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isMonthActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isMonthActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                          <Calendar className={`w-3.5 h-3.5 ${isMonthActive ? 'text-blue-600' : 'text-blue-600'}`} />
+                          <span>{t.home.filterByMonth}</span>
+                          {isMonthActive && (
+                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                          )}
+                        </label>
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                          <select
+                            value={selectedMonth}
+                            onChange={(e) => {
+                              setSelectedMonth(e.target.value);
+                              setCurrentPage(1);
+                            }}
+                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
+                              isMonthActive
+                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                            }`}
+                          >
+                            <option value="ALL">{t.home.allMonths}</option>
+                            {availableMonths.map((m) => {
+                              const monthName = formatDate(new Date(2026, parseInt(m, 10) - 1, 1), {
+                                month: 'long',
+                              });
+                              return (
+                                <option key={m} value={m}>
+                                  {monthName}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          {isMonthActive && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedMonth('ALL');
+                                setCurrentPage(1);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
+                              title="Zurücksetzen"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                    {/* Line 3: Flight Distance Filter */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
-                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                        <Plane className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>{t.home.filterByDistance}</span>
-                      </label>
-                      <select
-                        value={distanceFilter}
-                        onChange={(e) => {
-                          setDistanceFilter(e.target.value);
-                          setCurrentPage(1);
-                        }}
-                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
-                      >
-                        <option value="ALL">{t.home.allDistances}</option>
-                        <option value="SHORT">{t.home.distShort}</option>
-                        <option value="MID">{t.home.distMid}</option>
-                        <option value="EXTENDED">{t.home.distExtended}</option>
-                        <option value="LONG">{t.home.distLong}</option>
-                        <option value="INTERCONTINENTAL">{t.home.distIntercontinental}</option>
-                      </select>
-                    </div>
+                      {/* Line 2: Vacation Style Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isStyleActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isStyleActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                          <Compass className={`w-3.5 h-3.5 ${isStyleActive ? 'text-blue-600' : 'text-blue-600'}`} />
+                          <span>{t.home.filterByVacationStyle}</span>
+                          {isStyleActive && (
+                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                          )}
+                        </label>
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                          <select
+                            value={resultStyleFilter}
+                            onChange={(e) => {
+                              setResultStyleFilter(e.target.value as DestinationType);
+                              setCurrentPage(1);
+                            }}
+                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
+                              isStyleActive
+                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                            }`}
+                          >
+                            <option value="ALL">{t.home.vacationKindAll}</option>
+                            <option value="BEACH">{t.home.vacationKindBeach}</option>
+                            <option value="ALPINE">{t.home.vacationKindAlpine}</option>
+                            <option value="CITY">{t.home.vacationKindCity}</option>
+                            <option value="NATURE">{t.home.vacationKindNature}</option>
+                            <option value="LONGRANGE">{t.home.vacationKindLongrange}</option>
+                          </select>
+                          {isStyleActive && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setResultStyleFilter('ALL');
+                                setCurrentPage(1);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
+                              title="Zurücksetzen"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                    {/* Line 4: Travel Vehicle Filter */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
-                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                        <Car className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{t.home.filterByVehicle}</span>
-                      </label>
-                      <select
-                        value={vehicleFilter}
-                        onChange={(e) => {
-                          setVehicleFilter(e.target.value);
-                          setCurrentPage(1);
-                        }}
-                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
-                      >
-                        <option value="ALL">{t.home.vehicleAll}</option>
-                        <option value="PLANE">{t.home.vehiclePlane}</option>
-                        <option value="CAR">{t.home.vehicleCar}</option>
-                        <option value="TRAIN">{t.home.vehicleTrain}</option>
-                        <option value="BUS">{t.home.vehicleBus}</option>
-                      </select>
-                    </div>
+                      {/* Line 3: Flight Distance Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isDistanceActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isDistanceActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                          <Plane className={`w-3.5 h-3.5 ${isDistanceActive ? 'text-indigo-600' : 'text-indigo-600'}`} />
+                          <span>{t.home.filterByDistance}</span>
+                          {isDistanceActive && (
+                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                          )}
+                        </label>
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                          <select
+                            value={distanceFilter}
+                            onChange={(e) => {
+                              setDistanceFilter(e.target.value);
+                              setCurrentPage(1);
+                            }}
+                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
+                              isDistanceActive
+                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                            }`}
+                          >
+                            <option value="ALL">{t.home.allDistances}</option>
+                            <option value="SHORT">{t.home.distShort}</option>
+                            <option value="MID">{t.home.distMid}</option>
+                            <option value="EXTENDED">{t.home.distExtended}</option>
+                            <option value="LONG">{t.home.distLong}</option>
+                            <option value="INTERCONTINENTAL">{t.home.distIntercontinental}</option>
+                          </select>
+                          {isDistanceActive && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDistanceFilter('ALL');
+                                setCurrentPage(1);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
+                              title="Zurücksetzen"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                    {/* Line 5: Destination Safety Filter */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
-                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{t.home.filterBySafety}</span>
-                      </label>
-                      <select
-                        value={safetyFilter}
-                        onChange={(e) => {
-                          setSafetyFilter(e.target.value as any);
-                          setCurrentPage(1);
-                        }}
-                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
-                      >
-                        <option value="SAFE_ONLY">{t.home.safetyFilterSafeOnly}</option>
-                        <option value="ALL">{t.home.safetyFilterAll}</option>
-                      </select>
-                    </div>
+                      {/* Line 4: Travel Vehicle Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isVehicleActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isVehicleActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                          <Car className={`w-3.5 h-3.5 ${isVehicleActive ? 'text-emerald-600' : 'text-emerald-600'}`} />
+                          <span>{t.home.filterByVehicle}</span>
+                          {isVehicleActive && (
+                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                          )}
+                        </label>
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                          <select
+                            value={vehicleFilter}
+                            onChange={(e) => {
+                              setVehicleFilter(e.target.value);
+                              setCurrentPage(1);
+                            }}
+                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
+                              isVehicleActive
+                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                            }`}
+                          >
+                            <option value="ALL">{t.home.vehicleAll}</option>
+                            <option value="PLANE">{t.home.vehiclePlane}</option>
+                            <option value="CAR">{t.home.vehicleCar}</option>
+                            <option value="TRAIN">{t.home.vehicleTrain}</option>
+                            <option value="BUS">{t.home.vehicleBus}</option>
+                          </select>
+                          {isVehicleActive && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setVehicleFilter('ALL');
+                                setCurrentPage(1);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
+                              title="Zurücksetzen"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                    {/* Line 6: Seasonal Warnings Filter */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
-                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                        <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
-                        <span>{t.home.filterByWarnings}</span>
-                      </label>
-                      <select
-                        value={warningFilter}
-                        onChange={(e) => {
-                          setWarningFilter(e.target.value as any);
-                          setCurrentPage(1);
-                        }}
-                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
-                      >
-                        <option value="CLEAN_ONLY">{t.home.warningsFilterCleanOnly}</option>
-                        <option value="ALL">{t.home.warningsFilterAll}</option>
-                      </select>
-                    </div>
+                      {/* Line 5: Destination Safety Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isSafetyActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSafetyActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                          <ShieldCheck className={`w-3.5 h-3.5 ${isSafetyActive ? 'text-emerald-600' : 'text-emerald-600'}`} />
+                          <span>{t.home.filterBySafety}</span>
+                          {isSafetyActive && (
+                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                          )}
+                        </label>
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                          <select
+                            value={safetyFilter}
+                            onChange={(e) => {
+                              setSafetyFilter(e.target.value as any);
+                              setCurrentPage(1);
+                            }}
+                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
+                              isSafetyActive
+                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                            }`}
+                          >
+                            <option value="SAFE_ONLY">{t.home.safetyFilterSafeOnly}</option>
+                            <option value="ALL">{t.home.safetyFilterAll}</option>
+                          </select>
+                          {isSafetyActive && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSafetyFilter('SAFE_ONLY');
+                                setCurrentPage(1);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
+                              title="Zurücksetzen"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                    {/* Line 7: Board Type Filter */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
-                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                        <Utensils className="w-3.5 h-3.5 text-violet-600" />
-                        <span>{t.home.filterByBoardType}</span>
-                      </label>
-                      <select
-                        value={boardTypeFilter}
-                        onChange={(e) => {
-                          setBoardTypeFilter(e.target.value);
-                          setCurrentPage(1);
-                        }}
-                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
-                      >
-                        <option value="ALL">{t.home.allBoardTypes}</option>
-                        <option value="ALL_INCLUSIVE">{t.home.boardTypeAllInclusive}</option>
-                        <option value="HALF_BOARD">{t.home.boardTypeHalfBoard}</option>
-                        <option value="BREAKFAST">{t.home.boardTypeBreakfast}</option>
-                        <option value="ROOM_ONLY">{t.home.boardTypeRoomOnly}</option>
-                      </select>
-                    </div>
+                      {/* Line 6: Seasonal Warnings Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isWarningActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isWarningActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                          <AlertCircle className={`w-3.5 h-3.5 ${isWarningActive ? 'text-amber-500' : 'text-amber-500'}`} />
+                          <span>{t.home.filterByWarnings}</span>
+                          {isWarningActive && (
+                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                          )}
+                        </label>
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                          <select
+                            value={warningFilter}
+                            onChange={(e) => {
+                              setWarningFilter(e.target.value as any);
+                              setCurrentPage(1);
+                            }}
+                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
+                              isWarningActive
+                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                            }`}
+                          >
+                            <option value="CLEAN_ONLY">{t.home.warningsFilterCleanOnly}</option>
+                            <option value="ALL">{t.home.warningsFilterAll}</option>
+                          </select>
+                          {isWarningActive && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setWarningFilter('CLEAN_ONLY');
+                                setCurrentPage(1);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
+                              title="Zurücksetzen"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                    {/* Line 8: Max Overland Duration Filter */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
-                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                        <Car className="w-3.5 h-3.5 text-teal-600" />
-                        <span>{t.home.filterByOverlandDuration}</span>
-                      </label>
-                      <select
-                        value={overlandDurationFilter}
-                        onChange={(e) => {
-                          setOverlandDurationFilter(e.target.value);
-                          setCurrentPage(1);
-                        }}
-                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
-                      >
-                        <option value="ALL">{t.home.overlandDurationAny}</option>
-                        <option value="360">{t.home.overlandDuration6h}</option>
-                        <option value="600">{t.home.overlandDuration10h}</option>
-                        <option value="840">{t.home.overlandDuration14h}</option>
-                      </select>
-                    </div>
+                      {/* Line 7: Board Type Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isBoardTypeActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isBoardTypeActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                          <Utensils className={`w-3.5 h-3.5 ${isBoardTypeActive ? 'text-violet-600' : 'text-violet-600'}`} />
+                          <span>{t.home.filterByBoardType}</span>
+                          {isBoardTypeActive && (
+                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                          )}
+                        </label>
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                          <select
+                            value={boardTypeFilter}
+                            onChange={(e) => {
+                              setBoardTypeFilter(e.target.value);
+                              setCurrentPage(1);
+                            }}
+                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
+                              isBoardTypeActive
+                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                            }`}
+                          >
+                            <option value="ALL">{t.home.allBoardTypes}</option>
+                            <option value="ALL_INCLUSIVE">{t.home.boardTypeAllInclusive}</option>
+                            <option value="HALF_BOARD">{t.home.boardTypeHalfBoard}</option>
+                            <option value="BREAKFAST">{t.home.boardTypeBreakfast}</option>
+                            <option value="ROOM_ONLY">{t.home.boardTypeRoomOnly}</option>
+                          </select>
+                          {isBoardTypeActive && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBoardTypeFilter('ALL');
+                                setCurrentPage(1);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
+                              title="Zurücksetzen"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                    {/* Line 9: Flight Transit & Stops Filter */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
-                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                        <Plane className="w-3.5 h-3.5 text-blue-600" />
-                        <span>{t.home.filterByFlightStops}</span>
-                      </label>
-                      <select
-                        value={flightStopsFilter}
-                        onChange={(e) => {
-                          setFlightStopsFilter(e.target.value);
-                          setCurrentPage(1);
-                        }}
-                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
-                      >
-                        <option value="ALL">{t.home.flightStopsAny}</option>
-                        <option value="DIRECT_ONLY">{t.home.flightStopsDirectOnly}</option>
-                        <option value="MAX_1_STOP">{t.home.flightStopsMax1}</option>
-                      </select>
-                    </div>
+                      {/* Line 8: Max Overland Duration Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isOverlandDurationActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isOverlandDurationActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                          <Car className={`w-3.5 h-3.5 ${isOverlandDurationActive ? 'text-teal-600' : 'text-teal-600'}`} />
+                          <span>{t.home.filterByOverlandDuration}</span>
+                          {isOverlandDurationActive && (
+                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                          )}
+                        </label>
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                          <select
+                            value={overlandDurationFilter}
+                            onChange={(e) => {
+                              setOverlandDurationFilter(e.target.value);
+                              setCurrentPage(1);
+                            }}
+                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
+                              isOverlandDurationActive
+                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                            }`}
+                          >
+                            <option value="ALL">{t.home.overlandDurationAny}</option>
+                            <option value="360">{t.home.overlandDuration6h}</option>
+                            <option value="600">{t.home.overlandDuration10h}</option>
+                            <option value="840">{t.home.overlandDuration14h}</option>
+                          </select>
+                          {isOverlandDurationActive && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOverlandDurationFilter('ALL');
+                                setCurrentPage(1);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
+                              title="Zurücksetzen"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                    {/* Line 9: School Calendar Filter */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
-                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                        <Award className="w-3.5 h-3.5 text-blue-600" />
-                        <span>{t.home.schoolHolidaysFilterLabel}</span>
-                      </label>
-                      <select
-                        value={schoolHolidayFilter}
-                        onChange={(e) => {
-                          setSchoolHolidayFilter(e.target.value as any);
-                          setCurrentPage(1);
-                        }}
-                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
-                      >
-                        <option value="all">{t.home.filterAllDates}</option>
-                        <option value="holidaysOnly">{t.home.filterSchoolHolidaysOnly}</option>
-                      </select>
-                    </div>
+                      {/* Line 9: Flight Transit & Stops Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isFlightStopsActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isFlightStopsActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                          <Plane className={`w-3.5 h-3.5 ${isFlightStopsActive ? 'text-blue-600' : 'text-blue-600'}`} />
+                          <span>{t.home.filterByFlightStops}</span>
+                          {isFlightStopsActive && (
+                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                          )}
+                        </label>
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                          <select
+                            value={flightStopsFilter}
+                            onChange={(e) => {
+                              setFlightStopsFilter(e.target.value);
+                              setCurrentPage(1);
+                            }}
+                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
+                              isFlightStopsActive
+                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                            }`}
+                          >
+                            <option value="ALL">{t.home.flightStopsAny}</option>
+                            <option value="DIRECT_ONLY">{t.home.flightStopsDirectOnly}</option>
+                            <option value="MAX_1_STOP">{t.home.flightStopsMax1}</option>
+                          </select>
+                          {isFlightStopsActive && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFlightStopsFilter('ALL');
+                                setCurrentPage(1);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
+                              title="Zurücksetzen"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                    {/* Line 6: Max Cost Filter */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1 border-b border-slate-50">
-                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        <span>{t.home.filterByCost}</span>
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="z. B. 3500 €"
-                        value={maxCostFilter || ''}
-                        onChange={(e) => {
-                          setMaxCostFilter(e.target.value ? Number(e.target.value) : undefined);
-                          setCurrentPage(1);
-                        }}
-                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
-                      />
-                    </div>
+                      {/* Line 10: School Calendar Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isSchoolHolidayActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSchoolHolidayActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                          <Award className={`w-3.5 h-3.5 ${isSchoolHolidayActive ? 'text-blue-600' : 'text-blue-600'}`} />
+                          <span>{t.home.schoolHolidaysFilterLabel}</span>
+                          {isSchoolHolidayActive && (
+                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                          )}
+                        </label>
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                          <select
+                            value={schoolHolidayFilter}
+                            onChange={(e) => {
+                              setSchoolHolidayFilter(e.target.value as any);
+                              setCurrentPage(1);
+                            }}
+                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
+                              isSchoolHolidayActive
+                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                            }`}
+                          >
+                            <option value="all">{t.home.filterAllDates}</option>
+                            <option value="holidaysOnly">{t.home.filterSchoolHolidaysOnly}</option>
+                          </select>
+                          {isSchoolHolidayActive && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSchoolHolidayFilter('all');
+                                setCurrentPage(1);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
+                              title="Zurücksetzen"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                    {/* Line 7: Sort By */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1">
-                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                        <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
-                        <span>{t.home.sortBy}</span>
-                      </label>
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value as any)}
-                        className="w-full sm:w-64 text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
-                      >
-                        <option value="score">{t.home.sortScore}</option>
-                        <option value="date-asc">{t.home.sortDateAsc}</option>
-                        <option value="date-desc">{t.home.sortDateDesc}</option>
-                        <option value="price">{t.home.sortPrice}</option>
-                        <option value="pto">{t.home.sortPto}</option>
-                        <option value="duration">{t.home.sortDuration}</option>
-                      </select>
+                      {/* Line 11: Max Cost Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isMaxCostActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isMaxCostActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                          <Sparkles className={`w-3.5 h-3.5 ${isMaxCostActive ? 'text-amber-500' : 'text-amber-500'}`} />
+                          <span>{t.home.filterByCost}</span>
+                          {isMaxCostActive && (
+                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                          )}
+                        </label>
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                          <input
+                            type="number"
+                            placeholder="z. B. 3500 €"
+                            value={maxCostFilter || ''}
+                            onChange={(e) => {
+                              setMaxCostFilter(e.target.value ? Number(e.target.value) : undefined);
+                              setCurrentPage(1);
+                            }}
+                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
+                              isMaxCostActive
+                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                            }`}
+                          />
+                          {isMaxCostActive && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMaxCostFilter(undefined);
+                                setCurrentPage(1);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
+                              title="Zurücksetzen"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Line 12: Sort By */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all ${isSortActive ? 'bg-blue-50/80 border border-blue-200/90 shadow-2xs' : ''}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSortActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                          <ArrowUpDown className={`w-3.5 h-3.5 ${isSortActive ? 'text-blue-600' : 'text-slate-500'}`} />
+                          <span>{t.home.sortBy}</span>
+                          {isSortActive && (
+                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                          )}
+                        </label>
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                          <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value as any)}
+                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
+                              isSortActive
+                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                            }`}
+                          >
+                            <option value="score">{t.home.sortScore}</option>
+                            <option value="date-asc">{t.home.sortDateAsc}</option>
+                            <option value="date-desc">{t.home.sortDateDesc}</option>
+                            <option value="price">{t.home.sortPrice}</option>
+                            <option value="pto">{t.home.sortPto}</option>
+                            <option value="duration">{t.home.sortDuration}</option>
+                          </select>
+                          {isSortActive && (
+                            <button
+                              type="button"
+                              onClick={() => setSortBy('score')}
+                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer shrink-0"
+                              title="Zurücksetzen"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
 
               {filteredResults.length === 0 ? (
@@ -2761,44 +3043,69 @@ export default function HomePage() {
                       </div>
                     )}
 
-                    <div className="flex flex-wrap items-center justify-between gap-2.5">
-                      <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
                         {/* Search Button (when search field is not open) */}
                         {!isDestinationSearchOpen && !destinationSearchFilter && (
                           <button
                             type="button"
                             onClick={() => setIsDestinationSearchOpen(true)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs cursor-pointer hover:border-slate-300 transition"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs cursor-pointer hover:border-slate-300 transition shrink-0"
                           >
                             <Search className="w-3.5 h-3.5 text-blue-600" />
                             <span>{t.home.searchDestinationsButton}</span>
                           </button>
                         )}
 
-                        {/* Country / Territory Dropdown Filter */}
+                        {/* Multi-Select Country Pills (Single Unified Solution) */}
                         {availableDestinationCountries.length > 1 && (
-                          <div className="w-48 sm:w-56">
-                            <select
-                              value={destinationCountryFilter}
-                              onChange={(e) => setDestinationCountryFilter(e.target.value)}
-                              className="w-full text-xs rounded-lg border border-slate-300 px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 font-medium shadow-2xs"
+                          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 text-xs no-scrollbar flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedCountryFilters([])}
+                              className={`px-2.5 py-1 rounded-full text-xs transition cursor-pointer whitespace-nowrap ${
+                                selectedCountryFilters.length === 0
+                                  ? 'bg-blue-600 text-white shadow-xs font-bold'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium'
+                              }`}
                             >
-                              <option value="ALL">
-                                {t.home.allCountries} ({availableDestinationCountries.length})
-                              </option>
-                              {availableDestinationCountries.map((c) => (
-                                <option key={c} value={c}>
-                                  {c}
-                                </option>
-                              ))}
-                            </select>
+                              {t.home.allCountries}
+                            </button>
+                            {availableDestinationCountries.map((c) => {
+                              const count = destinationGroups.filter((g) => g.destinationCountry === c).length;
+                              const isSelected = selectedCountryFilters.includes(c);
+                              return (
+                                <button
+                                  key={c}
+                                  type="button"
+                                  onClick={() => toggleCountryFilter(c)}
+                                  className={`px-2.5 py-1 rounded-full text-xs transition cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                                    isSelected
+                                      ? 'bg-blue-600 text-white shadow-xs font-bold'
+                                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium'
+                                  }`}
+                                  title={isSelected ? `${c} abwählen` : `${c} filtern`}
+                                >
+                                  <span>{c}</span>
+                                  <span
+                                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                                      isSelected
+                                        ? 'bg-blue-700 text-white font-bold'
+                                        : 'bg-slate-200 text-slate-600'
+                                    }`}
+                                  >
+                                    {count}
+                                  </span>
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
 
                       {/* Right side controls: Count badge & Compact Collapse/Expand All */}
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="font-semibold text-slate-600 text-xs">
+                      <div className="flex items-center gap-2 text-xs shrink-0 self-end sm:self-auto">
+                        <span className="font-semibold text-slate-600 text-xs whitespace-nowrap">
                           <span className="font-bold text-blue-700">{filteredDestinationGroups.length}</span>
                           {destinationGroups.length !== filteredDestinationGroups.length && (
                             <span className="text-slate-400"> / {destinationGroups.length}</span>
@@ -2832,44 +3139,6 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* Quick Country Pills if multiple countries exist */}
-                  {availableDestinationCountries.length > 2 && (
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] no-scrollbar">
-                      <button
-                        type="button"
-                        onClick={() => setDestinationCountryFilter('ALL')}
-                        className={`px-2.5 py-1 rounded-full font-medium transition whitespace-nowrap ${
-                          destinationCountryFilter === 'ALL'
-                            ? 'bg-blue-600 text-white shadow-xs font-bold'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                      >
-                        {t.home.allCountries}
-                      </button>
-                      {availableDestinationCountries.slice(0, 10).map((c) => {
-                        const count = destinationGroups.filter((g) => g.destinationCountry === c).length;
-                        const isSelected = destinationCountryFilter === c;
-                        return (
-                          <button
-                            key={c}
-                            type="button"
-                            onClick={() => setDestinationCountryFilter(isSelected ? 'ALL' : c)}
-                            className={`px-2.5 py-1 rounded-full font-medium transition whitespace-nowrap flex items-center gap-1 ${
-                              isSelected
-                                ? 'bg-blue-600 text-white shadow-xs font-bold'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                            }`}
-                          >
-                            <span>{c}</span>
-                            <span className={`text-[10px] px-1 rounded-full ${isSelected ? 'bg-blue-700 text-white' : 'bg-slate-200 text-slate-700'}`}>
-                              {count}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-
                   {/* Empty state when destination filter matches 0 */}
                   {filteredDestinationGroups.length === 0 ? (
                     <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-center space-y-3">
@@ -2880,7 +3149,7 @@ export default function HomePage() {
                         type="button"
                         onClick={() => {
                           setDestinationSearchFilter('');
-                          setDestinationCountryFilter('ALL');
+                          setSelectedCountryFilters([]);
                         }}
                         className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition"
                       >
@@ -2907,9 +3176,28 @@ export default function HomePage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
-                                <h3 className="font-extrabold text-slate-900 text-base sm:text-lg">
-                                  {group.destinationName}
-                                </h3>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setMapModalDestination({
+                                      destinationCode: group.destinationCode,
+                                      destinationName: group.destinationName,
+                                      destinationCity: group.destinationCity,
+                                      destinationCountry: group.destinationCountry,
+                                      vacationTypes: group.vacationStyles,
+                                      flightDistanceKm: group.featuredWindow.flightDistanceKm,
+                                      flightDurationMinutes: group.featuredWindow.flightDurationMinutes,
+                                      originAirport: group.featuredWindow.originAirport,
+                                    })
+                                  }
+                                  className="inline-flex items-center gap-1.5 text-left group/loc cursor-pointer hover:opacity-90 transition"
+                                  title={t.home.showOnMap}
+                                >
+                                  <h3 className="font-extrabold text-slate-900 group-hover/loc:text-blue-600 group-hover/loc:underline text-base sm:text-lg transition-colors flex items-center gap-1.5">
+                                    <span>{group.destinationName}</span>
+                                    <MapPin className="w-3.5 h-3.5 text-blue-600 opacity-60 group-hover/loc:opacity-100 group-hover/loc:scale-110 transition-all flex-shrink-0" />
+                                  </h3>
+                                </button>
                                 {getDedupedStyleMetas(group.vacationStyles).map((meta) => {
                                   const StyleIcon = meta.icon;
                                   return (
@@ -2963,26 +3251,6 @@ export default function HomePage() {
                             </p>
 
                             <div className="flex items-center gap-2 flex-wrap self-start sm:self-center">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setMapModalDestination({
-                                    destinationCode: group.destinationCode,
-                                    destinationName: group.destinationName,
-                                    destinationCity: group.destinationCity,
-                                    destinationCountry: group.destinationCountry,
-                                    vacationTypes: group.vacationStyles,
-                                    flightDistanceKm: group.featuredWindow.flightDistanceKm,
-                                    flightDurationMinutes: group.featuredWindow.flightDurationMinutes,
-                                    originAirport: group.featuredWindow.originAirport,
-                                  })
-                                }
-                                className="text-xs font-bold text-blue-700 hover:text-blue-900 bg-white hover:bg-blue-50 border border-blue-200 hover:border-blue-300 px-3 py-1 rounded-full flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
-                                title={t.home.showOnMap}
-                              >
-                                <MapPin className="w-3.5 h-3.5 text-blue-600" />
-                                <span>{t.home.showOnMap}</span>
-                              </button>
                               {groupIdx === 0 && (
                                 <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs">
                                   <Sparkles className="w-3 h-3 text-emerald-600" />
