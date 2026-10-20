@@ -45,10 +45,10 @@ export function LanguageSelector() {
         aria-label="Select language"
         aria-expanded={isOpen}
         aria-haspopup="listbox"
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-700 shadow-xs hover:border-slate-300 hover:bg-slate-50 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-200 shadow-xs hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-500/20"
       >
-        <Globe className="w-3.5 h-3.5 text-slate-500" />
-        <span className="font-bold text-xs uppercase text-slate-800 tracking-wide">
+        <Globe className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+        <span className="font-bold text-xs uppercase text-slate-800 dark:text-slate-200 tracking-wide">
           {current.code.toUpperCase()}
         </span>
         <ChevronDown
@@ -60,7 +60,7 @@ export function LanguageSelector() {
         <div
           role="listbox"
           aria-label="Language selection"
-          className="absolute right-0 top-full mt-1.5 z-50 p-1.5 bg-white rounded-xl shadow-xl border border-slate-200 min-w-[170px] text-slate-800 animate-in fade-in slide-in-from-top-1 duration-150 space-y-0.5"
+          className="absolute right-0 top-full mt-1.5 z-50 p-1.5 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 min-w-[170px] text-slate-800 dark:text-slate-200 animate-in fade-in slide-in-from-top-1 duration-150 space-y-0.5"
         >
           {SUPPORTED_LOCALES.map((l) => {
             const isSelected = locale === l.code;
@@ -76,17 +76,17 @@ export function LanguageSelector() {
                 }}
                 className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg transition-colors cursor-pointer text-left ${
                   isSelected
-                    ? 'bg-blue-50 text-blue-700 font-bold'
-                    : 'text-slate-700 hover:bg-slate-100 font-medium'
+                    ? 'bg-teal-50 dark:bg-teal-900/40 text-teal-800 dark:text-teal-200 font-bold'
+                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60 font-medium'
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-900">{l.name}</span>
+                  <span className="text-slate-900 dark:text-slate-100">{l.name}</span>
                   <span className="text-[10px] text-slate-400 uppercase font-mono">
                     ({l.code.toUpperCase()})
                   </span>
                 </div>
-                {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 stroke-[2.5]" />}
+                {isSelected && <Check className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 stroke-[2.5]" />}
               </button>
             );
           })}

@@ -108,15 +108,15 @@ export default function SignInPage() {
 
   return (
     <div className="max-w-md mx-auto py-12 px-4 sm:px-6">
-      <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm space-y-6">
+      <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl mx-auto flex items-center justify-center">
+          <div className="w-12 h-12 bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 rounded-xl mx-auto flex items-center justify-center">
             <Lock className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
             {isRegisterMode ? t.auth.createAccount : t.auth.welcome}
           </h1>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {isRegisterMode ? t.auth.createSubtitle : t.auth.welcomeSubtitle}
           </p>
         </div>
@@ -125,8 +125,8 @@ export default function SignInPage() {
           <div
             className={`p-3.5 rounded-xl text-xs flex items-center gap-2 border ${
               message.type === 'success'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                : 'bg-red-50 text-red-800 border-red-200'
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                : 'bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800'
             }`}
           >
             {message.type === 'success' ? (
@@ -143,7 +143,7 @@ export default function SignInPage() {
           <button
             type="button"
             onClick={() => signIn('google', { callbackUrl: '/' })}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 transition"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 transition"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path
@@ -169,7 +169,7 @@ export default function SignInPage() {
           <button
             type="button"
             onClick={() => signIn('apple', { callbackUrl: '/' })}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 transition"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 transition"
           >
             <svg className="w-4 h-4 fill-current" viewBox="0 0 170 170">
               <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.08-7.73-7.98-12.13-14.68-6.19-9.5-11.04-20.2-14.56-32.09-3.52-11.89-5.28-23.23-5.28-34.02 0-14.68 3.69-26.96 11.07-36.85 7.37-9.89 16.79-14.96 28.24-15.22 5.06 0 10.74 1.34 17.06 4.02 6.32 2.68 10.23 4.08 11.75 4.19 1.12 0 5.17-1.46 12.16-4.37 6.99-2.92 12.91-4.22 17.78-3.9 13.06.63 23.36 5.43 30.9 14.41-11.45 6.99-17.06 16.59-16.84 28.81.22 9.61 3.97 17.58 11.26 23.91 7.29 6.32 15.93 9.94 25.93 10.84-2.18 6.47-4.74 13-7.69 19.57zM119.22 31.81c0-7.72 2.76-14.88 8.28-21.49 5.52-6.61 12.44-10.72 20.76-12.32.22 1.13.33 2.14.33 3.03 0 7.83-2.93 15.15-8.79 21.95-5.87 6.8-13 10.89-21.4 12.26-.23-1.12-.34-2.26-.34-3.43z" />
@@ -180,10 +180,10 @@ export default function SignInPage() {
 
         <div className="relative my-4">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-200"></div>
+            <div className="w-full border-t border-slate-200 dark:border-slate-800"></div>
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white px-2 text-slate-400 font-medium">{t.auth.orCredentials}</span>
+            <span className="bg-white dark:bg-slate-900 px-2 text-slate-400 font-medium">{t.auth.orCredentials}</span>
           </div>
         </div>
 
@@ -191,20 +191,20 @@ export default function SignInPage() {
         <form onSubmit={handleCredentialsSubmit} className="space-y-4">
           {isRegisterMode && (
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">{t.auth.fullName}</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{t.auth.fullName}</label>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Jane Doe"
-                className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2.5 focus:ring-2 focus:ring-teal-500 outline-none"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">{t.auth.email}</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{t.auth.email}</label>
             <div className="relative">
               <input
                 type="email"
@@ -212,14 +212,14 @@ export default function SignInPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="parent@example.com"
-                className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2.5 pl-9 focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2.5 pl-9 focus:ring-2 focus:ring-teal-500 outline-none"
               />
               <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">{t.auth.password}</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{t.auth.password}</label>
             <div className="relative">
               <input
                 type="password"
@@ -227,7 +227,7 @@ export default function SignInPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2.5 pl-9 focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2.5 pl-9 focus:ring-2 focus:ring-teal-500 outline-none"
               />
               <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             </div>
@@ -236,7 +236,7 @@ export default function SignInPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-blue-600 hover:bg-blue-700 text-white shadow transition flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-teal-600 hover:bg-teal-700 text-white shadow transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
           >
             {loading ? (
               <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
@@ -249,16 +249,16 @@ export default function SignInPage() {
           </button>
         </form>
 
-        {/* Passkey enrollment option */}
-        <div className="pt-2 border-t border-slate-100">
+        {/* Passkey enrollment option: responsive, wrap-safe layout */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
           <button
             type="button"
             onClick={handlePasskeyRegister}
             disabled={loading}
-            className="w-full py-2 px-3 rounded-xl border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-50 text-indigo-700 font-semibold text-xs transition flex items-center justify-center gap-1.5"
+            className="w-full min-h-10 py-2 px-3 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/60 dark:bg-indigo-950/40 hover:bg-indigo-50 dark:hover:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-semibold text-xs transition flex items-center justify-center gap-2 text-center cursor-pointer disabled:opacity-60"
           >
-            <Shield className="w-3.5 h-3.5 text-indigo-600" />
-            {t.auth.passkeyBtn}
+            <Shield className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span className="leading-snug break-words text-left sm:text-center">{t.auth.passkeyBtn}</span>
           </button>
         </div>
 
@@ -270,7 +270,7 @@ export default function SignInPage() {
               setIsRegisterMode(!isRegisterMode);
               setMessage(null);
             }}
-            className="text-xs text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1"
+            className="text-xs text-teal-600 hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-300 font-semibold inline-flex items-center gap-1 cursor-pointer"
           >
             {isRegisterMode ? t.auth.alreadyHaveAccount : t.auth.dontHaveAccount}
           </button>

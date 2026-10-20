@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   AlertTriangle,
   Utensils,
+  Sparkles,
 } from 'lucide-react';
 import { CandidateWindow } from '@/lib/optimizer/types';
 import { useI18n } from '@/lib/i18n/i18n-context';
@@ -64,10 +65,10 @@ export function MetricExplanationPopover({
     role,
   ]);
 
-  const pricePct = Math.min(100, Math.max(0, Math.round(win.scoreBreakdown.priceIndex)));
-  const ptoPct = Math.min(100, Math.max(0, Math.round(win.scoreBreakdown.ptoEfficiencyIndex)));
-  const weatherPct = Math.min(100, Math.max(0, Math.round(win.scoreBreakdown.weatherIndex)));
-  const frictionPct = Math.min(100, Math.max(0, Math.round(win.scoreBreakdown.travelFrictionIndex)));
+  const pricePct = Math.min(100, Math.max(0, Math.round(win.scoreBreakdown?.priceIndex ?? 50)));
+  const ptoPct = Math.min(100, Math.max(0, Math.round(win.scoreBreakdown?.ptoEfficiencyIndex ?? 50)));
+  const weatherPct = Math.min(100, Math.max(0, Math.round(win.scoreBreakdown?.weatherIndex ?? 50)));
+  const frictionPct = Math.min(100, Math.max(0, Math.round(win.scoreBreakdown?.travelFrictionIndex ?? 50)));
 
   const safety = win.destinationSafety || win.safetyAssessment;
 
@@ -112,14 +113,14 @@ export function MetricExplanationPopover({
               zIndex: 99999,
             }}
             {...getFloatingProps()}
-            className="w-80 sm:w-96 max-w-[94vw] bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 text-slate-800 transition-all duration-150 animate-in fade-in zoom-in-95"
+            className="w-80 sm:w-96 max-w-[94vw] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 text-slate-800 dark:text-slate-100 transition-all duration-150 animate-in fade-in zoom-in-95"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold ${
-                  trigger === 'ptoRatio' ? 'bg-amber-50 text-amber-600' : 'bg-indigo-50 text-indigo-600'
+                  trigger === 'ptoRatio' ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400' : 'bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400'
                 }`}>
                   {trigger === 'ptoRatio' ? (
                     <Zap className="w-4 h-4" />
@@ -128,18 +129,20 @@ export function MetricExplanationPopover({
                   )}
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm text-slate-900 leading-tight">
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 leading-tight">
                     {trigger === 'ptoRatio' ? t.home.vacationFactorExplainTitle : t.home.scoreExplainTitle}
                   </h4>
-                  <p className="text-[11px] text-slate-500">
-                    {trigger === 'ptoRatio' ? t.home.ptoRatio : t.home.scoreExplainDesc}
-                  </p>
+                  {trigger === 'ptoRatio' && (
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {t.home.ptoRatio}
+                    </p>
+                  )}
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -148,33 +151,33 @@ export function MetricExplanationPopover({
             <div className="py-3.5 space-y-4 text-xs">
               {/* 1. Vacation Factor Explanation (shown for ptoRatio or generic button) */}
               {(trigger === 'ptoRatio' || trigger === 'button') && (
-                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-2">
+                <div className="bg-slate-50 dark:bg-slate-800/80 rounded-xl p-3 border border-slate-100 dark:border-slate-700/80 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                    <span className="font-bold text-slate-900 dark:text-slate-100 text-xs flex items-center gap-1.5">
                       <Zap className="w-3.5 h-3.5 text-amber-500" />
-                      {t.home.vacationFactorExplainTitle}
+                      {t.home.ptoRatio}
                     </span>
-                    <span className="font-extrabold text-sm text-indigo-700 bg-white px-2 py-0.5 rounded-md border border-indigo-100 shadow-xs">
+                    <span className="font-extrabold text-sm text-indigo-700 dark:text-indigo-300 bg-white dark:bg-slate-700 px-2 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-900/50 shadow-xs">
                       {win.ptoEfficiencyRatio}x
                     </span>
                   </div>
-                  <div className="bg-white rounded-lg p-2 border border-slate-200/70 text-slate-700 font-mono text-[11px] text-center">
-                    <span className="font-semibold text-slate-900">{win.durationDays} {t.home.days}</span>
+                  <div className="bg-white dark:bg-slate-900/70 rounded-lg p-2 border border-slate-200/70 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-mono text-[11px] text-center">
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">{win.durationDays} {t.home.days}</span>
                     {' ÷ '}
-                    <span className="font-semibold text-indigo-600">{win.ptoDaysConsumed} {t.home.ptoConsumed}</span>
+                    <span className="font-semibold text-indigo-600 dark:text-indigo-400">{win.ptoDaysConsumed} {t.home.ptoConsumed}</span>
                     {' = '}
-                    <span className="font-bold text-emerald-600">{win.ptoEfficiencyRatio}x Free Time</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">{win.ptoEfficiencyRatio}x Free Time</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                     {t.home.vacationFactorExplainDesc}
                   </p>
                   {win.publicHolidaysCount > 0 && (
-                    <div className="bg-emerald-50/80 rounded-lg p-2 border border-emerald-100 flex items-center justify-between text-[11px] text-emerald-900 mt-2">
+                    <div className="bg-emerald-50/80 dark:bg-emerald-950/40 rounded-lg p-2 border border-emerald-100 dark:border-emerald-800/60 flex items-center justify-between text-[11px] text-emerald-900 dark:text-emerald-200 mt-2">
                       <span className="font-semibold flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                        <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                         <span>{t.home.ptoSaved}</span>
                       </span>
-                      <span className="font-bold text-emerald-700 bg-white px-1.5 py-0.5 rounded border border-emerald-200">
+                      <span className="font-bold text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-700">
                         {win.publicHolidaysCount} {t.home.days}
                       </span>
                     </div>
@@ -186,15 +189,15 @@ export function MetricExplanationPopover({
               {(trigger === 'score' || trigger === 'button') && (
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                      <Award className="w-3.5 h-3.5 text-indigo-600" />
+                    <span className="font-bold text-slate-900 dark:text-slate-100 text-xs flex items-center gap-1.5">
+                      <Award className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                       {t.home.scoreExplainTitle}
                     </span>
-                    <span className="font-extrabold text-indigo-900 text-sm">
+                    <span className="font-extrabold text-indigo-900 dark:text-indigo-300 text-sm">
                       {win.finalScore} / 100
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                     {t.home.scoreExplainDesc}
                   </p>
 
@@ -203,20 +206,20 @@ export function MetricExplanationPopover({
                     {/* Pillar 1: Price & Dining Value (40%) */}
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-slate-600 font-medium flex items-center gap-1">
-                          <DollarSign className="w-3 h-3 text-emerald-600" />
+                        <span className="text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1">
+                          <DollarSign className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                           {t.home.scorePillarPrice}
                         </span>
-                        <span className="font-bold text-slate-800">{pricePct}%</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">{pricePct}%</span>
                       </div>
-                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-emerald-500 rounded-full transition-all duration-300"
                           style={{ width: `${pricePct}%` }}
                         />
                       </div>
                       {win.mealPlanValue && win.mealPlanValue > 0 ? (
-                        <div className="text-[10px] text-emerald-700 flex items-center gap-1 font-medium">
+                        <div className="text-[10px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1 font-medium">
                           <Utensils className="w-2.5 h-2.5" />
                           <span>
                             {t.home.boardTypeSavingsBadge}: +€{win.mealPlanValue} credit
@@ -228,15 +231,15 @@ export function MetricExplanationPopover({
                     {/* Pillar 2: PTO Efficiency (30%) */}
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-slate-600 font-medium flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-blue-600" />
+                        <span className="text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-teal-600 dark:text-teal-400" />
                           {t.home.scorePillarPto}
                         </span>
-                        <span className="font-bold text-slate-800">{ptoPct}%</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">{ptoPct}%</span>
                       </div>
-                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                          className="h-full bg-teal-500 rounded-full transition-all duration-300"
                           style={{ width: `${ptoPct}%` }}
                         />
                       </div>
@@ -245,13 +248,13 @@ export function MetricExplanationPopover({
                     {/* Pillar 3: Weather & Climate (20%) */}
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-slate-600 font-medium flex items-center gap-1">
+                        <span className="text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1">
                           <Sun className="w-3 h-3 text-amber-500" />
                           {t.home.scorePillarWeather}
                         </span>
-                        <span className="font-bold text-slate-800">{weatherPct}%</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">{weatherPct}%</span>
                       </div>
-                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-amber-500 rounded-full transition-all duration-300"
                           style={{ width: `${weatherPct}%` }}
@@ -262,13 +265,13 @@ export function MetricExplanationPopover({
                     {/* Pillar 4: Travel Proximity (10%) */}
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-slate-600 font-medium flex items-center gap-1">
-                          <Navigation className="w-3 h-3 text-indigo-600" />
+                        <span className="text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1">
+                          <Navigation className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                           {t.home.scorePillarFriction}
                         </span>
-                        <span className="font-bold text-slate-800">{frictionPct}%</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">{frictionPct}%</span>
                       </div>
-                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-indigo-500 rounded-full transition-all duration-300"
                           style={{ width: `${frictionPct}%` }}
@@ -278,12 +281,12 @@ export function MetricExplanationPopover({
 
                     {/* Active Environmental & Seasonal Warning Penalty Notice */}
                     {win.seasonalWarningImpact && (
-                      <div className="text-[10px] text-rose-800 bg-rose-50 border border-rose-200/90 rounded-lg p-2 flex items-center justify-between">
+                      <div className="text-[10px] text-rose-800 dark:text-rose-200 bg-rose-50 dark:bg-rose-950/40 border border-rose-200/90 dark:border-rose-900/50 rounded-lg p-2 flex items-center justify-between">
                         <span className="font-semibold flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3 text-rose-600" />
+                          <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400" />
                           {t.home.seasonalPenaltyNotice}: {win.seasonalWarningImpact.reason}
                         </span>
-                        <span className="font-extrabold text-rose-700 shrink-0 ml-1">
+                        <span className="font-extrabold text-rose-700 dark:text-rose-300 shrink-0 ml-1">
                           -{win.seasonalWarningPenalty || win.seasonalWarningImpact.overallScorePenalty} pts
                         </span>
                       </div>
@@ -291,13 +294,39 @@ export function MetricExplanationPopover({
 
                     {/* Layover / Connection Transfer Penalty Notice */}
                     {win.flightStops !== undefined && win.flightStops > 0 && (
-                      <div className="text-[10px] text-amber-900 bg-amber-50 border border-amber-200/90 rounded-lg p-2 flex items-center justify-between">
+                      <div className="text-[10px] text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/90 dark:border-amber-900/50 rounded-lg p-2 flex items-center justify-between">
                         <span className="font-semibold flex items-center gap-1">
-                          <Navigation className="w-3 h-3 text-amber-600" />
+                          <Navigation className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                           {t.home.layoverPenaltyNotice} ({win.flightStops === 1 ? t.home.oneStopFlight : t.home.multipleStopsFlight.replace('{stops}', String(win.flightStops))})
                         </span>
-                        <span className="font-extrabold text-amber-800 shrink-0 ml-1">
+                        <span className="font-extrabold text-amber-800 dark:text-amber-300 shrink-0 ml-1">
                           -{win.layoverPenalty || (win.flightStops === 1 ? 5 : 12)} pts
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Off-Peak Bonus Notice */}
+                    {win.offPeakBonus && win.offPeakBonus > 0 && (
+                      <div className="text-[10px] text-teal-900 dark:text-teal-200 bg-teal-50 dark:bg-teal-950/40 border border-teal-200/90 dark:border-teal-900/50 rounded-lg p-2 flex items-center justify-between">
+                        <span className="font-semibold flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                          {t.home.offPeakBonusBadge}: {t.home.offPeakBonusDesc}
+                        </span>
+                        <span className="font-extrabold text-teal-700 dark:text-teal-300 shrink-0 ml-1">
+                          +{win.offPeakBonus} pts
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Value-for-Money / Duration Bonus Notice */}
+                    {win.valueForMoneyBonus && win.valueForMoneyBonus > 0 && (
+                      <div className="text-[10px] text-teal-900 dark:text-teal-200 bg-teal-50 dark:bg-teal-950/40 border border-teal-200/90 dark:border-teal-900/50 rounded-lg p-2 flex items-center justify-between">
+                        <span className="font-semibold flex items-center gap-1">
+                          <DollarSign className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                          {t.home.valueForMoneyBadge}: {t.home.valueForMoneyDesc}
+                        </span>
+                        <span className="font-extrabold text-teal-700 dark:text-teal-300 shrink-0 ml-1">
+                          +{win.valueForMoneyBonus} pts
                         </span>
                       </div>
                     )}
@@ -310,14 +339,14 @@ export function MetricExplanationPopover({
                 <div
                   className={`rounded-xl p-2.5 text-[11px] border flex items-start gap-2 ${
                     safety.isSafe
-                      ? 'bg-emerald-50/70 border-emerald-200/80 text-emerald-900'
-                      : 'bg-amber-50 border-amber-200 text-amber-900'
+                      ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-200/80 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200'
+                      : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200'
                   }`}
                 >
                   {safety.isSafe ? (
-                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                   ) : (
-                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                   )}
                   <div className="space-y-0.5">
                     <span className="font-bold block">

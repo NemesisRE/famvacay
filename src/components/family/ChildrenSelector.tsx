@@ -55,21 +55,21 @@ export function ChildrenSelector({
   return (
     <div className={`space-y-2.5 ${className}`}>
       <div>
-        <label className="block text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-          <Users className="w-3.5 h-3.5 text-blue-600" />
+        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+          <Users className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
           {t.home.childrenAgesLabel} ({childrenList.length})
         </label>
       </div>
 
-      <p className="text-[11px] text-slate-500">{t.home.childrenAgesHint}</p>
+      <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.home.childrenAgesHint}</p>
 
       {childrenList.length === 0 ? (
-        <div className="p-2.5 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center">
-          <p className="text-xs text-slate-500">{t.home.noChildrenTraveling}</p>
+        <div className="p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center">
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t.home.noChildrenTraveling}</p>
           <button
             type="button"
             onClick={handleAddChild}
-            className="mt-1 text-xs font-semibold text-blue-600 hover:underline"
+            className="mt-1 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline cursor-pointer"
           >
             + {t.home.addChild}
           </button>
@@ -83,53 +83,53 @@ export function ChildrenSelector({
             return (
               <div
                 key={child.id}
-                className="px-2.5 py-1.5 bg-slate-50/90 rounded-lg border border-slate-200 flex items-center justify-between gap-2 text-xs transition-all hover:bg-white"
+                className="px-2.5 py-1.5 bg-slate-50/90 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 text-xs transition-all hover:bg-white dark:hover:bg-slate-800"
               >
                 {/* Number & Date Input */}
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-[11px] font-bold text-slate-500 bg-white border border-slate-200 w-5 h-5 rounded-full flex items-center justify-center">
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 w-5 h-5 rounded-full flex items-center justify-center">
                     {index + 1}
                   </span>
                   <input
                     type="date"
                     value={child.birthDate}
                     onChange={(e) => handleDateChange(child.id, e.target.value)}
-                    className="text-xs rounded border border-slate-300 px-2 py-1 bg-white focus:ring-1 focus:ring-blue-500 outline-none w-32"
+                    className="text-xs rounded border border-slate-300 dark:border-slate-600 px-2 py-1 bg-white dark:bg-slate-750 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-teal-500 outline-none w-32"
                   />
                 </div>
 
                 {/* Single-line Badges: Age + Tier + School Status */}
                 <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto justify-end flex-grow">
                   {age !== null && (
-                    <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 whitespace-nowrap">
+                    <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 whitespace-nowrap">
                       {age}y
                     </span>
                   )}
 
                   {age !== null && age < 2 && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 whitespace-nowrap" title={t.home.tierInfant}>
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 whitespace-nowrap" title={t.home.tierInfant}>
                       {t.home.tierInfantBadge}
                     </span>
                   )}
 
                   {age !== null && age >= 2 && age < 12 && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 whitespace-nowrap" title={t.home.tierChild}>
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 whitespace-nowrap" title={t.home.tierChild}>
                       {t.home.tierChildBadge}
                     </span>
                   )}
 
                   {age !== null && age >= 12 && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 whitespace-nowrap" title={t.home.tierTeen}>
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 whitespace-nowrap" title={t.home.tierTeen}>
                       {t.home.tierTeenBadge}
                     </span>
                   )}
 
                   {isSchoolChild && (
                     <span
-                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-0.5 whitespace-nowrap"
+                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-0.5 whitespace-nowrap"
                       title={t.home.schoolAgeBadge}
                     >
-                      <Award className="w-2.5 h-2.5 text-amber-700" />
+                      <Award className="w-2.5 h-2.5 text-amber-700 dark:text-amber-400" />
                       {t.home.schoolAgeBadgeShort}
                     </span>
                   )}
@@ -137,7 +137,7 @@ export function ChildrenSelector({
                   <button
                     type="button"
                     onClick={() => handleRemoveChild(child.id)}
-                    className="p-1 text-slate-400 hover:text-red-600 rounded transition-colors ml-1 flex-shrink-0"
+                    className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors ml-1 flex-shrink-0 cursor-pointer"
                     title={t.home.removeChild}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -150,7 +150,7 @@ export function ChildrenSelector({
           <button
             type="button"
             onClick={handleAddChild}
-            className="w-full mt-2 py-1.5 px-3 rounded-lg border border-dashed border-blue-300 bg-blue-50/60 hover:bg-blue-100/70 text-blue-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            className="w-full mt-2 py-1.5 px-3 rounded-lg border border-dashed border-teal-300 dark:border-teal-700 bg-teal-50/60 dark:bg-teal-950/40 hover:bg-teal-100/70 dark:hover:bg-teal-900/60 text-teal-700 dark:text-teal-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             {t.home.addChild}

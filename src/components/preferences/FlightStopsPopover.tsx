@@ -71,7 +71,7 @@ export function FlightStopsPopover({
         <span className="flex items-center gap-1 truncate">
           <Plane
             className={`w-2.5 h-2.5 flex-shrink-0 ${
-              maxFlightStops !== undefined ? 'text-slate-950' : 'text-blue-200'
+              maxFlightStops !== undefined ? 'text-slate-950' : 'text-teal-200'
             }`}
           />
           <span className="truncate">{currentLabel}</span>
@@ -84,11 +84,11 @@ export function FlightStopsPopover({
           role="dialog"
           aria-label={t.home.flightTransitPreference}
           onClick={(e) => e.stopPropagation()}
-          className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1.5 z-50 p-2.5 bg-white rounded-xl shadow-xl border border-blue-200 w-[270px] max-w-[calc(100vw-32px)] text-slate-800 animate-in fade-in slide-in-from-top-1 duration-150"
+          className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1.5 z-50 p-2.5 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-teal-200 dark:border-teal-800/80 w-[270px] max-w-[calc(100vw-32px)] text-slate-800 dark:text-slate-100 animate-in fade-in slide-in-from-top-1 duration-150"
         >
-          <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-blue-100">
-            <span className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
-              <Plane className="w-3.5 h-3.5 text-blue-600" />
+          <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-teal-100 dark:border-teal-950/60">
+            <span className="text-xs font-bold text-teal-950 dark:text-teal-200 flex items-center gap-1.5">
+              <Plane className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
               {t.home.flightTransitPreference}
             </span>
             {maxFlightStops !== undefined && (
@@ -99,13 +99,13 @@ export function FlightStopsPopover({
                   onSelect(undefined);
                   onOpenChange(false);
                 }}
-                className="text-[10px] text-blue-700 hover:text-blue-900 font-semibold cursor-pointer underline"
+                className="text-[10px] text-teal-700 dark:text-teal-400 hover:text-teal-900 dark:hover:text-teal-200 font-semibold cursor-pointer underline"
               >
                 {t.home.flightStopsAny}
               </button>
             )}
           </div>
-          <p className="text-[11px] text-slate-600 mb-2 leading-tight">
+          <p className="text-[11px] text-slate-600 dark:text-slate-300 mb-2 leading-tight">
             {t.home.directFlightPremiumDesc}
           </p>
           <div className="flex flex-col gap-1.5">
@@ -126,8 +126,8 @@ export function FlightStopsPopover({
                   }}
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold text-left flex items-center justify-between transition cursor-pointer ${
                     isSelected
-                      ? 'bg-blue-600 text-white shadow-2xs font-bold ring-2 ring-blue-500/25'
-                      : 'bg-blue-50/70 text-slate-800 hover:bg-blue-100 border border-blue-200/60'
+                      ? 'bg-teal-600 text-white shadow-2xs font-bold ring-2 ring-teal-500/25'
+                      : 'bg-teal-50/70 dark:bg-teal-950/40 text-slate-800 dark:text-slate-200 hover:bg-teal-100 dark:hover:bg-teal-900/50 border border-teal-200/60 dark:border-teal-800/60'
                   }`}
                 >
                   <span className="truncate">{opt.label}</span>

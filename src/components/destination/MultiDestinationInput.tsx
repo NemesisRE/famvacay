@@ -244,27 +244,27 @@ export function MultiDestinationInput({
     <div ref={containerRef} className={`space-y-2.5 ${className}`}>
       <div className="flex items-center justify-between">
         <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-          <Compass className="w-3.5 h-3.5 text-blue-600" />
+          <Compass className="w-3.5 h-3.5 text-teal-600" />
           {t.home.destinationsLabel}
         </label>
         {selectedDestinations.length > 0 && (
           <button
             type="button"
             onClick={() => onChange([])}
-            className="text-[10px] text-blue-600 hover:underline cursor-pointer"
+            className="text-[10px] text-teal-600 hover:underline cursor-pointer"
           >
             {t.home.allDestinationsOption}
           </button>
         )}
       </div>
 
-      <p className="text-[11px] text-slate-500">{t.home.destinationsHint}</p>
+      <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.home.destinationsHint}</p>
 
       {/* Selected Destination Chips with Entity Metadata Badges */}
-      <div className="flex flex-wrap gap-1.5 min-h-[38px] p-2 bg-slate-50/80 rounded-xl border border-slate-200">
+      <div className="flex flex-wrap gap-1.5 min-h-[38px] p-2 bg-slate-50/80 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
         {selectedDestinations.length === 0 ? (
-          <span className="text-xs text-blue-700 font-medium inline-flex items-center gap-1.5 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
-            <Sparkles className="w-3 h-3 text-blue-500" />
+          <span className="text-xs text-teal-700 dark:text-teal-300 font-medium inline-flex items-center gap-1.5 bg-teal-50 dark:bg-teal-950/40 px-2.5 py-1 rounded-lg border border-teal-200 dark:border-teal-800">
+            <Sparkles className="w-3 h-3 text-teal-500" />
             {t.home.allDestinationsOption}
           </span>
         ) : (
@@ -277,10 +277,10 @@ export function MultiDestinationInput({
                 className={`inline-flex items-center gap-2 text-xs font-semibold pl-2.5 pr-1.5 py-1 rounded-lg shadow-xs transition-all duration-300 ${
                   isHighlighted
                     ? 'bg-emerald-600 text-white ring-2 ring-emerald-400 ring-offset-1 animate-pulse'
-                    : 'bg-blue-600 text-white'
+                    : 'bg-teal-600 text-white'
                 }`}
               >
-                <Globe className="w-3.5 h-3.5 text-blue-200 flex-shrink-0" />
+                <Globe className="w-3.5 h-3.5 text-teal-200 flex-shrink-0" />
                 <span>{chip.displayName}</span>
                 <span
                   className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${getCategoryBadgeClass(
@@ -292,7 +292,7 @@ export function MultiDestinationInput({
                 <button
                   type="button"
                   onClick={() => removeDestination(dest)}
-                  className="hover:bg-blue-700 p-0.5 rounded-full transition-colors text-blue-200 hover:text-white cursor-pointer ml-0.5"
+                  className="hover:bg-teal-700 p-0.5 rounded-full transition-colors text-teal-200 hover:text-white cursor-pointer ml-0.5"
                   title="Remove destination"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -322,16 +322,16 @@ export function MultiDestinationInput({
           }}
           onKeyDown={handleKeyDown}
           placeholder={t.home.destinationsPlaceholder}
-          className={`w-full text-xs rounded-lg border pl-8 pr-20 py-2 bg-white focus:outline-none focus:ring-2 shadow-sm ${
+          className={`w-full text-xs rounded-lg border pl-8 pr-20 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 shadow-sm ${
             destinationWarning
-              ? 'border-amber-400 focus:ring-amber-500 bg-amber-50/20'
-              : 'border-slate-300 focus:ring-blue-500'
+              ? 'border-amber-400 focus:ring-amber-500 bg-amber-50/20 dark:bg-amber-950/20'
+              : 'border-slate-300 dark:border-slate-700 focus:ring-teal-500'
           }`}
         />
         {isSearching ? (
-          <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin absolute left-2.5 top-2.5" />
+          <Loader2 className="w-3.5 h-3.5 text-teal-500 animate-spin absolute left-2.5 top-2.5" />
         ) : (
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+          <Search className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-2.5 top-2.5" />
         )}
 
         {inputVal.trim() && (
@@ -339,7 +339,7 @@ export function MultiDestinationInput({
             type="button"
             onClick={() => addDestination(inputVal.trim())}
             disabled={isValidating}
-            className="absolute right-2 top-1.5 px-2.5 py-1 text-[11px] font-bold bg-blue-600 text-white rounded-md hover:bg-blue-700 shadow-xs flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+            className="absolute right-2 top-1.5 px-2.5 py-1 text-[11px] font-bold bg-teal-600 hover:bg-teal-700 text-white rounded-md shadow-xs flex items-center gap-1 disabled:opacity-50 cursor-pointer"
           >
             {isValidating ? (
               <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -354,12 +354,12 @@ export function MultiDestinationInput({
 
         {/* Dynamic Typeahead Dropdown */}
         {dropdownOpen && inputVal.trim().length >= 2 && (
-          <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100">
+          <div className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700/60">
             {inputVal.trim() && (
               <button
                 type="button"
                 onClick={() => addDestination(inputVal.trim())}
-                className="w-full text-left px-3 py-2 text-xs font-bold text-blue-700 bg-blue-50/70 hover:bg-blue-100 transition-colors flex items-center justify-between cursor-pointer"
+                className="w-full text-left px-3 py-2 text-xs font-bold text-teal-700 dark:text-teal-300 bg-teal-50/70 dark:bg-teal-950/50 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-colors flex items-center justify-between cursor-pointer"
               >
                 <span>+ {t.home.addCustomDestination} &ldquo;{inputVal.trim()}&rdquo;</span>
                 <Plus className="w-3.5 h-3.5" />
@@ -367,7 +367,7 @@ export function MultiDestinationInput({
             )}
 
             {searchResults.length === 0 && !isSearching && (
-              <div className="px-3 py-2.5 text-xs text-slate-500 italic">
+              <div className="px-3 py-2.5 text-xs text-slate-500 dark:text-slate-400 italic">
                 {t.home.noDestinationsFound || 'No destinations found'}
               </div>
             )}
@@ -384,32 +384,32 @@ export function MultiDestinationInput({
                   key={`${item.id}-${item.name}`}
                   type="button"
                   onClick={() => addDestination(item.name)}
-                  className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition-colors flex items-center justify-between cursor-pointer ${
-                    isSelected ? 'bg-blue-50/50' : ''
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-teal-50 dark:hover:bg-slate-700/70 transition-colors flex items-center justify-between cursor-pointer ${
+                    isSelected ? 'bg-teal-50/50 dark:bg-slate-700/50' : ''
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
-                    <span className="font-semibold text-slate-800">{item.name}</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-100">{item.name}</span>
                     {item.code && (
-                      <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-1.5 py-0.2 rounded">
+                      <span className="text-[10px] font-bold text-teal-600 dark:text-teal-300 bg-teal-100 dark:bg-teal-950/60 px-1.5 py-0.2 rounded">
                         {item.code}
                       </span>
                     )}
                     {item.country && item.category !== 'country' && (
-                      <span className="text-slate-400 text-[11px]">({item.country})</span>
+                      <span className="text-slate-400 dark:text-slate-400 text-[11px]">({item.country})</span>
                     )}
                   </div>
                   <span
                     className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border capitalize flex-shrink-0 ml-2 ${
                       item.category === 'island'
-                        ? 'bg-teal-100 text-teal-700 border-teal-200'
+                        ? 'bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800'
                         : item.category === 'country'
-                        ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                        ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                         : item.category === 'city'
-                        ? 'bg-amber-100 text-amber-700 border-amber-200'
+                        ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
                         : item.category === 'airport'
-                        ? 'bg-sky-100 text-sky-700 border-sky-200'
-                        : 'bg-indigo-100 text-indigo-700 border-indigo-200'
+                        ? 'bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800'
+                        : 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
                     }`}
                   >
                     {item.categoryLabel}
@@ -423,21 +423,21 @@ export function MultiDestinationInput({
 
       {/* Validation Warning Feedback */}
       {destinationWarning && (
-        <div className="mt-1.5 p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-1.5 text-xs text-amber-800">
-          <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="mt-1.5 p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg flex items-start gap-1.5 text-xs text-amber-800 dark:text-amber-200">
+          <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
           <span className="text-[11px] leading-tight font-medium">{destinationWarning}</span>
         </div>
       )}
 
       {/* Containment Notice Feedback */}
       {destinationNotice && (
-        <div className="mt-1.5 p-2 bg-emerald-50 border border-emerald-200 rounded-lg flex items-start gap-1.5 text-xs text-emerald-800 animate-in fade-in duration-200">
-          <Sparkles className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+        <div className="mt-1.5 p-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-lg flex items-start gap-1.5 text-xs text-emerald-800 dark:text-emerald-200 animate-in fade-in duration-200">
+          <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
           <span className="text-[11px] leading-tight font-medium flex-1">{destinationNotice}</span>
           <button
             type="button"
             onClick={() => setDestinationNotice(null)}
-            className="text-emerald-500 hover:text-emerald-700 p-0.5 cursor-pointer"
+            className="text-emerald-500 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-200 p-0.5 cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
           </button>

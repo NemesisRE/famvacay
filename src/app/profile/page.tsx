@@ -299,7 +299,7 @@ export default function FamilyProfilePage() {
   if (loading) {
     return (
       <div className="py-20 text-center">
-        <span className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin inline-block"></span>
+        <span className="w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full animate-spin inline-block"></span>
         <p className="mt-4 text-xs font-semibold text-slate-500">Loading...</p>
       </div>
     );
@@ -307,28 +307,28 @@ export default function FamilyProfilePage() {
 
   return (
     <div className="max-w-4xl mx-auto py-6 space-y-6">
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-100 gap-4">
+      <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-100 dark:border-slate-800 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <Users className="w-6 h-6 text-blue-600" />
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Users className="w-6 h-6 text-teal-600 dark:text-teal-400" />
               {t.profile.title}
             </h1>
-            <p className="text-xs text-slate-500 mt-1">{t.profile.subtitle}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t.profile.subtitle}</p>
           </div>
-          <span className="text-xs px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-200 self-start sm:self-auto">
+          <span className="text-xs px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 font-semibold border border-teal-200 dark:border-teal-800 self-start sm:self-auto">
             {members.length} {t.profile.membersBadge}
           </span>
         </div>
 
-        <div className="flex border-b border-slate-200 mt-6 gap-6">
+        <div className="flex border-b border-slate-200 dark:border-slate-800 mt-6 gap-6">
           <button
             type="button"
             onClick={() => setActiveTab('profile')}
-            className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition ${
+            className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition cursor-pointer ${
               activeTab === 'profile'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-teal-600 text-teal-600 dark:text-teal-400 dark:border-teal-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <Users className="w-4 h-4" />
@@ -337,10 +337,10 @@ export default function FamilyProfilePage() {
           <button
             type="button"
             onClick={() => setActiveTab('account')}
-            className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition ${
+            className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition cursor-pointer ${
               activeTab === 'account'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-teal-600 text-teal-600 dark:text-teal-400 dark:border-teal-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <Shield className="w-4 h-4" />
@@ -388,7 +388,7 @@ export default function FamilyProfilePage() {
                   value={familyName}
                   onChange={(e) => setFamilyName(e.target.value)}
                   placeholder="The Miller Family"
-                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
@@ -411,7 +411,7 @@ export default function FamilyProfilePage() {
                 <select
                   value={country}
                   onChange={(e) => handleCountryChange(e.target.value)}
-                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-teal-500 bg-white"
                 >
                   {Object.values(COUNTRIES).map((c) => (
                     <option key={c.code} value={c.code}>
@@ -428,7 +428,7 @@ export default function FamilyProfilePage() {
                 <select
                   value={federalState}
                   onChange={(e) => setFederalState(e.target.value)}
-                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-teal-500 bg-white"
                 >
                   {(COUNTRIES[country]?.subdivisions || []).map((sub) => (
                     <option key={sub.code} value={sub.code}>
@@ -468,7 +468,7 @@ export default function FamilyProfilePage() {
                   max="8"
                   value={maxDrivingHours}
                   onChange={(e) => setMaxDrivingHours(Number(e.target.value))}
-                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
@@ -479,7 +479,7 @@ export default function FamilyProfilePage() {
                 <select
                   value={preferredCabinClass}
                   onChange={(e) => setPreferredCabinClass(e.target.value)}
-                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-teal-500 bg-white"
                 >
                   <option value="ECONOMY">{t.profile.economy}</option>
                   <option value="PREMIUM_ECONOMY">{t.profile.premiumEconomy}</option>
@@ -494,7 +494,7 @@ export default function FamilyProfilePage() {
                 <select
                   value={climatePreference}
                   onChange={(e) => setClimatePreference(e.target.value)}
-                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-teal-500 bg-white"
                 >
                   <option value="WARM">{t.profile.warm}</option>
                   <option value="MODERATE">{t.profile.moderate}</option>
@@ -511,7 +511,7 @@ export default function FamilyProfilePage() {
                 <select
                   value={preferredBoardType}
                   onChange={(e) => setPreferredBoardType(e.target.value)}
-                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-teal-500 bg-white"
                 >
                   <option value="ALL">{t.home.allBoardTypes}</option>
                   <option value="ALL_INCLUSIVE">{t.home.boardTypeAllInclusive}</option>
@@ -533,7 +533,7 @@ export default function FamilyProfilePage() {
                   max="48"
                   value={maxOverlandDurationHours}
                   onChange={(e) => setMaxOverlandDurationHours(Number(e.target.value))}
-                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
@@ -544,7 +544,7 @@ export default function FamilyProfilePage() {
                 <select
                   value={preferredVacationStyle}
                   onChange={(e) => setPreferredVacationStyle(e.target.value)}
-                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-teal-500 bg-white"
                 >
                   <option value="ALL">{t.home.vacationKindAll}</option>
                   <option value="BEACH">{t.home.vacationKindBeach}</option>
@@ -562,7 +562,7 @@ export default function FamilyProfilePage() {
                 id="passportCheck"
                 checked={passportCheckRequired}
                 onChange={(e) => setPassportCheckRequired(e.target.checked)}
-                className="rounded text-blue-600 focus:ring-blue-500"
+                className="rounded text-teal-600 focus:ring-teal-500"
               />
               <label htmlFor="passportCheck" className="text-xs text-slate-700 font-medium">
                 {t.profile.passportCheck}
@@ -590,7 +590,7 @@ export default function FamilyProfilePage() {
                       onClick={() => toggleTravelMode(mode.id)}
                       className={`text-xs px-3.5 py-2 rounded-xl border font-semibold transition-all ${
                         isSelected
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
                           : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                       }`}
                     >
@@ -615,7 +615,7 @@ export default function FamilyProfilePage() {
               <button
                 type="button"
                 onClick={addBlackout}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                className="text-xs font-semibold text-teal-600 hover:text-teal-800 flex items-center gap-1"
               >
                 <Plus className="w-3.5 h-3.5" />
                 {t.profile.addBlackout}
@@ -695,7 +695,7 @@ export default function FamilyProfilePage() {
               <button
                 type="button"
                 onClick={addMember}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                className="text-xs font-semibold text-teal-600 hover:text-teal-800 flex items-center gap-1"
               >
                 <Plus className="w-3.5 h-3.5" />
                 {t.profile.addMember}
@@ -781,7 +781,7 @@ export default function FamilyProfilePage() {
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2.5 rounded-xl font-bold text-xs bg-blue-600 hover:bg-blue-700 text-white shadow transition flex items-center gap-2 disabled:opacity-60"
+              className="px-6 py-2.5 rounded-xl font-bold text-xs bg-teal-600 hover:bg-teal-700 text-white shadow transition flex items-center gap-2 disabled:opacity-60"
             >
               {saving ? (
                 <>

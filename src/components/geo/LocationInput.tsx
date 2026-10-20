@@ -181,16 +181,16 @@ export function LocationInput({
     <div ref={containerRef} className={`relative ${className}`}>
       {label && (
         <div className="h-5 flex items-center justify-between mb-1.5">
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 truncate min-w-0">
-            <MapPin className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 truncate min-w-0">
+            <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
             <span className="truncate">{label}</span>
           </span>
           {isVerified && query.trim() ? (
             <span
-              className="text-[10px] text-emerald-600 flex items-center gap-1 font-semibold flex-shrink-0 ml-1.5"
+              className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold flex-shrink-0 ml-1.5"
               title={t.home.locationVerified}
             >
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 flex-shrink-0" />
               <span className="hidden sm:inline truncate max-w-[120px]">{t.home.locationVerified}</span>
             </span>
           ) : null}
@@ -221,15 +221,15 @@ export function LocationInput({
             }
           }}
           placeholder={placeholder || t.home.departureLocationPlaceholder}
-          className={`w-full text-xs rounded-lg border pl-8 pr-8 py-2 bg-white focus:outline-none focus:ring-2 shadow-sm ${
+          className={`w-full text-xs rounded-lg border pl-8 pr-8 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 shadow-sm ${
             validationWarning
-              ? 'border-amber-400 focus:ring-amber-500 bg-amber-50/20'
-              : 'border-slate-300 focus:ring-blue-500'
+              ? 'border-amber-400 focus:ring-amber-500 bg-amber-50/20 dark:bg-amber-950/20'
+              : 'border-slate-300 dark:border-slate-700 focus:ring-teal-500'
           }`}
         />
-        <MapPin className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+        <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-2.5 top-2.5" />
         {loading && (
-          <span className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin absolute right-2.5 top-2.5" />
+          <span className="w-3.5 h-3.5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin absolute right-2.5 top-2.5" />
         )}
         {query && !loading && (
           <button
@@ -241,7 +241,7 @@ export function LocationInput({
               onChange('', undefined);
               setShowDropdown(false);
             }}
-            className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 p-0.5"
+            className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -250,15 +250,15 @@ export function LocationInput({
 
       {/* Validation warning */}
       {validationWarning && (
-        <div className="mt-1.5 p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-1.5 text-xs text-amber-800">
-          <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="mt-1.5 p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg flex items-start gap-1.5 text-xs text-amber-800 dark:text-amber-200">
+          <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
           <span className="text-[11px] leading-tight">{validationWarning}</span>
         </div>
       )}
 
       {/* Geocoding suggestions dropdown */}
       {showDropdown && results.length > 0 && (
-        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-56 overflow-y-auto divide-y divide-slate-100">
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700/60">
           {results.map((loc, idx) => (
             <button
               key={`${loc.name}-${loc.lat}-${loc.lon}-${idx}`}
@@ -268,19 +268,19 @@ export function LocationInput({
                 handleSelect(loc);
               }}
               onClick={() => handleSelect(loc)}
-              className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition-colors flex items-center justify-between cursor-pointer"
+              className="w-full text-left px-3 py-2 text-xs hover:bg-teal-50 dark:hover:bg-slate-700/70 transition-colors flex items-center justify-between cursor-pointer"
             >
               <div className="flex items-center gap-2 min-w-0">
-                <MapPin className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
                 <div className="truncate">
-                  <span className="font-semibold text-slate-800">
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">
                     {loc.name}
                   </span>
-                  {loc.state && <span className="text-slate-500 ml-1">· {loc.state}</span>}
-                  {loc.country && <span className="text-slate-400 ml-1">({loc.country})</span>}
+                  {loc.state && <span className="text-slate-500 dark:text-slate-400 ml-1">· {loc.state}</span>}
+                  {loc.country && <span className="text-slate-400 dark:text-slate-500 ml-1">({loc.country})</span>}
                 </div>
               </div>
-              <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded flex-shrink-0 ml-2">
+              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded flex-shrink-0 ml-2">
                 {loc.countryCode ? loc.countryCode.toUpperCase() : 'DE'}
               </span>
             </button>

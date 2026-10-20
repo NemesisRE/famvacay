@@ -252,7 +252,7 @@ export function AccountSettings() {
   if (loading) {
     return (
       <div className="py-12 text-center text-xs text-slate-500">
-        <span className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin inline-block mb-2" />
+        <span className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin inline-block mb-2" />
         <p>{t.common.loading}</p>
       </div>
     );
@@ -261,18 +261,18 @@ export function AccountSettings() {
   return (
     <div className="space-y-8">
       {/* 1. Email Address */}
-      <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-xs space-y-4">
-        <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-          <Mail className="w-4 h-4 text-blue-600" />
-          <h3 className="text-sm font-bold text-slate-800">{t.account.emailSecTitle}</h3>
+      <div className="p-6 bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+          <Mail className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{t.account.emailSecTitle}</h3>
         </div>
 
         {emailMsg && (
           <div
             className={`p-3 rounded-lg text-xs flex items-center gap-2 ${
               emailMsg.type === 'success'
-                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                : 'bg-red-50 text-red-800 border border-red-200'
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/60'
+                : 'bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800/60'
             }`}
           >
             {emailMsg.type === 'success' ? (
@@ -286,7 +286,7 @@ export function AccountSettings() {
 
         <form onSubmit={handleUpdateEmail} className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
           <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
               {t.account.emailLabel}
             </label>
             <input
@@ -294,14 +294,14 @@ export function AccountSettings() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500"
+              className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
             />
           </div>
           <div>
             <button
               type="submit"
               disabled={updatingEmail}
-              className="w-full text-xs font-bold py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition disabled:opacity-50"
+              className="w-full text-xs font-bold py-2 px-4 rounded-lg bg-teal-600 hover:bg-teal-700 text-white transition disabled:opacity-50 cursor-pointer"
             >
               {updatingEmail ? 'Saving...' : t.account.updateEmailBtn}
             </button>
@@ -310,18 +310,18 @@ export function AccountSettings() {
       </div>
 
       {/* 2. Password */}
-      <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-xs space-y-4">
-        <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-          <KeyRound className="w-4 h-4 text-blue-600" />
-          <h3 className="text-sm font-bold text-slate-800">{t.account.passwordSecTitle}</h3>
+      <div className="p-6 bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+          <KeyRound className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{t.account.passwordSecTitle}</h3>
         </div>
 
         {passwordMsg && (
           <div
             className={`p-3 rounded-lg text-xs flex items-center gap-2 ${
               passwordMsg.type === 'success'
-                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                : 'bg-red-50 text-red-800 border border-red-200'
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/60'
+                : 'bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800/60'
             }`}
           >
             {passwordMsg.type === 'success' ? (
@@ -336,7 +336,7 @@ export function AccountSettings() {
         <form onSubmit={handleUpdatePassword} className="space-y-3">
           {accountInfo.hasPassword && (
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 {t.account.currentPasswordLabel}
               </label>
               <input
@@ -344,14 +344,14 @@ export function AccountSettings() {
                 required
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full sm:w-80 text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500"
+                className="w-full sm:w-80 text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
               />
             </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 {t.account.newPasswordLabel}
               </label>
               <input
@@ -360,11 +360,11 @@ export function AccountSettings() {
                 minLength={8}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500"
+                className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 {t.account.confirmPasswordLabel}
               </label>
               <input
@@ -373,7 +373,7 @@ export function AccountSettings() {
                 minLength={8}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500"
+                className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
               />
             </div>
           </div>
@@ -381,7 +381,7 @@ export function AccountSettings() {
           <button
             type="submit"
             disabled={updatingPassword}
-            className="text-xs font-bold py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition disabled:opacity-50"
+            className="text-xs font-bold py-2 px-4 rounded-lg bg-teal-600 hover:bg-teal-700 text-white transition disabled:opacity-50"
           >
             {updatingPassword ? 'Updating...' : t.account.changePasswordBtn}
           </button>
@@ -389,17 +389,17 @@ export function AccountSettings() {
       </div>
 
       {/* 3. Passkeys & WebAuthn */}
-      <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      <div className="p-6 bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2">
-            <Fingerprint className="w-4 h-4 text-blue-600" />
-            <h3 className="text-sm font-bold text-slate-800">{t.account.passkeysSecTitle}</h3>
+            <Fingerprint className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{t.account.passkeysSecTitle}</h3>
           </div>
           <button
             type="button"
             onClick={handleRegisterPasskey}
             disabled={registeringPasskey}
-            className="text-xs font-bold py-1.5 px-3 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition flex items-center gap-1.5 disabled:opacity-50"
+            className="self-start sm:self-auto text-xs font-bold py-1.5 px-3 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 hover:bg-teal-100 dark:hover:bg-teal-900/50 transition flex items-center gap-1.5 shrink-0 disabled:opacity-50 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             {registeringPasskey ? 'Enrolling...' : t.account.registerPasskeyBtn}
@@ -435,7 +435,7 @@ export function AccountSettings() {
                 className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between text-xs"
               >
                 <div className="flex items-center gap-2.5">
-                  <Fingerprint className="w-4 h-4 text-blue-600" />
+                  <Fingerprint className="w-4 h-4 text-teal-600" />
                   <div>
                     <span className="font-bold text-slate-800 block">
                       Device #{idx + 1} ({p.credentialDeviceType || 'platform'})
@@ -460,23 +460,23 @@ export function AccountSettings() {
       </div>
 
       {/* 4. Connected Accounts (OAuth) */}
-      <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-xs space-y-4">
-        <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-          <Share2 className="w-4 h-4 text-blue-600" />
-          <h3 className="text-sm font-bold text-slate-800">{t.account.socialSecTitle}</h3>
+      <div className="p-6 bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+          <Share2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{t.account.socialSecTitle}</h3>
         </div>
-        <p className="text-xs text-slate-500">{t.account.socialDesc}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{t.account.socialDesc}</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Google */}
-          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <span className="w-6 h-6 rounded-full bg-white border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">
+              <span className="w-6 h-6 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center font-bold text-xs text-slate-700 dark:text-slate-200">
                 G
               </span>
               <div>
-                <span className="text-xs font-bold text-slate-800 block">Google</span>
-                <span className="text-[10px] text-slate-500">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block">Google</span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">
                   {accountInfo.linkedProviders.includes('google')
                     ? t.account.connectedBadge
                     : 'Not linked'}
@@ -487,7 +487,7 @@ export function AccountSettings() {
               <button
                 type="button"
                 onClick={() => handleUnlinkProvider('google')}
-                className="text-[11px] font-semibold text-red-600 hover:text-red-800 flex items-center gap-1"
+                className="text-[11px] font-semibold text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1 cursor-pointer"
               >
                 <Unlink className="w-3 h-3" />
                 {t.account.unlinkBtn}
@@ -496,14 +496,14 @@ export function AccountSettings() {
           </div>
 
           {/* Apple */}
-          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <span className="w-6 h-6 rounded-full bg-white border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">
+              <span className="w-6 h-6 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center font-bold text-xs text-slate-700 dark:text-slate-200">
                 A
               </span>
               <div>
-                <span className="text-xs font-bold text-slate-800 block">Apple</span>
-                <span className="text-[10px] text-slate-500">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block">Apple</span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">
                   {accountInfo.linkedProviders.includes('apple')
                     ? t.account.connectedBadge
                     : 'Not linked'}
@@ -514,7 +514,7 @@ export function AccountSettings() {
               <button
                 type="button"
                 onClick={() => handleUnlinkProvider('apple')}
-                className="text-[11px] font-semibold text-red-600 hover:text-red-800 flex items-center gap-1"
+                className="text-[11px] font-semibold text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1 cursor-pointer"
               >
                 <Unlink className="w-3 h-3" />
                 {t.account.unlinkBtn}
@@ -525,16 +525,16 @@ export function AccountSettings() {
       </div>
 
       {/* 5. Danger Zone */}
-      <div className="p-6 bg-red-50/50 rounded-xl border border-red-200 space-y-3">
-        <div className="flex items-center gap-2 border-b border-red-200/80 pb-2">
-          <AlertTriangle className="w-4 h-4 text-red-600" />
-          <h3 className="text-sm font-bold text-red-900">{t.account.dangerZoneTitle}</h3>
+      <div className="p-6 bg-red-50/50 dark:bg-red-950/20 rounded-xl border border-red-200 dark:border-red-900/40 space-y-3">
+        <div className="flex items-center gap-2 border-b border-red-200/80 dark:border-red-900/40 pb-2">
+          <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+          <h3 className="text-sm font-bold text-red-900 dark:text-red-200">{t.account.dangerZoneTitle}</h3>
         </div>
-        <p className="text-xs text-red-800">{t.account.dangerZoneDesc}</p>
+        <p className="text-xs text-red-800 dark:text-red-300">{t.account.dangerZoneDesc}</p>
         <button
           type="button"
           onClick={() => setShowDeleteModal(true)}
-          className="text-xs font-bold py-2 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white transition flex items-center gap-1.5"
+          className="text-xs font-bold py-2 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white transition flex items-center gap-1.5 cursor-pointer"
         >
           <Trash2 className="w-3.5 h-3.5" />
           {t.account.deleteAccountBtn}
@@ -543,22 +543,22 @@ export function AccountSettings() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4">
-            <div className="flex items-center gap-3 text-red-600">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
               <AlertTriangle className="w-6 h-6" />
-              <h3 className="font-extrabold text-base text-slate-900">
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100">
                 {t.account.deleteConfirmModalTitle}
               </h3>
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
               {t.account.deleteConfirmModalDesc}
             </p>
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(false)}
-                className="text-xs font-semibold px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
+                className="text-xs font-semibold px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
               >
                 {t.account.cancelBtn}
               </button>
@@ -566,7 +566,7 @@ export function AccountSettings() {
                 type="button"
                 onClick={handleDeleteAccount}
                 disabled={deletingAccount}
-                className="text-xs font-bold px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition disabled:opacity-50 flex items-center gap-1"
+                className="text-xs font-bold px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition disabled:opacity-50 flex items-center gap-1 cursor-pointer"
               >
                 {deletingAccount ? 'Deleting...' : t.account.confirmDeleteAccountBtn}
               </button>

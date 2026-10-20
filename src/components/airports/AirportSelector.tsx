@@ -251,32 +251,32 @@ export function AirportSelector({
     <div className={`space-y-3 ${className}`}>
       {/* Selected Airport Chips */}
       <div>
-        <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
           <span className="flex items-center gap-1.5">
-            <Plane className="w-3.5 h-3.5 text-blue-600" />
+            <Plane className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
             {t.home.airportsLabel} ({selectedAirports.length})
           </span>
-          <span className="text-[10px] text-slate-400 font-normal">
+          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">
             {selectedAirports.length === 1 ? '1 selected' : `${selectedAirports.length} selected`}
           </span>
         </label>
-        <p className="text-[11px] text-slate-500 mb-2">{t.home.airportsHint}</p>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">{t.home.airportsHint}</p>
 
-        <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-slate-50/80 rounded-xl border border-slate-200">
+        <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-slate-50/80 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
           {selectedAirports.length === 0 ? (
-            <span className="text-xs text-slate-400 italic">No airports selected</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500 italic">No airports selected</span>
           ) : (
             selectedAirports.map((code) => {
               const details = airportDetails[code];
               return (
                 <span
                   key={code}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-blue-600 text-white shadow-sm"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-teal-600 text-white shadow-sm"
                 >
-                  <Plane className="w-3 h-3 text-blue-200" />
+                  <Plane className="w-3 h-3 text-teal-200" />
                   <span>{code}</span>
                   {details && (
-                    <span className="font-normal text-blue-100 text-[11px] max-w-[160px] truncate">
+                    <span className="font-normal text-teal-100 text-[11px] max-w-[160px] truncate">
                       · {details.city || details.name}
                     </span>
                   )}
@@ -284,7 +284,7 @@ export function AirportSelector({
                     <button
                       type="button"
                       onClick={() => handleRemoveAirport(code)}
-                      className="ml-0.5 hover:bg-blue-700 p-0.5 rounded-full transition-colors text-blue-200 hover:text-white"
+                      className="ml-0.5 hover:bg-teal-700 p-0.5 rounded-full transition-colors text-teal-200 hover:text-white"
                       title="Remove airport"
                     >
                       <X className="w-3 h-3" />
@@ -308,11 +308,11 @@ export function AirportSelector({
               if (searchResults.length > 0) setShowDropdown(true);
             }}
             placeholder={t.home.searchAirportsPlaceholder}
-            className="w-full text-xs rounded-lg border border-slate-300 pl-8 pr-8 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+            className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 pl-8 pr-8 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm"
           />
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+          <Search className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-2.5 top-2.5" />
           {searching && (
-            <span className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin absolute right-2.5 top-2.5" />
+            <span className="w-3.5 h-3.5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin absolute right-2.5 top-2.5" />
           )}
           {searchQuery && !searching && (
             <button
@@ -321,7 +321,7 @@ export function AirportSelector({
                 setSearchQuery('');
                 setShowDropdown(false);
               }}
-              className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 p-0.5"
+              className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -330,7 +330,7 @@ export function AirportSelector({
 
         {/* Search Results Dropdown */}
         {showDropdown && searchResults.length > 0 && (
-          <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-56 overflow-y-auto divide-y divide-slate-100">
+          <div className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700/60">
             {searchResults.map((ap) => {
               const isSelected = selectedAirports.includes(ap.code);
               return (
@@ -338,26 +338,26 @@ export function AirportSelector({
                   key={ap.code}
                   type="button"
                   onClick={() => handleSelectAirport(ap.code)}
-                  className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition-colors flex items-center justify-between ${
-                    isSelected ? 'bg-blue-50/60 font-semibold' : ''
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-teal-50 dark:hover:bg-slate-700/70 transition-colors flex items-center justify-between cursor-pointer ${
+                    isSelected ? 'bg-teal-50/60 dark:bg-slate-700/50 font-semibold' : ''
                   }`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded text-[11px]">
+                    <span className="font-bold text-teal-700 dark:text-teal-300 bg-teal-100 dark:bg-teal-950/60 px-1.5 py-0.5 rounded text-[11px]">
                       {ap.code}
                     </span>
                     <div className="truncate">
-                      <span className="font-medium text-slate-800">{ap.city}</span>
-                      <span className="text-slate-400 ml-1">({ap.name})</span>
-                      <span className="text-slate-400 ml-1 text-[10px]">· {ap.country}</span>
+                      <span className="font-medium text-slate-800 dark:text-slate-100">{ap.city}</span>
+                      <span className="text-slate-400 dark:text-slate-400 ml-1">({ap.name})</span>
+                      <span className="text-slate-400 dark:text-slate-500 ml-1 text-[10px]">· {ap.country}</span>
                     </div>
                   </div>
                   {isSelected ? (
-                    <span className="text-emerald-600 flex items-center gap-1 text-[11px] font-semibold flex-shrink-0">
+                    <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-[11px] font-semibold flex-shrink-0">
                       <Check className="w-3 h-3" /> Selected
                     </span>
                   ) : (
-                    <span className="text-blue-600 text-[11px] font-semibold flex-shrink-0">
+                    <span className="text-teal-600 dark:text-teal-400 text-[11px] font-semibold flex-shrink-0">
                       + Add
                     </span>
                   )}
@@ -373,7 +373,7 @@ export function AirportSelector({
         <button
           type="button"
           onClick={() => setShowSuggestions(!showSuggestions)}
-          className="text-xs text-blue-700 hover:text-blue-900 font-semibold flex items-center gap-1.5 transition-colors"
+          className="text-xs text-teal-700 dark:text-teal-400 hover:text-teal-900 dark:hover:text-teal-300 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
         >
           {showSuggestions ? (
             <>
@@ -389,13 +389,13 @@ export function AirportSelector({
         </button>
 
         {showSuggestions && (
-          <div className="mt-2 p-3 bg-slate-50/70 rounded-xl border border-slate-200 space-y-2">
+          <div className="mt-2 p-3 bg-slate-50/70 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-slate-600">
+              <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                 Nearby Hubs &amp; Train-Connected Airports
               </span>
               {loadingSuggestions && (
-                <span className="text-[10px] text-slate-400 animate-pulse">Updating...</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 animate-pulse">Updating...</span>
               )}
             </div>
 
@@ -407,16 +407,16 @@ export function AirportSelector({
                     key={airport.code}
                     type="button"
                     onClick={() => toggleSuggestion(airport.code)}
-                    className={`text-xs px-2.5 py-1.5 rounded-lg border font-medium transition-all flex items-center gap-1.5 ${
+                    className={`text-xs px-2.5 py-1.5 rounded-lg border font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
                       isSelected
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                        ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                     }`}
                   >
                     <span>
                       {airport.code} · {airport.city}
                       {airport.distanceKm !== undefined && (
-                        <span className={isSelected ? 'text-blue-100 ml-1' : 'text-slate-400 ml-1'}>
+                        <span className={isSelected ? 'text-teal-100 ml-1' : 'text-slate-400 dark:text-slate-400 ml-1'}>
                           ({Math.round(airport.distanceKm)} km)
                         </span>
                       )}
@@ -426,7 +426,7 @@ export function AirportSelector({
                         className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
                           isSelected
                             ? 'bg-emerald-500 text-white'
-                            : 'bg-emerald-100 text-emerald-800'
+                            : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
                         }`}
                         title={airport.railConnectivityNote || t.home.railConnected}
                       >
