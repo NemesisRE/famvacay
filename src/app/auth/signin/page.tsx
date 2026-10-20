@@ -143,7 +143,7 @@ export default function SignInPage() {
           <button
             type="button"
             onClick={() => signIn('google', { callbackUrl: '/' })}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 transition"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path
@@ -169,7 +169,7 @@ export default function SignInPage() {
           <button
             type="button"
             onClick={() => signIn('apple', { callbackUrl: '/' })}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 transition"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition"
           >
             <svg className="w-4 h-4 fill-current" viewBox="0 0 170 170">
               <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.08-7.73-7.98-12.13-14.68-6.19-9.5-11.04-20.2-14.56-32.09-3.52-11.89-5.28-23.23-5.28-34.02 0-14.68 3.69-26.96 11.07-36.85 7.37-9.89 16.79-14.96 28.24-15.22 5.06 0 10.74 1.34 17.06 4.02 6.32 2.68 10.23 4.08 11.75 4.19 1.12 0 5.17-1.46 12.16-4.37 6.99-2.92 12.91-4.22 17.78-3.9 13.06.63 23.36 5.43 30.9 14.41-11.45 6.99-17.06 16.59-16.84 28.81.22 9.61 3.97 17.58 11.26 23.91 7.29 6.32 15.93 9.94 25.93 10.84-2.18 6.47-4.74 13-7.69 19.57zM119.22 31.81c0-7.72 2.76-14.88 8.28-21.49 5.52-6.61 12.44-10.72 20.76-12.32.22 1.13.33 2.14.33 3.03 0 7.83-2.93 15.15-8.79 21.95-5.87 6.8-13 10.89-21.4 12.26-.23-1.12-.34-2.26-.34-3.43z" />

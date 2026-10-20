@@ -96,7 +96,7 @@ export function MetricExplanationPopover({
         ) : (
           <button
             type="button"
-            className="p-1 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
+            className="p-1 rounded-md text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition cursor-pointer"
             title={t.home.metricExplainTitle}
           >
             <Info className="w-3.5 h-3.5" />

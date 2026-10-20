@@ -243,8 +243,8 @@ export function MultiDestinationInput({
   return (
     <div ref={containerRef} className={`space-y-2.5 ${className}`}>
       <div className="flex items-center justify-between">
-        <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-          <Compass className="w-3.5 h-3.5 text-teal-600" />
+        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+          <Compass className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
           {t.home.destinationsLabel}
         </label>
         {selectedDestinations.length > 0 && (

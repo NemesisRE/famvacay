@@ -153,7 +153,7 @@ export function FlightDetailsPopover({
         {...getReferenceProps()}
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="h-7 inline-flex items-center gap-1.5 font-semibold text-xs text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-slate-750 hover:text-teal-800 dark:hover:text-teal-300 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-teal-300 transition-colors cursor-pointer group shadow-2xs"
+        className="h-7 inline-flex items-center gap-1.5 font-semibold text-xs text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-slate-700/60 hover:text-teal-800 dark:hover:text-teal-300 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-teal-300 transition-colors cursor-pointer group shadow-2xs"
         title="View airport logistics, flight time, and distance from home"
       >
         <Plane className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform flex-shrink-0" />

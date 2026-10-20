@@ -94,7 +94,7 @@ export function ChildrenSelector({
                     type="date"
                     value={child.birthDate}
                     onChange={(e) => handleDateChange(child.id, e.target.value)}
-                    className="text-xs rounded border border-slate-300 dark:border-slate-600 px-2 py-1 bg-white dark:bg-slate-750 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-teal-500 outline-none w-32"
+                    className="text-xs rounded border border-slate-300 dark:border-slate-600 px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-teal-500 outline-none w-32"
                   />
                 </div>
 

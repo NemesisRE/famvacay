@@ -251,7 +251,7 @@ export function AccountSettings() {
 
   if (loading) {
     return (
-      <div className="py-12 text-center text-xs text-slate-500">
+      <div className="py-12 text-center text-xs text-slate-500 dark:text-slate-400">
         <span className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin inline-block mb-2" />
         <p>{t.common.loading}</p>
       </div>
@@ -406,14 +406,14 @@ export function AccountSettings() {
           </button>
         </div>
 
-        <p className="text-xs text-slate-500">{t.account.passkeysDesc}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{t.account.passkeysDesc}</p>
 
         {passkeyMsg && (
           <div
             className={`p-3 rounded-lg text-xs flex items-center gap-2 ${
               passkeyMsg.type === 'success'
-                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                : 'bg-red-50 text-red-800 border border-red-200'
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/60'
+                : 'bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800/60'
             }`}
           >
             {passkeyMsg.type === 'success' ? (
@@ -427,20 +427,20 @@ export function AccountSettings() {
 
         <div className="space-y-2">
           {passkeys.length === 0 ? (
-            <p className="text-xs text-slate-400 italic">{t.account.noPasskeys}</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 italic">{t.account.noPasskeys}</p>
           ) : (
             passkeys.map((p, idx) => (
               <div
                 key={p.credentialID}
-                className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between text-xs"
+                className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs"
               >
                 <div className="flex items-center gap-2.5">
-                  <Fingerprint className="w-4 h-4 text-teal-600" />
+                  <Fingerprint className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                   <div>
-                    <span className="font-bold text-slate-800 block">
+                    <span className="font-bold text-slate-800 dark:text-slate-100 block">
                       Device #{idx + 1} ({p.credentialDeviceType || 'platform'})
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
                       ID: {p.credentialID.substring(0, 16)}...
                     </span>
                   </div>
@@ -448,7 +448,7 @@ export function AccountSettings() {
                 <button
                   type="button"
                   onClick={() => handleDeletePasskey(p.credentialID)}
-                  className="p-1.5 text-slate-400 hover:text-red-600 rounded transition"
+                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 rounded transition"
                   title={t.account.deletePasskey}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
