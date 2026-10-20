@@ -68,6 +68,7 @@ export interface TripPlanInput {
   preferredBoardType?: BoardType;    // Board type preference (e.g. 'ALL_INCLUSIVE', 'BREAKFAST')
   maxOverlandTravelMinutes?: number; // Maximum overland travel duration in minutes (e.g. 360 for 6h)
   maxFlightStops?: number;           // Maximum tolerated flight stops (0 = direct only, 1 = max 1 stop, undefined = any)
+  avoidExtremeHeat?: boolean;        // Optional climate preference constraint to filter/penalize extreme summer heat (>38°C)
   userProfile: UserProfileInput;
   searchBlackouts?: BlackoutRange[]; // Additional search-specific blackouts
 }
@@ -169,12 +170,19 @@ export interface CandidateWindow {
   mealPlanValue?: number;
   effectiveCost?: number;
 
+  // Off-Peak and Value-for-Money bonuses
+  isOffPeak?: boolean;
+  offPeakBonus?: number;
+  valueForMoneyBonus?: number;
+
   // Normalized scores (0 - 100)
   scoreBreakdown: {
     priceIndex: number;
     weatherIndex: number;
     ptoEfficiencyIndex: number;
     travelFrictionIndex: number;
+    offPeakBonus?: number;
+    valueForMoneyBonus?: number;
   };
   finalScore: number;
 }

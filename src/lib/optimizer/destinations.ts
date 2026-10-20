@@ -868,11 +868,19 @@ export function discoverDestinationsDynamically(
     if (isAll) {
       matchStyle = effectiveBeach || effectiveAlpine || isCity || isNature || isLongRange;
     } else {
-      if (types.includes('BEACH') && effectiveBeach) matchStyle = true;
-      if ((types.includes('ALPINE') || types.includes('SKI')) && effectiveAlpine) matchStyle = true;
-      if (types.includes('CITY') && isCity) matchStyle = true;
-      if (types.includes('LONGRANGE') && isLongRange) matchStyle = true;
-      if (types.includes('NATURE') && isNature) matchStyle = true;
+      const allowsLongRange = types.includes('LONGRANGE');
+      // If user did NOT select LONGRANGE, long-range/exotic destinations (>3500 km or exotic)
+      // must NOT be included in BEACH, CITY, NATURE, or ALPINE open discovery.
+      const isExoticOrLongRange = dist >= 3500 || (isLongRange && dist >= 3500);
+      if (!allowsLongRange && isExoticOrLongRange) {
+        matchStyle = false;
+      } else {
+        if (types.includes('BEACH') && effectiveBeach) matchStyle = true;
+        if ((types.includes('ALPINE') || types.includes('SKI')) && effectiveAlpine) matchStyle = true;
+        if (types.includes('CITY') && isCity) matchStyle = true;
+        if (types.includes('LONGRANGE') && isLongRange) matchStyle = true;
+        if (types.includes('NATURE') && isNature) matchStyle = true;
+      }
     }
 
     if (!matchStyle) continue;

@@ -552,6 +552,21 @@ export function optimizeVacationWindows(
             }
           }
 
+          // Long-range & exotic category exclusion when not selected by user
+          if (
+            !hasUserSelectedDestinations &&
+            !selectedTypes.includes('ALL') &&
+            !selectedTypes.includes('LONGRANGE') &&
+            (directDist >= 3500 || getDestinationVacationStyles(dest, directDist).includes('LONGRANGE'))
+          ) {
+            continue; // Destination belongs to long-range/exotic category which was not selected
+          }
+
+          // Climate preference constraint: avoid extreme heat (>38°C)
+          if (input.avoidExtremeHeat && seasonalWarning?.seasonType === 'EXTREME_HEAT') {
+            continue; // Filtered out by user's extreme heat avoidance constraint
+          }
+
           // Winter sports & snow guarantee constraint
           if (input.requireSnow) {
             const isAlpineCandidate = selectedTypes.includes('ALPINE') ||
@@ -778,23 +793,110 @@ export function optimizeVacationWindows(
 
     // Active seasonal warnings and local environmental phenomena:
     // Degrades weather comfort index to reflect compromised vacation conditions (algae blooms, insect plagues, extreme weather)
-    const seasonalImpact = getSeasonalWarningPenalty(cand.seasonalWarning);
+    // Extreme summer heat is a user-configurable preference rather than an unconditional global penalty.
+    const seasonalImpact = getSeasonalWarningPenalty(cand.seasonalWarning, {
+      avoidExtremeHeat: input.avoidExtremeHeat,
+      climatePreference: userProfile.climatePreference,
+    });
     if (seasonalImpact) {
       weatherIndex = Math.max(5, Math.round((weatherIndex - seasonalImpact.weatherPenalty) * 10) / 10);
     }
 
-    // 3. PTO Efficiency (lower PTO consumed is better: 0-100)
-    const ptoEfficiencyIndex = normalizeScore(cand.ptoDaysConsumed, minPto, maxPto, false);
+    // 3. PTO Efficiency & Trip Duration Dynamics
+    // Short trips (<= 7 days): Weight efficiency higher when fewer PTO days consumed (bridge days / weekends leverage).
+    // Longer trips (> 7 days): Prioritize price advantage and cost savings rather than pure PTO minimization.
+    let ptoEfficiencyIndex: number;
+    let candWeights = weights;
+
+    if (cand.durationDays <= 7) {
+      // Short trip: high efficiency weighting
+      candWeights = {
+        w1_price: 0.28,
+        w2_weather: 0.24,
+        w3_pto: 0.38,
+        w4_friction: 0.10,
+      };
+      if (cand.ptoDaysConsumed === 0) {
+        ptoEfficiencyIndex = 100;
+      } else if (cand.ptoEfficiencyRatio >= 3.0) {
+        ptoEfficiencyIndex = Math.min(100, 92 + Math.round((cand.ptoEfficiencyRatio - 3.0) * 4));
+      } else {
+        ptoEfficiencyIndex = normalizeScore(cand.ptoDaysConsumed, minPto, maxPto, false);
+      }
+    } else {
+      // Longer trip (> 7 days): prioritize price advantage and cost savings gained from specific travel window
+      candWeights = {
+        w1_price: 0.45,
+        w2_weather: 0.30,
+        w3_pto: 0.15,
+        w4_friction: 0.10,
+      };
+      // For longer trips, evaluate free-day leverage (weekends & holidays) rather than pure PTO minimization
+      const freeDaysGained = Math.max(0, cand.durationDays - cand.ptoDaysConsumed);
+      const freeRatio = freeDaysGained / cand.durationDays;
+      ptoEfficiencyIndex = Math.min(100, Math.max(55, Math.round(65 + freeRatio * 55)));
+    }
 
     // 4. Travel Friction (distance, driving hours, layovers, arbitrage: 0-100)
     const travelFrictionIndex = cand.frictionBaseScore;
 
-    // Multi-objective formula:
+    // Multi-objective formula with duration-adaptive weights:
     let finalScoreRaw =
-      weights.w1_price * priceIndex +
-      weights.w2_weather * weatherIndex +
-      weights.w3_pto * ptoEfficiencyIndex +
-      weights.w4_friction * travelFrictionIndex;
+      candWeights.w1_price * priceIndex +
+      candWeights.w2_weather * weatherIndex +
+      candWeights.w3_pto * ptoEfficiencyIndex +
+      candWeights.w4_friction * travelFrictionIndex;
+
+    // 5. Off-Peak Score Bonus (global/multi-country school holiday rhythm & childless preference)
+    const startObj = parseISO(cand.startDate);
+    const mNum = startObj.getMonth() + 1; // 1-12
+    const dNum = startObj.getDate();
+    const isPeakSummer = mNum === 7 || mNum === 8;
+    const isPeakChristmas = (mNum === 12 && dNum >= 20) || (mNum === 1 && dNum <= 6);
+    const isGlobalHighPeak = isPeakSummer || isPeakChristmas;
+
+    let offPeakBonus = 0;
+    if (!hasAnySchoolKids) {
+      // For parties traveling without children / school dependents: explicit bonus outside public holidays and school vacations
+      const isOutsideSchoolHolidays = cand.holidayCoverage.overlapDays === 0;
+      const isOutsidePublicHolidays = cand.publicHolidaysCount === 0;
+      if (isOutsideSchoolHolidays && !isGlobalHighPeak) {
+        offPeakBonus = isOutsidePublicHolidays ? 10 : 7;
+      } else if (isOutsideSchoolHolidays) {
+        offPeakBonus = 5;
+      }
+    } else {
+      // For school families: bonus if window is in a multi-market shoulder window outside European high peak
+      if (!isGlobalHighPeak && cand.holidayCoverage.isFullyInside) {
+        offPeakBonus = 5;
+      }
+    }
+    finalScoreRaw += offPeakBonus;
+
+    // 6. Value-for-Money / Duration Bonus
+    // Awarded when a user can travel for a longer duration at equal or lower total cost compared to shorter peak alternatives
+    let valueForMoneyBonus = 0;
+    const candTotalCost = cand.effectiveCost ?? cand.estimatedTotalCost;
+    const shorterAlternatives = eligibleCandidates.filter(
+      (o) => o.destinationAirport === cand.destinationAirport && o.durationDays < cand.durationDays
+    );
+    if (shorterAlternatives.length > 0) {
+      const cheaperThanOrEqualShorter = shorterAlternatives.some(
+        (s) => (s.effectiveCost ?? s.estimatedTotalCost) >= candTotalCost
+      );
+      if (cheaperThanOrEqualShorter) {
+        valueForMoneyBonus = 8;
+      } else {
+        const candDaily = candTotalCost / cand.durationDays;
+        const avgShorterDaily =
+          shorterAlternatives.reduce((acc, s) => acc + (s.effectiveCost ?? s.estimatedTotalCost) / s.durationDays, 0) /
+          shorterAlternatives.length;
+        if (candDaily < avgShorterDaily * 0.80) {
+          valueForMoneyBonus = 5;
+        }
+      }
+    }
+    finalScoreRaw += valueForMoneyBonus;
 
     // Layover-weighted scoring penalty on overall score ("vacation factor"):
     // More transfers / connections = proportionally lower convenience & match score
@@ -830,11 +932,16 @@ export function optimizeVacationWindows(
       seasonalWarningImpact: seasonalImpact,
       seasonalWarningPenalty: seasonalImpact?.overallScorePenalty || 0,
       layoverPenalty: cand.layoverPenalty || 0,
+      isOffPeak: offPeakBonus >= 5,
+      offPeakBonus: offPeakBonus > 0 ? offPeakBonus : undefined,
+      valueForMoneyBonus: valueForMoneyBonus > 0 ? valueForMoneyBonus : undefined,
       scoreBreakdown: {
         priceIndex,
         weatherIndex,
         ptoEfficiencyIndex,
         travelFrictionIndex,
+        offPeakBonus: offPeakBonus > 0 ? offPeakBonus : undefined,
+        valueForMoneyBonus: valueForMoneyBonus > 0 ? valueForMoneyBonus : undefined,
       },
       finalScore,
     };

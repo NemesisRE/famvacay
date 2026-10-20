@@ -183,7 +183,8 @@ export interface SeasonalWarningImpact {
  * (e.g. Sargassum algae blooms, extreme heat/monsoon/hurricanes, insect swarms, volcanic vog).
  */
 export function getSeasonalWarningPenalty(
-  warning: SeasonalConstraintWarning | null | undefined
+  warning: SeasonalConstraintWarning | null | undefined,
+  options?: { avoidExtremeHeat?: boolean; climatePreference?: string }
 ): SeasonalWarningImpact | null {
   if (!warning) return null;
 
@@ -203,6 +204,11 @@ export function getSeasonalWarningPenalty(
         reason: 'Sustained monsoon rain and high humidity impair outdoor leisure.',
       };
     case 'EXTREME_HEAT':
+      // Treat extreme summer heat as an allowed user-configurable constraint/filter preference
+      // rather than applying an unconditional global scoring penalty.
+      if (options && !options.avoidExtremeHeat && options.climatePreference !== 'COOL') {
+        return null;
+      }
       return {
         weatherPenalty: 22,
         overallScorePenalty: 10,

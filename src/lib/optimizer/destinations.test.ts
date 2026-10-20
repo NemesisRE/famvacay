@@ -378,6 +378,18 @@ describe('Dynamic Vacation Destination Discovery Engine', () => {
     expect(
       karlsruheLongrange.some((code) => ['PUJ', 'CUN', 'DXB', 'MLE', 'BKK', 'MBJ', 'SEZ'].includes(code))
     ).toBe(true);
+
+    // 4. Pure BEACH style discovery without LONGRANGE excludes intercontinental/long-range destinations
+    const karlsruheBeachOnly = resolveDestinationCodes([], 'BEACH', {
+      departureLat: 49.0069,
+      departureLon: 8.4037,
+      originAirports: ['FRA'],
+    });
+    expect(karlsruheBeachOnly.length).toBeGreaterThanOrEqual(5);
+    // Regional/European beach destinations like Canaries or Mediterranean are present
+    expect(karlsruheBeachOnly.some((code) => ['TFS', 'LPA', 'PMI', 'HER', 'IBZ', 'FAO', 'RHO'].includes(code))).toBe(true);
+    // Long-range/exotic destinations are strictly excluded
+    expect(karlsruheBeachOnly.some((code) => ['PUJ', 'CUN', 'MLE', 'MBJ', 'BKK', 'DPS', 'SEZ'].includes(code))).toBe(false);
   });
 });
 
