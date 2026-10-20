@@ -184,7 +184,7 @@ export interface SeasonalWarningImpact {
  */
 export function getSeasonalWarningPenalty(
   warning: SeasonalConstraintWarning | null | undefined,
-  options?: { avoidExtremeHeat?: boolean; climatePreference?: string }
+  options?: { avoidExtremeHeat?: boolean }
 ): SeasonalWarningImpact | null {
   if (!warning) return null;
 
@@ -206,7 +206,7 @@ export function getSeasonalWarningPenalty(
     case 'EXTREME_HEAT':
       // Treat extreme summer heat as an allowed user-configurable constraint/filter preference
       // rather than applying an unconditional global scoring penalty.
-      if (options && !options.avoidExtremeHeat && options.climatePreference !== 'COOL') {
+      if (options && !options.avoidExtremeHeat) {
         return null;
       }
       return {

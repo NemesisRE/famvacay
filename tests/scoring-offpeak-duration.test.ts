@@ -14,7 +14,7 @@ describe('Off-Peak, Duration Dynamics & Climate Constraints', () => {
           messageKey: 'extremeHeatWarning',
           fallbackMessage: 'Extreme summer heat',
         },
-        { avoidExtremeHeat: false, climatePreference: 'WARM' }
+        { avoidExtremeHeat: false }
       );
       expect(penalty).toBeNull();
     });
@@ -28,26 +28,11 @@ describe('Off-Peak, Duration Dynamics & Climate Constraints', () => {
           messageKey: 'extremeHeatWarning',
           fallbackMessage: 'Extreme summer heat',
         },
-        { avoidExtremeHeat: true, climatePreference: 'WARM' }
+        { avoidExtremeHeat: true }
       );
       expect(penalty).toBeDefined();
       expect(penalty?.weatherPenalty).toBe(22);
       expect(penalty?.overallScorePenalty).toBe(10);
-    });
-
-    it('penalizes extreme heat automatically when user preferred climate is COOL', () => {
-      const penalty = getSeasonalWarningPenalty(
-        {
-          destinationCode: 'DXB',
-          seasonType: 'EXTREME_HEAT',
-          monthRange: [6, 7, 8],
-          messageKey: 'extremeHeatWarning',
-          fallbackMessage: 'Extreme summer heat',
-        },
-        { avoidExtremeHeat: false, climatePreference: 'COOL' }
-      );
-      expect(penalty).toBeDefined();
-      expect(penalty?.weatherPenalty).toBe(22);
     });
   });
 
@@ -79,7 +64,6 @@ describe('Off-Peak, Duration Dynamics & Climate Constraints', () => {
           adults: 2,
           childrenAges: [], // No children!
           blackoutRanges: [],
-          climatePreference: 'WARM',
         },
       };
 
@@ -104,7 +88,6 @@ describe('Off-Peak, Duration Dynamics & Climate Constraints', () => {
           adults: 2,
           childrenAges: [],
           blackoutRanges: [],
-          climatePreference: 'WARM',
         },
       };
 
@@ -134,7 +117,6 @@ describe('Off-Peak, Duration Dynamics & Climate Constraints', () => {
           adults: 2,
           childrenAges: [8],
           blackoutRanges: [],
-          climatePreference: 'WARM',
         },
       };
 
@@ -157,7 +139,6 @@ describe('Off-Peak, Duration Dynamics & Climate Constraints', () => {
           adults: 2,
           childrenAges: [],
           blackoutRanges: [],
-          climatePreference: 'WARM',
         },
       };
 

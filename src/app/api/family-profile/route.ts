@@ -55,9 +55,16 @@ export async function GET() {
       ? adultMembers.length
       : Math.max(1, profile.memberships.length);
 
+    // Normalize legacy travel-mode values (FLIGHT, CAMPER) saved before the
+    // shared TravelVehicle enum (PLANE|CAR|TRAIN|BUS) was adopted everywhere.
+    const normalizedTravelModes = Array.isArray(profile.travelModes)
+      ? [...new Set(profile.travelModes.map((m: string) => (m === 'FLIGHT' ? 'PLANE' : m === 'CAMPER' ? 'CAR' : m)))]
+      : profile.travelModes;
+
     return NextResponse.json({
       profile: {
         ...profile,
+        travelModes: normalizedTravelModes,
         adultsCount,
       },
     });
@@ -89,10 +96,8 @@ export async function POST(req: NextRequest) {
       holidaySubdivision,
       workweekDays,
       originAirports,
-      maxDrivingHours,
       maxTravelHours,
       preferredCabinClass,
-      climatePreference,
       passportCheckRequired,
       travelModes,
       scoringWeights,
@@ -111,10 +116,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Default travel modes to ['FLIGHT', 'CAR'] if omitted
+    // Travel modes use the same TravelVehicle enum as the search form (PLANE|CAR|TRAIN|BUS).
+    // Map legacy stored values (FLIGHT, CAMPER) for callers still sending the old names.
+    const normalizeTravelMode = (m: string) => (m === 'FLIGHT' ? 'PLANE' : m === 'CAMPER' ? 'CAR' : m);
     const sanitizedTravelModes = Array.isArray(travelModes) && travelModes.length > 0
-      ? travelModes
-      : ['FLIGHT', 'CAR'];
+      ? [...new Set(travelModes.map(normalizeTravelMode))]
+      : ['PLANE', 'CAR'];
 
     // Find existing profile for this user
     let existingProfile = await prisma.familyProfile.findFirst({
@@ -136,10 +143,8 @@ export async function POST(req: NextRequest) {
       holidaySubdivision: holidaySubdivision || federalState,
       workweekDays: Array.isArray(workweekDays) && workweekDays.length > 0 ? workweekDays : [1, 2, 3, 4, 5],
       originAirports: Array.isArray(originAirports) ? originAirports : [],
-      maxDrivingHours: maxDrivingHours !== undefined ? Number(maxDrivingHours) : 2.5,
       maxTravelHours: maxTravelHours !== undefined ? Number(maxTravelHours) : null,
       preferredCabinClass: preferredCabinClass || 'ECONOMY',
-      climatePreference: climatePreference || 'MODERATE',
       passportCheckRequired: Boolean(passportCheckRequired),
       travelModes: sanitizedTravelModes,
       scoringWeights: scoringWeights || undefined,

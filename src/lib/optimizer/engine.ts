@@ -424,24 +424,8 @@ export function optimizeVacationWindows(
           }
         }
 
-        // Travel friction calculation based on driving distance and profile maxDrivingHours
-        let frictionDriveScore = isArbitrage ? 80 : 95;
-        if (userProfile.maxDrivingHours && userProfile.departureLat && userProfile.departureLon) {
-          const airportObj = getAirportByIata(origin);
-          if (airportObj) {
-            const distKm = calculateGeodesicDistanceKm(
-              userProfile.departureLat,
-              userProfile.departureLon,
-              airportObj.lat,
-              airportObj.lon
-            );
-            const maxDriveDist = userProfile.maxDrivingHours * 90; // ~90 km/h driving benchmark
-            if (distKm > maxDriveDist) {
-              const excess = distKm - maxDriveDist;
-              frictionDriveScore = Math.max(30, frictionDriveScore - Math.round(excess / 15));
-            }
-          }
-        }
+        // Baseline travel friction score (lower for arbitrage/out-of-state departures)
+        const frictionDriveScore = isArbitrage ? 80 : 95;
 
         for (const dest of candidateDestinations) {
           const destAirportObj = getAirportByIata(dest);
@@ -775,15 +759,6 @@ export function optimizeVacationWindows(
     const rainQuality = Math.max(10, 100 - cand.weather.precipitationRiskPercent * 2);
     let weatherIndex = Math.round((tempQuality * 0.6 + rainQuality * 0.4) * 10) / 10;
 
-    // Climate preference bonus / penalty
-    if (userProfile.climatePreference === 'WARM' && cand.weather.avgTempC >= 23) {
-      weatherIndex = Math.min(100, weatherIndex + 12);
-    } else if (userProfile.climatePreference === 'COOL' && cand.weather.avgTempC <= 18) {
-      weatherIndex = Math.min(100, weatherIndex + 12);
-    } else if (userProfile.climatePreference === 'MODERATE' && cand.weather.avgTempC >= 18 && cand.weather.avgTempC <= 26) {
-      weatherIndex = Math.min(100, weatherIndex + 8);
-    }
-
     if (input.minBeachTemp && cand.weather.avgTempC >= input.minBeachTemp) {
       weatherIndex = Math.min(100, weatherIndex + 10);
     }
@@ -796,7 +771,6 @@ export function optimizeVacationWindows(
     // Extreme summer heat is a user-configurable preference rather than an unconditional global penalty.
     const seasonalImpact = getSeasonalWarningPenalty(cand.seasonalWarning, {
       avoidExtremeHeat: input.avoidExtremeHeat,
-      climatePreference: userProfile.climatePreference,
     });
     if (seasonalImpact) {
       weatherIndex = Math.max(5, Math.round((weatherIndex - seasonalImpact.weatherPenalty) * 10) / 10);

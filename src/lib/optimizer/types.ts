@@ -33,9 +33,7 @@ export interface UserProfileInput {
   childrenAges: number[];    // e.g. [1, 7, 14]
   childrenBirthDates?: string[]; // ISO date YYYY-MM-DD
   blackoutRanges: BlackoutRange[];
-  maxDrivingHours?: number;
   preferredCabinClass?: string;
-  climatePreference?: string;
   travelModes?: string[];
   maxFlightStops?: number;  // 0 = direct only, 1 = max 1 stop, undefined = any
 }
