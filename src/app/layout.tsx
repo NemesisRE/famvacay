@@ -4,6 +4,7 @@ import { AuthProvider } from '@/components/auth-provider';
 import { I18nProvider } from '@/lib/i18n/i18n-context';
 import { NavigationBar } from '@/components/navigation-bar';
 import { LanguageSelector } from '@/components/language-selector';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
@@ -18,20 +19,37 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-slate-50 antialiased flex flex-col">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const t = localStorage.getItem('famvac_theme');
+                if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
+      </head>
+      <body className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased flex flex-col transition-colors">
         <AuthProvider>
           <I18nProvider>
-            <header className="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-50">
+            <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur sticky top-0 z-50 transition-colors">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Link href="/" className="flex items-center gap-2">
-                    <span className="font-bold text-xl tracking-tight text-slate-900">
-                      Fam<span className="text-blue-600">Vacay</span>
+                    <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">
+                      Fam<span className="text-teal-600 dark:text-teal-400">Vacay</span>
                     </span>
                   </Link>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <ThemeToggle />
                   <LanguageSelector />
                   <NavigationBar />
                 </div>
@@ -40,7 +58,7 @@ export default function RootLayout({
             <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
               {children}
             </main>
-            <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
+            <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-6 text-center text-xs text-slate-500 dark:text-slate-400 transition-colors">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
                 <span>FamVacay — Vacation Planning &amp; Travel Optimization</span>
                 <span className="hidden sm:inline">•</span>
@@ -48,7 +66,7 @@ export default function RootLayout({
                   href="https://github.com/NemesisRE/famvacay"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="underline hover:text-slate-800 transition-colors"
+                  className="underline hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
                 >
                   Source code (AGPL-3.0)
                 </a>
