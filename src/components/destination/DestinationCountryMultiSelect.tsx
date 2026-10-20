@@ -87,15 +87,15 @@ export function DestinationCountryMultiSelect({
         onClick={() => setIsOpen((prev) => !prev)}
         className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-2 transition cursor-pointer shadow-2xs select-none ${
           !isAllSelected
-            ? 'bg-blue-50 border-blue-300 text-blue-900 font-bold hover:bg-blue-100/70'
-            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+            ? 'bg-teal-50 dark:bg-teal-950/40 border-teal-300 dark:border-teal-700 text-teal-900 dark:text-teal-200 font-bold hover:bg-teal-100/70 dark:hover:bg-teal-900/40'
+            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 hover:border-slate-300 dark:hover:border-slate-600'
         }`}
         title="Filter by destination country"
       >
-        <Globe className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+        <Globe className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
         <span className="truncate max-w-[150px] sm:max-w-[180px]">{getButtonLabel()}</span>
         <ChevronDown
-          className={`w-3.5 h-3.5 text-slate-400 transition-transform flex-shrink-0 ${
+          className={`w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform flex-shrink-0 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
@@ -111,19 +111,19 @@ export function DestinationCountryMultiSelect({
               zIndex: 99999,
             }}
             {...getFloatingProps()}
-            className="w-64 max-h-80 overflow-y-auto bg-white rounded-xl shadow-xl border border-slate-200 p-2 text-slate-800 transition-all duration-100 animate-in fade-in zoom-in-95"
+            className="w-64 max-h-80 overflow-y-auto bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-2 text-slate-800 dark:text-slate-100 transition-all duration-100 animate-in fade-in zoom-in-95"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header / Clear all */}
-            <div className="flex items-center justify-between pb-1.5 px-2 border-b border-slate-100 mb-1 text-[11px]">
-              <span className="font-bold text-slate-500 uppercase tracking-wider">
+            <div className="flex items-center justify-between pb-1.5 px-2 border-b border-slate-100 dark:border-slate-800 mb-1 text-[11px]">
+              <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {t.home.countryLabel}
               </span>
               {!isAllSelected && (
                 <button
                   type="button"
                   onClick={handleSelectAll}
-                  className="text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
+                  className="text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 font-semibold cursor-pointer"
                 >
                   {t.home.allCountries}
                 </button>
@@ -136,23 +136,23 @@ export function DestinationCountryMultiSelect({
               onClick={handleSelectAll}
               className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer text-left ${
                 isAllSelected
-                  ? 'bg-blue-50 text-blue-900 font-bold'
-                  : 'hover:bg-slate-50 text-slate-700'
+                  ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 font-bold'
+                  : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
               }`}
             >
               <div className="flex items-center gap-2">
                 <div
                   className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
                     isAllSelected
-                      ? 'bg-blue-600 border-blue-600 text-white'
-                      : 'border-slate-300 bg-white'
+                      ? 'bg-teal-600 border-teal-600 text-white'
+                      : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
                   }`}
                 >
                   {isAllSelected && <Check className="w-3 h-3 stroke-[3]" />}
                 </div>
                 <span>{t.home.allCountries}</span>
               </div>
-              <span className="text-[10px] text-slate-400 font-medium">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                 ({availableCountries.length})
               </span>
             </button>
@@ -170,16 +170,16 @@ export function DestinationCountryMultiSelect({
                     onClick={() => handleToggleCountry(c)}
                     className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer text-left ${
                       isSelected
-                        ? 'bg-blue-50/80 text-blue-900 font-semibold'
-                        : 'hover:bg-slate-50 text-slate-700'
+                        ? 'bg-teal-50/80 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 font-semibold'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
                       <div
                         className={`w-4 h-4 rounded border flex items-center justify-center transition-colors flex-shrink-0 ${
                           isSelected
-                            ? 'bg-blue-600 border-blue-600 text-white'
-                            : 'border-slate-300 bg-white'
+                            ? 'bg-teal-600 border-teal-600 text-white'
+                            : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
                         }`}
                       >
                         {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
@@ -190,8 +190,8 @@ export function DestinationCountryMultiSelect({
                       <span
                         className={`text-[10px] px-1.5 py-0.2 rounded-full flex-shrink-0 ml-1.5 ${
                           isSelected
-                            ? 'bg-blue-200 text-blue-900 font-bold'
-                            : 'bg-slate-100 text-slate-600'
+                            ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-900 dark:text-teal-200 font-bold'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                         }`}
                       >
                         {count}

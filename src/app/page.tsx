@@ -42,6 +42,8 @@ import {
   ChevronsDownUp,
   ShieldCheck,
   Utensils,
+  Share2,
+  Loader2,
 } from 'lucide-react';
 import { differenceInYears, addDays } from 'date-fns';
 import { CandidateWindow, DestinationType, TravelVehicle, BoardType } from '@/lib/optimizer/types';
@@ -66,7 +68,7 @@ import { FlightDetailsPopover } from '@/components/airports/FlightDetailsPopover
 import { getLocalizedSeasonalWarning } from '@/lib/optimizer/localized-warnings';
 import { DestinationMapModal } from '@/components/destination/DestinationMapModal';
 import { DestinationSafetyPopover } from '@/components/destination/DestinationSafetyPopover';
-import { DestinationCountryMultiSelect } from '@/components/destination/DestinationCountryMultiSelect';
+import { DestinationFilterDropdown, DestinationOption } from '@/components/destination/DestinationFilterDropdown';
 import { getDestinationVacationStyles } from '@/lib/optimizer/destination-styles';
 import { getAnnualSpecialTimes, SpecialHolidayPeriod } from '@/lib/holidays/special-dates';
 import { BeachTemperaturePopover } from '@/components/preferences/BeachTemperaturePopover';
@@ -176,7 +178,7 @@ export default function HomePage() {
       case 'LONGRANGE':
         return { label: t.home.vacationKindLongrange, icon: Globe, color: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
       default:
-        return { label: type, icon: Compass, color: 'bg-blue-50 text-blue-700 border-blue-200' };
+        return { label: type, icon: Compass, color: 'bg-teal-50 text-teal-700 border-teal-200' };
     }
   };
 
@@ -218,7 +220,7 @@ export default function HomePage() {
         return {
           label: t.home.vehiclePlane,
           icon: Plane,
-          color: 'bg-blue-50 text-blue-700 border-blue-200',
+          color: 'bg-sky-50 text-sky-700 border-sky-200',
         };
     }
   };
@@ -294,14 +296,19 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<CandidateWindow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeShareId, setActiveShareId] = useState<string | null>(null);
+  const [shareCopiedToast, setShareCopiedToast] = useState<boolean>(false);
 
   const [viewMode, setViewMode] = useState<'list' | 'destination' | 'timeframe'>('destination');
+  const [selectedDestinationsList, setSelectedDestinationsList] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [maxCostFilter, setMaxCostFilter] = useState<number | undefined>(undefined);
   const [schoolHolidayFilter, setSchoolHolidayFilter] = useState<'all' | 'holidaysOnly'>('all');
   const [sortBy, setSortBy] = useState<'score' | 'price' | 'pto' | 'duration' | 'date-asc' | 'date-desc'>('score');
   const [pageSize, setPageSize] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [timeframePageSize, setTimeframePageSize] = useState<number>(4);
+  const [timeframeCurrentPage, setTimeframeCurrentPage] = useState<number>(1);
   const [expandedDestinations, setExpandedDestinations] = useState<Record<string, boolean>>({});
   const [expandedTimeframes, setExpandedTimeframes] = useState<Record<string, boolean>>({});
   const [destinationSearchFilter, setDestinationSearchFilter] = useState<string>('');
@@ -318,6 +325,7 @@ export default function HomePage() {
   const [vehicleFilter, setVehicleFilter] = useState<string>('ALL');
   const [safetyFilter, setSafetyFilter] = useState<'SAFE_ONLY' | 'ALL'>('SAFE_ONLY');
   const [warningFilter, setWarningFilter] = useState<'CLEAN_ONLY' | 'ALL'>('CLEAN_ONLY');
+  const [heatFilter, setHeatFilter] = useState<'ALL' | 'AVOID_EXTREME_HEAT'>('ALL');
   const [boardTypeFilter, setBoardTypeFilter] = useState<string>('ALL');
   const [overlandDurationFilter, setOverlandDurationFilter] = useState<string>('ALL');
   const [flightStopsFilter, setFlightStopsFilter] = useState<string>('ALL'); // 'ALL' | 'DIRECT_ONLY' | 'MAX_1_STOP'
@@ -326,12 +334,14 @@ export default function HomePage() {
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
+    if (selectedDestinationsList.length > 0) count++;
     if (selectedMonth !== 'ALL') count++;
     if (resultStyleFilter !== 'ALL') count++;
     if (distanceFilter !== 'ALL') count++;
     if (vehicleFilter !== 'ALL') count++;
     if (safetyFilter !== 'SAFE_ONLY') count++;
     if (warningFilter !== 'CLEAN_ONLY') count++;
+    if (heatFilter !== 'ALL') count++;
     if (boardTypeFilter !== 'ALL') count++;
     if (overlandDurationFilter !== 'ALL') count++;
     if (flightStopsFilter !== 'ALL') count++;
@@ -340,12 +350,14 @@ export default function HomePage() {
     if (sortBy !== 'score') count++;
     return count;
   }, [
+    selectedDestinationsList,
     selectedMonth,
     resultStyleFilter,
     distanceFilter,
     vehicleFilter,
     safetyFilter,
     warningFilter,
+    heatFilter,
     boardTypeFilter,
     overlandDurationFilter,
     flightStopsFilter,
@@ -355,12 +367,14 @@ export default function HomePage() {
   ]);
 
   const resetAllFilters = () => {
+    setSelectedDestinationsList([]);
     setSelectedMonth('ALL');
     setResultStyleFilter('ALL');
     setDistanceFilter('ALL');
     setVehicleFilter('ALL');
     setSafetyFilter('SAFE_ONLY');
     setWarningFilter('CLEAN_ONLY');
+    setHeatFilter('ALL');
     setBoardTypeFilter('ALL');
     setOverlandDurationFilter('ALL');
     setFlightStopsFilter('ALL');
@@ -368,6 +382,7 @@ export default function HomePage() {
     setMaxCostFilter(undefined);
     setSortBy('score');
     setCurrentPage(1);
+    setTimeframeCurrentPage(1);
   };
 
   // Map Modal State
@@ -456,6 +471,7 @@ export default function HomePage() {
       if (savedFilters) {
         const parsed = JSON.parse(savedFilters);
         if (parsed.viewMode) setViewMode(parsed.viewMode);
+        if (Array.isArray(parsed.selectedDestinationsList)) setSelectedDestinationsList(parsed.selectedDestinationsList);
         if (parsed.selectedMonth) setSelectedMonth(parsed.selectedMonth);
         if (parsed.maxCostFilter !== undefined) setMaxCostFilter(parsed.maxCostFilter);
         if (parsed.schoolHolidayFilter) setSchoolHolidayFilter(parsed.schoolHolidayFilter);
@@ -477,13 +493,92 @@ export default function HomePage() {
         if (parsed.flightStopsFilter) setFlightStopsFilter(parsed.flightStopsFilter);
       }
 
-      const savedResults = localStorage.getItem('famvac_cached_results');
-      if (savedResults) {
-        const parsed = JSON.parse(savedResults);
-        const ageHours = (Date.now() - (parsed.timestamp || 0)) / (1000 * 60 * 60);
-        // Restore recent search results if less than 2.5 hours old
-        if (ageHours < 2.5 && Array.isArray(parsed.windows) && parsed.windows.length > 0) {
-          setResults(parsed.windows);
+      // Check URL parameters for shared search state, view mode, and filter states
+      const urlParams = new URLSearchParams(window.location.search);
+      let shareParam = urlParams.get('s') || urlParams.get('share');
+      if (!shareParam && window.location.hash) {
+        const hashMatch = window.location.hash.match(/^#s=([a-zA-Z0-9_-]+)/);
+        if (hashMatch) shareParam = hashMatch[1];
+      }
+
+      // URL parameters take precedence over localStorage for direct links & sharing
+      const urlView = urlParams.get('view');
+      if (urlView === 'list' || urlView === 'destination' || urlView === 'timeframe') {
+        setViewMode(urlView);
+      }
+      const urlDest = urlParams.get('dest');
+      if (urlDest) {
+        setSelectedDestinationsList(urlDest.split(',').filter(Boolean));
+      }
+      const urlMonth = urlParams.get('month');
+      if (urlMonth) setSelectedMonth(urlMonth);
+      const urlStyle = urlParams.get('style');
+      if (urlStyle) setResultStyleFilter(urlStyle as DestinationType);
+      const urlDist = urlParams.get('dist');
+      if (urlDist) setDistanceFilter(urlDist);
+      const urlVehicle = urlParams.get('vehicle');
+      if (urlVehicle) setVehicleFilter(urlVehicle);
+      const urlSafety = urlParams.get('safety');
+      if (urlSafety === 'SAFE_ONLY' || urlSafety === 'ALL') setSafetyFilter(urlSafety);
+      const urlWarning = urlParams.get('warning');
+      if (urlWarning === 'CLEAN_ONLY' || urlWarning === 'ALL') setWarningFilter(urlWarning);
+      const urlHeat = urlParams.get('heat');
+      if (urlHeat === 'ALL' || urlHeat === 'AVOID_EXTREME_HEAT') setHeatFilter(urlHeat);
+      const urlBoard = urlParams.get('board');
+      if (urlBoard) setBoardTypeFilter(urlBoard);
+      const urlStops = urlParams.get('stops');
+      if (urlStops) setFlightStopsFilter(urlStops);
+      const urlHoliday = urlParams.get('holiday');
+      if (urlHoliday === 'all' || urlHoliday === 'holidaysOnly') setSchoolHolidayFilter(urlHoliday);
+      const urlMaxCost = urlParams.get('maxcost');
+      if (urlMaxCost && Number(urlMaxCost) > 0) setMaxCostFilter(Number(urlMaxCost));
+      const urlSort = urlParams.get('sort');
+      if (urlSort) setSortBy(urlSort as any);
+
+      if (shareParam) {
+        fetch(`/api/vacations/share?id=${encodeURIComponent(shareParam)}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((res) => {
+            if (res && res.success && res.payload) {
+              const { formState, windows, shareId } = res.payload;
+              if (Array.isArray(windows) && windows.length > 0) {
+                setResults(windows);
+                setActiveShareId(shareId || shareParam);
+                if (formState) {
+                  if (formState.departureLocation) setDepartureLocation(formState.departureLocation);
+                  if (formState.departureCoords) setDepartureCoords(formState.departureCoords);
+                  if (formState.country) setCountry(formState.country);
+                  if (formState.federalState) setFederalState(formState.federalState);
+                  if (Array.isArray(formState.selectedStyles) && formState.selectedStyles.length > 0) setSelectedStyles(formState.selectedStyles);
+                  if (Array.isArray(formState.targetDestinations)) setTargetDestinations(formState.targetDestinations);
+                  if (Array.isArray(formState.originAirports) && formState.originAirports.length > 0) setOriginAirports(formState.originAirports);
+                  if (typeof formState.adultsCount === 'number') setAdultsCount(formState.adultsCount);
+                  if (Array.isArray(formState.childrenList)) setChildrenList(formState.childrenList);
+                  if (typeof formState.durationDaysMin === 'number') setDurationDaysMin(formState.durationDaysMin);
+                  if (typeof formState.durationDaysMax === 'number') setDurationDaysMax(formState.durationDaysMax);
+                  if (formState.earliestDate) setEarliestDate(formState.earliestDate);
+                  if (formState.latestDate) setLatestDate(formState.latestDate);
+                  if (formState.maxBudget !== undefined) setMaxBudget(formState.maxBudget);
+                  if (Array.isArray(formState.selectedVehicles) && formState.selectedVehicles.length > 0) setSelectedVehicles(formState.selectedVehicles);
+                  if (formState.preferredBoardType) setPreferredBoardType(formState.preferredBoardType);
+                  if (typeof formState.minBeachTemp === 'number') setMinBeachTemp(formState.minBeachTemp);
+                  if (typeof formState.requireSnow === 'boolean') setRequireSnow(formState.requireSnow);
+                  if (typeof formState.maxFlightStops === 'number') setMaxFlightStops(formState.maxFlightStops);
+                  if (typeof formState.maxOverlandDurationHours === 'number') setMaxOverlandDurationHours(formState.maxOverlandDurationHours);
+                }
+              }
+            }
+          })
+          .catch((err) => console.warn('[Share Hydration Failed]', err));
+      } else {
+        const savedResults = localStorage.getItem('famvac_cached_results');
+        if (savedResults) {
+          const parsed = JSON.parse(savedResults);
+          const ageHours = (Date.now() - (parsed.timestamp || 0)) / (1000 * 60 * 60);
+          // Restore recent search results if less than 2.5 hours old
+          if (ageHours < 2.5 && Array.isArray(parsed.windows) && parsed.windows.length > 0) {
+            setResults(parsed.windows);
+          }
         }
       }
     } catch {
@@ -556,6 +651,7 @@ export default function HomePage() {
     try {
       const filtersToSave = {
         viewMode,
+        selectedDestinationsList,
         selectedMonth,
         maxCostFilter,
         schoolHolidayFilter,
@@ -579,6 +675,7 @@ export default function HomePage() {
   }, [
     hasRestoredFromStorage,
     viewMode,
+    selectedDestinationsList,
     selectedMonth,
     maxCostFilter,
     schoolHolidayFilter,
@@ -594,6 +691,78 @@ export default function HomePage() {
     boardTypeFilter,
     overlandDurationFilter,
     flightStopsFilter,
+  ]);
+
+  // Synchronize viewMode and active filters to URL search parameters without page reload
+  useEffect(() => {
+    if (!hasRestoredFromStorage) return;
+    try {
+      const url = new URL(window.location.href);
+      const params = url.searchParams;
+
+      if (viewMode !== 'destination') params.set('view', viewMode);
+      else params.delete('view');
+
+      if (selectedDestinationsList.length > 0) params.set('dest', selectedDestinationsList.join(','));
+      else params.delete('dest');
+
+      if (selectedMonth !== 'ALL') params.set('month', selectedMonth);
+      else params.delete('month');
+
+      if (resultStyleFilter !== 'ALL') params.set('style', resultStyleFilter);
+      else params.delete('style');
+
+      if (distanceFilter !== 'ALL') params.set('dist', distanceFilter);
+      else params.delete('dist');
+
+      if (vehicleFilter !== 'ALL') params.set('vehicle', vehicleFilter);
+      else params.delete('vehicle');
+
+      if (safetyFilter !== 'SAFE_ONLY') params.set('safety', safetyFilter);
+      else params.delete('safety');
+
+      if (warningFilter !== 'CLEAN_ONLY') params.set('warning', warningFilter);
+      else params.delete('warning');
+
+      if (heatFilter !== 'ALL') params.set('heat', heatFilter);
+      else params.delete('heat');
+
+      if (boardTypeFilter !== 'ALL') params.set('board', boardTypeFilter);
+      else params.delete('board');
+
+      if (flightStopsFilter !== 'ALL') params.set('stops', flightStopsFilter);
+      else params.delete('stops');
+
+      if (schoolHolidayFilter !== 'all') params.set('holiday', schoolHolidayFilter);
+      else params.delete('holiday');
+
+      if (maxCostFilter !== undefined && maxCostFilter > 0) params.set('maxcost', String(maxCostFilter));
+      else params.delete('maxcost');
+
+      if (sortBy !== 'score') params.set('sort', sortBy);
+      else params.delete('sort');
+
+      const nextUrl = url.pathname + (params.toString() ? `?${params.toString()}` : '') + url.hash;
+      window.history.replaceState(null, '', nextUrl);
+    } catch {
+      // Ignore URL replacement errors in restricted environments
+    }
+  }, [
+    hasRestoredFromStorage,
+    viewMode,
+    selectedDestinationsList,
+    selectedMonth,
+    resultStyleFilter,
+    distanceFilter,
+    vehicleFilter,
+    safetyFilter,
+    warningFilter,
+    heatFilter,
+    boardTypeFilter,
+    flightStopsFilter,
+    schoolHolidayFilter,
+    maxCostFilter,
+    sortBy,
   ]);
 
   const handleResetForm = () => {
@@ -976,6 +1145,7 @@ export default function HomePage() {
         preferredBoardType,
         maxOverlandTravelMinutes: maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
         maxFlightStops,
+        avoidExtremeHeat: heatFilter === 'AVOID_EXTREME_HEAT',
         durationDays: minDur,
         durationDaysMin: minDur,
         durationDaysMax: maxDur,
@@ -1017,6 +1187,8 @@ export default function HomePage() {
 
       const data = await res.json();
       setResults(data.windows);
+      setSelectedDestinationsList([]);
+      setTimeframeCurrentPage(1);
       try {
         localStorage.setItem(
           'famvac_cached_results',
@@ -1025,6 +1197,48 @@ export default function HomePage() {
       } catch {
         // Storage quota / disabled
       }
+
+      // Persist results for reload-safety and direct shareable URL
+      fetch('/api/vacations/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: payload,
+          formState: {
+            departureLocation,
+            departureCoords,
+            country,
+            federalState,
+            selectedStyles,
+            targetDestinations,
+            originAirports,
+            adultsCount,
+            childrenList,
+            durationDaysMin,
+            durationDaysMax,
+            earliestDate,
+            latestDate,
+            maxBudget,
+            selectedVehicles,
+            preferredBoardType,
+            minBeachTemp,
+            requireSnow,
+            maxFlightStops,
+            maxOverlandDurationHours,
+          },
+          windows: data.windows,
+        }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((shareData) => {
+          if (shareData?.shareId) {
+            setActiveShareId(shareData.shareId);
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set('s', shareData.shareId);
+            window.history.replaceState(null, '', newUrl.toString());
+          }
+        })
+        .catch(() => {});
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred');
     } finally {
@@ -1032,10 +1246,71 @@ export default function HomePage() {
     }
   };
 
+  const handleShareSearch = async () => {
+    if (!results || results.length === 0) return;
+    try {
+      let shareId = activeShareId;
+      if (!shareId) {
+        const res = await fetch('/api/vacations/share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            formState: {
+              departureLocation,
+              departureCoords,
+              country,
+              federalState,
+              selectedStyles,
+              targetDestinations,
+              originAirports,
+              adultsCount,
+              childrenList,
+              durationDaysMin,
+              durationDaysMax,
+              earliestDate,
+              latestDate,
+              maxBudget,
+              selectedVehicles,
+              preferredBoardType,
+              minBeachTemp,
+              requireSnow,
+              maxFlightStops,
+              maxOverlandDurationHours,
+            },
+            windows: results,
+          }),
+        });
+        const data = await res.json();
+        if (data.shareId) {
+          const newShareId: string = data.shareId;
+          shareId = newShareId;
+          setActiveShareId(newShareId);
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.set('s', newShareId);
+          window.history.replaceState(null, '', newUrl.toString());
+        }
+      }
+      if (shareId) {
+        const finalShareId: string = shareId;
+        const shareUrl = `${window.location.origin}/?s=${finalShareId}`;
+        await navigator.clipboard.writeText(shareUrl);
+        setShareCopiedToast(true);
+        setTimeout(() => setShareCopiedToast(false), 3000);
+      }
+    } catch (err) {
+      console.warn('Share copy failed:', err);
+    }
+  };
+
   // Filtered and Sorted Results
   const filteredResults = useMemo(() => {
     if (!results) return [];
     let list = [...results];
+
+    // Destination multi-select filter across all views
+    if (selectedDestinationsList.length > 0) {
+      list = list.filter((w) => selectedDestinationsList.includes(w.destinationAirport));
+    }
 
     if (selectedMonth !== 'ALL') {
       list = list.filter((w) => {
@@ -1047,6 +1322,9 @@ export default function HomePage() {
     if (resultStyleFilter !== 'ALL') {
       list = list.filter((w) => {
         const styles = getDestinationVacationStyles(w.destinationAirport, w.flightDistanceKm);
+        if (resultStyleFilter === 'BEACH') {
+          return styles.includes('BEACH') && !styles.includes('LONGRANGE');
+        }
         return styles.includes(resultStyleFilter);
       });
     }
@@ -1088,7 +1366,11 @@ export default function HomePage() {
     }
 
     if (warningFilter === 'CLEAN_ONLY') {
-      list = list.filter((w) => !w.seasonalWarning);
+      list = list.filter((w) => !w.seasonalWarning || w.seasonalWarning.seasonType === 'EXTREME_HEAT');
+    }
+
+    if (heatFilter === 'AVOID_EXTREME_HEAT') {
+      list = list.filter((w) => w.seasonalWarning?.seasonType !== 'EXTREME_HEAT');
     }
 
     if (boardTypeFilter !== 'ALL') {
@@ -1145,12 +1427,15 @@ export default function HomePage() {
     return list;
   }, [
     results,
+    viewMode,
+    selectedDestinationsList,
     selectedMonth,
     resultStyleFilter,
     distanceFilter,
     vehicleFilter,
     safetyFilter,
     warningFilter,
+    heatFilter,
     boardTypeFilter,
     overlandDurationFilter,
     flightStopsFilter,
@@ -1158,6 +1443,25 @@ export default function HomePage() {
     maxCostFilter,
     sortBy,
   ]);
+
+  const activeQueryDestinations = useMemo(() => {
+    if (!results) return [];
+    const map = new Map<string, { code: string; name: string; country?: string; count: number }>();
+    for (const w of results) {
+      const existing = map.get(w.destinationAirport);
+      if (existing) {
+        existing.count++;
+      } else {
+        map.set(w.destinationAirport, {
+          code: w.destinationAirport,
+          name: getFormattedLocalizedDestination(w.destinationAirport, w.destinationName),
+          country: w.destinationCountry,
+          count: 1,
+        });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [results, locale]);
 
   const totalPages = Math.max(1, Math.ceil(filteredResults.length / pageSize));
   const displayedResults = useMemo(() => {
@@ -1221,55 +1525,9 @@ export default function HomePage() {
     return groups;
   }, [filteredResults, sortBy, locale, getFormattedLocalizedDestination]);
 
-  // Available Countries across destination groups
-  const availableDestinationCountries = useMemo(() => {
-    const countrySet = new Set<string>();
-    destinationGroups.forEach((g) => {
-      const c = g.destinationCountry;
-      if (c) countrySet.add(c);
-    });
-    return Array.from(countrySet).sort((a, b) => a.localeCompare(b));
-  }, [destinationGroups]);
-
-  // Country counts across destination groups
-  const destinationCountryCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    destinationGroups.forEach((g) => {
-      if (g.destinationCountry) {
-        counts[g.destinationCountry] = (counts[g.destinationCountry] || 0) + 1;
-      }
-    });
-    return counts;
-  }, [destinationGroups]);
-
-  // Filtered Destination Groups (filtered by search input and country filter)
-  const filteredDestinationGroups = useMemo(() => {
-    let list = destinationGroups;
-
-    if (selectedCountryFilters.length > 0) {
-      list = list.filter((g) => {
-        const c = (g.destinationCountry || '').toLowerCase();
-        return selectedCountryFilters.some((sc) => sc.toLowerCase() === c);
-      });
-    }
-
-    if (destinationSearchFilter.trim()) {
-      const q = destinationSearchFilter.trim().toLowerCase();
-      list = list.filter((g) => {
-        const name = g.destinationName.toLowerCase();
-        const code = g.destinationCode.toLowerCase();
-        const city = (g.destinationCity || '').toLowerCase();
-        const country = (g.destinationCountry || '').toLowerCase();
-        return name.includes(q) || code.includes(q) || city.includes(q) || country.includes(q);
-      });
-    }
-
-    return list;
-  }, [destinationGroups, destinationSearchFilter, selectedCountryFilters]);
-
   const expandAllDestinations = () => {
     const all: Record<string, boolean> = {};
-    filteredDestinationGroups.forEach((g) => {
+    destinationGroups.forEach((g) => {
       all[g.destinationCode] = true;
     });
     setExpandedDestinations(all);
@@ -1342,6 +1600,12 @@ export default function HomePage() {
     });
   }, [filteredResults, sortBy, formatDate]);
 
+  const timeframeTotalPages = Math.max(1, Math.ceil(timeframeGroups.length / timeframePageSize));
+  const displayedTimeframeGroups = useMemo(() => {
+    const startIdx = (timeframeCurrentPage - 1) * timeframePageSize;
+    return timeframeGroups.slice(startIdx, startIdx + timeframePageSize);
+  }, [timeframeGroups, timeframeCurrentPage, timeframePageSize]);
+
   const toggleDestinationExpand = (destCode: string) => {
     setExpandedDestinations((prev) => ({
       ...prev,
@@ -1390,7 +1654,7 @@ export default function HomePage() {
     return (
       <div
         key={`${win.startDate}-${win.originAirport}-${win.destinationAirport}-${win.durationDays}`}
-        className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow relative"
+        className="bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-shadow relative"
       >
         {/* Arbitrage Banner */}
         {win.isArbitrageOpportunity && (
@@ -1403,11 +1667,11 @@ export default function HomePage() {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1.5">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div className="space-y-1.5 flex-1 min-w-0">
             {/* Destination Header in Top Space of Timeframe Column */}
             {!options?.hideDestinationHeader && (
-              <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-blue-700 tracking-wide pb-0.5">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-teal-700 dark:text-teal-400 tracking-wide pb-0.5">
                 <button
                   type="button"
                   onClick={() =>
@@ -1422,11 +1686,11 @@ export default function HomePage() {
                       originAirport: win.originAirport,
                     })
                   }
-                  className="inline-flex items-center gap-1.5 text-slate-900 hover:text-blue-600 cursor-pointer group text-left transition-colors"
+                  className="inline-flex items-center gap-1.5 text-slate-900 dark:text-slate-100 hover:text-teal-600 dark:hover:text-teal-400 cursor-pointer group text-left transition-colors"
                   title={t.home.showOnMap}
                 >
-                  <MapPin className="w-3.5 h-3.5 text-blue-600 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all flex-shrink-0" />
-                  <span className="font-extrabold text-slate-900 group-hover:text-blue-600 group-hover:underline text-sm transition-colors">
+                  <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all flex-shrink-0" />
+                  <span className="font-extrabold text-slate-900 dark:text-slate-100 group-hover:text-teal-600 dark:group-hover:text-teal-400 group-hover:underline text-sm transition-colors">
                     {getFormattedLocalizedDestination(win.destinationAirport, win.destinationName)}
                   </span>
                 </button>
@@ -1464,21 +1728,21 @@ export default function HomePage() {
             )}
 
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-extrabold text-slate-900 text-base sm:text-lg">
+              <span className="font-extrabold text-slate-900 dark:text-slate-100 text-base sm:text-lg">
                 {formatLocalizedDate(win.startDate, true)} → {formatLocalizedDate(win.endDate, true)}
               </span>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
                 {win.durationDays} {t.home.days}
               </span>
               {win.pricingDetails?.flight?.isMidweekSaving && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-emerald-600" />
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                   {t.home.midweekFlightDealBadge}
                 </span>
               )}
               {win.weather?.hasSnow && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">
-                  <Snowflake className="w-3 h-3 text-indigo-600" />
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1">
+                  <Snowflake className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                   {t.home.winterSportsActiveBadge}
                   {win.weather.snowDepthCm ? ` (~${win.weather.snowDepthCm} cm)` : ''}
                 </span>
@@ -1490,8 +1754,8 @@ export default function HomePage() {
                 />
               )}
               {win.boardType && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-800 border border-violet-200 flex items-center gap-1">
-                  <Utensils className="w-3 h-3 text-violet-600" />
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-violet-50 dark:bg-violet-950/40 text-violet-800 dark:text-violet-300 border border-violet-200 dark:border-violet-800 flex items-center gap-1">
+                  <Utensils className="w-3 h-3 text-violet-600 dark:text-violet-400" />
                   {win.boardType === 'ALL_INCLUSIVE'
                     ? t.home.boardTypeAllInclusive
                     : win.boardType === 'HALF_BOARD'
@@ -1504,91 +1768,47 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Price & Travel Portal Deals Section */}
-          <div className="flex flex-col sm:items-end justify-between gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 text-left sm:text-right">
+          {/* Price Section */}
+          <div className="flex flex-col sm:items-end justify-start gap-1 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 text-left sm:text-right shrink-0">
             <div>
-              <span className="text-[11px] font-medium text-slate-500 block">
+              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">
                 {t.home.estFamilyCost}
               </span>
               <div className="flex items-baseline gap-2 sm:justify-end flex-wrap">
-                <span className="text-2xl font-black text-slate-900 tracking-tight">
+                <span className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
                   {formatCurrency(win.estimatedTotalCost)}
                 </span>
-                <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
                   (~{formatCurrency(win.pricePerPerson)} / {t.home.perPerson})
                 </span>
               </div>
-              <span className="block text-[10px] text-slate-400 mt-0.5">
+              <span className="block text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                 {t.home.flightAndLodgingIncluded}
               </span>
               {win.effectiveCost && win.mealPlanValue && win.mealPlanValue > 0 && win.boardType === 'ALL_INCLUSIVE' && (
-                <div className="text-[10px] text-emerald-700 font-semibold sm:text-right mt-1 flex items-center gap-1 sm:justify-end">
+                <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold sm:text-right mt-0.5 flex items-center gap-1 sm:justify-end">
                   <Utensils className="w-2.5 h-2.5" />
                   <span>{t.home.boardTypeSavingsBadge}: ~€{win.mealPlanValue}</span>
                 </div>
               )}
-            </div>
-
-            <div className="w-full sm:w-auto flex flex-wrap items-center gap-2 sm:justify-end mt-1">
-              <FlightDetailsPopover
-                originAirport={win.originAirport}
-                destinationAirport={win.destinationAirport}
-                originName={win.originName}
-                originCity={win.originCity}
-                originCountry={win.originCountry}
-                destinationName={win.destinationName}
-                destinationCity={win.destinationCity}
-                destinationCountry={win.destinationCountry}
-                originDistanceKm={win.originDistanceKm}
-                originDriveMinutes={win.originDriveMinutes}
-                originHighSpeedRail={win.originHighSpeedRail}
-                flightDistanceKm={win.flightDistanceKm}
-                flightDurationMinutes={win.flightDurationMinutes}
-                departureLocation={departureLocation}
-                isArbitrage={win.isArbitrageOpportunity}
-                arbitrageOriginState={win.arbitrageOriginState}
-                arbitrageNote={win.arbitrageNote}
-                startDate={win.startDate}
-                endDate={win.endDate}
-                adults={adultsCount}
-                baseAdultFare={win.pricingDetails?.flight?.baseAdultFare}
-                totalFlightCost={win.pricingDetails?.flight?.totalFlightCost}
-                isDirectFlight={win.isDirectFlight}
-                stops={win.flightStops}
-                layovers={win.flightLayovers}
-                segments={win.flightSegments}
-                directFlightPremiumMultiplier={win.directFlightPremium}
-                connectingSavingsDiscount={win.pricingDetails?.flight?.connectingSavingsDiscount}
-              />
-              <BookingDealsPopover
-                pricingDetails={win.pricingDetails}
-                estimatedTotalCost={win.estimatedTotalCost}
-                originAirport={win.originAirport}
-                destinationAirport={win.destinationAirport}
-                countryCode={country}
-                startDate={win.startDate}
-                endDate={win.endDate}
-                adults={adultsCount}
-                className="w-full sm:w-auto"
-              />
             </div>
           </div>
         </div>
 
         {/* School Holiday Exemption Warning */}
         {win.requiresSchoolExemption && (
-          <div className="mt-3 p-2.5 rounded-lg bg-orange-50 border border-orange-300 flex items-start gap-2 text-xs text-orange-900">
-            <AlertCircle className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
+          <div className="mt-3 p-2.5 rounded-lg bg-orange-50 dark:bg-orange-950/40 border border-orange-300 dark:border-orange-800/60 flex items-start gap-2 text-xs text-orange-900 dark:text-orange-200">
+            <AlertCircle className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block">
                 {t.home.requiresSchoolExemptionWarning}
               </span>
               {win.schoolHolidayDaysOverlap !== undefined && win.schoolHolidayDaysOverlap > 0 ? (
-                <span className="text-[11px] text-orange-800">
+                <span className="text-[11px] text-orange-800 dark:text-orange-300">
                   {win.schoolHolidayDaysOverlap} / {win.durationDays} {t.home.days} {t.home.schoolAgeBadge}
                 </span>
               ) : (
-                <span className="text-[11px] text-orange-800">
+                <span className="text-[11px] text-orange-800 dark:text-orange-300">
                   {t.home.schoolAgeBadge}
                 </span>
               )}
@@ -1600,13 +1820,13 @@ export default function HomePage() {
         {win.seasonalWarning && (() => {
           const localized = getLocalizedSeasonalWarning(win.seasonalWarning, t);
           return (
-            <div className="mt-3 p-2.5 rounded-lg bg-amber-50 border border-amber-300 flex items-start gap-2 text-xs text-amber-900">
-              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="mt-3 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/60 flex items-start gap-2 text-xs text-amber-900 dark:text-amber-200">
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold block">
                   {t.home.seasonalWarningBadge}: {localized.title}
                 </span>
-                <span className="text-[11px] text-amber-800">
+                <span className="text-[11px] text-amber-800 dark:text-amber-300">
                   {localized.description}
                 </span>
               </div>
@@ -1614,45 +1834,86 @@ export default function HomePage() {
           );
         })()}
 
-        {/* Metrics Bar with MetricExplanationPopover */}
-        <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-          <MetricExplanationPopover window={win} trigger="ptoRatio" className="w-full">
-            <div className="bg-slate-50 hover:bg-slate-100/90 transition rounded-lg p-2.5 sm:p-2 flex sm:flex-col items-center sm:items-stretch justify-between sm:text-center group border border-transparent hover:border-slate-300">
-              <span className="text-slate-500 text-xs sm:text-[10px] font-medium flex items-center justify-between sm:justify-center gap-1">
-                <span>{t.home.ptoConsumed} &amp; {t.home.ptoRatio}</span>
-                <Info className="w-3 h-3 text-slate-400 opacity-60 group-hover:opacity-100 flex-shrink-0" />
-              </span>
-              <div className="flex items-center gap-1.5 sm:justify-center mt-0.5">
-                <span className="font-bold text-slate-800">
-                  {win.ptoDaysConsumed} {t.home.days}
+        {/* Bottom Bar: Metrics on Left, Action Buttons on Right */}
+        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* Metrics Bar with MetricExplanationPopover */}
+          <div className="grid grid-cols-2 gap-2 flex-1 sm:max-w-md text-xs">
+            <MetricExplanationPopover window={win} trigger="ptoRatio" className="w-full">
+              <div className="bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100/90 dark:hover:bg-slate-750 transition rounded-lg p-2.5 sm:p-2 flex sm:flex-col items-center sm:items-stretch justify-between sm:text-center group border border-transparent hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer">
+                <span className="text-slate-500 dark:text-slate-400 text-xs sm:text-[10px] font-medium flex items-center justify-between sm:justify-center gap-1">
+                  <span>{t.home.ptoConsumed}</span>
+                  <Info className="w-3 h-3 text-slate-400 dark:text-slate-500 opacity-60 group-hover:opacity-100 flex-shrink-0" />
                 </span>
-                <span className="text-[10px] text-emerald-600 font-medium">
-                  ({win.publicHolidaysCount} {t.home.ptoSaved})
-                </span>
-                <span className="text-slate-300 mx-0.5">•</span>
-                <span className="font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded text-[11px]">
-                  {win.ptoEfficiencyRatio}x
-                </span>
+                <div className="flex items-center gap-1.5 sm:justify-center mt-0.5">
+                  <span className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">
+                    {win.ptoDaysConsumed} {t.home.days}
+                  </span>
+                </div>
               </div>
-            </div>
-          </MetricExplanationPopover>
+            </MetricExplanationPopover>
 
-          <MetricExplanationPopover window={win} trigger="score" className="w-full">
-            <div className="bg-indigo-50/80 hover:bg-indigo-100/90 transition rounded-lg p-2.5 sm:p-2 flex sm:flex-col items-center sm:items-stretch justify-between sm:text-center border border-indigo-100/60 hover:border-indigo-300 group">
-              <span className="text-indigo-700 text-xs sm:text-[10px] font-semibold flex items-center justify-between sm:justify-center gap-1">
-                {t.home.score}
-                <Info className="w-3 h-3 text-indigo-400 opacity-60 group-hover:opacity-100 flex-shrink-0" />
-              </span>
-              <div className="flex items-center gap-1.5 sm:justify-center mt-0.5">
-                <span className="font-extrabold text-indigo-900 text-sm">
-                  {win.finalScore} / 100
+            <MetricExplanationPopover window={win} trigger="score" className="w-full">
+              <div className="bg-indigo-50/80 dark:bg-indigo-950/40 hover:bg-indigo-100/90 dark:hover:bg-indigo-900/40 transition rounded-lg p-2.5 sm:p-2 flex sm:flex-col items-center sm:items-stretch justify-between sm:text-center border border-indigo-100/60 dark:border-indigo-900/50 hover:border-indigo-300 dark:hover:border-indigo-700 group">
+                <span className="text-indigo-700 dark:text-indigo-300 text-xs sm:text-[10px] font-semibold flex items-center justify-between sm:justify-center gap-1">
+                  {t.home.score}
+                  <Info className="w-3 h-3 text-indigo-400 opacity-60 group-hover:opacity-100 flex-shrink-0" />
                 </span>
-                {options?.rank !== undefined && (
-                  <span className="text-[10px] font-bold text-indigo-700 bg-white px-1.5 py-0.5 rounded border border-indigo-200">#{options.rank}</span>
-                )}
+                <div className="flex items-center gap-1.5 sm:justify-center mt-0.5">
+                  <span className="font-extrabold text-indigo-900 dark:text-indigo-200 text-sm">
+                    {win.finalScore} / 100
+                  </span>
+                  {options?.rank !== undefined && (
+                    <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">#{options.rank}</span>
+                  )}
+                </div>
               </div>
-            </div>
-          </MetricExplanationPopover>
+            </MetricExplanationPopover>
+          </div>
+
+          {/* Action Buttons: Flight Details & Deals Popover */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:justify-end shrink-0 w-full sm:w-auto">
+            <FlightDetailsPopover
+              originAirport={win.originAirport}
+              destinationAirport={win.destinationAirport}
+              originName={win.originName}
+              originCity={win.originCity}
+              originCountry={win.originCountry}
+              destinationName={win.destinationName}
+              destinationCity={win.destinationCity}
+              destinationCountry={win.destinationCountry}
+              originDistanceKm={win.originDistanceKm}
+              originDriveMinutes={win.originDriveMinutes}
+              originHighSpeedRail={win.originHighSpeedRail}
+              flightDistanceKm={win.flightDistanceKm}
+              flightDurationMinutes={win.flightDurationMinutes}
+              departureLocation={departureLocation}
+              isArbitrage={win.isArbitrageOpportunity}
+              arbitrageOriginState={win.arbitrageOriginState}
+              arbitrageNote={win.arbitrageNote}
+              startDate={win.startDate}
+              endDate={win.endDate}
+              adults={adultsCount}
+              baseAdultFare={win.pricingDetails?.flight?.baseAdultFare}
+              totalFlightCost={win.pricingDetails?.flight?.totalFlightCost}
+              isDirectFlight={win.isDirectFlight}
+              stops={win.flightStops}
+              layovers={win.flightLayovers}
+              segments={win.flightSegments}
+              directFlightPremiumMultiplier={win.directFlightPremium}
+              connectingSavingsDiscount={win.pricingDetails?.flight?.connectingSavingsDiscount}
+            />
+            <BookingDealsPopover
+              pricingDetails={win.pricingDetails}
+              estimatedTotalCost={win.estimatedTotalCost}
+              originAirport={win.originAirport}
+              destinationAirport={win.destinationAirport}
+              countryCode={country}
+              startDate={win.startDate}
+              endDate={win.endDate}
+              adults={adultsCount}
+              className="w-full sm:w-auto"
+            />
+          </div>
         </div>
 
         {win.isCachedBenchmark && (
@@ -1668,7 +1929,7 @@ export default function HomePage() {
   return (
     <div className="space-y-8">
       {/* Intro hero banner */}
-      <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-sky-700 rounded-2xl p-6 sm:p-8 text-white shadow-lg">
+      <div className="bg-gradient-to-r from-teal-800 via-teal-700 to-emerald-800 rounded-2xl p-6 sm:p-8 text-white shadow-lg">
         <div className="max-w-3xl space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-xs font-semibold backdrop-blur">
             <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
@@ -1677,7 +1938,7 @@ export default function HomePage() {
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
             {t.home.heroTitle}
           </h1>
-          <p className="text-blue-100 text-sm sm:text-base leading-relaxed">
+          <p className="text-teal-100 text-sm sm:text-base leading-relaxed">
             {t.home.heroDescription}
           </p>
         </div>
@@ -1685,17 +1946,17 @@ export default function HomePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Form Container */}
-        <div className="lg:col-span-5 bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <Filter className="w-5 h-5 text-blue-600" />
+        <div className="lg:col-span-5 bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" />
               {t.home.constraintsTitle}
             </h2>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleResetForm}
-                className="text-[11px] font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1 px-2 py-0.5 rounded hover:bg-slate-100 transition border border-transparent hover:border-slate-200"
+                className="text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1 px-2 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition border border-transparent hover:border-slate-200 dark:hover:border-slate-700 cursor-pointer"
                 title="Reset form and cached settings"
               >
                 <RotateCcw className="w-3 h-3" />
@@ -1703,10 +1964,10 @@ export default function HomePage() {
               </button>
               {profileLoaded && (
                 <span
-                  className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 flex items-center gap-1.5"
+                  className="text-[10px] font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/50 px-2.5 py-0.5 rounded-full border border-teal-200 dark:border-teal-800 flex items-center gap-1.5"
                   title={t.home.prefilledFromProfile}
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-600 dark:bg-teal-400 animate-pulse"></span>
                   {t.home.prefilledFromProfile}
                 </span>
               )}
@@ -1724,14 +1985,14 @@ export default function HomePage() {
               />
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   {t.home.countryLabel}
                 </label>
                 <select
                   suppressHydrationWarning
                   value={country}
                   onChange={(e) => handleCountryChange(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm"
                 >
                   {allCountries.map((c) => (
                     <option key={c.code} value={c.code} suppressHydrationWarning>
@@ -1742,14 +2003,14 @@ export default function HomePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   {t.home.homeStateLabel}
                 </label>
                 <select
                   suppressHydrationWarning
                   value={federalState}
                   onChange={(e) => setFederalState(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm"
                 >
                   {(COUNTRIES[country]?.subdivisions || []).length > 0 ? (
                     (COUNTRIES[country]?.subdivisions || []).map((sub) => (
@@ -1765,14 +2026,14 @@ export default function HomePage() {
                 </select>
               </div>
 
-              <p className="text-[11px] text-slate-500 flex items-center gap-1.5 pt-0.5">
-                <Info className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 pt-0.5">
+                <Info className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
                 <span>{t.home.holidayScopeNotice}</span>
               </p>
             </div>
 
             {/* Step 2: Travel Destinations & Vacation Style */}
-            <div className="pt-2 border-t border-slate-100 space-y-3">
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-3">
               {/* Multi-Entry Destination Input */}
               <MultiDestinationInput
                 selectedDestinations={targetDestinations}
@@ -1783,11 +2044,11 @@ export default function HomePage() {
               {targetDestinations.length === 0 && (
                 <div>
                   <div className="mb-2.5 space-y-0.5">
-                    <label className="block text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                      <Compass className="w-3.5 h-3.5 text-blue-600" />
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Compass className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                       <span>{t.home.vacationKindLabel}</span>
                     </label>
-                    <p className="text-[11px] text-slate-500 font-medium">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                       {t.home.vacationKindHint}
                     </p>
                   </div>
@@ -1813,13 +2074,13 @@ export default function HomePage() {
                             showBeachTempMenu && item.type === 'BEACH' ? 'z-30' : 'z-10'
                           } ${
                             isSelected
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-600/25'
-                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                              ? 'bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-600/25'
+                              : 'bg-white dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 hover:border-slate-300 dark:hover:border-slate-600'
                           }`}
                         >
                           {/* Top row: Icon & Selection indicator */}
                           <div className="flex items-center justify-between w-full">
-                            <Icon className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-white' : 'text-blue-600'}`} />
+                            <Icon className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-white' : 'text-teal-600 dark:text-teal-400'}`} />
                             {isSelected && (
                               <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
                             )}
@@ -1862,7 +2123,7 @@ export default function HomePage() {
                                   title={t.home.winterSportsDesc}
                                 >
                                   <span className="flex items-center gap-1 truncate">
-                                    <Snowflake className={`w-2.5 h-2.5 flex-shrink-0 ${requireSnow ? 'text-indigo-950' : 'text-blue-200'}`} />
+                                    <Snowflake className={`w-2.5 h-2.5 flex-shrink-0 ${requireSnow ? 'text-indigo-950' : 'text-teal-200'}`} />
                                     <span className="truncate">{requireSnow ? t.home.snowGuaranteeBadge : t.home.noSnowGuaranteeBadge}</span>
                                   </span>
                                   {requireSnow ? (
@@ -1877,19 +2138,19 @@ export default function HomePage() {
                                 </span>
                               )
                             ) : item.type === 'ALL' ? (
-                              <span className={`text-[10px] truncate block ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
+                              <span className={`text-[10px] truncate block ${isSelected ? 'text-teal-100' : 'text-slate-400'}`}>
                                 {locale.startsWith('de') ? 'Alle Stile & flexibel' : 'All styles & flexible'}
                               </span>
                             ) : item.type === 'CITY' ? (
-                              <span className={`text-[10px] truncate block ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
+                              <span className={`text-[10px] truncate block ${isSelected ? 'text-teal-100' : 'text-slate-400'}`}>
                                 {locale.startsWith('de') ? 'Kultur & City' : 'Culture & city trip'}
                               </span>
                             ) : item.type === 'NATURE' ? (
-                              <span className={`text-[10px] truncate block ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
+                              <span className={`text-[10px] truncate block ${isSelected ? 'text-teal-100' : 'text-slate-400'}`}>
                                 {locale.startsWith('de') ? 'Natur & Erholung' : 'Nature & outdoor'}
                               </span>
                             ) : (
-                              <span className={`text-[10px] truncate block ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
+                              <span className={`text-[10px] truncate block ${isSelected ? 'text-teal-100' : 'text-slate-400'}`}>
                                 {locale.startsWith('de') ? 'Fernreise & Welt' : 'Long-haul & world'}
                               </span>
                             )}
@@ -1903,13 +2164,13 @@ export default function HomePage() {
             </div>
 
             {/* Travel Vehicle Selection */}
-            <div className="pt-2 border-t border-slate-100">
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
               <div className="mb-2.5 space-y-0.5">
-                <label className="block text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <Car className="w-3.5 h-3.5 text-blue-600" />
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Car className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                   <span>{t.home.travelVehicleLabel}</span>
                 </label>
-                <p className="text-[11px] text-slate-500 font-medium">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                   {t.home.travelVehicleHint}
                 </p>
               </div>
@@ -1933,13 +2194,13 @@ export default function HomePage() {
                         showFlightStopsMenu && v.type === 'PLANE' ? 'z-30' : 'z-10'
                       } ${
                         isSelected
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-600/25'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                          ? 'bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-600/25'
+                          : 'bg-white dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 hover:border-slate-300 dark:hover:border-slate-600'
                       }`}
                     >
                       {/* Top row: Icon & Selection indicator */}
                       <div className="flex items-center justify-between w-full">
-                        <Icon className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-white' : 'text-blue-600'}`} />
+                        <Icon className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-white' : 'text-teal-600 dark:text-teal-400'}`} />
                         {isSelected && (
                           <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
                         )}
@@ -1969,7 +2230,7 @@ export default function HomePage() {
                         ) : (
                           <span
                             className={`text-[10px] truncate block ${
-                              isSelected ? 'text-blue-100' : 'text-slate-400'
+                              isSelected ? 'text-teal-100' : 'text-slate-400'
                             }`}
                           >
                             {v.hint}
@@ -1983,16 +2244,16 @@ export default function HomePage() {
             </div>
 
             {/* Preferred Board Type & Max Overland Travel Time */}
-            <div className="pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                  <Utensils className="w-3.5 h-3.5 text-indigo-600" />
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Utensils className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                   <span>{t.home.filterByBoardType}</span>
                 </label>
                 <select
                   value={preferredBoardType || 'ALL'}
                   onChange={(e) => setPreferredBoardType(e.target.value === 'ALL' ? undefined : (e.target.value as BoardType))}
-                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs font-medium text-slate-800"
+                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100"
                 >
                   <option value="ALL">{t.home.allBoardTypes}</option>
                   <option value="ALL_INCLUSIVE">{t.home.boardTypeAllInclusive}</option>
@@ -2003,14 +2264,14 @@ export default function HomePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                  <Car className="w-3.5 h-3.5 text-teal-600" />
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Car className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                   <span>{t.home.filterByOverlandDuration}</span>
                 </label>
                 <select
                   value={maxOverlandDurationHours ? String(maxOverlandDurationHours) : 'ALL'}
                   onChange={(e) => setMaxOverlandDurationHours(e.target.value === 'ALL' ? undefined : Number(e.target.value))}
-                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs font-medium text-slate-800"
+                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100"
                 >
                   <option value="ALL">{t.home.overlandDurationAny}</option>
                   <option value="6">{t.home.overlandDuration6h}</option>
@@ -2022,7 +2283,7 @@ export default function HomePage() {
 
             {/* Step 3: Departure Airports (for Plane) or Overland Transit Note (for Car/Train/Bus) */}
             {selectedVehicles.includes('PLANE') ? (
-              <div className="pt-2 border-t border-slate-100">
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                 <AirportSelector
                   selectedAirports={originAirports}
                   onChange={setOriginAirports}
@@ -2031,14 +2292,14 @@ export default function HomePage() {
                 />
               </div>
             ) : (
-              <div className="pt-2 border-t border-slate-100">
-                <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200 text-xs text-emerald-950 flex items-start gap-2.5">
-                  <Info className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="p-3 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-950 dark:text-emerald-200 flex items-start gap-2.5">
+                  <Info className="w-4 h-4 text-emerald-700 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
                   <div className="space-y-0.5">
-                    <span className="font-semibold block text-slate-800">
+                    <span className="font-semibold block text-slate-800 dark:text-slate-100">
                       {selectedVehicles.map((v) => getVehicleMeta(v).label).join(' / ')}
                     </span>
-                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
                       Reisedistanz, Transitzeit und Fahrtkosten werden direkt von Ihren Startkoordinaten über Land berechnet. Es werden nur erreichbare Destinationen ohne Flugstrecke vorgeschlagen.
                     </p>
                   </div>
@@ -2047,24 +2308,24 @@ export default function HomePage() {
             )}
 
             {/* Step 4: Travelers (Adults & Children) */}
-            <div className="pt-2 border-t border-slate-100 space-y-3">
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-3">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-blue-600" />
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                   {t.home.partyTitle}
                 </label>
-                <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
                   {adultsCount + childrenList.length} {adultsCount + childrenList.length === 1 ? 'Traveler' : 'Travelers'}
                 </span>
               </div>
 
               {/* Adults Selector */}
-              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200 flex items-center justify-between gap-3">
+              <div className="p-3 bg-slate-50/80 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
                 <div>
-                  <span className="block text-xs font-semibold text-slate-800">
+                  <span className="block text-xs font-semibold text-slate-800 dark:text-slate-100">
                     {t.home.adultsLabel}
                   </span>
-                  <span className="block text-[10px] text-slate-500">
+                  <span className="block text-[10px] text-slate-500 dark:text-slate-400">
                     {t.home.adultsHint}
                   </span>
                 </div>
@@ -2073,19 +2334,19 @@ export default function HomePage() {
                     type="button"
                     onClick={() => setAdultsCount((prev) => Math.max(1, prev - 1))}
                     disabled={adultsCount <= 1}
-                    className="w-7 h-7 rounded-lg bg-white border border-slate-300 flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-xs text-xs cursor-pointer"
+                    className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-xs text-xs cursor-pointer"
                     aria-label="Decrease adults"
                   >
                     -
                   </button>
-                  <span className="w-6 text-center text-xs font-bold text-slate-900">
+                  <span className="w-6 text-center text-xs font-bold text-slate-900 dark:text-slate-100">
                     {adultsCount}
                   </span>
                   <button
                     type="button"
                     onClick={() => setAdultsCount((prev) => Math.min(10, prev + 1))}
                     disabled={adultsCount >= 10}
-                    className="w-7 h-7 rounded-lg bg-white border border-slate-300 flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-xs text-xs cursor-pointer"
+                    className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-xs text-xs cursor-pointer"
                     aria-label="Increase adults"
                   >
                     +
@@ -2102,14 +2363,14 @@ export default function HomePage() {
             </div>
 
             {/* Step 5: Flexible Vacation Duration */}
-            <div className="pt-2 border-t border-slate-100 space-y-2">
-              <label className="block text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-blue-600" />
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                 <span>{t.home.durationLabel}</span>
               </label>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-2 gap-3">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-3">
                 <div>
-                  <span className="block text-[10px] font-semibold text-slate-500 mb-1">
+                  <span className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
                     {t.home.durationMinLabel}
                   </span>
                   <input
@@ -2118,11 +2379,11 @@ export default function HomePage() {
                     max="30"
                     value={durationDaysMin}
                     onChange={(e) => setDurationDaysMin(Number(e.target.value))}
-                    className="w-full text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm"
+                    className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 shadow-sm"
                   />
                 </div>
                 <div>
-                  <span className="block text-[10px] font-semibold text-slate-500 mb-1">
+                  <span className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
                     {t.home.durationMaxLabel}
                   </span>
                   <input
@@ -2131,21 +2392,21 @@ export default function HomePage() {
                     max="30"
                     value={durationDaysMax}
                     onChange={(e) => setDurationDaysMax(Number(e.target.value))}
-                    className="w-full text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm"
+                    className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 shadow-sm"
                   />
                 </div>
               </div>
             </div>
 
             {/* Step 6: Search Date Range (Strictly Future Dates) */}
-            <div className="pt-2 border-t border-slate-100 space-y-2">
-              <label className="block text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-blue-600" />
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                 <span>{locale.startsWith('de') ? 'Reisezeitraum' : 'Travel Dates'} ({t.home.earliestDateLabel} &amp; {t.home.latestDateLabel})</span>
               </label>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-2 gap-3">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-3">
                 <div>
-                  <span className="block text-[10px] font-semibold text-slate-500 mb-1">
+                  <span className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
                     {t.home.earliestDateLabel}
                   </span>
                   <input
@@ -2153,11 +2414,11 @@ export default function HomePage() {
                     min={todayStr}
                     value={earliestDate}
                     onChange={(e) => setEarliestDate(e.target.value)}
-                    className="w-full text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm"
+                    className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 shadow-sm"
                   />
                 </div>
                 <div>
-                  <span className="block text-[10px] font-semibold text-slate-500 mb-1">
+                  <span className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
                     {t.home.latestDateLabel}
                   </span>
                   <input
@@ -2165,22 +2426,22 @@ export default function HomePage() {
                     min={earliestDate || todayStr}
                     value={latestDate}
                     onChange={(e) => setLatestDate(e.target.value)}
-                    className="w-full text-xs rounded-lg border border-slate-300 px-3 py-1.5 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm"
+                    className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 shadow-sm"
                   />
                 </div>
               </div>
             </div>
 
             {/* Step 7: Blackout Periods (Sperrzeiten) */}
-            <div className="pt-2 border-t border-slate-100">
-              <div className="p-3.5 bg-amber-50/70 rounded-xl border border-amber-200/90 space-y-3">
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/20 rounded-xl border border-amber-200/90 dark:border-amber-800/60 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
+                  <span className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
                     {t.home.blackoutFilterTitle}
                   </span>
                   {searchBlackouts.length > 0 && (
-                    <span className="text-[11px] font-semibold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full border border-amber-200/70">
+                    <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-900/50 px-2 py-0.5 rounded-full border border-amber-200/70 dark:border-amber-700/60">
                       {searchBlackouts.length}
                     </span>
                   )}
@@ -2188,12 +2449,12 @@ export default function HomePage() {
 
                 {/* Blackout List & Presets: Only show holiday buttons when user is adding or has blackout periods */}
                 {searchBlackouts.length === 0 && !isAddingBlackout ? (
-                  <div className="p-2.5 bg-amber-50/50 rounded-xl border border-dashed border-amber-300 text-center">
-                    <p className="text-xs text-amber-800/80">{t.home.noBlackouts}</p>
+                  <div className="p-2.5 bg-amber-50/50 dark:bg-amber-950/10 rounded-xl border border-dashed border-amber-300 dark:border-amber-800/60 text-center">
+                    <p className="text-xs text-amber-800/80 dark:text-amber-300/80">{t.home.noBlackouts}</p>
                     <button
                       type="button"
                       onClick={addBlackout}
-                      className="mt-1 text-xs font-semibold text-amber-800 hover:underline cursor-pointer"
+                      className="mt-1 text-xs font-semibold text-amber-800 dark:text-amber-300 hover:underline cursor-pointer"
                     >
                       + {t.home.addBlackout}
                     </button>
@@ -2307,7 +2568,7 @@ export default function HomePage() {
                   type="button"
                   onClick={handleSaveToProfile}
                   disabled={savingProfile}
-                  className="text-xs font-semibold text-blue-700 hover:text-blue-900 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50/60 hover:bg-blue-100/80 transition-colors disabled:opacity-50"
+                  className="text-xs font-semibold text-teal-700 hover:text-teal-900 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50/60 hover:bg-teal-100/80 transition-colors disabled:opacity-50"
                 >
                   {saveProfileSuccess ? (
                     <>
@@ -2316,12 +2577,12 @@ export default function HomePage() {
                     </>
                   ) : savingProfile ? (
                     <>
-                      <span className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                      <span className="w-3 h-3 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
                       <span>{t.home.savingToProfile}</span>
                     </>
                   ) : (
                     <>
-                      <Save className="w-3.5 h-3.5 text-blue-600" />
+                      <Save className="w-3.5 h-3.5 text-teal-600" />
                       <span>{t.home.saveToProfile}</span>
                     </>
                   )}
@@ -2333,7 +2594,7 @@ export default function HomePage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 rounded-xl font-bold text-sm bg-blue-600 hover:bg-blue-700 text-white shadow transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+              className="w-full py-3 px-4 rounded-xl font-bold text-sm bg-teal-600 hover:bg-teal-700 text-white shadow transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
             >
               {loading ? (
                 <>
@@ -2374,8 +2635,8 @@ export default function HomePage() {
 
           {!results && !loading && (
             <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-3">
-              <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto text-xl">
-                <Sun className="w-6 h-6 text-blue-500" />
+              <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center mx-auto text-xl">
+                <Sun className="w-6 h-6 text-amber-500" />
               </div>
               <h3 className="text-slate-800 font-semibold text-base">{t.home.readyTitle}</h3>
               <p className="text-slate-500 text-xs max-w-sm mx-auto">{t.home.readyDescription}</p>
@@ -2410,14 +2671,14 @@ export default function HomePage() {
                       onClick={() => setShowResultFilters((prev) => !prev)}
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                         showResultFilters
-                          ? 'bg-blue-50 text-blue-700 border-blue-300'
+                          ? 'bg-teal-50 text-teal-700 border-teal-300'
                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" />
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-teal-600" />
                       <span>{showResultFilters ? t.home.filterToggleHide : t.home.filterToggleShow}</span>
                       {activeFilterCount > 0 && (
-                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-blue-600 text-white">
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-teal-600 text-white">
                           {activeFilterCount}
                         </span>
                       )}
@@ -2441,44 +2702,57 @@ export default function HomePage() {
                     )}
                   </div>
 
-                  {/* Right: View Mode Switcher */}
-                  <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200">
+                  {/* Right: Share Results & View Mode Switcher */}
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setViewMode('destination')}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition cursor-pointer ${
-                        viewMode === 'destination'
-                          ? 'bg-white text-blue-700 shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                      onClick={handleShareSearch}
+                      className="px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title={t.home.shareSearch}
                     >
-                      <Compass className="w-3.5 h-3.5" />
-                      <span>{t.home.viewModeDestination}</span>
+                      <Share2 className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                      <span className="hidden sm:inline">{shareCopiedToast ? t.home.shareCopied : t.home.shareSearch}</span>
+                      {shareCopiedToast && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 animate-in fade-in" />}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode('timeframe')}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition cursor-pointer ${
-                        viewMode === 'timeframe'
-                          ? 'bg-white text-blue-700 shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span>{t.home.viewModeTimeframe}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode('list')}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition cursor-pointer ${
-                        viewMode === 'list'
-                          ? 'bg-white text-blue-700 shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <List className="w-3.5 h-3.5" />
-                      <span>{t.home.viewModeList}</span>
-                    </button>
+
+                    <div className="inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700">
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('destination')}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition cursor-pointer ${
+                          viewMode === 'destination'
+                            ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                        }`}
+                      >
+                        <Compass className="w-3.5 h-3.5" />
+                        <span>{t.home.viewModeDestination}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('timeframe')}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition cursor-pointer ${
+                          viewMode === 'timeframe'
+                            ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                        }`}
+                      >
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>{t.home.viewModeTimeframe}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('list')}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition cursor-pointer ${
+                          viewMode === 'list'
+                            ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                        }`}
+                      >
+                        <List className="w-3.5 h-3.5" />
+                        <span>{t.home.viewModeList}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -2490,6 +2764,7 @@ export default function HomePage() {
                   const isVehicleActive = vehicleFilter !== 'ALL';
                   const isSafetyActive = safetyFilter !== 'SAFE_ONLY';
                   const isWarningActive = warningFilter !== 'CLEAN_ONLY';
+                  const isHeatActive = heatFilter !== 'ALL';
                   const isBoardTypeActive = boardTypeFilter !== 'ALL';
                   const isOverlandDurationActive = overlandDurationFilter !== 'ALL';
                   const isFlightStopsActive = flightStopsFilter !== 'ALL';
@@ -2500,12 +2775,12 @@ export default function HomePage() {
                   return (
                     <div className="pt-3 border-t border-slate-100 space-y-2">
                       {/* Line 1: Month Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isMonthActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isMonthActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
-                          <Calendar className={`w-3.5 h-3.5 ${isMonthActive ? 'text-blue-600' : 'text-blue-600'}`} />
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isMonthActive ? 'bg-teal-50/80 border-teal-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isMonthActive ? 'font-bold text-teal-900' : 'font-semibold text-slate-700'}`}>
+                          <Calendar className={`w-3.5 h-3.5 ${isMonthActive ? 'text-teal-600' : 'text-teal-600'}`} />
                           <span>{t.home.filterByMonth}</span>
                           {isMonthActive && (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 animate-pulse flex-shrink-0" title="Aktiv" />
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -2517,8 +2792,8 @@ export default function HomePage() {
                             }}
                             className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
                               isMonthActive
-                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
-                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                                ? 'border border-teal-500 bg-white text-teal-900 font-bold ring-2 ring-teal-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
                             <option value="ALL">{t.home.allMonths}</option>
@@ -2541,7 +2816,7 @@ export default function HomePage() {
                                   setSelectedMonth('ALL');
                                   setCurrentPage(1);
                                 }}
-                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-100/80 rounded-lg transition cursor-pointer"
                                 title="Zurücksetzen"
                               >
                                 <X className="w-3.5 h-3.5" />
@@ -2552,12 +2827,12 @@ export default function HomePage() {
                       </div>
 
                       {/* Line 2: Vacation Style Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isStyleActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isStyleActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
-                          <Compass className={`w-3.5 h-3.5 ${isStyleActive ? 'text-blue-600' : 'text-blue-600'}`} />
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isStyleActive ? 'bg-teal-50/80 border-teal-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isStyleActive ? 'font-bold text-teal-900' : 'font-semibold text-slate-700'}`}>
+                          <Compass className={`w-3.5 h-3.5 ${isStyleActive ? 'text-teal-600' : 'text-teal-600'}`} />
                           <span>{t.home.filterByVacationStyle}</span>
                           {isStyleActive && (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 animate-pulse flex-shrink-0" title="Aktiv" />
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -2569,8 +2844,8 @@ export default function HomePage() {
                             }}
                             className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
                               isStyleActive
-                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
-                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                                ? 'border border-teal-500 bg-white text-teal-900 font-bold ring-2 ring-teal-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
                             <option value="ALL">{t.home.vacationKindAll}</option>
@@ -2588,7 +2863,7 @@ export default function HomePage() {
                                   setResultStyleFilter('ALL');
                                   setCurrentPage(1);
                                 }}
-                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-100/80 rounded-lg transition cursor-pointer"
                                 title="Zurücksetzen"
                               >
                                 <X className="w-3.5 h-3.5" />
@@ -2599,12 +2874,12 @@ export default function HomePage() {
                       </div>
 
                       {/* Line 3: Flight Distance Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isDistanceActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isDistanceActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isDistanceActive ? 'bg-teal-50/80 border-teal-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isDistanceActive ? 'font-bold text-teal-900' : 'font-semibold text-slate-700'}`}>
                           <Plane className={`w-3.5 h-3.5 ${isDistanceActive ? 'text-indigo-600' : 'text-indigo-600'}`} />
                           <span>{t.home.filterByDistance}</span>
                           {isDistanceActive && (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 animate-pulse flex-shrink-0" title="Aktiv" />
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -2616,8 +2891,8 @@ export default function HomePage() {
                             }}
                             className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
                               isDistanceActive
-                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
-                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                                ? 'border border-teal-500 bg-white text-teal-900 font-bold ring-2 ring-teal-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
                             <option value="ALL">{t.home.allDistances}</option>
@@ -2635,7 +2910,7 @@ export default function HomePage() {
                                   setDistanceFilter('ALL');
                                   setCurrentPage(1);
                                 }}
-                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-100/80 rounded-lg transition cursor-pointer"
                                 title="Zurücksetzen"
                               >
                                 <X className="w-3.5 h-3.5" />
@@ -2646,12 +2921,12 @@ export default function HomePage() {
                       </div>
 
                       {/* Line 4: Travel Vehicle Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isVehicleActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isVehicleActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isVehicleActive ? 'bg-teal-50/80 border-teal-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isVehicleActive ? 'font-bold text-teal-900' : 'font-semibold text-slate-700'}`}>
                           <Car className={`w-3.5 h-3.5 ${isVehicleActive ? 'text-emerald-600' : 'text-emerald-600'}`} />
                           <span>{t.home.filterByVehicle}</span>
                           {isVehicleActive && (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 animate-pulse flex-shrink-0" title="Aktiv" />
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -2663,8 +2938,8 @@ export default function HomePage() {
                             }}
                             className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
                               isVehicleActive
-                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
-                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                                ? 'border border-teal-500 bg-white text-teal-900 font-bold ring-2 ring-teal-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
                             <option value="ALL">{t.home.vehicleAll}</option>
@@ -2681,7 +2956,7 @@ export default function HomePage() {
                                   setVehicleFilter('ALL');
                                   setCurrentPage(1);
                                 }}
-                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-100/80 rounded-lg transition cursor-pointer"
                                 title="Zurücksetzen"
                               >
                                 <X className="w-3.5 h-3.5" />
@@ -2692,12 +2967,12 @@ export default function HomePage() {
                       </div>
 
                       {/* Line 5: Destination Safety Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isSafetyActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSafetyActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isSafetyActive ? 'bg-teal-50/80 border-teal-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSafetyActive ? 'font-bold text-teal-900' : 'font-semibold text-slate-700'}`}>
                           <ShieldCheck className={`w-3.5 h-3.5 ${isSafetyActive ? 'text-emerald-600' : 'text-emerald-600'}`} />
                           <span>{t.home.filterBySafety}</span>
                           {isSafetyActive && (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 animate-pulse flex-shrink-0" title="Aktiv" />
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -2709,8 +2984,8 @@ export default function HomePage() {
                             }}
                             className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
                               isSafetyActive
-                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
-                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                                ? 'border border-teal-500 bg-white text-teal-900 font-bold ring-2 ring-teal-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
                             <option value="SAFE_ONLY">{t.home.safetyFilterSafeOnly}</option>
@@ -2724,7 +2999,7 @@ export default function HomePage() {
                                   setSafetyFilter('SAFE_ONLY');
                                   setCurrentPage(1);
                                 }}
-                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-100/80 rounded-lg transition cursor-pointer"
                                 title="Zurücksetzen"
                               >
                                 <X className="w-3.5 h-3.5" />
@@ -2735,12 +3010,12 @@ export default function HomePage() {
                       </div>
 
                       {/* Line 6: Seasonal Warnings Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isWarningActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isWarningActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isWarningActive ? 'bg-teal-50/80 border-teal-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isWarningActive ? 'font-bold text-teal-900' : 'font-semibold text-slate-700'}`}>
                           <AlertCircle className={`w-3.5 h-3.5 ${isWarningActive ? 'text-amber-500' : 'text-amber-500'}`} />
                           <span>{t.home.filterByWarnings}</span>
                           {isWarningActive && (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 animate-pulse flex-shrink-0" title="Aktiv" />
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -2752,8 +3027,8 @@ export default function HomePage() {
                             }}
                             className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
                               isWarningActive
-                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
-                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                                ? 'border border-teal-500 bg-white text-teal-900 font-bold ring-2 ring-teal-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
                             <option value="CLEAN_ONLY">{t.home.warningsFilterCleanOnly}</option>
@@ -2767,7 +3042,7 @@ export default function HomePage() {
                                   setWarningFilter('CLEAN_ONLY');
                                   setCurrentPage(1);
                                 }}
-                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-100/80 rounded-lg transition cursor-pointer"
                                 title="Zurücksetzen"
                               >
                                 <X className="w-3.5 h-3.5" />
@@ -2777,13 +3052,56 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* Line 7: Board Type Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isBoardTypeActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isBoardTypeActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                      {/* Line 7: Extreme Summer Heat Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isHeatActive ? 'bg-teal-50/80 border-teal-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isHeatActive ? 'font-bold text-teal-900' : 'font-semibold text-slate-700'}`}>
+                          <Sun className={`w-3.5 h-3.5 ${isHeatActive ? 'text-amber-500' : 'text-amber-500'}`} />
+                          <span>{t.home.filterByHeat}</span>
+                          {isHeatActive && (
+                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                          )}
+                        </label>
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                          <select
+                            value={heatFilter}
+                            onChange={(e) => {
+                              setHeatFilter(e.target.value as any);
+                              setCurrentPage(1);
+                            }}
+                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
+                              isHeatActive
+                                ? 'border border-teal-500 bg-white text-teal-900 font-bold ring-2 ring-teal-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-teal-500'
+                            }`}
+                          >
+                            <option value="ALL">{t.home.heatFilterAll}</option>
+                            <option value="AVOID_EXTREME_HEAT">{t.home.heatFilterAvoid}</option>
+                          </select>
+                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                            {isHeatActive && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setHeatFilter('ALL');
+                                  setCurrentPage(1);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-100/80 rounded-lg transition cursor-pointer"
+                                title="Zurücksetzen"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Line 8: Board Type Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isBoardTypeActive ? 'bg-teal-50/80 border-teal-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isBoardTypeActive ? 'font-bold text-teal-900' : 'font-semibold text-slate-700'}`}>
                           <Utensils className={`w-3.5 h-3.5 ${isBoardTypeActive ? 'text-violet-600' : 'text-violet-600'}`} />
                           <span>{t.home.filterByBoardType}</span>
                           {isBoardTypeActive && (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 animate-pulse flex-shrink-0" title="Aktiv" />
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -2795,8 +3113,8 @@ export default function HomePage() {
                             }}
                             className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
                               isBoardTypeActive
-                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
-                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                                ? 'border border-teal-500 bg-white text-teal-900 font-bold ring-2 ring-teal-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
                             <option value="ALL">{t.home.allBoardTypes}</option>
@@ -2813,7 +3131,7 @@ export default function HomePage() {
                                   setBoardTypeFilter('ALL');
                                   setCurrentPage(1);
                                 }}
-                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-100/80 rounded-lg transition cursor-pointer"
                                 title="Zurücksetzen"
                               >
                                 <X className="w-3.5 h-3.5" />
@@ -2823,13 +3141,13 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* Line 8: Max Overland Duration Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isOverlandDurationActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isOverlandDurationActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                      {/* Line 9: Max Overland Duration Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isOverlandDurationActive ? 'bg-teal-50/80 border-teal-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isOverlandDurationActive ? 'font-bold text-teal-900' : 'font-semibold text-slate-700'}`}>
                           <Car className={`w-3.5 h-3.5 ${isOverlandDurationActive ? 'text-teal-600' : 'text-teal-600'}`} />
                           <span>{t.home.filterByOverlandDuration}</span>
                           {isOverlandDurationActive && (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 animate-pulse flex-shrink-0" title="Aktiv" />
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -2841,8 +3159,8 @@ export default function HomePage() {
                             }}
                             className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
                               isOverlandDurationActive
-                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
-                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                                ? 'border border-teal-500 bg-white text-teal-900 font-bold ring-2 ring-teal-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
                             <option value="ALL">{t.home.overlandDurationAny}</option>
@@ -2858,7 +3176,7 @@ export default function HomePage() {
                                   setOverlandDurationFilter('ALL');
                                   setCurrentPage(1);
                                 }}
-                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-100/80 rounded-lg transition cursor-pointer"
                                 title="Zurücksetzen"
                               >
                                 <X className="w-3.5 h-3.5" />
@@ -2868,13 +3186,13 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* Line 9: Flight Transit & Stops Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isFlightStopsActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isFlightStopsActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
-                          <Plane className={`w-3.5 h-3.5 ${isFlightStopsActive ? 'text-blue-600' : 'text-blue-600'}`} />
+                      {/* Line 10: Flight Transit & Stops Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isFlightStopsActive ? 'bg-teal-50/80 border-teal-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isFlightStopsActive ? 'font-bold text-teal-900' : 'font-semibold text-slate-700'}`}>
+                          <Plane className={`w-3.5 h-3.5 ${isFlightStopsActive ? 'text-teal-600' : 'text-teal-600'}`} />
                           <span>{t.home.filterByFlightStops}</span>
                           {isFlightStopsActive && (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 animate-pulse flex-shrink-0" title="Aktiv" />
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -2886,8 +3204,8 @@ export default function HomePage() {
                             }}
                             className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
                               isFlightStopsActive
-                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
-                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                                ? 'border border-teal-500 bg-white text-teal-900 font-bold ring-2 ring-teal-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
                             <option value="ALL">{t.home.flightStopsAny}</option>
@@ -2902,7 +3220,7 @@ export default function HomePage() {
                                   setFlightStopsFilter('ALL');
                                   setCurrentPage(1);
                                 }}
-                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-100/80 rounded-lg transition cursor-pointer"
                                 title="Zurücksetzen"
                               >
                                 <X className="w-3.5 h-3.5" />
@@ -2912,13 +3230,13 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* Line 10: School Calendar Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isSchoolHolidayActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSchoolHolidayActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
-                          <Award className={`w-3.5 h-3.5 ${isSchoolHolidayActive ? 'text-blue-600' : 'text-blue-600'}`} />
+                      {/* Line 11: School Calendar Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isSchoolHolidayActive ? 'bg-teal-50/80 border-teal-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSchoolHolidayActive ? 'font-bold text-teal-900' : 'font-semibold text-slate-700'}`}>
+                          <Award className={`w-3.5 h-3.5 ${isSchoolHolidayActive ? 'text-teal-600' : 'text-teal-600'}`} />
                           <span>{t.home.schoolHolidaysFilterLabel}</span>
                           {isSchoolHolidayActive && (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 animate-pulse flex-shrink-0" title="Aktiv" />
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -2930,8 +3248,8 @@ export default function HomePage() {
                             }}
                             className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
                               isSchoolHolidayActive
-                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
-                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                                ? 'border border-teal-500 bg-white text-teal-900 font-bold ring-2 ring-teal-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
                             <option value="all">{t.home.filterAllDates}</option>
@@ -2945,7 +3263,7 @@ export default function HomePage() {
                                   setSchoolHolidayFilter('all');
                                   setCurrentPage(1);
                                 }}
-                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-100/80 rounded-lg transition cursor-pointer"
                                 title="Zurücksetzen"
                               >
                                 <X className="w-3.5 h-3.5" />
@@ -2955,13 +3273,13 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* Line 11: Max Cost Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isMaxCostActive ? 'bg-blue-50/80 border-blue-200/90 shadow-2xs' : 'border-slate-100'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isMaxCostActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
+                      {/* Line 12: Max Cost Filter */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isMaxCostActive ? 'bg-teal-50/80 border-teal-200/90 shadow-2xs' : 'border-slate-100'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isMaxCostActive ? 'font-bold text-teal-900' : 'font-semibold text-slate-700'}`}>
                           <Sparkles className={`w-3.5 h-3.5 ${isMaxCostActive ? 'text-amber-500' : 'text-amber-500'}`} />
                           <span>{t.home.filterByCost}</span>
                           {isMaxCostActive && (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 animate-pulse flex-shrink-0" title="Aktiv" />
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -2975,8 +3293,8 @@ export default function HomePage() {
                             }}
                             className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
                               isMaxCostActive
-                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
-                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                                ? 'border border-teal-500 bg-white text-teal-900 font-bold ring-2 ring-teal-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-teal-500'
                             }`}
                           />
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
@@ -2987,7 +3305,7 @@ export default function HomePage() {
                                   setMaxCostFilter(undefined);
                                   setCurrentPage(1);
                                 }}
-                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-100/80 rounded-lg transition cursor-pointer"
                                 title="Zurücksetzen"
                               >
                                 <X className="w-3.5 h-3.5" />
@@ -2997,13 +3315,13 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* Line 12: Sort By */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all ${isSortActive ? 'bg-blue-50/80 border border-blue-200/90 shadow-2xs' : ''}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSortActive ? 'font-bold text-blue-900' : 'font-semibold text-slate-700'}`}>
-                          <ArrowUpDown className={`w-3.5 h-3.5 ${isSortActive ? 'text-blue-600' : 'text-slate-500'}`} />
+                      {/* Line 13: Sort By */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all ${isSortActive ? 'bg-teal-50/80 border border-teal-200/90 shadow-2xs' : ''}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSortActive ? 'font-bold text-teal-900' : 'font-semibold text-slate-700'}`}>
+                          <ArrowUpDown className={`w-3.5 h-3.5 ${isSortActive ? 'text-teal-600' : 'text-slate-500'}`} />
                           <span>{t.home.sortBy}</span>
                           {isSortActive && (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-blue-300 animate-pulse flex-shrink-0" title="Aktiv" />
+                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 animate-pulse flex-shrink-0" title="Aktiv" />
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3012,8 +3330,8 @@ export default function HomePage() {
                             onChange={(e) => setSortBy(e.target.value as any)}
                             className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
                               isSortActive
-                                ? 'border border-blue-500 bg-white text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
-                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500'
+                                ? 'border border-teal-500 bg-white text-teal-900 font-bold ring-2 ring-teal-500/20 shadow-2xs'
+                                : 'border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
                             <option value="score">{t.home.sortScore}</option>
@@ -3028,7 +3346,7 @@ export default function HomePage() {
                               <button
                                 type="button"
                                 onClick={() => setSortBy('score')}
-                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/80 rounded-lg transition cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-100/80 rounded-lg transition cursor-pointer"
                                 title="Zurücksetzen"
                               >
                                 <X className="w-3.5 h-3.5" />
@@ -3050,97 +3368,62 @@ export default function HomePage() {
                 /* Group by Destination View */
                 <div className="space-y-4">
                   {/* Destination View Controls & Filter Bar */}
-                  <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200/90 space-y-2.5">
-                    {/* Full-width Search Bar Overlay when search is opened or active */}
-                    {(isDestinationSearchOpen || destinationSearchFilter) && (
-                      <div className="relative flex items-center w-full animate-in fade-in duration-150">
-                        <Search className="w-4 h-4 text-blue-600 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        <input
-                          type="text"
-                          autoFocus
-                          value={destinationSearchFilter}
-                          onChange={(e) => setDestinationSearchFilter(e.target.value)}
-                          placeholder={t.home.filterDestinationsPlaceholder}
-                          className="w-full text-xs sm:text-sm rounded-xl border border-blue-400 pl-9 pr-9 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500 shadow-xs font-medium placeholder:text-slate-400"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDestinationSearchFilter('');
-                            setIsDestinationSearchOpen(false);
-                          }}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 rounded-md hover:bg-slate-100 cursor-pointer"
-                          title="Schließen"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
-                        {/* Search Button (when search field is not open) */}
-                        {!isDestinationSearchOpen && !destinationSearchFilter && (
-                          <button
-                            type="button"
-                            onClick={() => setIsDestinationSearchOpen(true)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs cursor-pointer hover:border-slate-300 transition shrink-0"
-                          >
-                            <Search className="w-3.5 h-3.5 text-blue-600" />
-                            <span>{t.home.searchDestinationsButton}</span>
-                          </button>
-                        )}
-
-                        {/* Multi-Select Country Dropdown */}
-                        {availableDestinationCountries.length > 1 && (
-                          <DestinationCountryMultiSelect
-                            availableCountries={availableDestinationCountries}
-                            selectedCountries={selectedCountryFilters}
-                            onChange={setSelectedCountryFilters}
-                            countryCounts={destinationCountryCounts}
+                  {(activeQueryDestinations.length > 1 || destinationGroups.length > 0) && (
+                    <div className="bg-white dark:bg-slate-900/90 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      {activeQueryDestinations.length > 1 ? (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                            {t.home.filterByDestination}:
+                          </span>
+                          <DestinationFilterDropdown
+                            destinations={activeQueryDestinations}
+                            selectedDestinations={selectedDestinationsList}
+                            onChange={(selected) => {
+                              setSelectedDestinationsList(selected);
+                              setCurrentPage(1);
+                              setTimeframeCurrentPage(1);
+                            }}
+                            totalCount={results?.length || 0}
                           />
-                        )}
-                      </div>
+                        </div>
+                      ) : <div />}
 
-                      {/* Right side controls: Compact Collapse/Expand All */}
-                      {filteredDestinationGroups.length > 0 && (
-                        <div className="flex items-center gap-1 shrink-0">
+                      {destinationGroups.length > 0 && (
+                        <div className="flex items-center gap-1 shrink-0 self-end sm:self-auto">
                           <button
                             type="button"
                             onClick={expandAllDestinations}
                             title={t.home.expandAllAlternativeDates}
-                            className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 text-blue-700 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer hover:border-blue-300 transition"
+                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-slate-750 text-teal-700 dark:text-teal-400 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer hover:border-teal-300 dark:hover:border-slate-600 transition"
                           >
                             <ChevronsUpDown className="w-3.5 h-3.5" />
                             <span className="hidden sm:inline text-[11px]">+</span>
                           </button>
-                            <button
-                              type="button"
-                              onClick={collapseAllDestinations}
-                              title={t.home.collapseAllAlternativeDates}
-                              className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer hover:border-slate-300 transition"
-                            >
-                              <ChevronsDownUp className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline text-[11px]">-</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                          <button
+                            type="button"
+                            onClick={collapseAllDestinations}
+                            title={t.home.collapseAllAlternativeDates}
+                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 transition"
+                          >
+                            <ChevronsDownUp className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline text-[11px]">-</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
+                  )}
 
                   {/* Empty state when destination filter matches 0 */}
-                  {filteredDestinationGroups.length === 0 ? (
-                    <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-center space-y-3">
-                      <p className="text-xs text-slate-600 font-medium">
+                  {destinationGroups.length === 0 ? (
+                    <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-8 text-center space-y-3">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
                         {t.home.noDestinationsMatchFilter}
                       </p>
                       <button
                         type="button"
-                        onClick={() => {
-                          setDestinationSearchFilter('');
-                          setSelectedCountryFilters([]);
-                        }}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition"
+                        onClick={() => setSelectedDestinationsList([])}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 px-3 py-1.5 rounded-lg transition cursor-pointer"
                       >
                         <X className="w-3.5 h-3.5" />
                         {t.home.clearDestinationFilter}
@@ -3149,20 +3432,17 @@ export default function HomePage() {
                   ) : (
                     /* Destination Cards List */
                     <div className="space-y-6">
-                      {filteredDestinationGroups.map((group, groupIdx) => {
+                      {destinationGroups.map((group, groupIdx) => {
                     const isExpanded = expandedDestinations[group.destinationCode];
                     return (
                       <div
                         key={group.destinationCode}
-                        className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition"
+                        className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs hover:shadow-md transition"
                       >
                         {/* Group Header */}
-                        <div className="bg-gradient-to-r from-slate-50 via-blue-50/40 to-indigo-50/20 p-4 border-b border-slate-200 space-y-3">
-                          {/* Top: Airport Code, Destination Title & Vacation Style Tags (Wide full row) */}
+                        <div className="bg-gradient-to-r from-slate-50 via-teal-50/40 to-emerald-50/20 dark:from-slate-800/80 dark:via-slate-800/50 dark:to-teal-950/20 p-4 border-b border-slate-200 dark:border-slate-800 space-y-3">
+                          {/* Top: Destination Title & Vacation Style Tags (Wide full row) */}
                           <div className="flex items-start sm:items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-xs flex-shrink-0 mt-0.5 sm:mt-0">
-                              {group.destinationCode}
-                            </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
                                 <button
@@ -3182,9 +3462,9 @@ export default function HomePage() {
                                   className="inline-flex items-center gap-1.5 text-left group/loc cursor-pointer hover:opacity-90 transition"
                                   title={t.home.showOnMap}
                                 >
-                                  <h3 className="font-extrabold text-slate-900 group-hover/loc:text-blue-600 group-hover/loc:underline text-base sm:text-lg transition-colors flex items-center gap-1.5">
+                                  <h3 className="font-extrabold text-slate-900 dark:text-slate-100 group-hover/loc:text-teal-600 dark:group-hover/loc:text-teal-400 group-hover/loc:underline text-base sm:text-lg transition-colors flex items-center gap-1.5">
                                     <span>{group.destinationName}</span>
-                                    <MapPin className="w-3.5 h-3.5 text-blue-600 opacity-60 group-hover/loc:opacity-100 group-hover/loc:scale-110 transition-all flex-shrink-0" />
+                                    <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 opacity-60 group-hover/loc:opacity-100 group-hover/loc:scale-110 transition-all flex-shrink-0" />
                                   </h3>
                                 </button>
                                 {getDedupedStyleMetas(group.vacationStyles).map((meta) => {
@@ -3261,18 +3541,18 @@ export default function HomePage() {
                             <button
                               type="button"
                               onClick={() => toggleDestinationExpand(group.destinationCode)}
-                              className="w-full flex items-center justify-between text-xs font-bold text-blue-700 hover:text-blue-900 transition py-1 cursor-pointer"
+                              className="w-full flex items-center justify-between text-xs font-bold text-teal-700 hover:text-teal-900 transition py-1 cursor-pointer"
                             >
                               <span className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-blue-600" />
+                                <Calendar className="w-4 h-4 text-teal-600" />
                                 {isExpanded
                                   ? t.home.destGroupHideAlternativeDates
                                   : t.home.destGroupAlternativeDates.replace('{count}', String(group.alternativeWindows.length))}
                               </span>
                               {isExpanded ? (
-                                <ChevronUp className="w-4 h-4 text-blue-600" />
+                                <ChevronUp className="w-4 h-4 text-teal-600" />
                               ) : (
-                                <ChevronDown className="w-4 h-4 text-blue-600" />
+                                <ChevronDown className="w-4 h-4 text-teal-600" />
                               )}
                             </button>
 
@@ -3298,13 +3578,35 @@ export default function HomePage() {
           ) : viewMode === 'timeframe' ? (
                 /* Group by Timeframe View */
                 <div className="space-y-6">
-                  {timeframeGroups.map((group) => {
+                  {/* Destination Filter Dropdown when query has > 1 destination */}
+                  {activeQueryDestinations.length > 1 && (
+                    <div className="bg-white dark:bg-slate-900/90 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                          {t.home.filterByDestination}:
+                        </span>
+                        <DestinationFilterDropdown
+                          destinations={activeQueryDestinations}
+                          selectedDestinations={selectedDestinationsList}
+                          onChange={(selected) => {
+                            setSelectedDestinationsList(selected);
+                            setTimeframeCurrentPage(1);
+                            setCurrentPage(1);
+                          }}
+                          totalCount={results?.length || 0}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {displayedTimeframeGroups.map((group) => {
                     const isExpanded = expandedTimeframes[group.key];
                     const shownWindows = isExpanded ? group.windows : group.windows.slice(0, 3);
                     return (
                       <div key={group.key} className="space-y-3">
                         {/* Timeframe Group Header */}
-                        <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-sky-700 rounded-xl p-4 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                        <div className="bg-gradient-to-r from-teal-800 via-teal-700 to-emerald-800 rounded-xl p-4 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center">
                               <Calendar className="w-5 h-5 text-yellow-300" />
@@ -3313,7 +3615,7 @@ export default function HomePage() {
                               <h3 className="font-extrabold text-white text-base sm:text-lg">
                                 {group.title}
                               </h3>
-                              <p className="text-xs text-blue-100 flex items-center gap-2 mt-0.5">
+                              <p className="text-xs text-teal-100 flex items-center gap-2 mt-0.5">
                                 <span>
                                   {t.home.timeframeGroupCount.replace('{count}', String(group.windows.length))}
                                 </span>
@@ -3346,7 +3648,7 @@ export default function HomePage() {
                             <button
                               type="button"
                               onClick={() => toggleTimeframeExpand(group.key)}
-                              className="px-4 py-2 text-xs font-bold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 rounded-lg transition inline-flex items-center gap-1.5 cursor-pointer"
+                              className="px-4 py-2 text-xs font-bold text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-100 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 rounded-lg transition inline-flex items-center gap-1.5 cursor-pointer"
                             >
                               {isExpanded ? (
                                 <>
@@ -3369,18 +3671,111 @@ export default function HomePage() {
                       </div>
                     );
                   })}
+
+                  {/* Timeframe View Pagination Controls */}
+                  {timeframeGroups.length > 0 && (
+                    <div className="bg-white dark:bg-slate-900/90 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                        <span>{t.home.resultsPerPage}:</span>
+                        <select
+                          value={timeframePageSize}
+                          onChange={(e) => {
+                            setTimeframePageSize(Number(e.target.value));
+                            setTimeframeCurrentPage(1);
+                          }}
+                          className="rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs bg-white dark:bg-slate-800 dark:text-slate-200 outline-none cursor-pointer"
+                        >
+                          <option value={2}>2</option>
+                          <option value={4}>4</option>
+                          <option value={6}>6</option>
+                          <option value={12}>12</option>
+                        </select>
+                        <span className="text-slate-400 ml-2">
+                          {t.home.page} {timeframeCurrentPage} {t.home.of} {timeframeTotalPages}
+                        </span>
+                      </div>
+
+                      {timeframeTotalPages > 1 && (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            disabled={timeframeCurrentPage <= 1}
+                            onClick={() => setTimeframeCurrentPage((p) => Math.max(1, p - 1))}
+                            className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                            {t.home.prevPage}
+                          </button>
+
+                          {Array.from({ length: Math.min(5, timeframeTotalPages) }, (_, i) => {
+                            let pageNum = i + 1;
+                            if (timeframeTotalPages > 5 && timeframeCurrentPage > 3) {
+                              pageNum = timeframeCurrentPage - 3 + i;
+                              if (pageNum > timeframeTotalPages) pageNum = timeframeTotalPages - (4 - i);
+                            }
+                            return (
+                              <button
+                                key={pageNum}
+                                type="button"
+                                onClick={() => setTimeframeCurrentPage(pageNum)}
+                                className={`w-7 h-7 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                  timeframeCurrentPage === pageNum
+                                    ? 'bg-teal-600 text-white shadow-xs'
+                                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                }`}
+                              >
+                                {pageNum}
+                              </button>
+                            );
+                          })}
+
+                          <button
+                            type="button"
+                            disabled={timeframeCurrentPage >= timeframeTotalPages}
+                            onClick={() => setTimeframeCurrentPage((p) => Math.min(timeframeTotalPages, p + 1))}
+                            className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
+                          >
+                            {t.home.nextPage}
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 /* Flat List View */
                 <div className="space-y-4">
+                  {/* Destination Filter Dropdown when query has > 1 destination */}
+                  {activeQueryDestinations.length > 1 && (
+                    <div className="bg-white dark:bg-slate-900/90 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                          {t.home.filterByDestination}:
+                        </span>
+                        <DestinationFilterDropdown
+                          destinations={activeQueryDestinations}
+                          selectedDestinations={selectedDestinationsList}
+                          onChange={(selected) => {
+                            setSelectedDestinationsList(selected);
+                            setCurrentPage(1);
+                            setTimeframeCurrentPage(1);
+                          }}
+                          totalCount={results?.length || 0}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {displayedResults.map((win, idx) => {
                     const globalRank = (currentPage - 1) * pageSize + idx + 1;
                     return renderVacationCard(win, { rank: globalRank });
                   })}
 
                   {/* Pagination Controls */}
-                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-2 text-xs text-slate-600">
+                  <div className="bg-white dark:bg-slate-900/90 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                       <span>{t.home.resultsPerPage}:</span>
                       <select
                         value={pageSize}
@@ -3388,7 +3783,7 @@ export default function HomePage() {
                           setPageSize(Number(e.target.value));
                           setCurrentPage(1);
                         }}
-                        className="rounded-lg border border-slate-300 px-2 py-1 text-xs bg-white outline-none"
+                        className="rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs bg-white dark:bg-slate-800 dark:text-slate-200 outline-none cursor-pointer"
                       >
                         <option value={5}>5</option>
                         <option value={10}>10</option>
@@ -3404,7 +3799,7 @@ export default function HomePage() {
                         type="button"
                         disabled={currentPage <= 1}
                         onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
                       >
                         <ChevronLeft className="w-3.5 h-3.5" />
                         {t.home.prevPage}
@@ -3423,8 +3818,8 @@ export default function HomePage() {
                             onClick={() => setCurrentPage(pageNum)}
                             className={`w-7 h-7 rounded-lg text-xs font-bold transition cursor-pointer ${
                               currentPage === pageNum
-                                ? 'bg-blue-600 text-white shadow-xs'
-                                : 'text-slate-700 hover:bg-slate-100'
+                                ? 'bg-teal-600 text-white shadow-xs'
+                                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                             }`}
                           >
                             {pageNum}
@@ -3436,7 +3831,7 @@ export default function HomePage() {
                         type="button"
                         disabled={currentPage >= totalPages}
                         onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
                       >
                         {t.home.nextPage}
                         <ChevronRight className="w-3.5 h-3.5" />

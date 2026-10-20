@@ -80,6 +80,16 @@ export interface TranslationDictionary {
     hideSuggestions: string;
     noAirportsFound: string;
     railConnected: string;
+    railConnectedStation: string;
+    arbitrageNoteTemplate: string;
+    customizePortals: string;
+    filterByHeat: string;
+    heatFilterAll: string;
+    heatFilterAvoid: string;
+    offPeakBonusBadge: string;
+    offPeakBonusDesc: string;
+    valueForMoneyBadge: string;
+    valueForMoneyDesc: string;
     flightCorridorNote: string;
     flightDetailsTitle: string;
     departureAirportTitle: string;
@@ -147,6 +157,7 @@ export interface TranslationDictionary {
     savedToProfileSuccess: string;
     runOptimization: string;
     optimizing: string;
+    optimizingHint: string;
     resultsTitle: string;
     windowsFound: string;
     readyTitle: string;
@@ -233,6 +244,7 @@ export interface TranslationDictionary {
     seasonEventSongkran: string;
     filterToggleShow: string;
     filterToggleHide: string;
+    filterLabel: string;
     filterResetAll: string;
     activeFiltersCount: string;
     searchDestinationsButton: string;
@@ -269,6 +281,10 @@ export interface TranslationDictionary {
     destGroupHideAlternativeDates: string;
     destGroupFeaturedBadge: string;
     filterDestinationsPlaceholder: string;
+    filterByDestination: string;
+    allDestinations: string;
+    shareSearch: string;
+    shareCopied: string;
     filterByDestinationCountry: string;
     allCountries: string;
     destinationsCountBadge: string;
