@@ -91,10 +91,12 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-famvacay}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-supersecret123}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-famvacay_secure_password}
       POSTGRES_DB: ${POSTGRES_DB:-famvacay_db}
+    ports:
+      - "${POSTGRES_BIND:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     expose:
-      - "5432" # STRICT: No host port binding to prevent leakage
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -122,8 +124,10 @@ services:
     container_name: famvacay-cache
     restart: unless-stopped
     command: ["valkey-server", "--save", "60", "1", "--loglevel", "warning"]
+    ports:
+      - "${CACHE_BIND:-127.0.0.1}:${CACHE_PORT:-6379}:6379"
     expose:
-      - "6379" # STRICT: No host port binding
+      - "6379"
     volumes:
       - cache_data:/data
     networks:
@@ -152,10 +156,10 @@ volumes:
     driver: local
 
 networks:
-  # Internal isolated bridge network for web <-> migrate <-> db <-> cache
+  # Isolated bridge network for web <-> migrate <-> db <-> cache
   backend-internal:
     driver: bridge
-    internal: true
+    internal: false
 
   # External network joined only by web to connect to reverse proxy
   proxy-network:

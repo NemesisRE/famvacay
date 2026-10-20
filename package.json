@@ -18,7 +18,9 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate deploy"
+    "prisma:migrate": "prisma migrate deploy",
+    "db:up": "docker compose up -d postgres cache && prisma migrate deploy",
+    "db:seed": "prisma db seed"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
@@ -63,5 +65,8 @@
   },
   "overrides": {
     "deepmerge-ts": "^8.0.2"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
   }
 }
