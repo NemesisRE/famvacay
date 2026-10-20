@@ -15,6 +15,11 @@ export interface TranslationDictionary {
     familyProfile: string;
     signIn: string;
     signOut: string;
+    menu: string;
+    theme: string;
+    lightMode: string;
+    darkMode: string;
+    language: string;
   };
   home: {
     heroBadge: string;
@@ -151,10 +156,8 @@ export interface TranslationDictionary {
     blackoutEnd: string;
     quickSpecialTimes: string;
     blackoutReasonPlaceholder: string;
+    selectDateRange: string;
     prefilledFromProfile: string;
-    saveToProfile: string;
-    savingToProfile: string;
-    savedToProfileSuccess: string;
     runOptimization: string;
     optimizing: string;
     optimizingHint: string;
@@ -208,6 +211,9 @@ export interface TranslationDictionary {
     overlandDuration6h: string;
     overlandDuration10h: string;
     overlandDuration14h: string;
+    overlandDurationCustom: string;
+    maxBudgetLabel: string;
+    maxBudgetPlaceholder: string;
     metricExplainTitle: string;
     metricExplainSubtitle: string;
     vacationFactorExplainTitle: string;
@@ -340,22 +346,17 @@ export interface TranslationDictionary {
     hideSuggestions: string;
     railConnected: string;
     sec2Title: string;
-    maxDrive: string;
     cabinClass: string;
     economy: string;
     premiumEconomy: string;
     business: string;
-    climatePref: string;
-    warm: string;
-    moderate: string;
-    cool: string;
     passportCheck: string;
     travelModesLabel: string;
     travelModesHint: string;
     modeCar: string;
     modeTrain: string;
     modeFlight: string;
-    modeCamper: string;
+    modeBus: string;
     preferredBoardTypeLabel: string;
     maxOverlandDurationLabel: string;
     preferredVacationStyleLabel: string;
