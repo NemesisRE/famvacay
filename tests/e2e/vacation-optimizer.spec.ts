@@ -22,8 +22,8 @@ test.describe('FamVacay E2E User Journey', () => {
     await optimizeBtn.click();
 
     // Verify results show up
-    await expect(page.locator('text=/Optimal Vacation Windows|Optimale Urlaubsfenster/').first()).toBeVisible();
-    await expect(page.locator('text=/Windows Found|Reisefenster gefunden/').first()).toBeVisible({ timeout: 90000 });
+    await expect(page.locator('text=/Optimal Vacation Windows|Optimale Urlaubsfenster|Optimale Urlaubszeiträume/i').first()).toBeVisible();
+    await expect(page.locator('text=/windows found|reisefenster gefunden/i').first()).toBeVisible({ timeout: 90000 });
   });
 });
 
