@@ -2,9 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/components/auth-provider';
 import { I18nProvider } from '@/lib/i18n/i18n-context';
-import { NavigationBar } from '@/components/navigation-bar';
-import { LanguageSelector } from '@/components/language-selector';
-import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { UserMenu } from '@/components/header/UserMenu';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
@@ -49,9 +47,7 @@ export default function RootLayout({
                   </Link>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3">
-                  <ThemeToggle />
-                  <LanguageSelector />
-                  <NavigationBar />
+                  <UserMenu />
                 </div>
               </div>
             </header>
