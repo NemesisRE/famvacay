@@ -1,3 +1,13 @@
+/**
+ * Builds a HolidayCheck/CHECK24-style room-allocation string: one letter
+ * token per adult, then each child encoded as its own age (not a headcount),
+ * e.g. 2 adults + a 3-year-old => "a-a-3" (HolidayCheck) / "A-A-3" (CHECK24).
+ */
+function buildRoomAllocation(adults: number, childrenAges: number[] | undefined, adultToken: string): string {
+  const tokens = [...Array(adults).fill(adultToken), ...(childrenAges || []).map(String)];
+  return tokens.join('-');
+}
+
 export type PortalMarket = 'DACH' | 'OCEANIA' | 'NORTH_AMERICA' | 'GLOBAL';
 
 export type PortalCategory = 'flight' | 'package' | 'lodging' | 'metasearch';
@@ -11,11 +21,14 @@ export interface TravelPortal {
   colorClass: string;
   buildUrl: (params: {
     originAirport: string;
+    /** All of the user's selected departure airports, when a portal's search supports a multi-airport list (falls back to [originAirport] if omitted). */
+    originAirports?: string[];
     destinationAirport: string;
     startDate: string; // YYYY-MM-DD
     endDate: string;   // YYYY-MM-DD
     adults?: number;
-    children?: number;
+    /** Children's ages, used by portals (HolidayCheck, CHECK24) whose room-allocation parameter encodes each child as its age rather than a headcount. */
+    childrenAges?: number[];
   }) => string;
 }
 
@@ -72,6 +85,10 @@ export const TRAVEL_PORTALS: TravelPortal[] = [
   },
 
   // --- DACH MARKET (Germany, Austria, Switzerland) ---
+  // HolidayCheck and CHECK24's per-hotel deal links are addressed by internal
+  // destination UUIDs we have no mapping for, but both also expose a
+  // destination-less "browse by airport/dates" results listing, which is
+  // what these build instead of a fabricated per-destination query string.
   {
     id: 'holidaycheck',
     name: 'HolidayCheck',
@@ -79,8 +96,25 @@ export const TRAVEL_PORTALS: TravelPortal[] = [
     category: 'package',
     badge: 'Pauschal',
     colorClass: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-    buildUrl: ({ originAirport, destinationAirport, startDate, endDate, adults = 2 }) =>
-      `https://www.holidaycheck.de/angebote/reisen?destination=${destinationAirport}&departureAirports=${originAirport}&travelDateFrom=${startDate}&travelDateTo=${endDate}&adults=${adults}`,
+    // Real, confirmed-working endpoint: /ah without `destinations` shows a
+    // general (continent-level) hotel/package listing filtered by departure
+    // airport(s), dates, and room allocation (airports lowercase, hyphen
+    // separated; rooms = one lowercase "a" per adult, then each child as its
+    // own age, hyphen separated, e.g. "a-a-3").
+    buildUrl: ({ originAirport, originAirports, startDate, endDate, adults = 2, childrenAges }) => {
+      const airports = originAirports && originAirports.length > 0 ? originAirports : [originAirport];
+      const rooms = buildRoomAllocation(adults, childrenAges, 'a');
+      const params = new URLSearchParams({
+        airport: airports.join('-').toLowerCase(),
+        availability: '1',
+        departuredate: startDate,
+        returndate: endDate,
+        duration: 'exactly',
+        rooms,
+        travelkind: 'package',
+      });
+      return `https://www.holidaycheck.de/ah?${params.toString()}`;
+    },
   },
   {
     id: 'check24',
@@ -89,8 +123,29 @@ export const TRAVEL_PORTALS: TravelPortal[] = [
     category: 'package',
     badge: 'Vergleich',
     colorClass: 'bg-amber-600 hover:bg-amber-700 text-white',
-    buildUrl: ({ originAirport, destinationAirport, startDate, endDate, adults = 2 }) =>
-      `https://urlaub.check24.de/suche/angebote?destination=${destinationAirport}&departureAirport=${originAirport}&travelPeriodStart=${startDate}&travelPeriodEnd=${endDate}&adults=${adults}`,
+    // Real, confirmed-working endpoint: a region-level results browse (no
+    // destination areaId/UUID needed, since we have no mapping from our
+    // airport-code destinations to CHECK24's internal region/hotel ids)
+    // filtered by departure airport(s), exact dates, and room allocation
+    // (one "A" per adult, then each child as its own age, e.g. "A-A-3").
+    buildUrl: ({ originAirport, originAirports, startDate, endDate, adults = 2, childrenAges }) => {
+      const airports = originAirports && originAirports.length > 0 ? originAirports : [originAirport];
+      const roomAllocation = buildRoomAllocation(adults, childrenAges, 'A');
+      const params = new URLSearchParams({
+        airport: airports.join(','),
+        transportType: 'flight',
+        roomAllocation,
+        departureDate: startDate,
+        returnDate: endDate,
+        days: 'exact',
+        pageArea: 'package',
+        offerSort: 'default',
+        areaSort: 'topregion',
+        sorting: 'categoryDistribution',
+        noRedirect: '1',
+      });
+      return `https://urlaub.check24.de/suche/region?${params.toString()}`;
+    },
   },
   {
     id: 'ab_in_den_urlaub',
@@ -99,8 +154,20 @@ export const TRAVEL_PORTALS: TravelPortal[] = [
     category: 'package',
     badge: 'Deals',
     colorClass: 'bg-yellow-600 hover:bg-yellow-700 text-white',
-    buildUrl: ({ originAirport, destinationAirport, startDate, endDate }) =>
-      `https://www.ab-in-den-urlaub.de/ibe/index/index/destination/${destinationAirport}/departureAirport/${originAirport}/departureDate/${startDate}/returnDate/${endDate}`,
+    // Real results endpoint is /find/hotels (confirmed working), driven by
+    // dateMin/dateMax/durationMin/durationMax/adults/travelType/sortBy.
+    // destinationId uses internal slugs (e.g. "destination-es-mallorca")
+    // we have no mapping for, and the web form has no departure-airport
+    // parameter (only the mobile app deep link does), so both are omitted
+    // rather than guessed — this still lands on real, date-filtered results
+    // instead of a dead /ibe/... path.
+    buildUrl: ({ startDate, endDate, adults = 2 }) => {
+      const durationDays = Math.max(
+        1,
+        Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000)
+      );
+      return `https://www.ab-in-den-urlaub.de/find/hotels?dateMin=${startDate}&dateMax=${endDate}&durationMin=${durationDays}&durationMax=${durationDays}&adults=${adults}&travelType=packageTour&sortBy=priceReductionDesc`;
+    },
   },
 
   // --- OCEANIA / AUSTRALIA & NEW ZEALAND ---

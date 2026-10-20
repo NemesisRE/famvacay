@@ -36,6 +36,7 @@ interface BookingDealsPopoverProps {
   pricingDetails?: AggregatedTripPricing;
   estimatedTotalCost: number;
   originAirport: string;
+  originAirports?: string[];
   destinationAirport: string;
   countryCode?: string;
   startDate?: string;
@@ -48,6 +49,7 @@ export function BookingDealsPopover({
   pricingDetails,
   estimatedTotalCost,
   originAirport,
+  originAirports,
   destinationAirport,
   countryCode = 'DE',
   startDate,
@@ -200,7 +202,7 @@ export function BookingDealsPopover({
                         className={`text-left p-1.5 rounded-lg border text-[11px] font-medium flex items-center justify-between transition-colors cursor-pointer ${
                           isChecked
                             ? 'border-teal-400 dark:border-teal-700 bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 font-semibold'
-                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750'
+                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60'
                         }`}
                       >
                         <span className="truncate">{portal.name}</span>
@@ -251,9 +253,11 @@ export function BookingDealsPopover({
                       const partyAdults = pricingDetails.party?.adults ?? adults ?? 2;
                       const url = portal.buildUrl({
                         originAirport,
+                        originAirports,
                         destinationAirport,
                         startDate: sDate,
                         endDate: eDate,
+                        childrenAges: pricingDetails.party?.childrenAges,
                         adults: partyAdults,
                       });
 
