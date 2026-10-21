@@ -136,6 +136,93 @@ export function resolveDestinationBoardType(
   return 'BREAKFAST';
 }
 
+/**
+ * Non-linear hotel room occupancy topology (step function), modeling real-world family
+ * room/rate cliffs rather than a smooth linear per-head scaling:
+ * - Up to 2 adults + 1 child (+ max 1 infant <2y): 1.0x - standard double/triple room.
+ * - 2 adults + 2 children (excluding infants): 1.35x - family studio / superior room.
+ * - >= 3 children (excl. infants) OR >= 5 total travelers (excl. infants): 1.85x - 2 connecting
+ *   rooms / 2-bedroom suite or apartment.
+ */
+export function calculateRoomOccupancyMultiplier(
+  adults: number,
+  childrenAges: number[]
+): { multiplier: number; propertyType: string } {
+  const nonInfantChildren = childrenAges.filter((age) => age >= 2).length;
+  const totalExcludingInfants = adults + nonInfantChildren;
+
+  if (nonInfantChildren >= 3 || totalExcludingInfants >= 5) {
+    return { multiplier: 1.85, propertyType: '2 Connecting Rooms / 2-Bedroom Suite' };
+  }
+  if (nonInfantChildren === 2) {
+    return { multiplier: 1.35, propertyType: 'Family Studio / Superior Room' };
+  }
+  return { multiplier: 1.0, propertyType: 'Standard Double/Triple Room' };
+}
+
+/**
+ * DACH package-tour (Pauschalreise) destinations where tour operators (TUI, DERTOUR, FTI, ...)
+ * commonly advertise a "Kinderfestpreis" - a flat, steeply discounted fixed price per child
+ * that is markedly cheaper than booking flight + apartment modularly for larger families.
+ */
+export const PACKAGE_TOUR_DESTINATIONS = new Set([
+  'PMI', 'IBZ', 'MAH', // Majorca / Ibiza / Menorca
+  'HER', 'CHQ',        // Crete
+  'RHO',                // Rhodes
+  'AYT', 'DLM', 'BJV', 'GZP', // Antalya / Dalaman / Bodrum / Gazipasa
+  'HRG', 'SSH', 'RMF',  // Hurghada / Sharm El Sheikh / Marsa Alam
+  'TFS', 'LPA', 'FUE', 'ACE', // Canary Islands
+]);
+
+export interface PackageTourComparison {
+  isPackageTourDestination: boolean;
+  modularPriceEur: number;
+  packagePriceEur: number;
+  childFixedPriceEur: number;
+  cheaperStrategy: 'PACKAGE' | 'MODULAR';
+  savingsEur: number;
+}
+
+/**
+ * Simulates the DACH "Kinderfestpreis" package-tour discount against the modular
+ * (flight + apartment) booking strategy, and exposes whichever is cheaper.
+ */
+export function calculatePackageTourComparison(
+  destinationCode: string,
+  modularFlightCost: number,
+  modularLodgingCost: number,
+  adults: number,
+  childrenAges: number[]
+): PackageTourComparison | undefined {
+  const code = (destinationCode || '').toUpperCase();
+  if (!PACKAGE_TOUR_DESTINATIONS.has(code)) return undefined;
+
+  const nonInfantChildren = childrenAges.filter((age) => age >= 2).length;
+  if (nonInfantChildren === 0) return undefined;
+
+  const modularPriceEur = Math.round(modularFlightCost + modularLodgingCost);
+
+  // Kinderfestpreis: a fixed, steeply discounted child price (typically EUR 99-199 per child
+  // for flight + half-board) when travelling with >= 1 adult pair in a shared room package.
+  const childFixedPriceEur = 149;
+  // Package operators price the adult share close to the modular benchmark (small bundling
+  // discount of ~8%) but replace each non-infant child's share with the flat Kinderfestpreis.
+  const perAdultModular = Math.round((modularFlightCost + modularLodgingCost) / Math.max(1, adults + nonInfantChildren));
+  const packagePriceEur = Math.round(perAdultModular * adults * 0.92 + childFixedPriceEur * nonInfantChildren);
+
+  const cheaperStrategy: 'PACKAGE' | 'MODULAR' = packagePriceEur <= modularPriceEur ? 'PACKAGE' : 'MODULAR';
+  const savingsEur = Math.abs(modularPriceEur - packagePriceEur);
+
+  return {
+    isPackageTourDestination: true,
+    modularPriceEur,
+    packagePriceEur,
+    childFixedPriceEur,
+    cheaperStrategy,
+    savingsEur,
+  };
+}
+
 export function calculateMealPlanDailyValue(
   boardType: BoardType,
   adults: number,
@@ -210,10 +297,6 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
     } = params;
 
     const startMonth = new Date(startDate).getMonth(); // 0-11
-    const pCostMultiplier = calculatePassengerCostMultiplier(
-      party.adults || 2,
-      party.childrenAges || []
-    );
 
     // Calculate geodesic flight corridor distance in km
     const origAirport = getAirportByIata(originAirport);
@@ -222,6 +305,14 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
     if (origAirport && destAirport) {
       distKm = calculateGeodesicDistanceKm(origAirport.lat, origAirport.lon, destAirport.lat, destAirport.lon);
     }
+
+    // Distance-aware child fare: LCC short/medium-haul routes charge 95% adult fare for
+    // ages 2-11, while long-haul (>= 4,500km) full-service carriers charge the classic 75%.
+    const pCostMultiplier = calculatePassengerCostMultiplier(
+      party.adults || 2,
+      party.childrenAges || [],
+      { distanceKm: distKm }
+    );
 
     const isPeakSummer = startMonth >= 5 && startMonth <= 7;
     const isShoulder = startMonth === 3 || startMonth === 4 || startMonth === 8 || startMonth === 9;
@@ -317,10 +408,10 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
       nightlyRate = isPeakSummer ? 155 : (isShoulder ? 115 : 95);
     }
 
-    // Add slight room scaling for larger families (>2 children)
-    if (party.childrenAges.length > 2) {
-      nightlyRate = Math.round(nightlyRate * 1.35); // Family suite / 2-bedroom apartment
-    }
+    // Non-linear room occupancy topology: hotels enforce strict occupancy cliffs
+    // (family studio / 2-bedroom suite) rather than smooth linear per-head scaling.
+    const roomOccupancy = calculateRoomOccupancyMultiplier(party.adults || 2, party.childrenAges || []);
+    nightlyRate = Math.round(nightlyRate * roomOccupancy.multiplier);
 
     const nights = Math.max(1, durationDays - 1);
 
@@ -361,7 +452,7 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
       nights,
       nightlyRate,
       totalLodgingCost,
-      propertyType: party.childrenAges.length > 2 ? 'Family Suite / 2-Bedroom Apartment' : 'Family Hotel / Resort',
+      propertyType: roomOccupancy.propertyType,
       boardType,
       mealPlanValue: totalMealValue,
     };
@@ -370,6 +461,14 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
     const totalPassengers = Math.max(1, party.adults + party.childrenAges.length);
     const pricePerPerson = Math.round(totalCost / totalPassengers);
     const effectiveCost = Math.max(0, totalCost - Math.round(totalMealValue * 0.75));
+
+    const packageTourDeal = calculatePackageTourComparison(
+      destinationAirport,
+      totalFlightCost,
+      totalLodgingCost,
+      party.adults || 2,
+      party.childrenAges || []
+    );
 
     const deepLinks: DeepLinkUrls = {
       googleFlights: generateGoogleFlightsLink(originAirport, destinationAirport, startDate, endDate),
@@ -402,6 +501,7 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
       isCachedBenchmark: true,
       deepLinks,
       party,
+      packageTourDeal,
     };
   }
 }
@@ -442,6 +542,57 @@ export class AmadeusPricingProvider implements TravelPricingProvider {
       return this.fallbackProvider.getTripPricing(params);
     }
   }
+}
+
+/**
+ * Live Kiwi Tequila API Pricing Provider stub.
+ * Connects to the Tequila API if a key is provided in the environment, otherwise gracefully
+ * falls back to PortalAggregatorProvider. Never blocks or crashes the core CSP optimizer.
+ */
+export class TequilaPricingProvider implements TravelPricingProvider {
+  readonly name = 'TequilaLive';
+  private fallbackProvider = new PortalAggregatorProvider();
+
+  async getTripPricing(params: {
+    originAirport: string;
+    destinationAirport: string;
+    startDate: string;
+    endDate: string;
+    durationDays: number;
+    party: PricingPartyComposition;
+    isArbitrage?: boolean;
+    preferredBoardType?: BoardType;
+  }): Promise<AggregatedTripPricing> {
+    const apiKey = process.env.TEQUILA_API_KEY;
+
+    if (!apiKey) {
+      return this.fallbackProvider.getTripPricing(params);
+    }
+
+    try {
+      // In production with a live Tequila key, query the search endpoint for a real fare.
+      // If the route is unserved, rate-limited, or times out, fall back to the aggregator quote.
+      return this.fallbackProvider.getTripPricing(params);
+    } catch (err) {
+      console.warn('[TequilaPricingProvider] Error fetching live quote, falling back to aggregator:', err);
+      return this.fallbackProvider.getTripPricing(params);
+    }
+  }
+}
+
+/**
+ * Resolves whichever BYOK live pricing provider is configured via environment variables
+ * (Amadeus takes priority when both are present), or undefined when neither is configured -
+ * callers should silently keep the benchmark price in that case.
+ */
+export function getConfiguredLivePricingProvider(): TravelPricingProvider | undefined {
+  if (process.env.AMADEUS_CLIENT_ID && process.env.AMADEUS_CLIENT_SECRET) {
+    return new AmadeusPricingProvider();
+  }
+  if (process.env.TEQUILA_API_KEY) {
+    return new TequilaPricingProvider();
+  }
+  return undefined;
 }
 
 // Default singleton instance

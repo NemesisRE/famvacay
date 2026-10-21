@@ -57,6 +57,7 @@ export interface AggregatedTripPricing {
   isCachedBenchmark: boolean;
   deepLinks: DeepLinkUrls;
   party?: PricingPartyComposition;
+  packageTourDeal?: import('./pricing-service').PackageTourComparison;
 }
 
 export interface TravelPricingProvider {
@@ -69,6 +70,7 @@ export interface TravelPricingProvider {
     durationDays: number;
     party: PricingPartyComposition;
     isArbitrage?: boolean;
+    preferredBoardType?: import('../optimizer/types').BoardType;
   }): Promise<AggregatedTripPricing>;
 }
 

@@ -8,6 +8,17 @@ export interface PtoCalculationResult {
   suggestedShifts?: AdjacentShiftSuggestion[];
 }
 
+export interface ChildcareClosurePeriod {
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+  coverageFactor: number; // 1.0 = parents cover 100% of closure days with own PTO, 0.5 = grandparents cover half
+}
+
+export interface EffectivePtoCalculationResult extends PtoCalculationResult {
+  effectivePtoDaysConsumed: number;
+  overlappingClosureWeekdays: number;
+}
+
 export interface AdjacentShiftSuggestion {
   shiftDays: number; // e.g. -1, +1, -2, +2
   newStartDate: string;
@@ -77,6 +88,71 @@ export function calculatePtoDaysConsumed(
     publicHolidaysCount,
     ptoDaysConsumed,
     suggestedShifts: suggestedShifts.length > 0 ? suggestedShifts : undefined,
+  };
+}
+
+/**
+ * Calculates effective marginal PTO consumption when one or more CHILDCARE_CLOSURE
+ * periods (e.g. a 2-3 week Kita/daycare closure) overlap the candidate window.
+ *
+ * EffectivePTO = TotalWeekdays - PublicHolidays - (OverlappingClosureWeekdays x coverageFactor)
+ *
+ * Rationale: parents must take time off work during a mandatory daycare closure regardless
+ * of whether they travel, so weekdays inside the closure consume 0 *marginal* PTO (scaled by
+ * coverageFactor when grandparents/other care partially covers the closure).
+ */
+export function calculateEffectivePtoDaysConsumed(
+  startDateStr: string,
+  endDateStr: string,
+  publicHolidays: PublicHoliday[] = [],
+  workweekDays: number[] = [1, 2, 3, 4, 5],
+  childcareClosures: ChildcareClosurePeriod[] = []
+): EffectivePtoCalculationResult {
+  const base = calculatePtoDaysConsumed(startDateStr, endDateStr, publicHolidays, workweekDays);
+
+  if (childcareClosures.length === 0) {
+    return {
+      ...base,
+      effectivePtoDaysConsumed: base.ptoDaysConsumed,
+      overlappingClosureWeekdays: 0,
+    };
+  }
+
+  const start = parseISO(startDateStr);
+  const end = parseISO(endDateStr);
+  const holidayDateSet = new Set(publicHolidays.map((h) => h.date));
+  const allDays = eachDayOfInterval({ start, end });
+
+  let closureWeightedDays = 0;
+  let overlappingClosureWeekdays = 0;
+
+  for (const day of allDays) {
+    if (!isWorkday(day, workweekDays)) continue;
+    const dayStr = format(day, 'yyyy-MM-dd');
+    if (holidayDateSet.has(dayStr)) continue; // already excluded from the PTO base
+
+    let dayCoverage = 0;
+    for (const closure of childcareClosures) {
+      if (dayStr >= closure.startDate && dayStr <= closure.endDate) {
+        dayCoverage = Math.max(dayCoverage, closure.coverageFactor);
+      }
+    }
+
+    if (dayCoverage > 0) {
+      overlappingClosureWeekdays++;
+      closureWeightedDays += dayCoverage;
+    }
+  }
+
+  const effectivePtoDaysConsumed = Math.max(
+    0,
+    Math.round((base.ptoDaysConsumed - closureWeightedDays) * 100) / 100
+  );
+
+  return {
+    ...base,
+    effectivePtoDaysConsumed,
+    overlappingClosureWeekdays,
   };
 }
 

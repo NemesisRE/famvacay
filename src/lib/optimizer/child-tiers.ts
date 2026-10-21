@@ -69,8 +69,27 @@ export function parseChildrenAges(ages: number[]): ChildPassenger[] {
 }
 
 /**
+ * Long-haul threshold (km) above which full-service network carriers operate and charge the
+ * standard ~75% child fare. Below this, low-cost/leisure carriers dominate and charge 95%-100%
+ * of the adult base fare for children aged 2-11 (child seats still occupy full seat capacity).
+ */
+export const LONG_HAUL_THRESHOLD_KM = 4500;
+
+/**
+ * Haul-dependent child (2-11) fare multiplier.
+ * - Short/medium-haul (< 4,500 km, typical LCC/leisure routes): 0.95 of adult base fare.
+ * - Long-haul (>= 4,500 km, full-service network carriers): 0.75 of adult base fare.
+ * When distanceKm is omitted, falls back to the legacy flat 0.75 rate (used for non-flight contexts).
+ */
+export function getChildFareMultiplier(distanceKm?: number): number {
+  if (distanceKm == null) return 0.75;
+  return distanceKm >= LONG_HAUL_THRESHOLD_KM ? 0.75 : 0.95;
+}
+
+/**
  * Calculate age-adjusted passenger multiplier.
- * Infants usually fly with lap fee (~10%), children get child fare (~75%), teens/adults pay 100%.
+ * Infants fly with a lap fee (~10%). Children (2-11) pay a haul-dependent fare: 95% on
+ * short/medium-haul LCC routes, 75% on long-haul full-service carriers. Teens/adults pay 100%.
  * Supports segment-aware child birthdays during travel.
  */
 export function calculatePassengerCostMultiplier(
@@ -80,9 +99,11 @@ export function calculatePassengerCostMultiplier(
     birthDates?: (string | Date)[];
     outboundDate?: string;
     returnDate?: string;
+    distanceKm?: number;
   }
 ): number {
   let multiplier = adultsCount * 1.0;
+  const childFare = getChildFareMultiplier(segmentOptions?.distanceKm);
 
   if (
     segmentOptions?.birthDates &&
@@ -97,8 +118,8 @@ export function calculatePassengerCostMultiplier(
       );
 
       // Average outbound and return fare multipliers for the round trip
-      const outboundCost = outboundTier === 'INFANT' ? 0.10 : outboundTier === 'CHILD' ? 0.75 : 1.0;
-      const returnCost = returnTier === 'INFANT' ? 0.10 : returnTier === 'CHILD' ? 0.75 : 1.0;
+      const outboundCost = outboundTier === 'INFANT' ? 0.10 : outboundTier === 'CHILD' ? childFare : 1.0;
+      const returnCost = returnTier === 'INFANT' ? 0.10 : returnTier === 'CHILD' ? childFare : 1.0;
       multiplier += (outboundCost + returnCost) / 2;
     }
   } else {
@@ -107,7 +128,7 @@ export function calculatePassengerCostMultiplier(
       if (tier === 'infant') {
         multiplier += 0.10;
       } else if (tier === 'child') {
-        multiplier += 0.75;
+        multiplier += childFare;
       } else {
         multiplier += 1.0;
       }

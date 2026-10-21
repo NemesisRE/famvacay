@@ -38,10 +38,22 @@ export interface UserProfileInput {
   maxFlightStops?: number;  // 0 = direct only, 1 = max 1 stop, undefined = any
 }
 
+export type PeriodType = 'STRICT_BLACKOUT' | 'CHILDCARE_CLOSURE';
+
 export interface BlackoutRange {
   startDate: string; // ISO date YYYY-MM-DD
   endDate: string;   // ISO date YYYY-MM-DD
   reason?: string;
+  type?: PeriodType; // Defaults to STRICT_BLACKOUT when omitted
+  coverageFactor?: number; // 0-1: % of CHILDCARE_CLOSURE days parents must cover with own PTO (default 1.0)
+}
+
+export interface ChildcareArbitrageWarning {
+  savedPtoDays: number;
+  extraCostEur: number;
+  costPerSavedPtoDay: number;
+  bestOffPeakDateRange: { startDate: string; endDate: string };
+  bestOffPeakPrice: number;
 }
 
 export type BoardType = 'ALL_INCLUSIVE' | 'HALF_BOARD' | 'BREAKFAST' | 'ROOM_ONLY';
@@ -150,6 +162,12 @@ export interface CandidateWindow {
   arbitrageOriginState?: string;
   arbitrageNote?: string;
 
+  // Childcare closure opportunity cost (daycare/Kita closure vs. peak-season price gouging)
+  overlapsChildcareClosure?: boolean;
+  hasYoungChildAtDeparture?: boolean; // true if any traveling child is < 6y old at window start
+  rawPtoDaysConsumed?: number; // PTO consumed ignoring childcare closure coverage
+  childcareArbitrageWarning?: ChildcareArbitrageWarning;
+
   // School holiday match details
   requiresSchoolExemption?: boolean;
   schoolHolidayDaysOverlap?: number;
@@ -158,6 +176,15 @@ export interface CandidateWindow {
   travelVehicle?: TravelVehicle;
   availableVehicles?: TravelVehicle[];
   vehicleDetails?: VehicleTravelMetrics;
+  overlandAccess?: import('./vehicles').OverlandAccessClass;
+  ferrySurchargeEur?: number;
+  ferryTransitMinutes?: number;
+  jetlagPenalty?: number;
+  parkSleepFlyRecommended?: boolean;
+
+  // Shared trip board & voting metadata (only present when hydrated from a shared board link)
+  shareCandidateId?: string;
+  votes?: { voterName: string; vote: number; comment?: string | null }[];
 
   // Travel Safety & Security Assessment (baseline destination-level attribute)
   destinationSafety?: import('../safety/safety-service').DestinationSafetyAssessment;

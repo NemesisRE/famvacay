@@ -9,7 +9,8 @@ import {
   DestinationType,
   TravelVehicle,
 } from './types';
-import { calculatePtoDaysConsumed } from './pto-calculator';
+import { calculateEffectivePtoDaysConsumed, ChildcareClosurePeriod } from './pto-calculator';
+import { applyChildcareArbitrageWarnings } from './childcare-arbitrage';
 import { calculatePassengerCostMultiplier } from './child-tiers';
 import {
   POPULAR_DESTINATIONS,
@@ -29,7 +30,7 @@ import {
 import { resolveFlightRoute, FlightRouteDetails } from '../airports/flight-routes';
 import { getCountryCodeFromSubdivision } from '../regions/subdivisions';
 import { getSynchronousTripPricing } from '../pricing/pricing-service';
-import { getAvailableVehicles, calculateVehicleMetrics } from './vehicles';
+import { getAvailableVehicles, calculateVehicleMetrics, classifyOverlandAccess, estimateUtcOffsetHours } from './vehicles';
 import { getDestinationSafetyAssessment } from '../safety/safety-service';
 
 /**
@@ -252,6 +253,19 @@ export function optimizeVacationWindows(
     ...(input.searchBlackouts || []),
   ];
 
+  // STRICT_BLACKOUT periods remain a hard candidate filter (work lockouts, weddings).
+  // CHILDCARE_CLOSURE periods are never filtered out - they reduce *effective* marginal PTO
+  // consumed instead (see calculateEffectivePtoDaysConsumed), since parents must take time
+  // off during a mandatory daycare closure whether or not they travel.
+  const strictBlackouts = allBlackouts.filter((b) => (b.type || 'STRICT_BLACKOUT') === 'STRICT_BLACKOUT');
+  const childcareClosures: ChildcareClosurePeriod[] = allBlackouts
+    .filter((b) => b.type === 'CHILDCARE_CLOSURE')
+    .map((b) => ({
+      startDate: b.startDate,
+      endDate: b.endDate,
+      coverageFactor: typeof b.coverageFactor === 'number' ? b.coverageFactor : 1.0,
+    }));
+
   const homeState = userProfile.federalState || '';
   const homeSchoolHolidays = homeState ? schoolHolidaysByState[homeState] || [] : [];
   const homePublicHolidays = homeState ? publicHolidaysByState[homeState] || [] : [];
@@ -360,14 +374,15 @@ export function optimizeVacationWindows(
         ? userProfile.adults
         : 2;
       const hasSchoolKids = currentChildrenAges.some((age) => age >= 6);
+      const hasYoungChild = currentChildrenAges.some((age) => age < 6);
       const pCostMultiplier = calculatePassengerCostMultiplier(adultsCount, currentChildrenAges, {
         birthDates: userProfile.childrenBirthDates,
         outboundDate: startStr,
         returnDate: endStr,
       });
 
-      // 1. Blackout Filtering
-      if (overlapsWithBlackout(startStr, endStr, allBlackouts)) {
+      // 1. Blackout Filtering (STRICT_BLACKOUT only - CHILDCARE_CLOSURE never filters candidates)
+      if (overlapsWithBlackout(startStr, endStr, strictBlackouts)) {
         blackoutFilteredCount++;
         currentDate = addDays(currentDate, 1);
         continue;
@@ -376,12 +391,14 @@ export function optimizeVacationWindows(
       // 2. School Holiday Coverage Evaluation
       const holidayCoverage = calculateHolidayCoverage(startStr, endStr, homeSchoolHolidays);
 
-      // 3. PTO consumption calculation with configurable workweek
-      const ptoInfo = calculatePtoDaysConsumed(
+      // 3. PTO consumption calculation with configurable workweek, factoring in effective
+      // marginal PTO consumed when a CHILDCARE_CLOSURE period overlaps this window.
+      const ptoInfo = calculateEffectivePtoDaysConsumed(
         startStr,
         endStr,
         homePublicHolidays,
-        (userProfile as any).workweekDays
+        (userProfile as any).workweekDays,
+        childcareClosures
       );
 
       // 4. Test each origin airport and destination combination
@@ -475,6 +492,14 @@ export function optimizeVacationWindows(
             isHighSpeedRailConnected: destAirportObj?.isHighSpeedRailConnected,
           };
 
+          // Biological toddler friction: young children (<=4y) + a significant timezone shift
+          // on a short trip (< 10 days) compound travel fatigue disproportionately.
+          const hasToddler = currentChildrenAges.some((age) => age <= 4);
+          const utcShiftHours = Math.abs(estimateUtcOffsetHours(destGeo.lon) - estimateUtcOffsetHours(originGeo.lon));
+          const jetlagPenalty = hasToddler && utcShiftHours >= 3 && durationDays < 10
+            ? Math.round(utcShiftHours * 2.5 * (10 / durationDays) * 10) / 10
+            : 0;
+
           const directDist = flightDistKm || (airportDetails && destAirportObj ? Math.round(calculateGeodesicDistanceKm(originGeo.lat, originGeo.lon, destGeo.lat, destGeo.lon)) : 500);
           const availableVehicles = getAvailableVehicles(originGeo, destGeo, directDist);
           const matchingVehicles = availableVehicles.filter((v) => selectedVehicles.includes(v));
@@ -500,11 +525,14 @@ export function optimizeVacationWindows(
             continue;
           }
 
+          const ferryAccess = classifyOverlandAccess(destGeo);
+
           const vehicleDetails = calculateVehicleMetrics(
             activeVehicle,
             directDist,
             pCostMultiplier,
-            destAirportObj?.isHighSpeedRailConnected
+            destAirportObj?.isHighSpeedRailConnected,
+            activeVehicle !== 'PLANE' ? ferryAccess : undefined
           );
 
           // Non-flight transit duration filter
@@ -606,8 +634,8 @@ export function optimizeVacationWindows(
             continue;
           }
 
-          const ptoEfficiencyRatio = ptoInfo.ptoDaysConsumed > 0
-            ? Math.round((durationDays / ptoInfo.ptoDaysConsumed) * 10) / 10
+          const ptoEfficiencyRatio = ptoInfo.effectivePtoDaysConsumed > 0
+            ? Math.round((durationDays / ptoInfo.effectivePtoDaysConsumed) * 10) / 10
             : durationDays * 2;
 
           rawCandidatePool.push({
@@ -636,7 +664,10 @@ export function optimizeVacationWindows(
             flightRoute: activeVehicle === 'PLANE' ? flightRoute : undefined,
             totalWeekdays: ptoInfo.totalWeekdays,
             publicHolidaysCount: ptoInfo.publicHolidaysCount,
-            ptoDaysConsumed: ptoInfo.ptoDaysConsumed,
+            ptoDaysConsumed: ptoInfo.effectivePtoDaysConsumed,
+            rawPtoDaysConsumed: ptoInfo.ptoDaysConsumed,
+            overlapsChildcareClosure: ptoInfo.overlappingClosureWeekdays > 0,
+            hasYoungChildAtDeparture: hasYoungChild,
             ptoEfficiencyRatio,
             suggestedShifts: ptoInfo.suggestedShifts,
             estimatedTotalCost: totalCost,
@@ -654,10 +685,15 @@ export function optimizeVacationWindows(
             requiresSchoolExemption: false,
             schoolHolidayDaysOverlap: holidayCoverage.overlapDays,
             holidayCoverage,
-            frictionBaseScore: compositeFrictionScore,
+            frictionBaseScore: Math.max(5, compositeFrictionScore - jetlagPenalty),
             travelVehicle: activeVehicle,
             availableVehicles,
             vehicleDetails,
+            overlandAccess: activeVehicle !== 'PLANE' ? ferryAccess.access : undefined,
+            ferrySurchargeEur: activeVehicle !== 'PLANE' ? ferryAccess.ferrySurchargeEur : undefined,
+            ferryTransitMinutes: activeVehicle !== 'PLANE' ? ferryAccess.ferryTransitMinutes : undefined,
+            jetlagPenalty: jetlagPenalty > 0 ? jetlagPenalty : undefined,
+            parkSleepFlyRecommended: activeVehicle === 'PLANE' && (originDriveMins || 0) > 90,
           });
         }
       }
@@ -726,6 +762,14 @@ export function optimizeVacationWindows(
       );
     }
     return [];
+  }
+
+  // 5b. Childcare Closure vs. Peak Season Arbitrage
+  // For windows overlapping a CHILDCARE_CLOSURE where the family has a daycare-age child
+  // (< 6y at departure), compare against the cheapest off-peak alternative for the same
+  // destination & duration. Warn when the peak-season premium per saved PTO day is steep.
+  if (childcareClosures.length > 0) {
+    applyChildcareArbitrageWarnings(eligibleCandidates);
   }
 
   // Find min/max for dynamic normalizations (factoring in meal plan value for fair comparisons)
@@ -809,6 +853,12 @@ export function optimizeVacationWindows(
       const freeDaysGained = Math.max(0, cand.durationDays - cand.ptoDaysConsumed);
       const freeRatio = freeDaysGained / cand.durationDays;
       ptoEfficiencyIndex = Math.min(100, Math.max(55, Math.round(65 + freeRatio * 55)));
+    }
+
+    // Prevent PtoIndex from blindly dominating PriceIndex when the childcare closure
+    // arbitrage opportunity cost exceeds EUR 150/saved-PTO-day: dampen its weighted contribution.
+    if (cand.childcareArbitrageWarning) {
+      ptoEfficiencyIndex = Math.round(ptoEfficiencyIndex * 0.6 * 10) / 10;
     }
 
     // 4. Travel Friction (distance, driving hours, layovers, arbitrage: 0-100)

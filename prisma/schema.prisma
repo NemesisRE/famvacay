@@ -208,6 +208,8 @@ model FamilyAirport {
   id              String        @id @default(uuid())
   familyProfileId String
   airportIata     String
+  drivingMinutes  Int?          // Cached OSRM road routing duration (home -> airport)
+  drivingKm       Float?        // Cached OSRM road routing distance (home -> airport)
   familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
   airport         Airport       @relation(fields: [airportIata], references: [iata], onDelete: Cascade)
 
@@ -216,12 +218,22 @@ model FamilyAirport {
   @@index([airportIata])
 }
 
+// STRICT_BLACKOUT: travel impossible (work lockouts, weddings) - hard candidate filter.
+// CHILDCARE_CLOSURE: daycare/Kita closed - travel is possible and consumes 0 *marginal* PTO
+// during overlapping weekdays (scaled by coverageFactor), since PTO is already bound by childcare duties.
+enum PeriodType {
+  STRICT_BLACKOUT
+  CHILDCARE_CLOSURE
+}
+
 model BlackoutPeriod {
   id              String        @id @default(uuid())
   startDate       DateTime      @db.Date
   endDate         DateTime      @db.Date
   recurrence      String        @default("NONE") // "NONE" | "YEARLY"
   reason          String?
+  type            PeriodType    @default(STRICT_BLACKOUT)
+  coverageFactor  Float         @default(1.0) // % of closure days parents must cover with own PTO (1.0 = 100%, 0.5 = grandparents cover half)
   familyProfileId String
   familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
 
@@ -244,6 +256,48 @@ model TripSearch {
   updatedAt        DateTime      @updatedAt
 
   @@index([familyProfileId])
+}
+
+// -------------------------------------------------------------
+// Persistent Trip Sharing, Voting & Stateless .ics Export
+// -------------------------------------------------------------
+
+model SharedTripBoard {
+  id              String            @id @default(uuid())
+  shortCode       String            @unique
+  familyProfileId String?
+  searchParams    Json
+  candidates      SharedCandidate[]
+  expiresAt       DateTime?
+  createdAt       DateTime          @default(now())
+
+  @@index([familyProfileId])
+}
+
+model SharedCandidate {
+  id              String          @id @default(uuid())
+  boardId         String
+  board           SharedTripBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  destinationCode String
+  startDate       DateTime        @db.Date
+  endDate         DateTime        @db.Date
+  snapshotData    Json
+  votes           CandidateVote[]
+
+  @@index([boardId])
+}
+
+model CandidateVote {
+  id          String          @id @default(uuid())
+  candidateId String
+  candidate   SharedCandidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  voterName   String
+  vote        Int             // -1 = Veto, 1 = Upvote, 2 = Favorite
+  comment     String?
+  createdAt   DateTime        @default(now())
+
+  @@unique([candidateId, voterName])
+  @@index([candidateId])
 }
 
 // -------------------------------------------------------------

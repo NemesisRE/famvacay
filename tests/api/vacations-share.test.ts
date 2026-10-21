@@ -1,8 +1,19 @@
-import { describe, it, expect } from 'vitest';
-import { POST, GET } from '@/app/api/vacations/share/route';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
+import { createFakeSharedBoardPrisma } from '../helpers/fake-shared-board-prisma';
+
+const fakePrisma = createFakeSharedBoardPrisma();
+vi.mock('@/lib/db/prisma', () => ({ prisma: fakePrisma }));
+
+const { POST, GET } = await import('@/app/api/vacations/share/route');
 
 describe('Vacations Share API - Persist & Hydrate', () => {
+  beforeEach(() => {
+    fakePrisma.__state.boards.clear();
+    fakePrisma.__state.candidates.clear();
+    fakePrisma.__state.votes.clear();
+  });
+
   const mockWindows = [
     {
       startDate: '2026-08-01',

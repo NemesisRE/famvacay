@@ -44,6 +44,11 @@ import {
   Share2,
   Loader2,
   Wallet,
+  Ship,
+  ThumbsUp,
+  ThumbsDown,
+  Star,
+  BadgeCheck,
 } from 'lucide-react';
 import { differenceInYears, addDays } from 'date-fns';
 import { CandidateWindow, DestinationType, TravelVehicle, BoardType } from '@/lib/optimizer/types';
@@ -294,6 +299,9 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [activeShareId, setActiveShareId] = useState<string | null>(null);
   const [shareCopiedToast, setShareCopiedToast] = useState<boolean>(false);
+  const [liveEnrichedPrices, setLiveEnrichedPrices] = useState<Record<string, { estimatedTotalCost: number; pricePerPerson: number }>>({});
+  const [voterName, setVoterName] = useState<string>('');
+  const [voteTallies, setVoteTallies] = useState<Record<string, { upvotes: number; favorites: number; vetoes: number }>>({});
 
   const [viewMode, setViewMode] = useState<'list' | 'destination' | 'timeframe'>('destination');
   const [selectedDestinationsList, setSelectedDestinationsList] = useState<string[]>([]);
@@ -582,6 +590,16 @@ export default function HomePage() {
       // Ignore localStorage errors
     } finally {
       setHasRestoredFromStorage(true);
+    }
+  }, []);
+
+  // Restore the remembered voter display name used for shared-board voting
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('famvac_voter_name');
+      if (saved) setVoterName(saved);
+    } catch {
+      // Ignore localStorage errors
     }
   }, []);
 
@@ -1413,6 +1431,100 @@ export default function HomePage() {
     return filteredResults.slice(startIdx, startIdx + pageSize);
   }, [filteredResults, currentPage, pageSize]);
 
+  const liveEnrichKeyFor = (win: CandidateWindow) =>
+    `${win.originAirport}|${win.destinationAirport}|${win.startDate}|${win.endDate}`;
+
+  // Asynchronous BYOK Live Price Enrichment: after the deterministic CSP results render,
+  // silently request a live quote for the top 5 visible cards. If no provider is configured
+  // or the request fails, the benchmark price is kept as-is (no error surfaced to the user).
+  useEffect(() => {
+    const topCards = displayedResults.slice(0, 5);
+    if (topCards.length === 0) return;
+
+    let cancelled = false;
+
+    for (const win of topCards) {
+      const key = liveEnrichKeyFor(win);
+      if (liveEnrichedPrices[key]) continue;
+
+      const ages = childrenList.map((c) => {
+        const b = new Date(c.birthDate);
+        return isNaN(b.getTime()) ? 6 : Math.max(0, differenceInYears(new Date(win.startDate), b));
+      });
+
+      fetch('/api/pricing/live-enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          originAirport: win.originAirport,
+          destinationAirport: win.destinationAirport,
+          startDate: win.startDate,
+          endDate: win.endDate,
+          durationDays: win.durationDays,
+          party: { adults: adultsCount, childrenAges: ages, cabinClass: preferredCabinClass },
+          isArbitrage: win.isArbitrageOpportunity,
+        }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((res) => {
+          if (cancelled || !res?.success || !res.live || !res.pricing) return;
+          setLiveEnrichedPrices((prev) => ({
+            ...prev,
+            [key]: {
+              estimatedTotalCost: res.pricing.totalCost,
+              pricePerPerson: res.pricing.pricePerPerson,
+            },
+          }));
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayedResults, adultsCount, childrenList, preferredCabinClass]);
+
+  const getInitialVoteTally = (win: CandidateWindow) => {
+    const votes = win.votes || [];
+    return {
+      upvotes: votes.filter((v) => v.vote === 1).length,
+      favorites: votes.filter((v) => v.vote === 2).length,
+      vetoes: votes.filter((v) => v.vote === -1).length,
+    };
+  };
+
+  const submitSharedBoardVote = async (win: CandidateWindow, vote: -1 | 1 | 2) => {
+    const candidateId = win.shareCandidateId;
+    if (!candidateId || !activeShareId) return;
+
+    let name = voterName;
+    if (!name) {
+      name = (window.prompt(t.home.enterVoterNamePrompt) || '').trim();
+      if (!name) return;
+      try {
+        localStorage.setItem('famvac_voter_name', name);
+      } catch {
+        // Ignore localStorage errors
+      }
+      setVoterName(name);
+    }
+
+    try {
+      const res = await fetch(`/api/vacations/share/${encodeURIComponent(activeShareId)}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidateId, voterName: name, vote }),
+      });
+      const data = await res.json();
+      if (data?.success && data.tally) {
+        setVoteTallies((prev) => ({ ...prev, [candidateId]: data.tally }));
+      }
+    } catch (err) {
+      console.warn('[Shared Board Vote Failed]', err);
+    }
+  };
+
   // Destination Groups
   const destinationGroups = useMemo(() => {
     if (!filteredResults || filteredResults.length === 0) return [];
@@ -1663,6 +1775,18 @@ export default function HomePage() {
                     ) : null}
                   </span>
                 )}
+                {win.overlandAccess && (win.overlandAccess === 'SHORT_FERRY' || win.overlandAccess === 'LONG_FERRY') && (
+                  <span
+                    className="text-[9px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 shadow-2xs bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800"
+                    title={win.overlandAccess === 'SHORT_FERRY' ? t.home.shortFerryBadge : t.home.longFerryBadge}
+                  >
+                    <Ship className="w-2.5 h-2.5 flex-shrink-0" />
+                    <span>
+                      {win.overlandAccess === 'SHORT_FERRY' ? t.home.shortFerryBadge : t.home.longFerryBadge}
+                      {win.ferrySurchargeEur ? ` (+${win.ferrySurchargeEur} €)` : ''}
+                    </span>
+                  </span>
+                )}
                 <DestinationSafetyPopover
                   safety={win.destinationSafety || win.safetyAssessment}
                   destinationName={getFormattedLocalizedDestination(win.destinationAirport, win.destinationName)}
@@ -1714,28 +1838,77 @@ export default function HomePage() {
 
           {/* Price Section */}
           <div className="flex flex-col sm:items-end justify-start gap-1 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 text-left sm:text-right shrink-0">
-            <div>
-              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">
-                {t.home.estFamilyCost}
-              </span>
-              <div className="flex items-baseline gap-2 sm:justify-end flex-wrap">
-                <span className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                  {formatCurrency(win.estimatedTotalCost)}
-                </span>
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                  (~{formatCurrency(win.pricePerPerson)} / {t.home.perPerson})
-                </span>
-              </div>
-              <span className="block text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
-                {t.home.flightAndLodgingIncluded}
-              </span>
-              {Boolean(win.effectiveCost) && win.boardType === 'ALL_INCLUSIVE' && typeof win.mealPlanValue === 'number' && win.mealPlanValue > 0 ? (
-                <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold sm:text-right mt-0.5 flex items-center gap-1 sm:justify-end">
-                  <Utensils className="w-2.5 h-2.5" />
-                  <span>{t.home.boardTypeSavingsBadge}: ~€{win.mealPlanValue}</span>
+            {(() => {
+              const livePrice = liveEnrichedPrices[liveEnrichKeyFor(win)];
+              const displayTotalCost = livePrice?.estimatedTotalCost ?? win.estimatedTotalCost;
+              const displayPricePerPerson = livePrice?.pricePerPerson ?? win.pricePerPerson;
+              return (
+                <div>
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1 sm:justify-end">
+                    {t.home.estFamilyCost}
+                    {livePrice && (
+                      <span
+                        className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded-full"
+                        title={t.home.liveVerifiedHint}
+                      >
+                        <BadgeCheck className="w-2.5 h-2.5" />
+                        {t.home.liveVerifiedBadge}
+                      </span>
+                    )}
+                  </span>
+                  <div className="flex items-baseline gap-2 sm:justify-end flex-wrap">
+                    <span className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                      {formatCurrency(displayTotalCost)}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                      (~{formatCurrency(displayPricePerPerson)} / {t.home.perPerson})
+                    </span>
+                  </div>
+                  <span className="block text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                    {t.home.flightAndLodgingIncluded}
+                  </span>
                 </div>
-              ) : null}
-            </div>
+              );
+            })()}
+            {Boolean(win.effectiveCost) && win.boardType === 'ALL_INCLUSIVE' && typeof win.mealPlanValue === 'number' && win.mealPlanValue > 0 ? (
+              <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold sm:text-right mt-0.5 flex items-center gap-1 sm:justify-end">
+                <Utensils className="w-2.5 h-2.5" />
+                <span>{t.home.boardTypeSavingsBadge}: ~€{win.mealPlanValue}</span>
+              </div>
+            ) : null}
+
+            {/* Shared Trip Board Voting */}
+            {activeShareId && win.shareCandidateId && (() => {
+              const tally = voteTallies[win.shareCandidateId] || getInitialVoteTally(win);
+              return (
+                <div className="flex items-center gap-1.5 mt-1.5 sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => submitSharedBoardVote(win, 1)}
+                    title={t.home.voteUpvoteTooltip}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors cursor-pointer"
+                  >
+                    <ThumbsUp className="w-3 h-3" /> {tally.upvotes}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => submitSharedBoardVote(win, 2)}
+                    title={t.home.voteFavoriteTooltip}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-700 dark:hover:text-amber-300 hover:border-amber-300 dark:hover:border-amber-700 transition-colors cursor-pointer"
+                  >
+                    <Star className="w-3 h-3" /> {tally.favorites}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => submitSharedBoardVote(win, -1)}
+                    title={t.home.voteVetoTooltip}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-rose-300 hover:border-rose-300 dark:hover:border-rose-700 transition-colors cursor-pointer"
+                  >
+                    <ThumbsDown className="w-3 h-3" /> {tally.vetoes}
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -1823,6 +1996,7 @@ export default function HomePage() {
               endDate={win.endDate}
               adults={adultsCount}
               className="w-full sm:w-auto"
+              candidate={win}
             />
           </div>
 
@@ -1839,6 +2013,21 @@ export default function HomePage() {
                 </span>
               </div>
             </MetricExplanationPopover>
+
+            {win.childcareArbitrageWarning && (
+              <div
+                className="bg-rose-50/80 dark:bg-rose-950/30 rounded-lg p-2.5 flex items-start gap-1.5 border border-rose-200/70 dark:border-rose-900/60 text-[11px] text-rose-800 dark:text-rose-300"
+                title={t.home.childcareArbitrageWarningHint}
+              >
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <span>
+                  {t.home.childcareArbitrageWarningLabel}{' '}
+                  <strong>{win.childcareArbitrageWarning.costPerSavedPtoDay} €</strong>
+                  {' / '}{t.home.savedPtoDay}
+                  {' '}({win.childcareArbitrageWarning.savedPtoDays} {t.home.days}, +{win.childcareArbitrageWarning.extraCostEur} €)
+                </span>
+              </div>
+            )}
 
             <MetricExplanationPopover window={win} trigger="score" className="w-full">
               <div className="bg-indigo-50/80 dark:bg-indigo-950/40 hover:bg-indigo-100/90 dark:hover:bg-indigo-900/40 transition rounded-lg p-2.5 flex items-center justify-between border border-indigo-100/60 dark:border-indigo-900/50 hover:border-indigo-300 dark:hover:border-indigo-700 group">

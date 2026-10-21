@@ -22,8 +22,13 @@ import {
   Check,
   X,
   Sliders,
+  Download,
+  ParkingCircle,
+  Package,
 } from 'lucide-react';
 import { AggregatedTripPricing } from '@/lib/pricing/types';
+import { CandidateWindow } from '@/lib/optimizer/types';
+import { generateVacationIcs } from '@/lib/calendar/ics-export';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import {
   TRAVEL_PORTALS,
@@ -43,6 +48,34 @@ interface BookingDealsPopoverProps {
   endDate?: string;
   adults?: number;
   className?: string;
+  /** Full candidate window, used for the .ics export and Park-Sleep-Fly notice. */
+  candidate?: CandidateWindow;
+}
+
+function downloadIcsFile(candidate: CandidateWindow, pricingDetails?: AggregatedTripPricing) {
+  const ics = generateVacationIcs({
+    destinationName: candidate.destinationName || candidate.destinationAirport,
+    originAirport: candidate.originAirport,
+    destinationAirport: candidate.destinationAirport,
+    startDate: candidate.startDate,
+    endDate: candidate.endDate,
+    totalWeekdays: candidate.totalWeekdays,
+    publicHolidaysCount: candidate.publicHolidaysCount,
+    ptoDaysConsumed: candidate.ptoDaysConsumed,
+    estimatedTotalCost: candidate.estimatedTotalCost,
+    pricePerPerson: candidate.pricePerPerson,
+    deepLinks: pricingDetails?.deepLinks,
+  });
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `famvacay-${candidate.destinationAirport}-${candidate.startDate}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 export function BookingDealsPopover({
@@ -56,6 +89,7 @@ export function BookingDealsPopover({
   endDate,
   adults,
   className = '',
+  candidate,
 }: BookingDealsPopoverProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
@@ -243,6 +277,31 @@ export function BookingDealsPopover({
                   </div>
                 </div>
 
+                {/* Package Tour Child Fixed-Price Discount (Kinderfestpreis) vs. Modular Booking */}
+                {pricingDetails.packageTourDeal && (
+                  <div className="p-2 rounded-lg bg-violet-50/70 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-900/60 text-[11px] flex items-start gap-1.5">
+                    <Package className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 flex-shrink-0 mt-0.5" />
+                    <span className="text-violet-800 dark:text-violet-300">
+                      {pricingDetails.packageTourDeal.cheaperStrategy === 'PACKAGE'
+                        ? (t.home.packageTourCheaper || 'Package tour (Kinderfestpreis) is cheaper by')
+                        : (t.home.modularCheaper || 'Modular flight + apartment booking is cheaper by')}
+                      {' '}
+                      <strong>{pricingDetails.packageTourDeal.savingsEur} €</strong>
+                      {' '}
+                      ({pricingDetails.packageTourDeal.packagePriceEur} € {t.home.packageWord || 'package'} vs.{' '}
+                      {pricingDetails.packageTourDeal.modularPriceEur} € {t.home.modularWord || 'modular'})
+                    </span>
+                  </div>
+                )}
+
+                {/* Park-Sleep-Fly notice when airport driving duration exceeds 90 minutes */}
+                {candidate?.parkSleepFlyRecommended && (
+                  <div className="p-2 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/60 text-[11px] flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
+                    <ParkingCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{t.home.parkSleepFlyNotice || 'Long drive to the airport - consider a Park & Sleep & Fly hotel (+130 €)'}</span>
+                  </div>
+                )}
+
                 {/* Direct Booking Portal Buttons */}
                 <div className="space-y-1.5">
                   <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
@@ -286,10 +345,22 @@ export function BookingDealsPopover({
               </div>
             )}
 
-            {/* Footer Transparency Notice */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500">
-              <span>Prices estimated from live seasonality benchmarks.</span>
-              <span className="font-bold text-slate-700 dark:text-slate-200">{estimatedTotalCost} € Total</span>
+            {/* Footer Transparency Notice + .ics Export */}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 gap-2">
+              <span className="truncate">Prices estimated from live seasonality benchmarks.</span>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {candidate && (
+                  <button
+                    type="button"
+                    onClick={() => downloadIcsFile(candidate, pricingDetails)}
+                    title={t.home.downloadIcs || 'Download .ics'}
+                    className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <span className="font-bold text-slate-700 dark:text-slate-200">{estimatedTotalCost} € Total</span>
+              </div>
             </div>
           </div>
         </FloatingPortal>

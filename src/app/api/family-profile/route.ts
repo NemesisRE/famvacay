@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth-options';
 import { prisma } from '@/lib/db/prisma';
+import { resolveFamilyAirportRoadRouting } from '@/lib/geo/osrm';
 
 export const dynamic = 'force-dynamic';
 
@@ -182,6 +183,28 @@ export async function POST(req: NextRequest) {
       update: {},
     });
 
+    // Sync FamilyAirport join rows for each preferred origin airport, then resolve (and cache)
+    // real OSRM road-routing metrics in the background - never blocks the profile save response.
+    if (Array.isArray(originAirports) && originAirports.length > 0) {
+      const linkedAirports = await Promise.all(
+        originAirports.map((iata: string) =>
+          prisma.familyAirport
+            .upsert({
+              where: { familyProfileId_airportIata: { familyProfileId: profileId, airportIata: iata } },
+              create: { familyProfileId: profileId, airportIata: iata },
+              update: {},
+            })
+            .catch(() => null)
+        )
+      );
+
+      void Promise.all(
+        linkedAirports
+          .filter(Boolean)
+          .map((link: any) => resolveFamilyAirportRoadRouting(profileId, link.airportIata))
+      ).catch(() => {});
+    }
+
     // Replace members if provided
     if (Array.isArray(members)) {
       await prisma.familyMember.deleteMany({
@@ -222,6 +245,8 @@ export async function POST(req: NextRequest) {
             endDate: new Date(b.endDate),
             recurrence: b.recurrence || 'NONE',
             reason: b.reason || null,
+            type: b.type === 'CHILDCARE_CLOSURE' ? 'CHILDCARE_CLOSURE' : 'STRICT_BLACKOUT',
+            coverageFactor: typeof b.coverageFactor === 'number' ? b.coverageFactor : 1.0,
           })),
         });
 

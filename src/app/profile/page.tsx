@@ -50,6 +50,8 @@ interface BlackoutRangeForm {
   startDate: string;
   endDate: string;
   reason?: string;
+  type?: 'STRICT_BLACKOUT' | 'CHILDCARE_CLOSURE';
+  coverageFactor?: number;
 }
 
 export default function FamilyProfilePage() {
@@ -79,6 +81,7 @@ export default function FamilyProfilePage() {
   const [maxFlightStops, setMaxFlightStops] = useState<number | undefined>(undefined);
   const [scoringWeights, setScoringWeights] = useState<any>({});
   const [blackoutRanges, setBlackoutRanges] = useState<BlackoutRangeForm[]>([]);
+  const [airportRoadRouting, setAirportRoadRouting] = useState<Record<string, { drivingMinutes: number; drivingKm: number }>>({});
   const [isAddingBlackout, setIsAddingBlackout] = useState(false);
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -193,6 +196,15 @@ export default function FamilyProfilePage() {
               setCountry(getCountryCodeFromSubdivision(p.federalState));
             }
             setOriginAirports(p.originAirports || ['STR', 'FRA']);
+            if (Array.isArray(p.preferredAirports)) {
+              const routing: Record<string, { drivingMinutes: number; drivingKm: number }> = {};
+              for (const link of p.preferredAirports) {
+                if (typeof link.drivingMinutes === 'number' && typeof link.drivingKm === 'number') {
+                  routing[link.airportIata] = { drivingMinutes: link.drivingMinutes, drivingKm: link.drivingKm };
+                }
+              }
+              setAirportRoadRouting(routing);
+            }
             setPreferredCabinClass(p.preferredCabinClass || 'ECONOMY');
             setPassportCheckRequired(p.passportCheckRequired ?? true);
             if (Array.isArray(p.travelModes) && p.travelModes.length > 0) {
@@ -230,6 +242,8 @@ export default function FamilyProfilePage() {
                   startDate: b.startDate ? b.startDate.split('T')[0] : '',
                   endDate: b.endDate ? b.endDate.split('T')[0] : '',
                   reason: b.reason || '',
+                  type: b.type === 'CHILDCARE_CLOSURE' ? 'CHILDCARE_CLOSURE' : 'STRICT_BLACKOUT',
+                  coverageFactor: typeof b.coverageFactor === 'number' ? b.coverageFactor : 1.0,
                 }))
               );
             }
@@ -285,6 +299,23 @@ export default function FamilyProfilePage() {
   const updateBlackoutRange = (index: number, start: string, end: string) => {
     const updated = [...blackoutRanges];
     updated[index] = { ...updated[index], startDate: start, endDate: end };
+    setBlackoutRanges(updated);
+  };
+
+  const toggleBlackoutType = (index: number) => {
+    const updated = [...blackoutRanges];
+    const current = updated[index];
+    updated[index] = {
+      ...current,
+      type: current.type === 'CHILDCARE_CLOSURE' ? 'STRICT_BLACKOUT' : 'CHILDCARE_CLOSURE',
+      coverageFactor: current.coverageFactor ?? 1.0,
+    };
+    setBlackoutRanges(updated);
+  };
+
+  const updateBlackoutCoverage = (index: number, value: number) => {
+    const updated = [...blackoutRanges];
+    updated[index] = { ...updated[index], coverageFactor: Math.min(1, Math.max(0, value)) };
     setBlackoutRanges(updated);
   };
 
@@ -538,6 +569,21 @@ export default function FamilyProfilePage() {
                 onChange={setOriginAirports}
                 coordinates={departureCoords}
               />
+              {originAirports.some((code) => airportRoadRouting[code]) && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {originAirports
+                    .filter((code) => airportRoadRouting[code])
+                    .map((code) => (
+                      <span
+                        key={code}
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                        title={t.profile.drivingTimeHint}
+                      >
+                        {code}: ~{airportRoadRouting[code].drivingMinutes} min ({airportRoadRouting[code].drivingKm} km)
+                      </span>
+                    ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -818,6 +864,30 @@ export default function FamilyProfilePage() {
                           onChange={(e) => updateBlackout(index, 'reason', e.target.value)}
                           className="flex-1 min-w-0 text-xs rounded border border-slate-300 dark:border-slate-700 px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                         />
+                        <button
+                          type="button"
+                          onClick={() => toggleBlackoutType(index)}
+                          title={t.profile.childcareClosureToggleHint}
+                          className={`flex-shrink-0 px-2 py-1 rounded text-[11px] font-semibold border transition-colors cursor-pointer ${
+                            range.type === 'CHILDCARE_CLOSURE'
+                              ? 'bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-700'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                          }`}
+                        >
+                          {range.type === 'CHILDCARE_CLOSURE' ? t.profile.childcareClosureLabel : t.profile.strictBlackoutLabel}
+                        </button>
+                        {range.type === 'CHILDCARE_CLOSURE' && (
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={5}
+                            value={Math.round((range.coverageFactor ?? 1.0) * 100)}
+                            onChange={(e) => updateBlackoutCoverage(index, Number(e.target.value) / 100)}
+                            title={t.profile.childcareCoverageHint}
+                            className="w-14 flex-shrink-0 text-xs rounded border border-sky-300 dark:border-sky-700 px-1.5 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-sky-500"
+                          />
+                        )}
                         <button
                           type="button"
                           onClick={() => removeBlackout(index)}
