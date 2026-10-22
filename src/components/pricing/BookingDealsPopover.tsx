@@ -12,6 +12,7 @@ import {
   useInteractions,
   FloatingPortal,
 } from '@floating-ui/react';
+import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop } from '@/components/ui/responsive-popover';
 import {
   ExternalLink,
   Plane,
@@ -25,11 +26,15 @@ import {
   Download,
   ParkingCircle,
   Package,
+  Car,
+  Train,
+  Bus,
 } from 'lucide-react';
 import { AggregatedTripPricing } from '@/lib/pricing/types';
 import { CandidateWindow } from '@/lib/optimizer/types';
 import { generateVacationIcs } from '@/lib/calendar/ics-export';
 import { useI18n } from '@/lib/i18n/i18n-context';
+import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/destination-points';
 import {
   TRAVEL_PORTALS,
   TravelPortal,
@@ -91,11 +96,13 @@ export function BookingDealsPopover({
   className = '',
   candidate,
 }: BookingDealsPopoverProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [showPortalSettings, setShowPortalSettings] = useState(false);
   const [activePortalsList, setActivePortalsList] = useState<TravelPortal[]>([]);
   const [selectedPortalIds, setSelectedPortalIds] = useState<string[]>([]);
+
+  const isSmallScreen = useIsSmallScreen();
 
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
@@ -132,6 +139,28 @@ export function BookingDealsPopover({
 
   const { flight, lodging } = pricingDetails;
 
+  // Overland trips (car/train/coach) have no flight leg: show the vehicle's round-trip cost,
+  // skip flight/package portals and Park-Sleep-Fly, and search accommodation by place name
+  // (surface destinations have no airport code a hotel portal would understand).
+  const travelMode = candidate?.travelVehicle || pricingDetails.travelMode || 'PLANE';
+  const isOverland = travelMode !== 'PLANE';
+  const TravelIcon = travelMode === 'CAR' ? Car : travelMode === 'TRAIN' ? Train : travelMode === 'BUS' ? Bus : Plane;
+  const travelShareLabel =
+    travelMode === 'CAR'
+      ? (candidate?.vehicleDetails?.fuelType === 'ELECTRIC' ? `${t.home.vehicleCar} (${t.home.fuelElectric})` : t.home.travelShareCar)
+      : travelMode === 'TRAIN'
+      ? t.home.travelShareTrain
+      : travelMode === 'BUS'
+      ? t.home.travelShareBus
+      : t.home.flightShare || 'Return Flights';
+  const destPoint = getDestinationPoint(destinationAirport);
+  const lodgingSearchTerm =
+    destPoint?.kind === 'SURFACE' ? `${destPoint.city}, ${destPoint.country}` : destinationAirport;
+  const destinationLabel = getLocalizedDestinationLabel(destinationAirport, locale, { city: candidate?.destinationCity }).city;
+  const visiblePortals = isOverland
+    ? TRAVEL_PORTALS.filter((portal) => portal.category === 'lodging')
+    : activePortalsList;
+
   const togglePortal = (portalId: string) => {
     let nextIds: string[];
     if (selectedPortalIds.includes(portalId)) {
@@ -164,14 +193,12 @@ export function BookingDealsPopover({
       {/* Popover Card anchored via Floating UI FloatingPortal */}
       {isOpen && (
         <FloatingPortal>
+          <PopoverBackdrop show={isSmallScreen} zIndex={9998} />
           <div
             ref={refs.setFloating}
-            style={{
-              ...floatingStyles,
-              zIndex: 9999,
-            }}
+            style={getResponsivePopoverStyle(isSmallScreen, floatingStyles, 9999)}
             {...getFloatingProps()}
-            className="w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 text-slate-800 dark:text-slate-100 transition-opacity duration-150 ease-out"
+            className="animate-in fade-in zoom-in-95 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 text-slate-800 dark:text-slate-100 transition-opacity duration-150 ease-out"
           >
             {/* Header */}
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
@@ -181,7 +208,7 @@ export function BookingDealsPopover({
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                  {originAirport} ➔ {destinationAirport}
+                  {isOverland ? destinationLabel : `${originAirport} ➔ ${destinationAirport}`}
                 </span>
                 <button
                   type="button"
@@ -252,14 +279,17 @@ export function BookingDealsPopover({
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div className="p-2 rounded-lg bg-teal-50/70 dark:bg-teal-950/30 border border-teal-100 dark:border-teal-900/60">
                     <span className="text-[10px] text-teal-700 dark:text-teal-300 font-bold flex items-center gap-1">
-                      <Plane className="w-3 h-3" />
-                      {t.home.flightShare || 'Return Flights'}
+                      <TravelIcon className="w-3 h-3" />
+                      {travelShareLabel}
                     </span>
                     <div className="font-extrabold text-slate-900 dark:text-slate-100 text-xs mt-0.5">
                       ~{flight.totalFlightCost} €
-                      <span className="text-[9px] font-normal text-slate-400 dark:text-slate-500 ml-1">
-                        (~{flight.baseAdultFare} € / pp)
-                      </span>
+                      {/* A car costs the same however many travel in it, so no per-person fare */}
+                      {travelMode !== 'CAR' && (
+                        <span className="text-[9px] font-normal text-slate-400 dark:text-slate-500 ml-1">
+                          (~{flight.baseAdultFare} € / pp)
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -276,6 +306,19 @@ export function BookingDealsPopover({
                     </div>
                   </div>
                 </div>
+
+                {/* Source-market demand: school holidays of Europe's big travel markets (already in the totals) */}
+                {pricingDetails.demandAdjustmentEur ? (
+                  <div
+                    className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px] flex items-center justify-between gap-2 text-slate-700 dark:text-slate-300"
+                    title={t.home.demandTitle}
+                  >
+                    <span>{t.home.demandPriceLabel}</span>
+                    <strong className={pricingDetails.demandAdjustmentEur > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300'}>
+                      {pricingDetails.demandAdjustmentEur > 0 ? '+' : '−'}{Math.abs(pricingDetails.demandAdjustmentEur)} €
+                    </strong>
+                  </div>
+                ) : null}
 
                 {/* Package Tour Child Fixed-Price Discount (Kinderfestpreis) vs. Modular Booking */}
                 {pricingDetails.packageTourDeal && (
@@ -295,7 +338,7 @@ export function BookingDealsPopover({
                 )}
 
                 {/* Park-Sleep-Fly notice when airport driving duration exceeds 90 minutes */}
-                {candidate?.parkSleepFlyRecommended && (
+                {!isOverland && candidate?.parkSleepFlyRecommended && (
                   <div className="p-2 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/60 text-[11px] flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
                     <ParkingCircle className="w-3.5 h-3.5 flex-shrink-0" />
                     <span>{t.home.parkSleepFlyNotice || 'Long drive to the airport - consider a Park & Sleep & Fly hotel (+130 €)'}</span>
@@ -305,15 +348,15 @@ export function BookingDealsPopover({
                 {/* Direct Booking Portal Buttons */}
                 <div className="space-y-1.5">
                   <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                    Compare Live Rates Across Providers:
+                    {isOverland ? t.home.compareAccommodation : 'Compare Live Rates Across Providers:'}
                   </span>
                   <div className="grid grid-cols-2 gap-2">
-                    {activePortalsList.map((portal) => {
+                    {visiblePortals.map((portal) => {
                       const partyAdults = pricingDetails.party?.adults ?? adults ?? 2;
                       const url = portal.buildUrl({
                         originAirport,
                         originAirports,
-                        destinationAirport,
+                        destinationAirport: portal.category === 'lodging' ? lodgingSearchTerm : destinationAirport,
                         startDate: sDate,
                         endDate: eDate,
                         childrenAges: pricingDetails.party?.childrenAges,

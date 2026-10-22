@@ -205,6 +205,8 @@ describe('3. Layover-Weighted Scoring', () => {
       durationDaysMax: 7,
       earliestDate: '2026-11-01',
       latestDate: '2026-11-20',
+      // Exercise the layover mechanics themselves (rail-and-fly would replace the feeder leg)
+      railAirSuggestions: false,
       userProfile: {
         homeLocation: 'Karlsruhe, Germany',
         federalState: 'DE-BW',
@@ -266,6 +268,7 @@ describe('4. Layover Tolerance Preference / Filter', () => {
       earliestDate: '2026-11-01',
       latestDate: '2026-11-20',
       maxFlightStops: 0,
+      railAirSuggestions: false,
       userProfile: {
         homeLocation: 'Karlsruhe, Germany',
         federalState: 'DE-BW',
@@ -280,6 +283,13 @@ describe('4. Layover Tolerance Preference / Filter', () => {
     const windows = await optimizeVacationWindows(plan, mockHolidays, mockPublicHolidays);
     // Zero candidates because HKT from FKB requires at least 1 stop
     expect(windows.length).toBe(0);
+
+    // With rail-and-fly enabled (default), the train to a hub with a non-stop flight satisfies
+    // the direct-only preference instead of returning nothing.
+    // Bangkok: no non-stop from FKB, but Frankfurt (reachable by train) flies there non-stop
+    const railAir = await optimizeVacationWindows({ ...plan, targetDestinations: ['BKK'], railAirSuggestions: undefined }, mockHolidays, mockPublicHolidays);
+    expect(railAir.length).toBeGreaterThan(0);
+    expect(railAir.every((w) => w.flightStops === 0 && w.railFeeder)).toBe(true);
   });
 
   it('allows connecting routes when maxFlightStops is 1 or undefined', async () => {

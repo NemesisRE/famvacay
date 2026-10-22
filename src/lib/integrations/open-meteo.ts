@@ -1,7 +1,7 @@
 import { getCached, setCached } from '../cache/redis';
 import { getEstimatedClimate } from '../optimizer/weather';
 import { WeatherAssessment } from '../optimizer/types';
-import { getAirportByIata } from '../airports/airport-service';
+import { getDestinationPoint } from '../geo/destination-points';
 
 const TTL_90_DAYS = 90 * 24 * 60 * 60;
 
@@ -21,7 +21,7 @@ export async function getHistoricalWeather(
     return cached;
   }
 
-  const airport = getAirportByIata(destinationCode.toUpperCase());
+  const airport = getDestinationPoint(destinationCode) || getDestinationPoint(destinationCode.toUpperCase());
   if (!airport) {
     return getEstimatedClimate(destinationCode, month);
   }

@@ -12,6 +12,7 @@ import {
   useInteractions,
   FloatingPortal,
 } from '@floating-ui/react';
+import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop } from '@/components/ui/responsive-popover';
 import { Sun, CloudRain, Waves, Thermometer, Info, Sparkles, X, Snowflake } from 'lucide-react';
 import { WeatherAssessment } from '@/lib/optimizer/types';
 import { useI18n } from '@/lib/i18n/i18n-context';
@@ -29,6 +30,8 @@ export function ClimateDetailsPopover({
 }: ClimateDetailsPopoverProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+
+  const isSmallScreen = useIsSmallScreen();
 
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
@@ -73,14 +76,12 @@ export function ClimateDetailsPopover({
       {/* Popover Card anchored via Floating UI FloatingPortal */}
       {isOpen && (
         <FloatingPortal>
+          <PopoverBackdrop show={isSmallScreen} zIndex={9998} />
           <div
             ref={refs.setFloating}
-            style={{
-              ...floatingStyles,
-              zIndex: 9999,
-            }}
+            style={getResponsivePopoverStyle(isSmallScreen, floatingStyles, 9999)}
             {...getFloatingProps()}
-            className="w-72 sm:w-80 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-4 text-slate-800 dark:text-slate-100 transition-opacity duration-150 ease-out"
+            className="animate-in fade-in zoom-in-95 w-72 sm:w-80 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-4 text-slate-800 dark:text-slate-100 transition-opacity duration-150 ease-out"
           >
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-1.5 font-bold text-xs text-slate-800 dark:text-slate-100">

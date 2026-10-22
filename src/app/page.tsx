@@ -24,6 +24,7 @@ import {
   SlidersHorizontal,
   Info,
   MapPin,
+  Route,
   Compass,
   Mountain,
   Building2,
@@ -37,8 +38,6 @@ import {
   X,
   RotateCcw,
   Snowflake,
-  ChevronsUpDown,
-  ChevronsDownUp,
   ShieldCheck,
   Utensils,
   Share2,
@@ -48,22 +47,16 @@ import {
   ThumbsUp,
   ThumbsDown,
   Star,
-  BadgeCheck,
 } from 'lucide-react';
 import { differenceInYears, addDays } from 'date-fns';
-import { CandidateWindow, DestinationType, TravelVehicle, BoardType } from '@/lib/optimizer/types';
-import { curateDistinctAlternativeWindows } from '@/lib/optimizer/curation';
+import { CandidateWindow, DestinationType, TravelVehicle, BoardType, CarFuelType } from '@/lib/optimizer/types';
 import { MetricExplanationPopover } from '@/components/metrics/MetricExplanationPopover';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import {
   COUNTRIES,
   getCountryCodeFromSubdivision,
-  getAllCountries,
-  getLocalizedCountryName,
-  getDeterministicCountryList,
 } from '@/lib/regions/subdivisions';
 import { AirportSelector } from '@/components/airports/AirportSelector';
-import { getAirportByIata, getLocalizedAirportDetails } from '@/lib/airports/airport-service';
 import { LocationInput, GeocodedLocation } from '@/components/geo/LocationInput';
 import { ChildrenSelector, ChildItem } from '@/components/family/ChildrenSelector';
 import { MultiDestinationInput } from '@/components/destination/MultiDestinationInput';
@@ -75,26 +68,39 @@ import { DestinationMapModal } from '@/components/destination/DestinationMapModa
 import { DestinationSafetyPopover } from '@/components/destination/DestinationSafetyPopover';
 import { DestinationFilterDropdown, DestinationOption } from '@/components/destination/DestinationFilterDropdown';
 import { getDestinationVacationStyles } from '@/lib/optimizer/destination-styles';
+import { shareOrCopyLink } from '@/lib/share/share-link';
+import {
+  applyResultFilters,
+  countResultFilterOptions,
+  isResultFilterApplicable,
+  type ResultFilterKey,
+  type ResultFilterState,
+} from '@/lib/results/result-filters';
 import { getAnnualSpecialTimes, SpecialHolidayPeriod } from '@/lib/holidays/special-dates';
-import { BeachTemperaturePopover } from '@/components/preferences/BeachTemperaturePopover';
-import { FlightStopsPopover } from '@/components/preferences/FlightStopsPopover';
+import { OverlandTripDetailsPopover } from '@/components/travel/OverlandTripDetailsPopover';
+import { CountrySelect, SubdivisionSelect } from '@/components/forms/RegionSelectors';
+import { BoardTypeSelect, OverlandDurationSelect } from '@/components/forms/PreferenceSelects';
+import { isAllStylesSelection, toggleStyleSelection, readStoredStyles, getClimateRelevance } from '@/lib/optimizer/style-selection';
+import { VacationStyleTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
+import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/destination-points';
 import { DateRangePicker } from '@/components/calendar/DateRangePicker';
+
+/** "Germany, Netherlands, France +2" in the interface language */
+function formatMarketList(countries: string[], locale: string): string {
+  let names: Intl.DisplayNames | undefined;
+  try {
+    names = new Intl.DisplayNames([locale], { type: 'region' });
+  } catch {
+    names = undefined;
+  }
+  const label = (c: string) => names?.of(c) || c;
+  const shown = countries.slice(0, 3).map(label).join(', ');
+  return countries.length > 3 ? `${shown} +${countries.length - 3}` : shown;
+}
 
 export default function HomePage() {
   const { status } = useSession();
   const { locale, t, formatDate, formatCurrency } = useI18n();
-
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const allCountries = useMemo(() => {
-    if (!mounted) {
-      return getDeterministicCountryList();
-    }
-    return getAllCountries(locale);
-  }, [mounted, locale]);
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
   const defaultEarliest = useMemo(
@@ -117,57 +123,21 @@ export default function HomePage() {
 
   // 2. Travel Destinations & Vacation Style State (default open/all discovery, multi-selectable)
   const [selectedStyles, setSelectedStyles] = useState<DestinationType[]>(['ALL']);
+  // Preferred kind of long-haul trip when the long-range style is selected (empty = any)
+  const [longRangeStyles, setLongRangeStyles] = useState<DestinationType[]>([]);
   const [targetDestinations, setTargetDestinations] = useState<string[]>([]);
 
-  const vacationStyles: {
-    type: DestinationType;
-    label: string;
-    icon: React.ComponentType<{ className?: string }>;
-  }[] = useMemo(
-    () => [
-      { type: 'ALL', label: t.home.vacationKindAll, icon: Compass },
-      { type: 'BEACH', label: t.home.vacationKindBeach, icon: Sun },
-      { type: 'ALPINE', label: t.home.vacationKindAlpine, icon: Mountain },
-      { type: 'CITY', label: t.home.vacationKindCity, icon: Building2 },
-      { type: 'NATURE', label: t.home.vacationKindNature, icon: Trees },
-      { type: 'LONGRANGE', label: t.home.vacationKindLongrange, icon: Globe },
-    ],
-    [t]
-  );
+  const isAllStylesSelected = isAllStylesSelection(selectedStyles);
 
-  const ALL_SPECIFIC_STYLES: DestinationType[] = useMemo(
-    () => ['BEACH', 'ALPINE', 'CITY', 'NATURE', 'LONGRANGE'],
-    []
-  );
-
-  const isAllStylesSelected =
-    selectedStyles.includes('ALL') ||
-    (selectedStyles.length >= 5 && ALL_SPECIFIC_STYLES.every((s) => selectedStyles.includes(s)));
+  // Minimum temperature / snow guarantee matter whenever beach / alpine destinations can be in
+  // the result: the style itself, "all styles", or a long-range search preferring that kind.
+  const climateRelevance = getClimateRelevance(selectedStyles, longRangeStyles);
+  const isLongRangeSelected = climateRelevance.isLongRangeSelected;
+  const isBeachClimateRelevant = climateRelevance.beach;
+  const isAlpineClimateRelevant = climateRelevance.alpine;
 
   const toggleVacationStyle = (style: DestinationType) => {
-    if (style === 'ALL') {
-      setSelectedStyles(['ALL']);
-      return;
-    }
-
-    setSelectedStyles((prev) => {
-      const prevIsAll =
-        prev.includes('ALL') ||
-        (prev.length >= 5 && ALL_SPECIFIC_STYLES.every((s) => prev.includes(s)));
-
-      if (prevIsAll) {
-        return [style];
-      }
-      if (prev.includes(style)) {
-        const next = prev.filter((s) => s !== style);
-        return next.length === 0 ? ['ALL'] : next;
-      }
-      const next = [...prev, style];
-      if (ALL_SPECIFIC_STYLES.every((s) => next.includes(s))) {
-        return ['ALL'];
-      }
-      return next;
-    });
+    setSelectedStyles((prev) => toggleStyleSelection(prev, style));
   };
 
   const getStyleMeta = (type: DestinationType) => {
@@ -233,13 +203,8 @@ export default function HomePage() {
 
   const getFormattedLocalizedDestination = useCallback(
     (destCode: string, fallbackName?: string) => {
-      const airport = getAirportByIata(destCode);
-      if (!airport) return fallbackName || destCode;
-      const locAirport = getLocalizedAirportDetails(airport, locale);
-      if (locAirport.city && locAirport.country) {
-        return `${locAirport.city}, ${locAirport.country}`;
-      }
-      return locAirport.name || fallbackName || destCode;
+      if (!getDestinationPoint(destCode)) return fallbackName || destCode;
+      return getLocalizedDestinationLabel(destCode, locale, { name: fallbackName }).label;
     },
     [locale]
   );
@@ -264,7 +229,8 @@ export default function HomePage() {
   const toggleVehicle = (vehicle: TravelVehicle) => {
     setSelectedVehicles((prev) => {
       if (prev.includes(vehicle)) {
-        if (prev.length === 1) return prev; // Do not allow deselecting all
+        // Pressing the only selected mode means 'no restriction': select every mode
+        if (prev.length === 1) return ['PLANE', 'CAR', 'TRAIN', 'BUS'];
         return prev.filter((v) => v !== vehicle);
       }
       return [...prev, vehicle];
@@ -274,11 +240,10 @@ export default function HomePage() {
   // Vacation style specific constraints: Minimum beach temperature & Winter sports / Snow guarantee
   const [minBeachTemp, setMinBeachTemp] = useState<number | undefined>(undefined);
   const [requireSnow, setRequireSnow] = useState<boolean>(false);
-  const [showBeachTempMenu, setShowBeachTempMenu] = useState(false);
-  const [showFlightStopsMenu, setShowFlightStopsMenu] = useState(false);
   const [preferredBoardType, setPreferredBoardType] = useState<BoardType | undefined>(undefined);
   const [maxOverlandDurationHours, setMaxOverlandDurationHours] = useState<number | undefined>(undefined);
   const [maxFlightStops, setMaxFlightStops] = useState<number | undefined>(undefined);
+  const [carFuelType, setCarFuelType] = useState<CarFuelType | undefined>(undefined);
 
   // 7. Blackout Dates (Starts empty by default, loaded from profile if configured)
   const [searchBlackouts, setSearchBlackouts] = useState<
@@ -299,7 +264,9 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [activeShareId, setActiveShareId] = useState<string | null>(null);
   const [shareCopiedToast, setShareCopiedToast] = useState<boolean>(false);
-  const [liveEnrichedPrices, setLiveEnrichedPrices] = useState<Record<string, { estimatedTotalCost: number; pricePerPerson: number }>>({});
+  // Shown when the link could not be shared or copied automatically (manual copy), or creating it failed
+  const [shareFallbackUrl, setShareFallbackUrl] = useState<string | null>(null);
+  const [shareError, setShareError] = useState(false);
   const [voterName, setVoterName] = useState<string>('');
   const [voteTallies, setVoteTallies] = useState<Record<string, { upvotes: number; favorites: number; vetoes: number }>>({});
 
@@ -313,8 +280,8 @@ export default function HomePage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [timeframePageSize, setTimeframePageSize] = useState<number>(4);
   const [timeframeCurrentPage, setTimeframeCurrentPage] = useState<number>(1);
-  const [expandedDestinations, setExpandedDestinations] = useState<Record<string, boolean>>({});
-  const [expandedTimeframes, setExpandedTimeframes] = useState<Record<string, boolean>>({});
+  // View a "show all in the list" jump came from (destination or period group), for the way back
+  const [listReturnView, setListReturnView] = useState<'destination' | 'timeframe' | null>(null);
   const [destinationSearchFilter, setDestinationSearchFilter] = useState<string>('');
   const [selectedCountryFilters, setSelectedCountryFilters] = useState<string[]>([]);
   const toggleCountryFilter = (countryName: string) => {
@@ -399,42 +366,11 @@ export default function HomePage() {
     flightDistanceKm?: number;
     flightDurationMinutes?: number;
     originAirport?: string;
+    travelVehicle?: TravelVehicle;
+    overlandDistanceKm?: number;
+    overlandDurationMinutes?: number;
   } | null>(null);
 
-  const vehicleOptions: {
-    type: TravelVehicle;
-    label: string;
-    icon: React.ComponentType<{ className?: string }>;
-    hint: string;
-  }[] = useMemo(() => {
-    const isDe = locale.startsWith('de');
-    return [
-      {
-        type: 'PLANE',
-        label: t.home.vehiclePlane,
-        icon: Plane,
-        hint: isDe ? 'Direkt- & Gabelflüge' : 'Flights & corridors',
-      },
-      {
-        type: 'CAR',
-        label: t.home.vehicleCar,
-        icon: Car,
-        hint: isDe ? 'Flexibel über Land' : 'Road trip & overland',
-      },
-      {
-        type: 'TRAIN',
-        label: t.home.vehicleTrain,
-        icon: Train,
-        hint: isDe ? 'Entspannt auf Schiene' : 'Rail & scenic transit',
-      },
-      {
-        type: 'BUS',
-        label: t.home.vehicleBus,
-        icon: Bus,
-        hint: isDe ? 'Günstig per Fernbus' : 'Coach & budget transit',
-      },
-    ];
-  }, [t, locale]);
 
   const [hasRestoredFromStorage, setHasRestoredFromStorage] = useState(false);
 
@@ -450,7 +386,7 @@ export default function HomePage() {
         if (parsed.federalState) setFederalState(parsed.federalState);
         if (Array.isArray(parsed.selectedStyles) && parsed.selectedStyles.length > 0) setSelectedStyles(parsed.selectedStyles);
         if (Array.isArray(parsed.targetDestinations)) setTargetDestinations(parsed.targetDestinations);
-        if (Array.isArray(parsed.originAirports) && parsed.originAirports.length > 0) setOriginAirports(parsed.originAirports);
+        if (Array.isArray(parsed.originAirports)) setOriginAirports(parsed.originAirports);
         if (typeof parsed.adultsCount === 'number') setAdultsCount(parsed.adultsCount);
         if (Array.isArray(parsed.childrenList)) setChildrenList(parsed.childrenList);
         if (typeof parsed.durationDaysMin === 'number') setDurationDaysMin(parsed.durationDaysMin);
@@ -465,9 +401,11 @@ export default function HomePage() {
         }
         if (typeof parsed.minBeachTemp === 'number') setMinBeachTemp(parsed.minBeachTemp);
         if (typeof parsed.requireSnow === 'boolean') setRequireSnow(parsed.requireSnow);
+        if (Array.isArray(parsed.longRangeStyles)) setLongRangeStyles(parsed.longRangeStyles);
         if (parsed.preferredBoardType) setPreferredBoardType(parsed.preferredBoardType);
         if (typeof parsed.maxOverlandDurationHours === 'number') setMaxOverlandDurationHours(parsed.maxOverlandDurationHours);
         if (typeof parsed.maxFlightStops === 'number') setMaxFlightStops(parsed.maxFlightStops);
+        if (['PETROL', 'DIESEL', 'ELECTRIC'].includes(parsed.carFuelType)) setCarFuelType(parsed.carFuelType);
         if (parsed.preferredCabinClass) setPreferredCabinClass(parsed.preferredCabinClass);
         if (Array.isArray(parsed.searchBlackouts)) setSearchBlackouts(parsed.searchBlackouts);
       }
@@ -556,7 +494,7 @@ export default function HomePage() {
                   if (formState.federalState) setFederalState(formState.federalState);
                   if (Array.isArray(formState.selectedStyles) && formState.selectedStyles.length > 0) setSelectedStyles(formState.selectedStyles);
                   if (Array.isArray(formState.targetDestinations)) setTargetDestinations(formState.targetDestinations);
-                  if (Array.isArray(formState.originAirports) && formState.originAirports.length > 0) setOriginAirports(formState.originAirports);
+                  if (Array.isArray(formState.originAirports)) setOriginAirports(formState.originAirports);
                   if (typeof formState.adultsCount === 'number') setAdultsCount(formState.adultsCount);
                   if (Array.isArray(formState.childrenList)) setChildrenList(formState.childrenList);
                   if (typeof formState.durationDaysMin === 'number') setDurationDaysMin(formState.durationDaysMin);
@@ -568,7 +506,9 @@ export default function HomePage() {
                   if (formState.preferredBoardType) setPreferredBoardType(formState.preferredBoardType);
                   if (typeof formState.minBeachTemp === 'number') setMinBeachTemp(formState.minBeachTemp);
                   if (typeof formState.requireSnow === 'boolean') setRequireSnow(formState.requireSnow);
+                  if (Array.isArray(formState.longRangeStyles)) setLongRangeStyles(formState.longRangeStyles);
                   if (typeof formState.maxFlightStops === 'number') setMaxFlightStops(formState.maxFlightStops);
+                  if (['PETROL', 'DIESEL', 'ELECTRIC'].includes(formState.carFuelType)) setCarFuelType(formState.carFuelType);
                   if (typeof formState.maxOverlandDurationHours === 'number') setMaxOverlandDurationHours(formState.maxOverlandDurationHours);
                 }
               }
@@ -626,9 +566,11 @@ export default function HomePage() {
         travelVehicle: selectedVehicles[0] || 'PLANE',
         minBeachTemp,
         requireSnow,
+        longRangeStyles,
         preferredBoardType,
         maxOverlandDurationHours,
         maxFlightStops,
+        carFuelType,
         preferredCabinClass,
         searchBlackouts,
       };
@@ -655,9 +597,11 @@ export default function HomePage() {
     selectedVehicles,
     minBeachTemp,
     requireSnow,
+    longRangeStyles,
     preferredBoardType,
     maxOverlandDurationHours,
     maxFlightStops,
+    carFuelType,
     preferredCabinClass,
     searchBlackouts,
   ]);
@@ -866,7 +810,7 @@ export default function HomePage() {
             setCountry(getCountryCodeFromSubdivision(p.federalState));
           }
 
-          if (Array.isArray(p.originAirports) && p.originAirports.length > 0) {
+          if (Array.isArray(p.originAirports)) {
             setOriginAirports(p.originAirports);
           }
 
@@ -888,6 +832,7 @@ export default function HomePage() {
                 childMembers.map((m: any) => ({
                   id: m.id || Math.random().toString(36).substring(2, 9),
                   birthDate: m.birthDate ? m.birthDate.split('T')[0] : '2020-01-01',
+                  schoolRegion: m.schoolSubdivision || undefined,
                 }))
               );
             }
@@ -927,8 +872,11 @@ export default function HomePage() {
             if (sw.preferredBoardType) {
               setPreferredBoardType(sw.preferredBoardType);
             }
-            if (sw.preferredVacationStyle && sw.preferredVacationStyle !== 'ALL') {
-              setSelectedStyles([sw.preferredVacationStyle === 'SKI' ? 'ALPINE' : sw.preferredVacationStyle]);
+            if (sw.preferredVacationStyles || sw.preferredVacationStyle) {
+              setSelectedStyles(readStoredStyles(sw));
+            }
+            if (Array.isArray(sw.longRangeStyles)) {
+              setLongRangeStyles(sw.longRangeStyles);
             }
             if ((p.maxTravelHours === null || p.maxTravelHours === undefined) && sw.maxOverlandTravelMinutes) {
               setMaxOverlandDurationHours(Math.round(sw.maxOverlandTravelMinutes / 60));
@@ -938,6 +886,9 @@ export default function HomePage() {
             }
             if (typeof sw.requireSnow === 'boolean') {
               setRequireSnow(sw.requireSnow);
+            }
+            if (['PETROL', 'DIESEL', 'ELECTRIC'].includes(sw.carFuelType)) {
+              setCarFuelType(sw.carFuelType);
             }
             if (typeof sw.maxFlightStops === 'number') {
               setMaxFlightStops(sw.maxFlightStops);
@@ -1092,23 +1043,23 @@ export default function HomePage() {
         })
         .sort((a, b) => a - b);
 
-      const childrenBirthDates = childrenList
-        .map((c) => c.birthDate)
-        .filter(Boolean);
+      const datedChildren = childrenList.filter((c) => Boolean(c.birthDate));
+      const childrenBirthDates = datedChildren.map((c) => c.birthDate);
+      const childrenSchoolRegions = datedChildren.map((c) => c.schoolRegion || null);
 
       const hasDestinations = targetDestinations.length > 0;
-      const isBeachSelected = isAllStylesSelected || selectedStyles.includes('BEACH');
-      const isAlpineSelected = isAllStylesSelected || selectedStyles.includes('ALPINE');
 
       const payload = {
         targetDestinations: hasDestinations ? targetDestinations : undefined,
         destinationTypes: hasDestinations ? undefined : (isAllStylesSelected ? undefined : selectedStyles),
         destinationType: hasDestinations ? undefined : (selectedStyles.length === 1 && !isAllStylesSelected ? selectedStyles[0] : undefined),
-        minBeachTemp: (!hasDestinations && isBeachSelected) ? minBeachTemp : undefined,
-        requireSnow: (!hasDestinations && isAlpineSelected) ? requireSnow : false,
+        minBeachTemp: (!hasDestinations && isBeachClimateRelevant) ? minBeachTemp : undefined,
+        requireSnow: (!hasDestinations && isAlpineClimateRelevant) ? requireSnow : false,
+        longRangeStyles: (!hasDestinations && isLongRangeSelected && longRangeStyles.length > 0) ? longRangeStyles : undefined,
         preferredBoardType,
         maxOverlandTravelMinutes: maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
         maxFlightStops,
+        carFuelType: selectedVehicles.includes('CAR') ? carFuelType : undefined,
         avoidExtremeHeat: heatFilter === 'AVOID_EXTREME_HEAT',
         durationDays: minDur,
         durationDaysMin: minDur,
@@ -1129,6 +1080,7 @@ export default function HomePage() {
           adults: adultsCount,
           childrenAges: computedAges,
           childrenBirthDates,
+          childrenSchoolRegions: childrenSchoolRegions.some(Boolean) ? childrenSchoolRegions : undefined,
           blackoutRanges: validBlackouts,
           preferredCabinClass,
           travelModes,
@@ -1185,7 +1137,9 @@ export default function HomePage() {
             preferredBoardType,
             minBeachTemp,
             requireSnow,
+            longRangeStyles,
             maxFlightStops,
+            carFuelType,
             maxOverlandDurationHours,
           },
           windows: data.windows,
@@ -1236,7 +1190,9 @@ export default function HomePage() {
               preferredBoardType,
               minBeachTemp,
               requireSnow,
+              longRangeStyles,
               maxFlightStops,
+              carFuelType,
               maxOverlandDurationHours,
             },
             windows: results,
@@ -1252,121 +1208,64 @@ export default function HomePage() {
           window.history.replaceState(null, '', newUrl.toString());
         }
       }
-      if (shareId) {
-        const finalShareId: string = shareId;
-        const shareUrl = `${window.location.origin}/?s=${finalShareId}`;
-        await navigator.clipboard.writeText(shareUrl);
+      if (!shareId) {
+        setShareError(true);
+        return;
+      }
+      setShareError(false);
+      const shareUrl = `${window.location.origin}/?s=${shareId}`;
+      const outcome = await shareOrCopyLink(shareUrl, 'FamVacay');
+      if (outcome === 'copied') {
+        setShareFallbackUrl(null);
         setShareCopiedToast(true);
         setTimeout(() => setShareCopiedToast(false), 3000);
+      } else if (outcome === 'failed') {
+        setShareFallbackUrl(shareUrl);
       }
     } catch (err) {
-      console.warn('Share copy failed:', err);
+      console.warn('Share failed:', err);
+      setShareError(true);
     }
   };
 
   // Filtered and Sorted Results
+  // All result filters as one state object (filtering and per-option counts share the same rules)
+  const resultFilterState = useMemo<ResultFilterState>(
+    () => ({
+      destinations: selectedDestinationsList,
+      month: selectedMonth,
+      style: resultStyleFilter,
+      distance: distanceFilter,
+      vehicle: vehicleFilter,
+      safety: safetyFilter,
+      warning: warningFilter,
+      heat: heatFilter,
+      boardType: boardTypeFilter,
+      overlandDuration: overlandDurationFilter,
+      flightStops: flightStopsFilter,
+      schoolHoliday: schoolHolidayFilter,
+      maxCost: maxCostFilter,
+    }),
+    [
+      selectedDestinationsList,
+      selectedMonth,
+      resultStyleFilter,
+      distanceFilter,
+      vehicleFilter,
+      safetyFilter,
+      warningFilter,
+      heatFilter,
+      boardTypeFilter,
+      overlandDurationFilter,
+      flightStopsFilter,
+      schoolHolidayFilter,
+      maxCostFilter,
+    ]
+  );
+
   const filteredResults = useMemo(() => {
     if (!results) return [];
-    let list = [...results];
-
-    // Destination multi-select filter across all views
-    if (selectedDestinationsList.length > 0) {
-      list = list.filter((w) => selectedDestinationsList.includes(w.destinationAirport));
-    }
-
-    if (selectedMonth !== 'ALL') {
-      list = list.filter((w) => {
-        const m = w.startDate.split('-')[1];
-        return m === selectedMonth;
-      });
-    }
-
-    if (resultStyleFilter !== 'ALL') {
-      list = list.filter((w) => {
-        const styles = getDestinationVacationStyles(w.destinationAirport, w.flightDistanceKm);
-        if (resultStyleFilter === 'BEACH') {
-          return styles.includes('BEACH') && !styles.includes('LONGRANGE');
-        }
-        return styles.includes(resultStyleFilter);
-      });
-    }
-
-    if (distanceFilter !== 'ALL') {
-      list = list.filter((w) => {
-        const dist = w.flightDistanceKm || 0;
-        switch (distanceFilter) {
-          case 'SHORT':
-            return dist <= 1000;
-          case 'MID':
-            return dist <= 2500;
-          case 'EXTENDED':
-            return dist <= 3500;
-          case 'LONG':
-            return dist <= 6000;
-          case 'INTERCONTINENTAL':
-            return dist > 3500;
-          default:
-            return true;
-        }
-      });
-    }
-
-    if (vehicleFilter !== 'ALL') {
-      list = list.filter((w) => {
-        return (
-          w.travelVehicle === vehicleFilter ||
-          (w.availableVehicles && w.availableVehicles.includes(vehicleFilter as TravelVehicle))
-        );
-      });
-    }
-
-    if (safetyFilter === 'SAFE_ONLY') {
-      list = list.filter((w) => {
-        const s = w.destinationSafety || w.safetyAssessment;
-        return s ? s.isSafe : true;
-      });
-    }
-
-    if (warningFilter === 'CLEAN_ONLY') {
-      list = list.filter((w) => !w.seasonalWarning || w.seasonalWarning.seasonType === 'EXTREME_HEAT');
-    }
-
-    if (heatFilter === 'AVOID_EXTREME_HEAT') {
-      list = list.filter((w) => w.seasonalWarning?.seasonType !== 'EXTREME_HEAT');
-    }
-
-    if (boardTypeFilter !== 'ALL') {
-      list = list.filter((w) => w.boardType === boardTypeFilter);
-    }
-
-    if (overlandDurationFilter !== 'ALL') {
-      const maxMinutes = Number(overlandDurationFilter);
-      list = list.filter((w) => {
-        if (w.travelVehicle === 'PLANE') return true;
-        if (!w.vehicleDetails?.durationMinutes) return true;
-        return w.vehicleDetails.durationMinutes <= maxMinutes;
-      });
-    }
-
-    if (flightStopsFilter === 'DIRECT_ONLY') {
-      list = list.filter((w) => {
-        if (w.travelVehicle !== 'PLANE') return true;
-        return w.isDirectFlight || w.flightStops === 0;
-      });
-    } else if (flightStopsFilter === 'MAX_1_STOP') {
-      list = list.filter((w) => {
-        if (w.travelVehicle !== 'PLANE') return true;
-        return (w.flightStops ?? 0) <= 1;
-      });
-    }
-
-    if (schoolHolidayFilter === 'holidaysOnly') {
-      list = list.filter((w) => !w.requiresSchoolExemption);
-    }
-
-    if (maxCostFilter !== undefined && maxCostFilter > 0) {
-      list = list.filter((w) => w.estimatedTotalCost <= maxCostFilter);
-    }
+    const list = applyResultFilters(results, resultFilterState);
 
     list.sort((a, b) => {
       switch (sortBy) {
@@ -1387,24 +1286,7 @@ export default function HomePage() {
     });
 
     return list;
-  }, [
-    results,
-    viewMode,
-    selectedDestinationsList,
-    selectedMonth,
-    resultStyleFilter,
-    distanceFilter,
-    vehicleFilter,
-    safetyFilter,
-    warningFilter,
-    heatFilter,
-    boardTypeFilter,
-    overlandDurationFilter,
-    flightStopsFilter,
-    schoolHolidayFilter,
-    maxCostFilter,
-    sortBy,
-  ]);
+  }, [results, resultFilterState, sortBy]);
 
   const activeQueryDestinations = useMemo(() => {
     if (!results) return [];
@@ -1422,7 +1304,17 @@ export default function HomePage() {
         });
       }
     }
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    const options = Array.from(map.values());
+    const nameCounts = new Map<string, number>();
+    for (const o of options) nameCounts.set(o.name, (nameCounts.get(o.name) || 0) + 1);
+    for (const o of options) {
+      // Two airports of the same city (e.g. London Gatwick / Stansted) need telling apart
+      if ((nameCounts.get(o.name) || 0) > 1) {
+        const point = getDestinationPoint(o.code, locale);
+        if (point?.kind === 'AIRPORT' && point.name) o.name = `${o.name} – ${point.name}`;
+      }
+    }
+    return options.sort((a, b) => a.name.localeCompare(b.name, locale));
   }, [results, locale]);
 
   const totalPages = Math.max(1, Math.ceil(filteredResults.length / pageSize));
@@ -1430,60 +1322,6 @@ export default function HomePage() {
     const startIdx = (currentPage - 1) * pageSize;
     return filteredResults.slice(startIdx, startIdx + pageSize);
   }, [filteredResults, currentPage, pageSize]);
-
-  const liveEnrichKeyFor = (win: CandidateWindow) =>
-    `${win.originAirport}|${win.destinationAirport}|${win.startDate}|${win.endDate}`;
-
-  // Asynchronous BYOK Live Price Enrichment: after the deterministic CSP results render,
-  // silently request a live quote for the top 5 visible cards. If no provider is configured
-  // or the request fails, the benchmark price is kept as-is (no error surfaced to the user).
-  useEffect(() => {
-    const topCards = displayedResults.slice(0, 5);
-    if (topCards.length === 0) return;
-
-    let cancelled = false;
-
-    for (const win of topCards) {
-      const key = liveEnrichKeyFor(win);
-      if (liveEnrichedPrices[key]) continue;
-
-      const ages = childrenList.map((c) => {
-        const b = new Date(c.birthDate);
-        return isNaN(b.getTime()) ? 6 : Math.max(0, differenceInYears(new Date(win.startDate), b));
-      });
-
-      fetch('/api/pricing/live-enrich', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          originAirport: win.originAirport,
-          destinationAirport: win.destinationAirport,
-          startDate: win.startDate,
-          endDate: win.endDate,
-          durationDays: win.durationDays,
-          party: { adults: adultsCount, childrenAges: ages, cabinClass: preferredCabinClass },
-          isArbitrage: win.isArbitrageOpportunity,
-        }),
-      })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((res) => {
-          if (cancelled || !res?.success || !res.live || !res.pricing) return;
-          setLiveEnrichedPrices((prev) => ({
-            ...prev,
-            [key]: {
-              estimatedTotalCost: res.pricing.totalCost,
-              pricePerPerson: res.pricing.pricePerPerson,
-            },
-          }));
-        })
-        .catch(() => {});
-    }
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayedResults, adultsCount, childrenList, preferredCabinClass]);
 
   const getInitialVoteTally = (win: CandidateWindow) => {
     const votes = win.votes || [];
@@ -1525,6 +1363,25 @@ export default function HomePage() {
     }
   };
 
+  // "Show all periods" of a destination group: the list view filtered to that destination
+  const jumpToList = (returnView: 'destination' | 'timeframe') => {
+    setListReturnView(returnView);
+    setViewMode('list');
+    setCurrentPage(1);
+    requestAnimationFrame(() => {
+      document.getElementById('results-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+  const showDestinationInList = (destinationCode: string) => {
+    setSelectedDestinationsList([destinationCode]);
+    jumpToList('destination');
+  };
+  // "Show all" of a period group: the list view filtered to that month
+  const showMonthInList = (yearMonth: string) => {
+    setSelectedMonth(yearMonth);
+    jumpToList('timeframe');
+  };
+
   // Destination Groups
   const destinationGroups = useMemo(() => {
     if (!filteredResults || filteredResults.length === 0) return [];
@@ -1542,18 +1399,18 @@ export default function HomePage() {
       const lowestPrice = Math.min(...windows.map((w) => w.estimatedTotalCost));
       const highestScore = Math.max(...windows.map((w) => w.finalScore));
       const destName = getFormattedLocalizedDestination(destCode, featured.destinationName);
-      const alternativeWindows = curateDistinctAlternativeWindows(windows, featured, 8);
 
       return {
         destinationCode: destCode,
         destinationName: destName,
-        destinationCity: featured.destinationCity,
-        destinationCountry: featured.destinationCountry,
+        destinationCity: getLocalizedDestinationLabel(destCode, locale, { city: featured.destinationCity }).city,
+        destinationCountry: getLocalizedDestinationLabel(destCode, locale, { country: featured.destinationCountry }).country,
         destinationSafety: featured.destinationSafety || featured.safetyAssessment,
         vacationType: styles[0] || 'CITY',
         vacationStyles: styles,
         featuredWindow: featured,
-        alternativeWindows,
+        // Every way of getting there, best-scoring first (windows are score-sorted)
+        travelVehicles: Array.from(new Set(windows.map((w) => w.travelVehicle || 'PLANE'))),
         lowestPrice,
         highestScore,
         totalWindows: windows.length,
@@ -1580,18 +1437,6 @@ export default function HomePage() {
 
     return groups;
   }, [filteredResults, sortBy, locale, getFormattedLocalizedDestination]);
-
-  const expandAllDestinations = () => {
-    const all: Record<string, boolean> = {};
-    destinationGroups.forEach((g) => {
-      all[g.destinationCode] = true;
-    });
-    setExpandedDestinations(all);
-  };
-
-  const collapseAllDestinations = () => {
-    setExpandedDestinations({});
-  };
 
   // Timeframe Groups (Grouped by Month/Period)
   const timeframeGroups = useMemo(() => {
@@ -1620,7 +1465,12 @@ export default function HomePage() {
 
       const lowestPrice = Math.min(...windows.map((w) => w.estimatedTotalCost));
       const highestScore = Math.max(...windows.map((w) => w.finalScore));
-      const hasSchoolHolidays = windows.some((w) => !w.requiresSchoolExemption);
+      // Only meaningful when a school child travels: without one, windows are never flagged as
+      // needing an exemption (and the home region's calendar is still tracked for demand), which
+      // made every month carry the badge even for a family with a toddler.
+      const hasSchoolHolidays = windows.some(
+        (w) => w.travelsWithSchoolChildren && !w.requiresSchoolExemption && (w.schoolHolidayDaysOverlap ?? 0) > 0
+      );
 
       // Interleave distinct destinations in this timeframe so first items are varied
       const destMap = new Map<string, CandidateWindow[]>();
@@ -1662,30 +1512,54 @@ export default function HomePage() {
     return timeframeGroups.slice(startIdx, startIdx + timeframePageSize);
   }, [timeframeGroups, timeframeCurrentPage, timeframePageSize]);
 
-  const toggleDestinationExpand = (destCode: string) => {
-    setExpandedDestinations((prev) => ({
-      ...prev,
-      [destCode]: !prev[destCode],
-    }));
-  };
-
-  const toggleTimeframeExpand = (key: string) => {
-    setExpandedTimeframes((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
-
-  // Extract available months from search results
   const availableMonths = useMemo(() => {
     if (!results) return [];
     const monthSet = new Set<string>();
+    // Year and month ("2027-11"): a search can span more than twelve months
     results.forEach((w) => {
-      const m = w.startDate.split('-')[1];
-      if (m) monthSet.add(m);
+      const ym = w.startDate.slice(0, 7);
+      if (ym.length === 7) monthSet.add(ym);
     });
     return Array.from(monthSet).sort();
   }, [results]);
+
+  // How many results each filter option would leave given the other filters: options without
+  // results are greyed out, filters that cannot apply (stops without flights) are disabled
+  const filterOptionCounts = useMemo(
+    () =>
+      results
+        ? countResultFilterOptions(results, resultFilterState, {
+            month: ['ALL', ...availableMonths],
+            style: ['ALL', 'BEACH', 'ALPINE', 'CITY', 'NATURE', 'LONGRANGE'],
+            distance: ['ALL', 'SHORT', 'MID', 'EXTENDED', 'LONG', 'INTERCONTINENTAL'],
+            vehicle: ['ALL', 'PLANE', 'CAR', 'TRAIN', 'BUS'],
+            safety: ['SAFE_ONLY', 'ALL'],
+            warning: ['CLEAN_ONLY', 'ALL'],
+            heat: ['ALL', 'AVOID_EXTREME_HEAT'],
+            boardType: ['ALL', 'ALL_INCLUSIVE', 'HALF_BOARD', 'BREAKFAST', 'ROOM_ONLY'],
+            overlandDuration: ['ALL', '360', '600', '840'],
+            flightStops: ['ALL', 'DIRECT_ONLY', 'MAX_1_STOP'],
+            schoolHoliday: ['all', 'holidaysOnly'],
+          })
+        : {},
+    [results, resultFilterState, availableMonths]
+  );
+  const flightStopsApplicable = useMemo(
+    () => !results || flightStopsFilter !== 'ALL' || isResultFilterApplicable(results, resultFilterState, 'flightStops'),
+    [results, resultFilterState, flightStopsFilter]
+  );
+  const overlandDurationApplicable = useMemo(
+    () => !results || overlandDurationFilter !== 'ALL' || isResultFilterApplicable(results, resultFilterState, 'overlandDuration'),
+    [results, resultFilterState, overlandDurationFilter]
+  );
+  const renderFilterOption = (key: ResultFilterKey, value: string, label: string, current: string) => {
+    const count = filterOptionCounts[key]?.[value];
+    return (
+      <option key={value} value={value} disabled={count === 0 && value !== current}>
+        {count !== undefined ? `${label} (${count})` : label}
+      </option>
+    );
+  };
 
   const formatLocalizedDate = (dateStr: string, withWeekday: boolean = false) => {
     try {
@@ -1709,7 +1583,7 @@ export default function HomePage() {
   ) => {
     return (
       <div
-        key={`${win.startDate}-${win.originAirport}-${win.destinationAirport}-${win.durationDays}`}
+        key={`${win.startDate}-${win.originAirport}-${win.travelVehicle || "PLANE"}-${win.destinationAirport}-${win.durationDays}`}
         className="bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-shadow relative"
       >
         {/* Arbitrage Banner */}
@@ -1734,12 +1608,15 @@ export default function HomePage() {
                     setMapModalDestination({
                       destinationCode: win.destinationAirport,
                       destinationName: getFormattedLocalizedDestination(win.destinationAirport, win.destinationName),
-                      destinationCity: win.destinationCity,
-                      destinationCountry: win.destinationCountry,
+                      destinationCity: getLocalizedDestinationLabel(win.destinationAirport, locale, { city: win.destinationCity }).city,
+                      destinationCountry: getLocalizedDestinationLabel(win.destinationAirport, locale, { country: win.destinationCountry }).country,
                       vacationTypes: getDestinationVacationStyles(win.destinationAirport, win.flightDistanceKm),
                       flightDistanceKm: win.flightDistanceKm,
                       flightDurationMinutes: win.flightDurationMinutes,
                       originAirport: win.originAirport,
+                      travelVehicle: win.travelVehicle,
+                      overlandDistanceKm: win.vehicleDetails?.distanceKm,
+                      overlandDurationMinutes: win.vehicleDetails?.durationMinutes,
                     })
                   }
                   className="inline-flex items-center gap-1.5 text-slate-900 dark:text-slate-100 hover:text-teal-600 dark:hover:text-teal-400 cursor-pointer group text-left transition-colors"
@@ -1775,6 +1652,17 @@ export default function HomePage() {
                     ) : null}
                   </span>
                 )}
+                {win.railFeeder && (
+                  <span
+                    className="text-[9px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 shadow-2xs bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                    title={t.home.railAirTitle}
+                  >
+                    <Train className="w-2.5 h-2.5 flex-shrink-0" />
+                    <span>
+                      {t.home.railAirBadge} · {win.railFeeder.hubAirport}
+                    </span>
+                  </span>
+                )}
                 {win.overlandAccess && (win.overlandAccess === 'SHORT_FERRY' || win.overlandAccess === 'LONG_FERRY') && (
                   <span
                     className="text-[9px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 shadow-2xs bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800"
@@ -1790,7 +1678,7 @@ export default function HomePage() {
                 <DestinationSafetyPopover
                   safety={win.destinationSafety || win.safetyAssessment}
                   destinationName={getFormattedLocalizedDestination(win.destinationAirport, win.destinationName)}
-                  countryName={win.destinationCountry}
+                  countryName={getLocalizedDestinationLabel(win.destinationAirport, locale, { country: win.destinationCountry }).country}
                 />
               </div>
             )}
@@ -1802,6 +1690,30 @@ export default function HomePage() {
               <span className="text-xs font-semibold px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
                 {win.durationDays} {t.home.days}
               </span>
+              {win.autoSelectedOrigin && !win.railFeeder && (
+                <span
+                  className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 flex items-center gap-1"
+                  title={t.home.autoOriginTitle}
+                >
+                  <Sparkles className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                  {t.home.autoOriginBadge} · {win.originAirport}
+                </span>
+              )}
+              {win.sourceMarketDemand && (win.sourceMarketDemand.index >= 0.45 || win.sourceMarketDemand.index <= 0.1) && (
+                <span
+                  className={`text-[11px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                    win.sourceMarketDemand.index >= 0.45
+                      ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                      : 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800'
+                  }`}
+                  title={t.home.demandTitle}
+                >
+                  <Users className="w-3 h-3" />
+                  {win.sourceMarketDemand.index >= 0.45
+                    ? t.home.demandHighBadge.replace('{markets}', formatMarketList(win.sourceMarketDemand.marketsOnHoliday, locale))
+                    : t.home.demandLowBadge}
+                </span>
+              )}
               {win.pricingDetails?.flight?.isMidweekSaving && (
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
@@ -1839,22 +1751,12 @@ export default function HomePage() {
           {/* Price Section */}
           <div className="flex flex-col sm:items-end justify-start gap-1 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 text-left sm:text-right shrink-0">
             {(() => {
-              const livePrice = liveEnrichedPrices[liveEnrichKeyFor(win)];
-              const displayTotalCost = livePrice?.estimatedTotalCost ?? win.estimatedTotalCost;
-              const displayPricePerPerson = livePrice?.pricePerPerson ?? win.pricePerPerson;
+              const displayTotalCost = win.estimatedTotalCost;
+              const displayPricePerPerson = win.pricePerPerson;
               return (
                 <div>
                   <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1 sm:justify-end">
                     {t.home.estFamilyCost}
-                    {livePrice && (
-                      <span
-                        className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded-full"
-                        title={t.home.liveVerifiedHint}
-                      >
-                        <BadgeCheck className="w-2.5 h-2.5" />
-                        {t.home.liveVerifiedBadge}
-                      </span>
-                    )}
                   </span>
                   <div className="flex items-baseline gap-2 sm:justify-end flex-wrap">
                     <span className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
@@ -1865,7 +1767,7 @@ export default function HomePage() {
                     </span>
                   </div>
                   <span className="block text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
-                    {t.home.flightAndLodgingIncluded}
+                    {win.travelVehicle && win.travelVehicle !== 'PLANE' ? t.home.travelAndLodgingIncluded : t.home.flightAndLodgingIncluded}
                   </span>
                 </div>
               );
@@ -1955,6 +1857,20 @@ export default function HomePage() {
         <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
           {/* Action Buttons: Flight Details & Deals Popover */}
           <div className="flex flex-wrap items-center gap-2">
+            {win.travelVehicle && win.travelVehicle !== 'PLANE' ? (
+              <OverlandTripDetailsPopover
+                vehicle={win.travelVehicle}
+                vehicleDetails={win.vehicleDetails}
+                destinationAirport={win.destinationAirport}
+                destinationCity={win.destinationCity}
+                destinationCountry={win.destinationCountry}
+                departureLocation={departureLocation}
+                departureCoords={departureCoords}
+                overlandAccess={win.overlandAccess}
+                ferryTransitMinutes={win.ferryTransitMinutes}
+                ferrySurchargeEur={win.ferrySurchargeEur}
+              />
+            ) : (
             <FlightDetailsPopover
               originAirport={win.originAirport}
               destinationAirport={win.destinationAirport}
@@ -1984,7 +1900,9 @@ export default function HomePage() {
               segments={win.flightSegments}
               directFlightPremiumMultiplier={win.directFlightPremium}
               connectingSavingsDiscount={win.pricingDetails?.flight?.connectingSavingsDiscount}
+              railFeeder={win.railFeeder}
             />
+            )}
             <BookingDealsPopover
               pricingDetails={win.pricingDetails}
               estimatedTotalCost={win.estimatedTotalCost}
@@ -2073,6 +1991,14 @@ export default function HomePage() {
           <p className="text-teal-100 text-sm sm:text-base leading-relaxed">
             {t.home.heroDescription}
           </p>
+          {/* Estimates disclaimer: readable on the banner, deliberately not a warning colour */}
+          <p className="flex items-start gap-2 rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-xs sm:text-[13px] leading-relaxed text-teal-50">
+            <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-teal-200" aria-hidden="true" />
+            <span>
+              <strong className="font-semibold text-white">{t.home.estimatesDisclaimerTitle}</strong>{' '}
+              {t.home.estimatesDisclaimerText}
+            </span>
+          </p>
         </div>
       </div>
 
@@ -2127,47 +2053,20 @@ export default function HomePage() {
                 placeholder={t.home.departureLocationPlaceholder}
               />
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  {t.home.countryLabel}
-                </label>
-                <select
-                  suppressHydrationWarning
-                  value={country}
-                  onChange={(e) => handleCountryChange(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm"
-                >
-                  {allCountries.map((c) => (
-                    <option key={c.code} value={c.code} suppressHydrationWarning>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <CountrySelect
+                id="home-country"
+                label={t.home.countryLabel}
+                value={country}
+                onChange={handleCountryChange}
+              />
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  {t.home.homeStateLabel}
-                </label>
-                <select
-                  suppressHydrationWarning
-                  value={federalState}
-                  onChange={(e) => setFederalState(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm"
-                >
-                  {(COUNTRIES[country]?.subdivisions || []).length > 0 ? (
-                    (COUNTRIES[country]?.subdivisions || []).map((sub) => (
-                      <option key={sub.code} value={sub.code} suppressHydrationWarning>
-                        {sub.name} ({sub.code})
-                      </option>
-                    ))
-                  ) : (
-                    <option value={country} suppressHydrationWarning>
-                      {mounted ? getLocalizedCountryName(country, locale) : (COUNTRIES[country]?.name || country)}
-                    </option>
-                  )}
-                </select>
-              </div>
+              <SubdivisionSelect
+                id="home-region"
+                label={t.home.homeStateLabel}
+                countryCode={country}
+                value={federalState}
+                onChange={setFederalState}
+              />
 
               <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 pt-0.5">
                 <Info className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
@@ -2195,113 +2094,21 @@ export default function HomePage() {
                       {t.home.vacationKindHint}
                     </p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {vacationStyles.map((item) => {
-                      const Icon = item.icon;
-                      const isSelected =
-                        isAllStylesSelected || selectedStyles.includes(item.type);
+                  <VacationStyleTiles
+                    selectedStyles={selectedStyles}
+                    onToggle={toggleVacationStyle}
+                    longRangeStyles={longRangeStyles}
+                    onLongRangeStylesChange={setLongRangeStyles}
+                  />
 
-                      return (
-                        <div
-                          key={item.type}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => toggleVacationStyle(item.type)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              toggleVacationStyle(item.type);
-                            }
-                          }}
-                          className={`relative flex flex-col justify-between p-2.5 sm:p-3 rounded-xl border text-xs sm:text-sm font-semibold transition cursor-pointer select-none shadow-2xs h-[82px] sm:h-[86px] ${
-                            showBeachTempMenu && item.type === 'BEACH' ? 'z-30' : 'z-10'
-                          } ${
-                            isSelected
-                              ? 'bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-600/25'
-                              : 'bg-white dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600'
-                          }`}
-                        >
-                          {/* Top row: Icon & Selection indicator */}
-                          <div className="flex items-center justify-between w-full">
-                            <Icon className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-white' : 'text-teal-600 dark:text-teal-400'}`} />
-                            {isSelected && (
-                              <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
-                            )}
-                          </div>
-
-                          {/* Middle: Label */}
-                          <span className="font-bold text-xs truncate block text-left w-full">
-                            {item.label}
-                          </span>
-
-                          {/* Bottom: Sub-option or category hint */}
-                          <div className="w-full text-left" onClick={(e) => e.stopPropagation()}>
-                            {item.type === 'BEACH' ? (
-                              isSelected ? (
-                                <BeachTemperaturePopover
-                                  minBeachTemp={minBeachTemp}
-                                  onSelect={setMinBeachTemp}
-                                  isOpen={showBeachTempMenu}
-                                  onOpenChange={setShowBeachTempMenu}
-                                  t={t}
-                                />
-                              ) : (
-                                <span className="text-[10px] text-slate-400 truncate block">
-                                  {locale.startsWith('de') ? 'Sonne & Meer' : 'Sun & seaside'}
-                                </span>
-                              )
-                            ) : item.type === 'ALPINE' ? (
-                              isSelected ? (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setRequireSnow((prev) => !prev);
-                                  }}
-                                  className={`w-full py-0.5 px-1.5 rounded text-[10px] font-bold flex items-center justify-between border cursor-pointer ${
-                                    requireSnow
-                                      ? 'bg-indigo-300 text-indigo-950 border-indigo-400 shadow-2xs'
-                                      : 'bg-white/20 hover:bg-white/30 text-white border-white/30'
-                                  }`}
-                                  title={t.home.winterSportsDesc}
-                                >
-                                  <span className="flex items-center gap-1 truncate">
-                                    <Snowflake className={`w-2.5 h-2.5 flex-shrink-0 ${requireSnow ? 'text-indigo-950' : 'text-teal-200'}`} />
-                                    <span className="truncate">{requireSnow ? t.home.snowGuaranteeBadge : t.home.noSnowGuaranteeBadge}</span>
-                                  </span>
-                                  {requireSnow ? (
-                                    <Check className="w-2.5 h-2.5 flex-shrink-0 text-indigo-950 stroke-[3]" />
-                                  ) : (
-                                    <span className="text-[9px] opacity-60">Off</span>
-                                  )}
-                                </button>
-                              ) : (
-                                <span className="text-[10px] text-slate-400 truncate block">
-                                  {locale.startsWith('de') ? 'Berge & Ski' : 'Mountains & ski'}
-                                </span>
-                              )
-                            ) : item.type === 'ALL' ? (
-                              <span className={`text-[10px] truncate block ${isSelected ? 'text-teal-100' : 'text-slate-400'}`}>
-                                {locale.startsWith('de') ? 'Alle Stile & flexibel' : 'All styles & flexible'}
-                              </span>
-                            ) : item.type === 'CITY' ? (
-                              <span className={`text-[10px] truncate block ${isSelected ? 'text-teal-100' : 'text-slate-400'}`}>
-                                {locale.startsWith('de') ? 'Kultur & City' : 'Culture & city trip'}
-                              </span>
-                            ) : item.type === 'NATURE' ? (
-                              <span className={`text-[10px] truncate block ${isSelected ? 'text-teal-100' : 'text-slate-400'}`}>
-                                {locale.startsWith('de') ? 'Natur & Erholung' : 'Nature & outdoor'}
-                              </span>
-                            ) : (
-                              <span className={`text-[10px] truncate block ${isSelected ? 'text-teal-100' : 'text-slate-400'}`}>
-                                {locale.startsWith('de') ? 'Fernreise & Welt' : 'Long-haul & world'}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <ClimatePreferencesPanel
+                    showBeach={isBeachClimateRelevant}
+                    showAlpine={isAlpineClimateRelevant}
+                    minBeachTemp={minBeachTemp}
+                    onMinBeachTempChange={setMinBeachTemp}
+                    requireSnow={requireSnow}
+                    onRequireSnowChange={setRequireSnow}
+                  />
                 </div>
               )}
             </div>
@@ -2317,73 +2124,14 @@ export default function HomePage() {
                   {t.home.travelVehicleHint}
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-2.5">
-                {vehicleOptions.map((v) => {
-                  const Icon = v.icon;
-                  const isSelected = selectedVehicles.includes(v.type);
-                  return (
-                    <div
-                      key={v.type}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => toggleVehicle(v.type)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          toggleVehicle(v.type);
-                        }
-                      }}
-                      className={`relative flex flex-col justify-between p-2.5 sm:p-3 rounded-xl border text-xs sm:text-sm font-semibold transition cursor-pointer select-none shadow-2xs h-[82px] sm:h-[86px] ${
-                        showFlightStopsMenu && v.type === 'PLANE' ? 'z-30' : 'z-10'
-                      } ${
-                        isSelected
-                          ? 'bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-600/25'
-                          : 'bg-white dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600'
-                      }`}
-                    >
-                      {/* Top row: Icon & Selection indicator */}
-                      <div className="flex items-center justify-between w-full">
-                        <Icon className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-white' : 'text-teal-600 dark:text-teal-400'}`} />
-                        {isSelected && (
-                          <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
-                        )}
-                      </div>
-
-                      {/* Middle: Label */}
-                      <span className="font-bold text-xs truncate block text-left w-full">
-                        {v.label}
-                      </span>
-
-                      {/* Bottom: Vehicle Hint or Inline Popover */}
-                      <div className="w-full text-left" onClick={(e) => e.stopPropagation()}>
-                        {v.type === 'PLANE' ? (
-                          isSelected ? (
-                            <FlightStopsPopover
-                              maxFlightStops={maxFlightStops}
-                              onSelect={setMaxFlightStops}
-                              isOpen={showFlightStopsMenu}
-                              onOpenChange={setShowFlightStopsMenu}
-                              t={t}
-                            />
-                          ) : (
-                            <span className="text-[10px] text-slate-400 truncate block">
-                              {v.hint}
-                            </span>
-                          )
-                        ) : (
-                          <span
-                            className={`text-[10px] truncate block ${
-                              isSelected ? 'text-teal-100' : 'text-slate-400'
-                            }`}
-                          >
-                            {v.hint}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <TravelModeTiles
+                selectedVehicles={selectedVehicles}
+                onToggle={toggleVehicle}
+                maxFlightStops={maxFlightStops}
+                onMaxFlightStopsChange={setMaxFlightStops}
+                carFuelType={carFuelType}
+                onCarFuelTypeChange={setCarFuelType}
+              />
             </div>
 
             {/* Preferred Board Type & Max Overland Travel Time */}
@@ -2393,17 +2141,7 @@ export default function HomePage() {
                   <Utensils className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                   <span>{t.home.filterByBoardType}</span>
                 </label>
-                <select
-                  value={preferredBoardType || 'ALL'}
-                  onChange={(e) => setPreferredBoardType(e.target.value === 'ALL' ? undefined : (e.target.value as BoardType))}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100"
-                >
-                  <option value="ALL">{t.home.allBoardTypes}</option>
-                  <option value="ALL_INCLUSIVE">{t.home.boardTypeAllInclusive}</option>
-                  <option value="HALF_BOARD">{t.home.boardTypeHalfBoard}</option>
-                  <option value="BREAKFAST">{t.home.boardTypeBreakfast}</option>
-                  <option value="ROOM_ONLY">{t.home.boardTypeRoomOnly}</option>
-                </select>
+                <BoardTypeSelect value={preferredBoardType} onChange={setPreferredBoardType} />
               </div>
 
               <div>
@@ -2411,21 +2149,7 @@ export default function HomePage() {
                   <Car className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                   <span>{t.home.filterByOverlandDuration}</span>
                 </label>
-                <select
-                  value={maxOverlandDurationHours ? String(maxOverlandDurationHours) : 'ALL'}
-                  onChange={(e) => setMaxOverlandDurationHours(e.target.value === 'ALL' ? undefined : Number(e.target.value))}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100"
-                >
-                  <option value="ALL">{t.home.overlandDurationAny}</option>
-                  <option value="6">{t.home.overlandDuration6h}</option>
-                  <option value="10">{t.home.overlandDuration10h}</option>
-                  <option value="14">{t.home.overlandDuration14h}</option>
-                  {maxOverlandDurationHours && ![6, 10, 14].includes(maxOverlandDurationHours) && (
-                    <option value={String(maxOverlandDurationHours)}>
-                      {t.home.overlandDurationCustom} ({maxOverlandDurationHours}h)
-                    </option>
-                  )}
-                </select>
+                <OverlandDurationSelect value={maxOverlandDurationHours} onChange={setMaxOverlandDurationHours} />
               </div>
             </div>
 
@@ -2485,7 +2209,7 @@ export default function HomePage() {
                       {selectedVehicles.map((v) => getVehicleMeta(v).label).join(' / ')}
                     </span>
                     <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Reisedistanz, Transitzeit und Fahrtkosten werden direkt von Ihren Startkoordinaten über Land berechnet. Es werden nur erreichbare Destinationen ohne Flugstrecke vorgeschlagen.
+                      Reisedistanz, Transitzeit und Fahrtkosten werden direkt von deinen Startkoordinaten über Land berechnet. Es werden nur erreichbare Destinationen ohne Flugstrecke vorgeschlagen.
                     </p>
                   </div>
                 </div>
@@ -2544,6 +2268,7 @@ export default function HomePage() {
                 childrenList={childrenList}
                 onChange={setChildrenList}
                 travelDate={earliestDate}
+                homeRegion={federalState}
               />
             </div>
 
@@ -2804,13 +2529,13 @@ export default function HomePage() {
             <>
               {/* Filter and Sort Toolbar */}
               <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  {/* Left: Filter Toggle Button + Active Count + Reset */}
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3">
+                  {/* Left: Filter Toggle Button + Active Count + Reset + Share */}
+                  <div className="flex items-center gap-2 min-w-0">
                     <button
                       type="button"
                       onClick={() => setShowResultFilters((prev) => !prev)}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                      className={`flex-1 sm:flex-none justify-between sm:justify-start flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                         showResultFilters
                           ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border-teal-300 dark:border-teal-700'
                           : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/60'
@@ -2834,68 +2559,114 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={resetAllFilters}
-                        className="text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 flex items-center gap-1 px-2 py-1 rounded transition hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
+                        className="shrink-0 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 flex items-center p-1.5 rounded-lg transition hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
                         title={t.home.filterResetAll}
+                        aria-label={t.home.filterResetAll}
                       >
-                        <RotateCcw className="w-3 h-3" />
-                        <span className="hidden sm:inline">{t.home.filterResetAll}</span>
+                        {/* Icon only: the label pushed the view switcher into a second row */}
+                        <RotateCcw className="w-3.5 h-3.5" />
                       </button>
                     )}
-                  </div>
 
-                  {/* Right: Share Results & View Mode Switcher */}
-                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={handleShareSearch}
-                      className="px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      className="shrink-0 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
                       title={t.home.shareSearch}
                     >
                       <Share2 className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                      <span className="hidden sm:inline">{shareCopiedToast ? t.home.shareCopied : t.home.shareSearch}</span>
+                      {/* Short confirmation (shorter than the label, so the row never grows); phones show it too */}
+                      {shareCopiedToast ? (
+                        <span>{t.home.shareCopiedShort}</span>
+                      ) : (
+                        <span className="hidden sm:inline">{t.home.shareSearch}</span>
+                      )}
                       {shareCopiedToast && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 animate-in fade-in" />}
                     </button>
+                  </div>
 
-                    <div className="inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700">
+                  {/* Right: View Mode Switcher (icons only at lg, where the results column is narrowest) */}
+                  <div className="flex items-center">
+                    <div className="grid grid-cols-3 w-full sm:w-auto sm:inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700">
                       <button
+                        title={t.home.viewModeDestination}
                         type="button"
                         onClick={() => setViewMode('destination')}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition cursor-pointer ${
+                        className={`px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition cursor-pointer ${
                           viewMode === 'destination'
                             ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-xs'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         }`}
                       >
-                        <Compass className="w-3.5 h-3.5" />
-                        <span>{t.home.viewModeDestination}</span>
+                        <Compass className="hidden sm:block w-3.5 h-3.5" />
+                        <span className="whitespace-nowrap lg:sr-only xl:not-sr-only">{t.home.viewModeDestination}</span>
                       </button>
                       <button
+                        title={t.home.viewModeTimeframe}
                         type="button"
                         onClick={() => setViewMode('timeframe')}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition cursor-pointer ${
+                        className={`px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition cursor-pointer ${
                           viewMode === 'timeframe'
                             ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-xs'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         }`}
                       >
-                        <Calendar className="w-3.5 h-3.5" />
-                        <span>{t.home.viewModeTimeframe}</span>
+                        <Calendar className="hidden sm:block w-3.5 h-3.5" />
+                        <span className="whitespace-nowrap lg:sr-only xl:not-sr-only">{t.home.viewModeTimeframe}</span>
                       </button>
                       <button
+                        title={t.home.viewModeList}
                         type="button"
                         onClick={() => setViewMode('list')}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition cursor-pointer ${
+                        className={`px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition cursor-pointer ${
                           viewMode === 'list'
                             ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-xs'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         }`}
                       >
-                        <List className="w-3.5 h-3.5" />
-                        <span>{t.home.viewModeList}</span>
+                        <List className="hidden sm:block w-3.5 h-3.5" />
+                        <span className="whitespace-nowrap lg:sr-only xl:not-sr-only">{t.home.viewModeList}</span>
                       </button>
                     </div>
                   </div>
                 </div>
+
+                {(shareFallbackUrl || shareError) && (
+                  <div
+                    role="status"
+                    className={`mt-3 p-2.5 rounded-lg border text-xs flex items-start gap-2 ${
+                      shareError
+                        ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+                        : 'bg-teal-50/70 dark:bg-teal-950/30 border-teal-200 dark:border-teal-800 text-teal-900 dark:text-teal-100'
+                    }`}
+                  >
+                    {shareError ? (
+                      <span className="flex-1">{t.home.shareFailed}</span>
+                    ) : (
+                      <label className="flex-1 min-w-0 space-y-1.5">
+                        <span className="block font-semibold">{t.home.shareCopyManually}</span>
+                        <input
+                          readOnly
+                          value={shareFallbackUrl || ''}
+                          onFocus={(e) => e.currentTarget.select()}
+                          autoFocus
+                          className="w-full text-base sm:text-xs rounded-md border border-teal-300 dark:border-teal-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-slate-800 dark:text-slate-100"
+                        />
+                      </label>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShareFallbackUrl(null);
+                        setShareError(false);
+                      }}
+                      className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer flex-shrink-0"
+                      aria-label={t.common.close}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
 
                 {/* Collapsible Filter Panel: Highlight active non-default filters clearly */}
                 {showResultFilters && (() => {
@@ -2913,8 +2684,52 @@ export default function HomePage() {
                   const isMaxCostActive = maxCostFilter !== undefined && maxCostFilter > 0;
                   const isSortActive = sortBy !== 'score';
 
+                  const isDestinationActive = selectedDestinationsList.length > 0;
+
                   return (
-                    <div className="pt-3 border-t border-slate-100 space-y-2">
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                      {/* Line 0: Destination Filter (only meaningful with more than one destination) */}
+                      {activeQueryDestinations.length > 1 && (
+                        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isDestinationActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                          <label className={`text-xs flex items-center gap-1.5 transition-colors ${isDestinationActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                            <MapPin className="w-3.5 h-3.5 text-teal-600" />
+                            <span>{t.home.filterByDestination}</span>
+                            {isDestinationActive && (
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
+                            )}
+                          </label>
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto min-w-0">
+                            <DestinationFilterDropdown
+                              destinations={activeQueryDestinations}
+                              selectedDestinations={selectedDestinationsList}
+                              onChange={(selected) => {
+                                setSelectedDestinationsList(selected);
+                                setCurrentPage(1);
+                                setTimeframeCurrentPage(1);
+                              }}
+                              totalCount={results?.length || 0}
+                              className="flex-1 sm:flex-none min-w-0"
+                            />
+                            <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                              {isDestinationActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedDestinationsList([]);
+                                    setCurrentPage(1);
+                                    setTimeframeCurrentPage(1);
+                                  }}
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  title="Zurücksetzen"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Line 1: Month Filter */}
                       <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isMonthActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
                         <label className={`text-xs flex items-center gap-1.5 transition-colors ${isMonthActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
@@ -2926,7 +2741,11 @@ export default function HomePage() {
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
                           <select
-                            value={selectedMonth}
+                            value={
+                              selectedMonth.length === 2
+                                ? availableMonths.find((ym) => ym.endsWith('-' + selectedMonth)) ?? 'ALL'
+                                : selectedMonth
+                            }
                             onChange={(e) => {
                               setSelectedMonth(e.target.value);
                               setCurrentPage(1);
@@ -2937,15 +2756,12 @@ export default function HomePage() {
                                 : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
-                            <option value="ALL">{t.home.allMonths}</option>
-                            {availableMonths.map((m) => {
-                              const monthName = formatDate(new Date(2026, parseInt(m, 10) - 1, 1), {
-                                month: 'long',
-                              });
+                            {renderFilterOption('month', 'ALL', t.home.allMonths, selectedMonth)}
+                            {availableMonths.map((ym) => {
+                              const [y, m] = ym.split('-').map((n) => parseInt(n, 10));
+                              const monthName = formatDate(new Date(y, m - 1, 1), { month: 'long', year: 'numeric' });
                               return (
-                                <option key={m} value={m}>
-                                  {monthName}
-                                </option>
+                                renderFilterOption('month', ym, monthName, selectedMonth)
                               );
                             })}
                           </select>
@@ -2989,12 +2805,12 @@ export default function HomePage() {
                                 : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
-                            <option value="ALL">{t.home.vacationKindAll}</option>
-                            <option value="BEACH">{t.home.vacationKindBeach}</option>
-                            <option value="ALPINE">{t.home.vacationKindAlpine}</option>
-                            <option value="CITY">{t.home.vacationKindCity}</option>
-                            <option value="NATURE">{t.home.vacationKindNature}</option>
-                            <option value="LONGRANGE">{t.home.vacationKindLongrange}</option>
+                            {renderFilterOption('style', 'ALL', t.home.vacationKindAll, resultStyleFilter)}
+                            {renderFilterOption('style', 'BEACH', t.home.vacationKindBeach, resultStyleFilter)}
+                            {renderFilterOption('style', 'ALPINE', t.home.vacationKindAlpine, resultStyleFilter)}
+                            {renderFilterOption('style', 'CITY', t.home.vacationKindCity, resultStyleFilter)}
+                            {renderFilterOption('style', 'NATURE', t.home.vacationKindNature, resultStyleFilter)}
+                            {renderFilterOption('style', 'LONGRANGE', t.home.vacationKindLongrange, resultStyleFilter)}
                           </select>
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isStyleActive && (
@@ -3017,7 +2833,7 @@ export default function HomePage() {
                       {/* Line 3: Flight Distance Filter */}
                       <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isDistanceActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
                         <label className={`text-xs flex items-center gap-1.5 transition-colors ${isDistanceActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                          <Plane className={`w-3.5 h-3.5 ${isDistanceActive ? 'text-indigo-600' : 'text-indigo-600'}`} />
+                          <Route className="w-3.5 h-3.5 text-indigo-600" />
                           <span>{t.home.filterByDistance}</span>
                           {isDistanceActive && (
                             <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
@@ -3036,12 +2852,12 @@ export default function HomePage() {
                                 : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
-                            <option value="ALL">{t.home.allDistances}</option>
-                            <option value="SHORT">{t.home.distShort}</option>
-                            <option value="MID">{t.home.distMid}</option>
-                            <option value="EXTENDED">{t.home.distExtended}</option>
-                            <option value="LONG">{t.home.distLong}</option>
-                            <option value="INTERCONTINENTAL">{t.home.distIntercontinental}</option>
+                            {renderFilterOption('distance', 'ALL', t.home.allDistances, distanceFilter)}
+                            {renderFilterOption('distance', 'SHORT', t.home.distShort, distanceFilter)}
+                            {renderFilterOption('distance', 'MID', t.home.distMid, distanceFilter)}
+                            {renderFilterOption('distance', 'EXTENDED', t.home.distExtended, distanceFilter)}
+                            {renderFilterOption('distance', 'LONG', t.home.distLong, distanceFilter)}
+                            {renderFilterOption('distance', 'INTERCONTINENTAL', t.home.distIntercontinental, distanceFilter)}
                           </select>
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isDistanceActive && (
@@ -3083,11 +2899,11 @@ export default function HomePage() {
                                 : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
-                            <option value="ALL">{t.home.vehicleAll}</option>
-                            <option value="PLANE">{t.home.vehiclePlane}</option>
-                            <option value="CAR">{t.home.vehicleCar}</option>
-                            <option value="TRAIN">{t.home.vehicleTrain}</option>
-                            <option value="BUS">{t.home.vehicleBus}</option>
+                            {renderFilterOption('vehicle', 'ALL', t.home.vehicleAll, vehicleFilter)}
+                            {renderFilterOption('vehicle', 'PLANE', t.home.vehiclePlane, vehicleFilter)}
+                            {renderFilterOption('vehicle', 'CAR', t.home.vehicleCar, vehicleFilter)}
+                            {renderFilterOption('vehicle', 'TRAIN', t.home.vehicleTrain, vehicleFilter)}
+                            {renderFilterOption('vehicle', 'BUS', t.home.vehicleBus, vehicleFilter)}
                           </select>
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isVehicleActive && (
@@ -3129,8 +2945,8 @@ export default function HomePage() {
                                 : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
-                            <option value="SAFE_ONLY">{t.home.safetyFilterSafeOnly}</option>
-                            <option value="ALL">{t.home.safetyFilterAll}</option>
+                            {renderFilterOption('safety', 'SAFE_ONLY', t.home.safetyFilterSafeOnly, safetyFilter)}
+                            {renderFilterOption('safety', 'ALL', t.home.safetyFilterAll, safetyFilter)}
                           </select>
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isSafetyActive && (
@@ -3172,8 +2988,8 @@ export default function HomePage() {
                                 : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
-                            <option value="CLEAN_ONLY">{t.home.warningsFilterCleanOnly}</option>
-                            <option value="ALL">{t.home.warningsFilterAll}</option>
+                            {renderFilterOption('warning', 'CLEAN_ONLY', t.home.warningsFilterCleanOnly, warningFilter)}
+                            {renderFilterOption('warning', 'ALL', t.home.warningsFilterAll, warningFilter)}
                           </select>
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isWarningActive && (
@@ -3215,8 +3031,8 @@ export default function HomePage() {
                                 : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
-                            <option value="ALL">{t.home.heatFilterAll}</option>
-                            <option value="AVOID_EXTREME_HEAT">{t.home.heatFilterAvoid}</option>
+                            {renderFilterOption('heat', 'ALL', t.home.heatFilterAll, heatFilter)}
+                            {renderFilterOption('heat', 'AVOID_EXTREME_HEAT', t.home.heatFilterAvoid, heatFilter)}
                           </select>
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isHeatActive && (
@@ -3258,11 +3074,11 @@ export default function HomePage() {
                                 : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
-                            <option value="ALL">{t.home.allBoardTypes}</option>
-                            <option value="ALL_INCLUSIVE">{t.home.boardTypeAllInclusive}</option>
-                            <option value="HALF_BOARD">{t.home.boardTypeHalfBoard}</option>
-                            <option value="BREAKFAST">{t.home.boardTypeBreakfast}</option>
-                            <option value="ROOM_ONLY">{t.home.boardTypeRoomOnly}</option>
+                            {renderFilterOption('boardType', 'ALL', t.home.allBoardTypes, boardTypeFilter)}
+                            {renderFilterOption('boardType', 'ALL_INCLUSIVE', t.home.boardTypeAllInclusive, boardTypeFilter)}
+                            {renderFilterOption('boardType', 'HALF_BOARD', t.home.boardTypeHalfBoard, boardTypeFilter)}
+                            {renderFilterOption('boardType', 'BREAKFAST', t.home.boardTypeBreakfast, boardTypeFilter)}
+                            {renderFilterOption('boardType', 'ROOM_ONLY', t.home.boardTypeRoomOnly, boardTypeFilter)}
                           </select>
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isBoardTypeActive && (
@@ -3283,10 +3099,13 @@ export default function HomePage() {
                       </div>
 
                       {/* Line 9: Max Overland Duration Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isOverlandDurationActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                      <div title={!overlandDurationApplicable ? t.home.filterNoOverland : undefined} className={`${!overlandDurationApplicable ? 'opacity-50 ' : ''}flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isOverlandDurationActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
                         <label className={`text-xs flex items-center gap-1.5 transition-colors ${isOverlandDurationActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
                           <Car className={`w-3.5 h-3.5 ${isOverlandDurationActive ? 'text-teal-600' : 'text-teal-600'}`} />
                           <span>{t.home.filterByOverlandDuration}</span>
+                          {!overlandDurationApplicable && (
+                            <span className="font-normal text-[10px] text-slate-500 dark:text-slate-400">({t.home.filterNoOverland})</span>
+                          )}
                           {isOverlandDurationActive && (
                             <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
                           )}
@@ -3294,20 +3113,21 @@ export default function HomePage() {
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
                           <select
                             value={overlandDurationFilter}
+                            disabled={!overlandDurationApplicable}
                             onChange={(e) => {
                               setOverlandDurationFilter(e.target.value);
                               setCurrentPage(1);
                             }}
-                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
+                            className={`disabled:cursor-not-allowed w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
                               isOverlandDurationActive
                                 ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
                                 : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
-                            <option value="ALL">{t.home.overlandDurationAny}</option>
-                            <option value="360">{t.home.overlandDuration6h}</option>
-                            <option value="600">{t.home.overlandDuration10h}</option>
-                            <option value="840">{t.home.overlandDuration14h}</option>
+                            {renderFilterOption('overlandDuration', 'ALL', t.home.overlandDurationAny, overlandDurationFilter)}
+                            {renderFilterOption('overlandDuration', '360', t.home.overlandDuration6h, overlandDurationFilter)}
+                            {renderFilterOption('overlandDuration', '600', t.home.overlandDuration10h, overlandDurationFilter)}
+                            {renderFilterOption('overlandDuration', '840', t.home.overlandDuration14h, overlandDurationFilter)}
                           </select>
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isOverlandDurationActive && (
@@ -3328,10 +3148,13 @@ export default function HomePage() {
                       </div>
 
                       {/* Line 10: Flight Transit & Stops Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isFlightStopsActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                      <div title={!flightStopsApplicable ? t.home.filterNoFlights : undefined} className={`${!flightStopsApplicable ? 'opacity-50 ' : ''}flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isFlightStopsActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
                         <label className={`text-xs flex items-center gap-1.5 transition-colors ${isFlightStopsActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
                           <Plane className={`w-3.5 h-3.5 ${isFlightStopsActive ? 'text-teal-600' : 'text-teal-600'}`} />
                           <span>{t.home.filterByFlightStops}</span>
+                          {!flightStopsApplicable && (
+                            <span className="font-normal text-[10px] text-slate-500 dark:text-slate-400">({t.home.filterNoFlights})</span>
+                          )}
                           {isFlightStopsActive && (
                             <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
                           )}
@@ -3339,19 +3162,20 @@ export default function HomePage() {
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
                           <select
                             value={flightStopsFilter}
+                            disabled={!flightStopsApplicable}
                             onChange={(e) => {
                               setFlightStopsFilter(e.target.value);
                               setCurrentPage(1);
                             }}
-                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
+                            className={`disabled:cursor-not-allowed w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
                               isFlightStopsActive
                                 ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
                                 : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
-                            <option value="ALL">{t.home.flightStopsAny}</option>
-                            <option value="DIRECT_ONLY">{t.home.flightStopsDirectOnly}</option>
-                            <option value="MAX_1_STOP">{t.home.flightStopsMax1}</option>
+                            {renderFilterOption('flightStops', 'ALL', t.home.flightStopsAny, flightStopsFilter)}
+                            {renderFilterOption('flightStops', 'DIRECT_ONLY', t.home.flightStopsDirectOnly, flightStopsFilter)}
+                            {renderFilterOption('flightStops', 'MAX_1_STOP', t.home.flightStopsMax1, flightStopsFilter)}
                           </select>
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isFlightStopsActive && (
@@ -3393,8 +3217,8 @@ export default function HomePage() {
                                 : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
                             }`}
                           >
-                            <option value="all">{t.home.filterAllDates}</option>
-                            <option value="holidaysOnly">{t.home.filterSchoolHolidaysOnly}</option>
+                            {renderFilterOption('schoolHoliday', 'all', t.home.filterAllDates, schoolHolidayFilter)}
+                            {renderFilterOption('schoolHoliday', 'holidaysOnly', t.home.filterSchoolHolidaysOnly, schoolHolidayFilter)}
                           </select>
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isSchoolHolidayActive && (
@@ -3501,6 +3325,7 @@ export default function HomePage() {
                 })()}
               </div>
 
+              <div id="results-top" className="scroll-mt-24" aria-hidden="true" />
               {filteredResults.length === 0 ? (
                 <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 p-8 text-center text-slate-500 dark:text-slate-400 text-xs">
                   No vacation windows match the active filters.
@@ -3508,53 +3333,6 @@ export default function HomePage() {
               ) : viewMode === 'destination' ? (
                 /* Group by Destination View */
                 <div className="space-y-4">
-                  {/* Destination View Controls & Filter Bar */}
-                  {(activeQueryDestinations.length > 1 || destinationGroups.length > 0) && (
-                    <div className="bg-white dark:bg-slate-900/90 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      {activeQueryDestinations.length > 1 ? (
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                            {t.home.filterByDestination}:
-                          </span>
-                          <DestinationFilterDropdown
-                            destinations={activeQueryDestinations}
-                            selectedDestinations={selectedDestinationsList}
-                            onChange={(selected) => {
-                              setSelectedDestinationsList(selected);
-                              setCurrentPage(1);
-                              setTimeframeCurrentPage(1);
-                            }}
-                            totalCount={results?.length || 0}
-                          />
-                        </div>
-                      ) : <div />}
-
-                      {destinationGroups.length > 0 && (
-                        <div className="flex items-center gap-1 shrink-0 self-end sm:self-auto">
-                          <button
-                            type="button"
-                            onClick={expandAllDestinations}
-                            title={t.home.expandAllAlternativeDates}
-                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-slate-700/60 text-teal-700 dark:text-teal-400 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer hover:border-teal-300 dark:hover:border-slate-600 transition"
-                          >
-                            <ChevronsUpDown className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline text-[11px]">+</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={collapseAllDestinations}
-                            title={t.home.collapseAllAlternativeDates}
-                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/60 text-slate-600 dark:text-slate-300 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 transition"
-                          >
-                            <ChevronsDownUp className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline text-[11px]">-</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                   {/* Empty state when destination filter matches 0 */}
                   {destinationGroups.length === 0 ? (
                     <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-8 text-center space-y-3">
@@ -3574,7 +3352,6 @@ export default function HomePage() {
                     /* Destination Cards List */
                     <div className="space-y-6">
                       {destinationGroups.map((group, groupIdx) => {
-                    const isExpanded = expandedDestinations[group.destinationCode];
                     return (
                       <div
                         key={group.destinationCode}
@@ -3598,6 +3375,9 @@ export default function HomePage() {
                                       flightDistanceKm: group.featuredWindow.flightDistanceKm,
                                       flightDurationMinutes: group.featuredWindow.flightDurationMinutes,
                                       originAirport: group.featuredWindow.originAirport,
+                                      travelVehicle: group.featuredWindow.travelVehicle,
+                                      overlandDistanceKm: group.featuredWindow.vehicleDetails?.distanceKm,
+                                      overlandDurationMinutes: group.featuredWindow.vehicleDetails?.durationMinutes,
                                     })
                                   }
                                   className="inline-flex items-center gap-1.5 text-left group/loc cursor-pointer hover:opacity-90 transition"
@@ -3620,19 +3400,25 @@ export default function HomePage() {
                                     </span>
                                   );
                                 })}
-                                {group.featuredWindow?.travelVehicle && (
-                                  <span
-                                    className={`text-[10px] sm:text-[11px] font-bold px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1 shadow-2xs ${getVehicleMeta(group.featuredWindow.travelVehicle).color}`}
-                                  >
-                                    {React.createElement(getVehicleMeta(group.featuredWindow.travelVehicle).icon, { className: 'w-3 h-3 flex-shrink-0' })}
-                                    <span>{getVehicleMeta(group.featuredWindow.travelVehicle).label}</span>
-                                    {group.featuredWindow.vehicleDetails?.distanceKm ? (
-                                      <span className="opacity-75 font-normal">
-                                        ({group.featuredWindow.vehicleDetails.distanceKm} km)
-                                      </span>
-                                    ) : null}
-                                  </span>
-                                )}
+                                {/* Every way of getting there; the featured trip's vehicle first, with its distance */}
+                                {group.travelVehicles.map((vehicle) => {
+                                  const meta = getVehicleMeta(vehicle);
+                                  const isFeatured = vehicle === (group.featuredWindow.travelVehicle || 'PLANE');
+                                  return (
+                                    <span
+                                      key={vehicle}
+                                      className={`text-[10px] sm:text-[11px] font-bold px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1 shadow-2xs ${meta.color}`}
+                                    >
+                                      {React.createElement(meta.icon, { className: 'w-3 h-3 flex-shrink-0' })}
+                                      <span>{meta.label}</span>
+                                      {isFeatured && group.featuredWindow.vehicleDetails?.distanceKm ? (
+                                        <span className="opacity-75 font-normal">
+                                          ({group.featuredWindow.vehicleDetails.distanceKm} km)
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                  );
+                                })}
                                 <DestinationSafetyPopover
                                   safety={group.destinationSafety || group.featuredWindow.destinationSafety || group.featuredWindow.safetyAssessment}
                                   destinationName={group.destinationName}
@@ -3645,11 +3431,8 @@ export default function HomePage() {
                           {/* Bottom Row: Stats & Action Buttons (Pulled down for maximum room) */}
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-slate-200/70 dark:border-slate-700/70">
                             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                              <span title={`${group.totalWindows} raw date & duration combinations evaluated`}>
-                                {t.home.destGroupTimeframesFound.replace(
-                                  '{count}',
-                                  String(group.alternativeWindows.length + 1)
-                                )}
+                              <span>
+                                {t.home.destGroupTimeframesFound.replace('{count}', String(group.totalWindows))}
                               </span>
                               <span>•</span>
                               <span className="font-semibold text-slate-700 dark:text-slate-300">
@@ -3676,38 +3459,18 @@ export default function HomePage() {
                           {renderVacationCard(group.featuredWindow, { rank: groupIdx + 1, hideDestinationHeader: true })}
                         </div>
 
-                        {/* Alternative Dates Accordion */}
-                        {group.alternativeWindows.length > 0 && (
-                          <div className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-4">
+                        {/* Every other period of this destination lives in the list view, which
+                            brings sorting and pagination */}
+                        {group.totalWindows > 1 && (
+                          <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-3 bg-white dark:bg-slate-900/90">
                             <button
                               type="button"
-                              onClick={() => toggleDestinationExpand(group.destinationCode)}
-                              className="w-full flex items-center justify-between text-xs font-bold text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-100 transition py-1 cursor-pointer"
+                              onClick={() => showDestinationInList(group.destinationCode)}
+                              className="w-full sm:w-auto px-3 py-2 text-xs font-bold rounded-lg border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition inline-flex items-center justify-center gap-1.5 cursor-pointer"
                             >
-                              <span className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                                {isExpanded
-                                  ? t.home.destGroupHideAlternativeDates
-                                  : t.home.destGroupAlternativeDates.replace('{count}', String(group.alternativeWindows.length))}
-                              </span>
-                              {isExpanded ? (
-                                <ChevronUp className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                              ) : (
-                                <ChevronDown className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                              )}
+                              <List className="w-3.5 h-3.5" />
+                              {t.home.destGroupShowAllInList.replace('{count}', String(group.totalWindows))}
                             </button>
-
-                            {isExpanded && (
-                              <div className="mt-4 space-y-3 pt-2">
-                                {group.alternativeWindows.map((altWin, altIdx) => (
-                                  <div
-                                    key={`${altWin.startDate}-${altWin.originAirport}-${altWin.durationDays}`}
-                                  >
-                                    {renderVacationCard(altWin, { rank: altIdx + 2, hideDestinationHeader: true })}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
                           </div>
                         )}
                       </div>
@@ -3719,31 +3482,8 @@ export default function HomePage() {
           ) : viewMode === 'timeframe' ? (
                 /* Group by Timeframe View */
                 <div className="space-y-6">
-                  {/* Destination Filter Dropdown when query has > 1 destination */}
-                  {activeQueryDestinations.length > 1 && (
-                    <div className="bg-white dark:bg-slate-900/90 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                          {t.home.filterByDestination}:
-                        </span>
-                        <DestinationFilterDropdown
-                          destinations={activeQueryDestinations}
-                          selectedDestinations={selectedDestinationsList}
-                          onChange={(selected) => {
-                            setSelectedDestinationsList(selected);
-                            setTimeframeCurrentPage(1);
-                            setCurrentPage(1);
-                          }}
-                          totalCount={results?.length || 0}
-                        />
-                      </div>
-                    </div>
-                  )}
-
                   {displayedTimeframeGroups.map((group) => {
-                    const isExpanded = expandedTimeframes[group.key];
-                    const shownWindows = isExpanded ? group.windows : group.windows.slice(0, 3);
+                    const shownWindows = group.windows.slice(0, 3);
                     return (
                       <div key={group.key} className="space-y-3">
                         {/* Timeframe Group Header */}
@@ -3770,7 +3510,7 @@ export default function HomePage() {
                           <div className="flex items-center gap-2 self-start sm:self-center">
                             {group.hasSchoolHolidays && (
                               <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/30 text-emerald-100 border border-emerald-300/40">
-                                {t.home.schoolAgeBadge}
+                                {t.home.timeframeSchoolHolidayBadge}
                               </span>
                             )}
                           </div>
@@ -3783,29 +3523,20 @@ export default function HomePage() {
                           )}
                         </div>
 
-                        {/* Show More toggle */}
+                        {/* Every option of this period lives in the list view (sorting, pagination) */}
                         {group.windows.length > 3 && (
                           <div className="text-center pt-1">
                             <button
                               type="button"
-                              onClick={() => toggleTimeframeExpand(group.key)}
-                              className="px-4 py-2 text-xs font-bold text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-100 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 rounded-lg transition inline-flex items-center gap-1.5 cursor-pointer"
+                              onClick={() => showMonthInList(group.key)}
+                              className="px-4 py-2 text-xs font-bold text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-100 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 border border-teal-200 dark:border-teal-800 rounded-lg transition inline-flex items-center gap-1.5 cursor-pointer"
                             >
-                              {isExpanded ? (
-                                <>
-                                  <ChevronUp className="w-3.5 h-3.5" />
-                                  <span>{t.home.timeframeGroupShowLess}</span>
-                                </>
-                              ) : (
-                                <>
-                                  <ChevronDown className="w-3.5 h-3.5" />
-                                  <span>
-                                    {t.home.timeframeGroupShowMore
-                                      .replace('{count}', String(group.windows.length))
-                                      .replace('{period}', group.title)}
-                                  </span>
-                                </>
-                              )}
+                              <List className="w-3.5 h-3.5" />
+                              <span>
+                                {t.home.timeframeShowAllInList
+                                  .replace('{count}', String(group.windows.length))
+                                  .replace('{period}', group.title)}
+                              </span>
                             </button>
                           </div>
                         )}
@@ -3887,28 +3618,57 @@ export default function HomePage() {
               ) : (
                 /* Flat List View */
                 <div className="space-y-4">
-                  {/* Destination Filter Dropdown when query has > 1 destination */}
-                  {activeQueryDestinations.length > 1 && (
-                    <div className="bg-white dark:bg-slate-900/90 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                          {t.home.filterByDestination}:
-                        </span>
-                        <DestinationFilterDropdown
-                          destinations={activeQueryDestinations}
-                          selectedDestinations={selectedDestinationsList}
-                          onChange={(selected) => {
-                            setSelectedDestinationsList(selected);
+                  {(selectedDestinationsList.length > 0 || selectedMonth !== 'ALL') && (
+                    <div className="p-3 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50/70 dark:bg-teal-950/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                      <span className="font-semibold text-teal-900 dark:text-teal-100 flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                        {t.home.listDestinationFilterActive.replace(
+                          '{destinations}',
+                          [
+                            ...selectedDestinationsList.map((code) => getFormattedLocalizedDestination(code)),
+                            ...(selectedMonth === 'ALL'
+                              ? []
+                              : [
+                                  selectedMonth.length === 7
+                                    ? formatDate(new Date(parseInt(selectedMonth.slice(0, 4), 10), parseInt(selectedMonth.slice(5, 7), 10) - 1, 1), { month: 'long', year: 'numeric' })
+                                    : formatDate(new Date(2026, parseInt(selectedMonth, 10) - 1, 1), { month: 'long' }),
+                                ]),
+                          ].join(' · ')
+                        )}
+                      </span>
+                      <span className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedDestinationsList([]);
+                            setSelectedMonth('ALL');
+                            setListReturnView(null);
                             setCurrentPage(1);
                             setTimeframeCurrentPage(1);
                           }}
-                          totalCount={results?.length || 0}
-                        />
-                      </div>
+                          className="px-2.5 py-1.5 rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 font-semibold hover:bg-teal-50 dark:hover:bg-slate-700 transition cursor-pointer"
+                        >
+                          {t.home.listClearFilters}
+                        </button>
+                        {listReturnView && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Undo what the jump set, return to the group view it came from
+                              if (listReturnView === 'destination') setSelectedDestinationsList([]);
+                              else setSelectedMonth('ALL');
+                              setViewMode(listReturnView);
+                              setListReturnView(null);
+                              setCurrentPage(1);
+                            }}
+                            className="px-2.5 py-1.5 rounded-lg bg-teal-600 text-white font-semibold hover:bg-teal-700 transition cursor-pointer"
+                          >
+                            {listReturnView === 'destination' ? t.home.listBackToDestinations : t.home.listBackToTimeframes}
+                          </button>
+                        )}
+                      </span>
                     </div>
                   )}
-
                   {displayedResults.map((win, idx) => {
                     const globalRank = (currentPage - 1) * pageSize + idx + 1;
                     return renderVacationCard(win, { rank: globalRank });
@@ -4000,6 +3760,9 @@ export default function HomePage() {
           flightDurationMinutes={mapModalDestination.flightDurationMinutes}
           originAirport={mapModalDestination.originAirport}
           departureLocation={departureLocation}
+          travelVehicle={mapModalDestination.travelVehicle}
+          overlandDistanceKm={mapModalDestination.overlandDistanceKm}
+          overlandDurationMinutes={mapModalDestination.overlandDurationMinutes}
         />
       )}
     </div>

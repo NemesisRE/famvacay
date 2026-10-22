@@ -72,7 +72,7 @@ export const TRAVEL_PORTALS: TravelPortal[] = [
     badge: 'Hotels',
     colorClass: 'bg-indigo-700 hover:bg-indigo-800 text-white',
     buildUrl: ({ destinationAirport, startDate, endDate, adults = 2 }) =>
-      `https://www.booking.com/searchresults.html?ss=${destinationAirport}&checkin=${startDate}&checkout=${endDate}&group_adults=${adults}`,
+      `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(destinationAirport)}&checkin=${startDate}&checkout=${endDate}&group_adults=${adults}`,
   },
   {
     id: 'trip_com',

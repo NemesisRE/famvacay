@@ -12,6 +12,7 @@ import {
   useInteractions,
   FloatingPortal,
 } from '@floating-ui/react';
+import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop } from '@/components/ui/responsive-popover';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -42,6 +43,8 @@ export function DestinationSafetyPopover({
 }: DestinationSafetyPopoverProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+
+  const isSmallScreen = useIsSmallScreen();
 
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
@@ -137,9 +140,10 @@ export function DestinationSafetyPopover({
       {/* Floating Popout Modal */}
       {isOpen && (
         <FloatingPortal>
+          <PopoverBackdrop show={isSmallScreen} zIndex={9998} />
           <div
             ref={refs.setFloating}
-            style={floatingStyles}
+            style={getResponsivePopoverStyle(isSmallScreen, floatingStyles, 9999)}
             {...getFloatingProps()}
             onClick={(e) => e.stopPropagation()}
             className="z-50 w-[92vw] max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-slate-800 text-slate-800 dark:text-slate-100 p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150 focus:outline-none"

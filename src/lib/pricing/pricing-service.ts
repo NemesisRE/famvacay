@@ -9,6 +9,7 @@ import {
 import { BoardType } from '../optimizer/types';
 import { calculatePassengerCostMultiplier } from '../optimizer/child-tiers';
 import { getAirportByIata, calculateGeodesicDistanceKm } from '../airports/airport-service';
+import { getDestinationPoint } from '../geo/destination-points';
 import { resolveFlightRoute } from '../airports/flight-routes';
 
 /**
@@ -300,7 +301,7 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
 
     // Calculate geodesic flight corridor distance in km
     const origAirport = getAirportByIata(originAirport);
-    const destAirport = getAirportByIata(destinationAirport);
+    const destAirport = getDestinationPoint(destinationAirport);
     let distKm = 1200; // default medium-haul baseline
     if (origAirport && destAirport) {
       distKm = calculateGeodesicDistanceKm(origAirport.lat, origAirport.lon, destAirport.lat, destAirport.lon);
@@ -481,7 +482,8 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
         party.childrenAges
       ),
       bookingCom: generateBookingComLink(
-        destinationAirport,
+        // Surface (non-airport) destinations have no IATA code a hotel search could understand
+        destAirport?.kind === 'SURFACE' ? `${destAirport.city}, ${destAirport.country}` : destinationAirport,
         startDate,
         endDate,
         party.adults,
@@ -504,95 +506,6 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
       packageTourDeal,
     };
   }
-}
-
-/**
- * Live Amadeus API Pricing Provider stub.
- * Connects to Amadeus GDS if credentials are provided in the environment,
- * otherwise gracefully falls back to PortalAggregatorProvider.
- */
-export class AmadeusPricingProvider implements TravelPricingProvider {
-  readonly name = 'AmadeusLive';
-  private fallbackProvider = new PortalAggregatorProvider();
-
-  async getTripPricing(params: {
-    originAirport: string;
-    destinationAirport: string;
-    startDate: string;
-    endDate: string;
-    durationDays: number;
-    party: PricingPartyComposition;
-    isArbitrage?: boolean;
-    preferredBoardType?: BoardType;
-  }): Promise<AggregatedTripPricing> {
-    const clientId = process.env.AMADEUS_CLIENT_ID;
-    const clientSecret = process.env.AMADEUS_CLIENT_SECRET;
-
-    if (!clientId || !clientSecret) {
-      // Graceful fallback to PortalAggregator when API credentials are absent
-      return this.fallbackProvider.getTripPricing(params);
-    }
-
-    try {
-      // In production with live Amadeus keys, perform OAuth token exchange and flight-offers query.
-      // If network times out or route is unserved, return fallback aggregator quote.
-      return this.fallbackProvider.getTripPricing(params);
-    } catch (err) {
-      console.warn('[AmadeusPricingProvider] Error fetching live quote, falling back to aggregator:', err);
-      return this.fallbackProvider.getTripPricing(params);
-    }
-  }
-}
-
-/**
- * Live Kiwi Tequila API Pricing Provider stub.
- * Connects to the Tequila API if a key is provided in the environment, otherwise gracefully
- * falls back to PortalAggregatorProvider. Never blocks or crashes the core CSP optimizer.
- */
-export class TequilaPricingProvider implements TravelPricingProvider {
-  readonly name = 'TequilaLive';
-  private fallbackProvider = new PortalAggregatorProvider();
-
-  async getTripPricing(params: {
-    originAirport: string;
-    destinationAirport: string;
-    startDate: string;
-    endDate: string;
-    durationDays: number;
-    party: PricingPartyComposition;
-    isArbitrage?: boolean;
-    preferredBoardType?: BoardType;
-  }): Promise<AggregatedTripPricing> {
-    const apiKey = process.env.TEQUILA_API_KEY;
-
-    if (!apiKey) {
-      return this.fallbackProvider.getTripPricing(params);
-    }
-
-    try {
-      // In production with a live Tequila key, query the search endpoint for a real fare.
-      // If the route is unserved, rate-limited, or times out, fall back to the aggregator quote.
-      return this.fallbackProvider.getTripPricing(params);
-    } catch (err) {
-      console.warn('[TequilaPricingProvider] Error fetching live quote, falling back to aggregator:', err);
-      return this.fallbackProvider.getTripPricing(params);
-    }
-  }
-}
-
-/**
- * Resolves whichever BYOK live pricing provider is configured via environment variables
- * (Amadeus takes priority when both are present), or undefined when neither is configured -
- * callers should silently keep the benchmark price in that case.
- */
-export function getConfiguredLivePricingProvider(): TravelPricingProvider | undefined {
-  if (process.env.AMADEUS_CLIENT_ID && process.env.AMADEUS_CLIENT_SECRET) {
-    return new AmadeusPricingProvider();
-  }
-  if (process.env.TEQUILA_API_KEY) {
-    return new TequilaPricingProvider();
-  }
-  return undefined;
 }
 
 // Default singleton instance

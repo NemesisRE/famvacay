@@ -220,6 +220,11 @@ export async function POST(req: NextRequest) {
             role: m.role || 'MEMBER',
             birthDate: new Date(m.birthDate),
             schoolRequired: Boolean(m.schoolRequired),
+            // Only a valid ISO 3166-2 code; empty means "follows the family's home region".
+            schoolSubdivision:
+              typeof m.schoolSubdivision === 'string' && /^[A-Z]{2}(-[A-Z0-9]{1,3})?$/i.test(m.schoolSubdivision.trim())
+                ? m.schoolSubdivision.trim().toUpperCase()
+                : null,
             passportExpiry: m.passportExpiry ? new Date(m.passportExpiry) : null,
             specialDiet: m.specialDiet || null,
           })),

@@ -12,6 +12,7 @@ import {
   useInteractions,
   FloatingPortal,
 } from '@floating-ui/react';
+import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop } from '@/components/ui/responsive-popover';
 import { MapPin, ChevronDown, Check, X, Search } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
@@ -39,6 +40,8 @@ export function DestinationFilterDropdown({
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const isSmallScreen = useIsSmallScreen();
 
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
@@ -124,29 +127,16 @@ export function DestinationFilterDropdown({
             }`}
           />
         </button>
-
-        {/* Dedicated Quick-Reset X Button */}
-        {!isAllSelected && (
-          <button
-            type="button"
-            onClick={handleSelectAll}
-            className="p-1.5 text-slate-400 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-950/60 rounded-lg transition cursor-pointer shrink-0"
-            title={t.home.clearDestinationFilter}
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
+        {/* No reset button here: the filter panel row has its own, like every other filter */}
       </div>
 
       {/* Floating Dropdown Menu */}
       {isOpen && (
         <FloatingPortal>
+          <PopoverBackdrop show={isSmallScreen} zIndex={99998} />
           <div
             ref={refs.setFloating}
-            style={{
-              ...floatingStyles,
-              zIndex: 99999,
-            }}
+            style={getResponsivePopoverStyle(isSmallScreen, floatingStyles, 99999)}
             {...getFloatingProps()}
             className="w-72 max-h-84 overflow-y-auto bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-2.5 text-slate-800 dark:text-slate-100 transition-all duration-100 animate-in fade-in zoom-in-95"
             onClick={(e) => e.stopPropagation()}
@@ -243,10 +233,7 @@ export function DestinationFilterDropdown({
                       >
                         {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                       </div>
-                      <span className="truncate">{dest.name}</span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono flex-shrink-0">
-                        ({dest.code})
-                      </span>
+                      <span className="truncate" title={dest.name}>{dest.name}</span>
                     </div>
                     <span
                       className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ml-1.5 ${

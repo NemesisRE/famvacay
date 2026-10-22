@@ -12,6 +12,7 @@ import {
   useInteractions,
   FloatingPortal,
 } from '@floating-ui/react';
+import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop } from '@/components/ui/responsive-popover';
 import { Globe, ChevronDown, Check, X } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
@@ -32,6 +33,8 @@ export function DestinationCountryMultiSelect({
 }: DestinationCountryMultiSelectProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+
+  const isSmallScreen = useIsSmallScreen();
 
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
@@ -104,12 +107,10 @@ export function DestinationCountryMultiSelect({
       {/* Floating Dropdown Menu */}
       {isOpen && (
         <FloatingPortal>
+          <PopoverBackdrop show={isSmallScreen} zIndex={99998} />
           <div
             ref={refs.setFloating}
-            style={{
-              ...floatingStyles,
-              zIndex: 99999,
-            }}
+            style={getResponsivePopoverStyle(isSmallScreen, floatingStyles, 99999)}
             {...getFloatingProps()}
             className="w-64 max-h-80 overflow-y-auto bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-2 text-slate-800 dark:text-slate-100 transition-all duration-100 animate-in fade-in zoom-in-95"
             onClick={(e) => e.stopPropagation()}

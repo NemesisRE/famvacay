@@ -1,19 +1,25 @@
 'use client';
 
 import React from 'react';
-import { Users, Plus, Trash2, Award } from 'lucide-react';
+import { Users, Plus, Trash2 } from 'lucide-react';
 import { differenceInYears } from 'date-fns';
 import { useI18n } from '@/lib/i18n/i18n-context';
+import { SchoolRegionSelect } from '@/components/forms/RegionSelectors';
+import { ChildAgeBadges } from './ChildAgeBadges';
 
 export interface ChildItem {
   id: string;
   birthDate: string;
+  /** ISO 3166-2 region whose school calendar this child follows; omitted = home region. */
+  schoolRegion?: string;
 }
 
 interface ChildrenSelectorProps {
   childrenList: ChildItem[];
   onChange: (items: ChildItem[]) => void;
   travelDate: string; // The earliest departure date (e.g., '2026-10-20')
+  /** Family home region (ISO 3166-2); enables the per-child school region selector. */
+  homeRegion?: string;
   className?: string;
 }
 
@@ -21,6 +27,7 @@ export function ChildrenSelector({
   childrenList,
   onChange,
   travelDate,
+  homeRegion,
   className = '',
 }: ChildrenSelectorProps) {
   const { t } = useI18n();
@@ -44,6 +51,12 @@ export function ChildrenSelector({
     );
   };
 
+  const handleSchoolRegionChange = (id: string, region: string | undefined) => {
+    onChange(
+      childrenList.map((c) => (c.id === id ? { ...c, schoolRegion: region } : c))
+    );
+  };
+
   const calculateAgeAtTravel = (birthDateStr: string) => {
     if (!birthDateStr) return null;
     const birth = new Date(birthDateStr);
@@ -62,6 +75,9 @@ export function ChildrenSelector({
       </div>
 
       <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.home.childrenAgesHint}</p>
+      {homeRegion && childrenList.some((c) => (calculateAgeAtTravel(c.birthDate) ?? 0) >= 6) && (
+        <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.home.schoolRegionHint}</p>
+      )}
 
       {childrenList.length === 0 ? (
         <div className="p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center">
@@ -83,10 +99,11 @@ export function ChildrenSelector({
             return (
               <div
                 key={child.id}
-                className="px-2.5 py-1.5 bg-slate-50/90 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 text-xs transition-all hover:bg-white dark:hover:bg-slate-800"
+                className="px-2.5 py-1.5 bg-slate-50/90 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700 text-xs transition-all hover:bg-white dark:hover:bg-slate-800 space-y-1.5"
               >
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                 {/* Number & Date Input */}
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="order-1 flex items-center gap-2 flex-shrink-0">
                   <span className="text-[11px] font-bold text-slate-500 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 w-5 h-5 rounded-full flex items-center justify-center">
                     {index + 1}
                   </span>
@@ -99,50 +116,28 @@ export function ChildrenSelector({
                 </div>
 
                 {/* Single-line Badges: Age + Tier + School Status */}
-                <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto justify-end flex-grow">
-                  {age !== null && (
-                    <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 whitespace-nowrap">
-                      {age}y
-                    </span>
-                  )}
+                <div className="order-3 basis-full sm:order-2 sm:basis-auto sm:flex-1 flex flex-wrap items-center gap-1.5 min-w-0 sm:justify-end pl-7 sm:pl-0">
+                  <ChildAgeBadges age={age} />
 
-                  {age !== null && age < 2 && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 whitespace-nowrap" title={t.home.tierInfant}>
-                      {t.home.tierInfantBadge}
-                    </span>
-                  )}
-
-                  {age !== null && age >= 2 && age < 12 && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 whitespace-nowrap" title={t.home.tierChild}>
-                      {t.home.tierChildBadge}
-                    </span>
-                  )}
-
-                  {age !== null && age >= 12 && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 whitespace-nowrap" title={t.home.tierTeen}>
-                      {t.home.tierTeenBadge}
-                    </span>
-                  )}
-
-                  {isSchoolChild && (
-                    <span
-                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-0.5 whitespace-nowrap"
-                      title={t.home.schoolAgeBadge}
-                    >
-                      <Award className="w-2.5 h-2.5 text-amber-700 dark:text-amber-400" />
-                      {t.home.schoolAgeBadgeShort}
-                    </span>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveChild(child.id)}
-                    className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors ml-1 flex-shrink-0 cursor-pointer"
-                    title={t.home.removeChild}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleRemoveChild(child.id)}
+                  className="order-2 ml-auto sm:order-3 sm:ml-0 p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors flex-shrink-0 cursor-pointer"
+                  title={t.home.removeChild}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              {homeRegion && isSchoolChild && (
+                <SchoolRegionSelect
+                  homeRegion={homeRegion}
+                  value={child.schoolRegion}
+                  onChange={(region) => handleSchoolRegionChange(child.id, region)}
+                  label={t.home.schoolRegionLabel}
+                />
+              )}
               </div>
             );
           })}

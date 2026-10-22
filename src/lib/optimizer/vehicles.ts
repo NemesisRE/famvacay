@@ -1,5 +1,6 @@
-import { TravelVehicle, VehicleTravelMetrics } from './types';
+import { TravelVehicle, VehicleTravelMetrics, CarFuelType } from './types';
 import { getAirportByIata } from '../airports/airport-service';
+import { getSurfaceDestination } from '../geo/surface-destinations';
 
 /**
  * Standard ISO 3166-1 alpha-2 country codes mapped to geographical continents.
@@ -48,7 +49,6 @@ const FLIGHT_ONLY_SUBDIVISIONS = new Set([
   'ES-IB', // Balearic Islands (Mallorca, Ibiza, Menorca)
   'PT-20', // Azores
   'PT-30', // Madeira
-  'IT-82', 'IT-SIC', // Sicily
   'US-HI', // Hawaii
   'AU-TAS', // Tasmania
 ]);
@@ -62,12 +62,20 @@ const LONG_FERRY_SUBDIVISIONS = new Set([
 ]);
 
 /**
+ * Island subdivisions reachable overland via a SHORT_FERRY crossing (< 2.5h).
+ */
+const SHORT_FERRY_SUBDIVISIONS = new Set([
+  'IT-82', 'IT-SIC', // Sicily (Strait of Messina car ferry, ~20 min crossing)
+]);
+
+/**
  * Single-airport islands reachable overland only via a LONG_FERRY crossing (2.5h-10h),
  * where the island has no distinct ISO subdivision code separate from the mainland region.
  */
 const LONG_FERRY_AIRPORTS = new Set([
   'RNN', // Bornholm (Denmark)
   'VBY', // Gotland (Sweden)
+  'IOM', // Isle of Man (Heysham/Liverpool ferry)
 ]);
 
 /**
@@ -77,6 +85,8 @@ const SHORT_FERRY_AIRPORTS = new Set([
   'EBA', // Elba (Italy)
   'GWT', // Sylt (Germany, AutoZug car-shuttle train treated as a short ferry-equivalent transfer)
   'CFU', // Corfu (Greece)
+  'JER', // Jersey (Saint-Malo ferry)
+  'GCI', // Guernsey (Saint-Malo ferry)
 ]);
 
 /**
@@ -99,10 +109,20 @@ export interface OverlandAccessResult {
  * - FLIGHT_ONLY: pruned from overland results when FLIGHT mode is disabled.
  */
 export function classifyOverlandAccess(destination: DestinationGeoPoint): OverlandAccessResult {
+  // Surface (non-airport) nodes carry their own curated ferry topology and crossing costs.
+  const surface = getSurfaceDestination(destination.code);
+  if (surface) {
+    return {
+      access: surface.access,
+      ferrySurchargeEur: surface.ferrySurchargeEur || 0,
+      ferryTransitMinutes: surface.ferryTransitMinutes || 0,
+    };
+  }
+
   const code = (destination.code || '').toUpperCase();
   const state = destination.state || '';
 
-  if (SHORT_FERRY_AIRPORTS.has(code)) {
+  if (SHORT_FERRY_AIRPORTS.has(code) || SHORT_FERRY_SUBDIVISIONS.has(state)) {
     return { access: 'SHORT_FERRY', ferrySurchargeEur: 140, ferryTransitMinutes: 120 };
   }
 
@@ -116,7 +136,32 @@ export function classifyOverlandAccess(destination: DestinationGeoPoint): Overla
     return { access: 'FLIGHT_ONLY', ferrySurchargeEur: 0, ferryTransitMinutes: 0 };
   }
 
+  // Any other island airport (Greek island subdivisions, Scottish isles, "... Island" airports)
+  // has no ferry topology modeled, so it must not silently count as reachable by road.
+  if (isUnmodeledIslandAirport(code, state)) {
+    return { access: 'FLIGHT_ONLY', ferrySurchargeEur: 0, ferryTransitMinutes: 0 };
+  }
+
   return { access: 'MAINLAND_OR_BRIDGE', ferrySurchargeEur: 0, ferryTransitMinutes: 0 };
+}
+
+/**
+ * Greek island regions (South/North Aegean, Crete, Ionian Islands) and other island
+ * subdivisions whose airports are not explicitly ferry-classified above.
+ */
+const ISLAND_ONLY_SUBDIVISIONS = new Set(['GR-L', 'GR-K', 'GR-M', 'GR-F', 'GR-81', 'GR-82', 'GR-83', 'GR-85']);
+const ISLAND_NAME_PATTERN = /\b(island|islands|isle|isles|isla|islas|insel|inseln|isola|isole|ile|îles?)\b/i;
+// Hebrides, Orkney and Shetland airfields, whose names do not say "island".
+const SCOTTISH_ISLAND_AIRPORTS = new Set(['BRR', 'TRE', 'ILY', 'SYY', 'BEB', 'KOI', 'LSI', 'LWK', 'CSA', 'NRL', 'PPW', 'WRY', 'SOY', 'EOI']);
+
+function isUnmodeledIslandAirport(code: string, state: string): boolean {
+  if (!code || code.length !== 3) return false;
+  if (state && ISLAND_ONLY_SUBDIVISIONS.has(state)) return true;
+  if (SCOTTISH_ISLAND_AIRPORTS.has(code)) return true;
+  const airport = getAirportByIata(code);
+  if (!airport) return false;
+  // Name/city only: airport keyword lists mention nearby islands for mainland airports too.
+  return ISLAND_NAME_PATTERN.test(`${airport.name} ${airport.city}`);
 }
 
 /**
@@ -188,10 +233,14 @@ export function isOverlandReachable(
     return false;
   }
 
+  // Surface nodes on islands (Mallorca via Barcelona, Corsica, Sardinia, Hvar...) declare an
+  // explicit ferry link, so the airport-oriented island blocks below do not apply to them.
+  const isSurfaceNode = Boolean(getSurfaceDestination(destination.code));
+
   // Flight-only island subdivisions (Canaries, Balearics, Madeira, Azores, Sicily, Hawaii, Tasmania):
   // no ferry topology modeled, so these remain a hard overland block. Corsica and Sardinia are
   // excluded here - they are reachable via LONG_FERRY (see classifyOverlandAccess).
-  if (destination.state && FLIGHT_ONLY_SUBDIVISIONS.has(destination.state)) {
+  if (!isSurfaceNode && destination.state && FLIGHT_ONLY_SUBDIVISIONS.has(destination.state)) {
     if (origin.state !== destination.state) {
       return false;
     }
@@ -206,6 +255,11 @@ export function isOverlandReachable(
 
   // Greek islands check (Corfu excluded - reachable via SHORT_FERRY)
   if (dCountry === 'GR' && destination.code && GREEK_ISLAND_AIRPORTS.has(destination.code.toUpperCase()) && destination.code.toUpperCase() !== 'CFU') {
+    return false;
+  }
+
+  // Island airports without a modeled ferry link (see classifyOverlandAccess)
+  if (!isSurfaceNode && destination.code && isUnmodeledIslandAirport(destination.code.toUpperCase(), destination.state || '')) {
     return false;
   }
 
@@ -242,6 +296,84 @@ export function isOverlandReachable(
 }
 
 /**
+ * Maximum geodesic (straight-line) distance each overland vehicle is considered for when the
+ * user has not set an explicit travel-time cap. Car trips to the Spanish Mediterranean coast or
+ * the Algarve are classic two-day family road trips, so the car range covers them; the
+ * travel-time filter (maxOverlandTravelMinutes) and the overland friction score keep long
+ * drives from dominating.
+ */
+export const OVERLAND_MAX_GEODESIC_KM = {
+  CAR: 2000,
+  TRAIN: 900,
+  TRAIN_HIGH_SPEED: 1300,
+  BUS: 1200,
+} as const;
+
+/**
+ * Inverts the vehicle duration models below: the largest geodesic distance a vehicle can cover
+ * within the given door-to-door minutes (ignoring ferry legs, which only shrink it further).
+ */
+export function maxGeodesicKmForMinutes(
+  vehicle: Exclude<TravelVehicle, 'PLANE'>,
+  minutes: number,
+  highSpeedRail = false
+): number {
+  switch (vehicle) {
+    case 'CAR':
+      return Math.max(0, (((minutes - 45) / 60) * 88) / 1.25);
+    case 'TRAIN':
+      return highSpeedRail
+        ? Math.max(0, ((minutes - 30) / 60) * 160)
+        : Math.max(0, ((minutes - 45) / 60) * 100);
+    case 'BUS':
+    default:
+      return Math.max(0, (((minutes - 60) / 60) * 72) / 1.25);
+  }
+}
+
+/**
+ * Whether a single overland vehicle can physically cover the given geodesic distance.
+ */
+export function isOverlandVehicleInRange(
+  vehicle: Exclude<TravelVehicle, 'PLANE'>,
+  geodesicDistanceKm: number,
+  highSpeedRail = false
+): boolean {
+  if (vehicle === 'CAR') return geodesicDistanceKm <= OVERLAND_MAX_GEODESIC_KM.CAR;
+  if (vehicle === 'TRAIN') {
+    return geodesicDistanceKm <= (highSpeedRail ? OVERLAND_MAX_GEODESIC_KM.TRAIN_HIGH_SPEED : OVERLAND_MAX_GEODESIC_KM.TRAIN);
+  }
+  return geodesicDistanceKm <= OVERLAND_MAX_GEODESIC_KM.BUS;
+}
+
+/**
+ * Travel friction for an overland journey (0-100, higher = easier), driven by door-to-door
+ * duration rather than flight distance. A 4h drive to the Baltic should rank as far less
+ * tiring than a 14h drive to the Algarve, and ferry legs add boarding/queueing friction.
+ */
+export function calculateOverlandFrictionScore(
+  vehicle: Exclude<TravelVehicle, 'PLANE'>,
+  durationMinutes: number,
+  access: OverlandAccessClass = 'MAINLAND_OR_BRIDGE'
+): number {
+  const hours = durationMinutes / 60;
+  let score: number;
+  if (hours <= 3) score = 96;
+  else if (hours <= 6) score = 96 - ((hours - 3) / 3) * 14;   // 96 -> 82
+  else if (hours <= 10) score = 82 - ((hours - 6) / 4) * 20;  // 82 -> 62
+  else if (hours <= 14) score = 62 - ((hours - 10) / 4) * 18; // 62 -> 44
+  else score = 44 - Math.min(24, (hours - 14) * 3);           // 44 -> 20
+
+  // Kids can move around on a train; coaches are the most cramped option.
+  if (vehicle === 'TRAIN') score += 4;
+  if (vehicle === 'BUS') score -= 6;
+  if (access === 'SHORT_FERRY') score -= 2;
+  if (access === 'LONG_FERRY') score -= 5;
+
+  return Math.round(Math.max(15, Math.min(100, score)));
+}
+
+/**
  * Calculates which travel vehicles are viable for a journey.
  */
 export function getAvailableVehicles(
@@ -251,27 +383,21 @@ export function getAvailableVehicles(
 ): TravelVehicle[] {
   const available: TravelVehicle[] = [];
 
-  // Plane: Valid for commercial corridors >= 180 km
-  if (geodesicDistanceKm >= 180) {
+  // Plane: Valid for commercial corridors >= 180 km, and only to an actual airport
+  if (geodesicDistanceKm >= 180 && !getSurfaceDestination(destination.code)) {
     available.push('PLANE');
   }
 
   const overland = isOverlandReachable(origin, destination);
 
   if (overland) {
-    // Car / Camper: Feasible up to 1,200 km overland for family vacation
-    if (geodesicDistanceKm <= 1200) {
+    if (isOverlandVehicleInRange('CAR', geodesicDistanceKm)) {
       available.push('CAR');
     }
-
-    // Train: Up to 900 km, or 1,200 km if high-speed rail connected
-    const trainLimit = destination.isHighSpeedRailConnected ? 1200 : 900;
-    if (geodesicDistanceKm <= trainLimit) {
+    if (isOverlandVehicleInRange('TRAIN', geodesicDistanceKm, destination.isHighSpeedRailConnected)) {
       available.push('TRAIN');
     }
-
-    // Bus: Feasible up to 750 km overland
-    if (geodesicDistanceKm <= 750) {
+    if (isOverlandVehicleInRange('BUS', geodesicDistanceKm)) {
       available.push('BUS');
     }
   }
@@ -289,6 +415,26 @@ export function getAvailableVehicles(
 }
 
 /**
+ * Per-drivetrain assumptions for a mid-size family car / van on motorway trips (EU 2026 price
+ * level). energy = cost per road km; wear = maintenance + tyres + depreciation share per km.
+ * Electric charging uses mostly motorway fast chargers on a road trip, hence the higher kWh price.
+ */
+export const CAR_FUEL_PROFILES: Record<
+  CarFuelType,
+  { consumptionPer100Km: number; unitPriceEur: number; co2KgPerUnit: number; wearEurPerKm: number; unit: 'l' | 'kWh' }
+> = {
+  PETROL: { consumptionPer100Km: 7.5, unitPriceEur: 1.75, co2KgPerUnit: 2.37, wearEurPerKm: 0.07, unit: 'l' },
+  DIESEL: { consumptionPer100Km: 6.2, unitPriceEur: 1.65, co2KgPerUnit: 2.65, wearEurPerKm: 0.07, unit: 'l' },
+  // EU grid mix ~0.25 kg CO2/kWh incl. charging losses
+  ELECTRIC: { consumptionPer100Km: 20, unitPriceEur: 0.55, co2KgPerUnit: 0.25, wearEurPerKm: 0.05, unit: 'kWh' },
+};
+
+// Usable motorway range between fast-charging stops (10-80% charge window at ~120 km/h)
+const EV_LEG_KM = 280;
+// Extra minutes per charging stop beyond the regular rest-stop budget (kids eat/play meanwhile)
+const EV_EXTRA_MINUTES_PER_STOP = 20;
+
+/**
  * Computes realistic travel duration, route distance, round-trip travel costs, and CO2 emissions
  * for a specific vehicle.
  */
@@ -297,7 +443,8 @@ export function calculateVehicleMetrics(
   geodesicDistanceKm: number,
   passengerMultiplier: number = 1.0,
   isHighSpeedRail: boolean = false,
-  ferryAccess?: OverlandAccessResult
+  ferryAccess?: OverlandAccessResult,
+  carFuelType?: CarFuelType
 ): VehicleTravelMetrics {
   const ferrySurcharge = ferryAccess?.ferrySurchargeEur || 0;
   const ferryMinutes = ferryAccess?.ferryTransitMinutes || 0;
@@ -307,21 +454,40 @@ export function calculateVehicleMetrics(
       // Actual driving distance is ~25% longer than geodesic line
       const roadDistanceKm = Math.round(geodesicDistanceKm * 1.25);
       // Realistic family driving speed ~88 km/h on motorways with rest stops (+45 mins)
-      const durationMinutes = Math.round((roadDistanceKm / 88) * 60 + 45) + ferryMinutes;
-      // Round-trip fuel + wear (~0.20 €/km) + vignettes/tolls (~45 € if dist > 250km)
-      // Car cost is per vehicle (for the whole family!)
+      const baseMinutes = Math.round((roadDistanceKm / 88) * 60 + 45) + ferryMinutes;
+      // Car cost is per vehicle (for the whole family!), plus vignettes/tolls (~45 € if dist > 250km)
       const roundTripDist = roadDistanceKm * 2;
       const tolls = geodesicDistanceKm > 250 ? 45 : 0;
-      const estimatedTravelCost = Math.round(roundTripDist * 0.20 + tolls) + ferrySurcharge;
-      const co2KgEstimate = Math.round(roundTripDist * 0.14);
+
+      if (!carFuelType) {
+        // Drivetrain unknown: blended fuel + wear (~0.20 €/km) and average CO2
+        return {
+          vehicle: 'CAR',
+          durationMinutes: baseMinutes,
+          distanceKm: roadDistanceKm,
+          estimatedTravelCost: Math.round(roundTripDist * 0.20 + tolls) + ferrySurcharge,
+          isOverlandReachable: true,
+          co2KgEstimate: Math.round(roundTripDist * 0.14),
+        };
+      }
+
+      const profile = CAR_FUEL_PROFILES[carFuelType];
+      const energyUnits = (roundTripDist / 100) * profile.consumptionPer100Km;
+      const energyCostEur = Math.round(energyUnits * profile.unitPriceEur);
+      const wearCost = roundTripDist * profile.wearEurPerKm;
+      // Electric: one fast-charging stop per EV_LEG_KM after leaving home with a full battery
+      const chargingStops = carFuelType === 'ELECTRIC' ? Math.max(0, Math.ceil(roadDistanceKm / EV_LEG_KM) - 1) : 0;
 
       return {
         vehicle: 'CAR',
-        durationMinutes,
+        durationMinutes: baseMinutes + chargingStops * EV_EXTRA_MINUTES_PER_STOP,
         distanceKm: roadDistanceKm,
-        estimatedTravelCost,
+        estimatedTravelCost: Math.round(energyCostEur + wearCost + tolls) + ferrySurcharge,
         isOverlandReachable: true,
-        co2KgEstimate,
+        co2KgEstimate: Math.round(energyUnits * profile.co2KgPerUnit),
+        fuelType: carFuelType,
+        energyCostEur,
+        chargingStops: carFuelType === 'ELECTRIC' ? chargingStops : undefined,
       };
     }
 

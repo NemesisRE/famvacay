@@ -11,26 +11,30 @@ import {
   Trash2,
   CheckCircle2,
   AlertCircle,
-  Clock,
   Compass,
-  Plane,
   Ban,
   Shield,
   Car,
-  Train,
-  Bus,
   Check,
-  Sun,
-  Mountain,
-  Building2,
-  Trees,
-  Globe,
-  Snowflake,
-  Thermometer,
   Utensils,
+  BookUser,
+  Info,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
-import { COUNTRIES, getCountryCodeFromSubdivision } from '@/lib/regions/subdivisions';
+import { getCountryCodeFromSubdivision } from '@/lib/regions/subdivisions';
+import {
+  CountrySelect,
+  SubdivisionSelect,
+  SchoolRegionSelect,
+  resolveRegionForCountry,
+} from '@/components/forms/RegionSelectors';
+import { BoardTypeSelect, OverlandDurationSelect } from '@/components/forms/PreferenceSelects';
+import type { BoardType, CarFuelType, DestinationType, TravelVehicle } from '@/lib/optimizer/types';
+import { isAllStylesSelection, toggleStyleSelection, readStoredStyles, getClimateRelevance } from '@/lib/optimizer/style-selection';
+import { VacationStyleTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
+import { ChildAgeBadges } from '@/components/family/ChildAgeBadges';
+import { differenceInYears } from 'date-fns';
+import { FORM_SELECT_CLASS } from '@/components/forms/RegionSelectors';
 import { AirportSelector } from '@/components/airports/AirportSelector';
 import { LocationInput } from '@/components/geo/LocationInput';
 import { AccountSettings } from '@/components/account/AccountSettings';
@@ -42,6 +46,7 @@ interface FamilyMemberForm {
   role: 'PARENT' | 'CHILD' | 'INFANT' | 'OTHER';
   birthDate: string;
   schoolRequired: boolean;
+  schoolSubdivision?: string;
   passportExpiry: string;
   specialDiet: string;
 }
@@ -74,11 +79,16 @@ export default function FamilyProfilePage() {
   const [passportCheckRequired, setPassportCheckRequired] = useState(true);
   const [travelModes, setTravelModes] = useState<string[]>(['PLANE', 'CAR']);
   const [preferredBoardType, setPreferredBoardType] = useState<string>('ALL');
-  const [maxOverlandDurationHours, setMaxOverlandDurationHours] = useState<number>(8);
-  const [preferredVacationStyle, setPreferredVacationStyle] = useState<string>('ALL');
+  const [maxOverlandDurationHours, setMaxOverlandDurationHours] = useState<number | undefined>(8);
+  const [preferredVacationStyles, setPreferredVacationStyles] = useState<DestinationType[]>(['ALL']);
+  const [longRangeStyles, setLongRangeStyles] = useState<DestinationType[]>([]);
+  const allStylesSelected = isAllStylesSelection(preferredVacationStyles);
+  const climateRelevance = getClimateRelevance(preferredVacationStyles, longRangeStyles);
+  const longRangeOnlySelected = climateRelevance.isLongRangeSelected;
   const [minBeachTemp, setMinBeachTemp] = useState<number | undefined>(undefined);
   const [requireSnow, setRequireSnow] = useState<boolean>(false);
   const [maxFlightStops, setMaxFlightStops] = useState<number | undefined>(undefined);
+  const [carFuelType, setCarFuelType] = useState<CarFuelType | undefined>(undefined);
   const [scoringWeights, setScoringWeights] = useState<any>({});
   const [blackoutRanges, setBlackoutRanges] = useState<BlackoutRangeForm[]>([]);
   const [airportRoadRouting, setAirportRoadRouting] = useState<Record<string, { drivingMinutes: number; drivingKm: number }>>({});
@@ -108,29 +118,14 @@ export default function FamilyProfilePage() {
     if (travelModes.includes(mode)) {
       if (travelModes.length > 1) {
         setTravelModes(travelModes.filter((m) => m !== mode));
+      } else {
+        // Same as the search form: pressing the only selected mode selects every mode
+        setTravelModes(['PLANE', 'CAR', 'TRAIN', 'BUS']);
       }
     } else {
       setTravelModes([...travelModes, mode]);
     }
   };
-
-  // Same tile-style selectors as the search form (page.tsx), reusing the
-  // same icons and options so both pages read as one consistent design.
-  const travelModeTiles = [
-    { id: 'PLANE', label: t.profile.modeFlight, icon: Plane },
-    { id: 'CAR', label: t.profile.modeCar, icon: Car },
-    { id: 'TRAIN', label: t.profile.modeTrain, icon: Train },
-    { id: 'BUS', label: t.profile.modeBus, icon: Bus },
-  ];
-
-  const vacationStyleTiles = [
-    { id: 'ALL', label: t.home.vacationKindAll, icon: Compass },
-    { id: 'BEACH', label: t.home.vacationKindBeach, icon: Sun },
-    { id: 'ALPINE', label: t.home.vacationKindAlpine, icon: Mountain },
-    { id: 'CITY', label: t.home.vacationKindCity, icon: Building2 },
-    { id: 'NATURE', label: t.home.vacationKindNature, icon: Trees },
-    { id: 'LONGRANGE', label: t.home.vacationKindLongrange, icon: Globe },
-  ];
 
   const [members, setMembers] = useState<FamilyMemberForm[]>([
     {
@@ -219,8 +214,9 @@ export default function FamilyProfilePage() {
               if (sw.preferredBoardType) {
                 setPreferredBoardType(sw.preferredBoardType);
               }
-              if (sw.preferredVacationStyle) {
-                setPreferredVacationStyle(sw.preferredVacationStyle);
+              setPreferredVacationStyles(readStoredStyles(sw));
+              if (Array.isArray(sw.longRangeStyles)) {
+                setLongRangeStyles(sw.longRangeStyles);
               }
               if ((p.maxTravelHours === null || p.maxTravelHours === undefined) && sw.maxOverlandTravelMinutes) {
                 setMaxOverlandDurationHours(Math.round(sw.maxOverlandTravelMinutes / 60));
@@ -233,6 +229,9 @@ export default function FamilyProfilePage() {
               }
               if (typeof sw.maxFlightStops === 'number') {
                 setMaxFlightStops(sw.maxFlightStops);
+              }
+              if (['PETROL', 'DIESEL', 'ELECTRIC'].includes(sw.carFuelType)) {
+                setCarFuelType(sw.carFuelType);
               }
             }
 
@@ -255,6 +254,7 @@ export default function FamilyProfilePage() {
                   role: m.role || 'PARENT',
                   birthDate: m.birthDate ? m.birthDate.split('T')[0] : '',
                   schoolRequired: Boolean(m.schoolRequired),
+                  schoolSubdivision: m.schoolSubdivision || undefined,
                   passportExpiry: m.passportExpiry ? m.passportExpiry.split('T')[0] : '',
                   specialDiet: m.specialDiet || '',
                 }))
@@ -266,12 +266,11 @@ export default function FamilyProfilePage() {
     }
   }, [status, router]);
 
+  // Same behavior as the search form: keep the region when it still belongs to the new
+  // country, otherwise pick its first subdivision (or the country itself when it has none).
   const handleCountryChange = (newCountry: string) => {
     setCountry(newCountry);
-    const countryData = COUNTRIES[newCountry];
-    if (countryData && countryData.subdivisions.length > 0) {
-      setFederalState(countryData.subdivisions[0].code);
-    }
+    setFederalState(resolveRegionForCountry(newCountry, federalState));
   };
 
   const addBlackout = () => {
@@ -381,11 +380,15 @@ export default function FamilyProfilePage() {
       const updatedScoringWeights = {
         ...scoringWeights,
         preferredBoardType,
-        preferredVacationStyle,
+        preferredVacationStyles,
+        // Legacy single value kept for older clients reading the profile
+        preferredVacationStyle: allStylesSelected ? 'ALL' : preferredVacationStyles[0],
+        longRangeStyles: longRangeOnlySelected ? longRangeStyles : [],
         maxOverlandTravelMinutes: maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
         minBeachTemp,
         requireSnow,
         maxFlightStops,
+        carFuelType,
       };
 
       const res = await fetch('/api/family-profile', {
@@ -495,13 +498,13 @@ export default function FamilyProfilePage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-8 mt-6">
-          {/* Section 1 */}
+          {/* Section 1: Home & school holiday region (same fields & wording as the search form) */}
           <div className="space-y-4">
             <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
               <MapPin className="w-4 h-4 text-teal-600 dark:text-teal-400" />
               {t.profile.sec1Title}
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="h-5 flex items-center text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   {t.profile.familyName}
@@ -511,59 +514,134 @@ export default function FamilyProfilePage() {
                   value={familyName}
                   onChange={(e) => setFamilyName(e.target.value)}
                   placeholder="The Miller Family"
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100"
+                  className={FORM_SELECT_CLASS}
                 />
               </div>
 
               <div>
                 <LocationInput
-                  label={t.profile.homeLocation}
+                  label={t.home.departureLocationLabel}
                   value={homeLocation}
                   onChange={(loc, coords) => {
                     setHomeLocation(loc);
                     if (coords) setDepartureCoords(coords);
                   }}
-                  placeholder="70173 Stuttgart"
+                  placeholder={t.home.departureLocationPlaceholder}
                 />
               </div>
 
-              <div>
-                <label className="h-5 flex items-center text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  {t.profile.country}
-                </label>
-                <select
-                  value={country}
-                  onChange={(e) => handleCountryChange(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100"
-                >
-                  {Object.values(COUNTRIES).map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <CountrySelect
+                id="profile-country"
+                label={t.home.countryLabel}
+                value={country}
+                onChange={handleCountryChange}
+              />
 
+              <SubdivisionSelect
+                id="profile-region"
+                label={t.home.homeStateLabel}
+                countryCode={country}
+                value={federalState}
+                onChange={setFederalState}
+              />
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+              <Info className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+              <span>{t.home.holidayScopeNotice}</span>
+            </p>
+          </div>
+
+          {/* Section 2: Vacation & travel preferences - same order and controls as the search form */}
+          <div className="space-y-4">
+            <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <Compass className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              {t.profile.sec2Title}
+            </h2>
+
+            <div>
+              <div className="mb-2.5 space-y-0.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Compass className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <span>{t.home.vacationKindLabel}</span>
+                </label>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{t.home.vacationKindHint}</p>
+              </div>
+              <VacationStyleTiles
+                selectedStyles={preferredVacationStyles}
+                onToggle={(style) => setPreferredVacationStyles((prev) => toggleStyleSelection(prev, style))}
+                longRangeStyles={longRangeStyles}
+                onLongRangeStylesChange={setLongRangeStyles}
+                className="grid grid-cols-2 sm:grid-cols-3 gap-2.5"
+              />
+              <ClimatePreferencesPanel
+                idPrefix="profile-climate"
+                showBeach={climateRelevance.beach}
+                showAlpine={climateRelevance.alpine}
+                minBeachTemp={minBeachTemp}
+                onMinBeachTempChange={setMinBeachTemp}
+                requireSnow={requireSnow}
+                onRequireSnowChange={setRequireSnow}
+              />
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="mb-2.5 space-y-0.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Car className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <span>{t.home.travelVehicleLabel}</span>
+                </label>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{t.home.travelVehicleHint}</p>
+              </div>
+              <TravelModeTiles
+                selectedVehicles={travelModes as TravelVehicle[]}
+                onToggle={toggleTravelMode}
+                maxFlightStops={maxFlightStops}
+                onMaxFlightStopsChange={setMaxFlightStops}
+                carFuelType={carFuelType}
+                onCarFuelTypeChange={setCarFuelType}
+                className="grid grid-cols-2 sm:grid-cols-4 gap-2.5"
+              />
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="h-5 flex items-center text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  {t.profile.federalState}
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Utensils className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>{t.home.filterByBoardType}</span>
+                </label>
+                <BoardTypeSelect
+                  value={preferredBoardType === 'ALL' ? undefined : (preferredBoardType as BoardType)}
+                  onChange={(value) => setPreferredBoardType(value || 'ALL')}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Car className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <span>{t.home.filterByOverlandDuration}</span>
+                </label>
+                <OverlandDurationSelect value={maxOverlandDurationHours} onChange={setMaxOverlandDurationHours} />
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  {t.profile.cabinClass}
                 </label>
                 <select
-                  value={federalState}
-                  onChange={(e) => setFederalState(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100"
+                  value={preferredCabinClass}
+                  onChange={(e) => setPreferredCabinClass(e.target.value)}
+                  className={FORM_SELECT_CLASS}
                 >
-                  {(COUNTRIES[country]?.subdivisions || []).map((sub) => (
-                    <option key={sub.code} value={sub.code}>
-                      {sub.name} ({sub.code})
-                    </option>
-                  ))}
+                  <option value="ECONOMY">{t.profile.economy}</option>
+                  <option value="PREMIUM_ECONOMY">{t.profile.premiumEconomy}</option>
+                  <option value="BUSINESS">{t.profile.business}</option>
                 </select>
               </div>
             </div>
 
-            {/* Departure Airports Section */}
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+            {/* Departure airports, after the comfort settings - same position as on the search form */}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
               <AirportSelector
                 selectedAirports={originAirports}
                 onChange={setOriginAirports}
@@ -587,210 +665,146 @@ export default function FamilyProfilePage() {
             </div>
           </div>
 
-          {/* Section 2 */}
+          {/* Section 3 */}
           <div className="space-y-4">
-            <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <Compass className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-              {t.profile.sec2Title}
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <Plane className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                  {t.profile.cabinClass}
-                </label>
-                <select
-                  value={preferredCabinClass}
-                  onChange={(e) => setPreferredCabinClass(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100"
-                >
-                  <option value="ECONOMY">{t.profile.economy}</option>
-                  <option value="PREMIUM_ECONOMY">{t.profile.premiumEconomy}</option>
-                  <option value="BUSINESS">{t.profile.business}</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <Plane className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                  {t.home.filterByFlightStops}
-                </label>
-                <select
-                  value={maxFlightStops ?? 'ALL'}
-                  onChange={(e) => setMaxFlightStops(e.target.value === 'ALL' ? undefined : Number(e.target.value))}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100"
-                >
-                  <option value="ALL">{t.home.flightStopsAny}</option>
-                  <option value="0">{t.home.flightStopsDirectOnly}</option>
-                  <option value="1">{t.home.flightStopsMax1}</option>
-                </select>
-              </div>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                {t.profile.sec3Title}
+              </h2>
+              <button
+                type="button"
+                onClick={addMember}
+                className="text-xs font-semibold text-teal-600 hover:text-teal-800 flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {t.profile.addMember}
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <Thermometer className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  {t.home.minBeachTempLabel}
-                </label>
-                <input
-                  type="number"
-                  min="15"
-                  max="32"
-                  placeholder={t.home.minBeachTempAny}
-                  value={minBeachTemp ?? ''}
-                  onChange={(e) => setMinBeachTemp(e.target.value ? Number(e.target.value) : undefined)}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100 placeholder:font-normal placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
-              </div>
-
-              <div className="flex items-end pb-1">
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  <input
-                    type="checkbox"
-                    checked={requireSnow}
-                    onChange={(e) => setRequireSnow(e.target.checked)}
-                    className="rounded text-teal-600 focus:ring-teal-500"
-                  />
-                  <Snowflake className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                  {t.home.winterSportsLabel}
-                </label>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <Utensils className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                  {t.profile.preferredBoardTypeLabel}
-                </label>
-                <select
-                  value={preferredBoardType}
-                  onChange={(e) => setPreferredBoardType(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100"
-                >
-                  <option value="ALL">{t.home.allBoardTypes}</option>
-                  <option value="ALL_INCLUSIVE">{t.home.boardTypeAllInclusive}</option>
-                  <option value="HALF_BOARD">{t.home.boardTypeHalfBoard}</option>
-                  <option value="BREAKFAST">{t.home.boardTypeBreakfast}</option>
-                  <option value="ROOM_ONLY">{t.home.boardTypeRoomOnly}</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                  {t.profile.maxOverlandDurationLabel}
-                </label>
-                <input
-                  type="number"
-                  step="1"
-                  min="1"
-                  max="48"
-                  value={maxOverlandDurationHours}
-                  onChange={(e) => setMaxOverlandDurationHours(Number(e.target.value))}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100"
-                />
-              </div>
-            </div>
-
-            {/* Preferred Vacation Style: same tile selector as the search form */}
-            <div className="pt-1">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <Compass className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                {t.profile.preferredVacationStyleLabel}
+            {/* Passport validity check belongs with the travelers' passport expiry dates */}
+            <div className="max-w-md">
+              <label htmlFor="passportCheck" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <BookUser className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                {t.profile.passportCheckLabel}
               </label>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                {vacationStyleTiles.map((style) => {
-                  const Icon = style.icon;
-                  const isSelected = preferredVacationStyle === style.id;
-                  return (
-                    <button
-                      key={style.id}
-                      type="button"
-                      onClick={() => setPreferredVacationStyle(style.id)}
-                      className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border text-center transition cursor-pointer shadow-2xs ${
-                        isSelected
-                          ? 'bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-600/25'
-                          : 'bg-white dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600'
-                      }`}
-                    >
-                      <Icon className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-white' : 'text-teal-600 dark:text-teal-400'}`} />
-                      <span className="font-bold text-[11px] truncate w-full">{style.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="pt-2 flex items-center gap-2">
-              <input
-                type="checkbox"
+              <select
                 id="passportCheck"
-                checked={passportCheckRequired}
-                onChange={(e) => setPassportCheckRequired(e.target.checked)}
-                className="rounded text-teal-600 focus:ring-teal-500"
-              />
-              <label htmlFor="passportCheck" className="text-xs text-slate-700 dark:text-slate-300 font-medium">
-                {t.profile.passportCheck}
-              </label>
+                value={passportCheckRequired ? 'CHECK' : 'OFF'}
+                onChange={(e) => setPassportCheckRequired(e.target.value === 'CHECK')}
+                className={FORM_SELECT_CLASS}
+              >
+                <option value="CHECK">{t.profile.passportCheckOn}</option>
+                <option value="OFF">{t.profile.passportCheckOff}</option>
+              </select>
             </div>
 
-            {/* Travel Modes (Multi-Select): same tile selector as the search form */}
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Car className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                {t.profile.travelModesLabel}
-              </label>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.profile.travelModesHint}</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-                {travelModeTiles.map((mode) => {
-                  const Icon = mode.icon;
-                  const isSelected = travelModes.includes(mode.id);
-                  return (
-                    <button
-                      key={mode.id}
-                      type="button"
-                      onClick={() => toggleTravelMode(mode.id)}
-                      className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border text-center transition cursor-pointer shadow-2xs ${
-                        isSelected
-                          ? 'bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-600/25'
-                          : 'bg-white dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600'
-                      }`}
+            <div className="space-y-3">
+              {members.map((member, index) => (
+                <div
+                  key={index}
+                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 grid grid-cols-1 sm:grid-cols-12 gap-3 items-center"
+                >
+                  <div className="sm:col-span-3">
+                    <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                      {t.profile.name}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Liam"
+                      value={member.firstName}
+                      onChange={(e) => updateMember(index, 'firstName', e.target.value)}
+                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                      {t.profile.role}
+                    </label>
+                    <select
+                      value={member.role}
+                      onChange={(e) => updateMember(index, 'role', e.target.value)}
+                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     >
-                      <div className="flex items-center justify-between w-full">
-                        <Icon className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-white' : 'text-teal-600 dark:text-teal-400'}`} />
-                        {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />}
-                      </div>
-                      <span className="font-bold text-xs truncate w-full text-left">{mode.label}</span>
+                      <option value="PARENT">{t.profile.parent}</option>
+                      <option value="CHILD">{t.profile.child}</option>
+                      <option value="INFANT">{t.profile.infant}</option>
+                      <option value="OTHER">{t.profile.other}</option>
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                      {t.profile.birthDate}
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={member.birthDate}
+                      onChange={(e) => updateMember(index, 'birthDate', e.target.value)}
+                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                      {t.profile.passportExpiry}
+                    </label>
+                    <input
+                      type="date"
+                      value={member.passportExpiry}
+                      onChange={(e) => updateMember(index, 'passportExpiry', e.target.value)}
+                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-1 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => removeMember(index)}
+                      className="p-1.5 text-slate-400 hover:text-red-600 transition"
+                      title="Remove member"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
-                  );
-                })}
-              </div>
+                  </div>
+
+                  {(member.role === 'CHILD' || member.role === 'INFANT') && member.birthDate && (
+                    <div className="sm:col-span-12 flex flex-wrap items-center gap-1.5">
+                      <ChildAgeBadges age={Math.max(0, differenceInYears(new Date(), new Date(member.birthDate)))} />
+                    </div>
+                  )}
+
+                  {(member.role === 'CHILD' || member.role === 'INFANT') && (
+                    <div className="sm:col-span-12">
+                      <SchoolRegionSelect
+                        homeRegion={federalState}
+                        value={member.schoolSubdivision}
+                        onChange={(region) => updateMember(index, 'schoolSubdivision', region)}
+                        label={t.home.schoolRegionLabel}
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Persistent Blackout Dates (Sperrzeiten): same amber card & single-picker row design as the search form */}
+          {/* Section 4: Persistent blackout dates - same amber card & picker rows as the search form */}
           <div className="space-y-2">
             <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
               <Ban className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               {t.profile.blackoutDatesTitle}
+              {blackoutRanges.length > 0 && (
+                <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-900/50 px-2 py-0.5 rounded-full border border-amber-200/70 dark:border-amber-700/60">
+                  {blackoutRanges.length}
+                </span>
+              )}
             </h2>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.profile.blackoutDatesDesc}</p>
 
             <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/20 rounded-xl border border-amber-200/90 dark:border-amber-800/60 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
-                  {t.profile.blackoutDatesTitle}
-                </span>
-                {blackoutRanges.length > 0 && (
-                  <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-900/50 px-2 py-0.5 rounded-full border border-amber-200/70 dark:border-amber-700/60">
-                    {blackoutRanges.length}
-                  </span>
-                )}
-              </div>
-
               {blackoutRanges.length === 0 && !isAddingBlackout ? (
                 <div className="p-2.5 bg-amber-50/50 dark:bg-amber-950/10 rounded-xl border border-dashed border-amber-300 dark:border-amber-800/60 text-center">
                   <p className="text-xs text-amber-800/80 dark:text-amber-300/80">{t.profile.noBlackouts}</p>
@@ -913,103 +927,11 @@ export default function FamilyProfilePage() {
             </div>
           </div>
 
-          {/* Section 3 */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                {t.profile.sec3Title}
-              </h2>
-              <button
-                type="button"
-                onClick={addMember}
-                className="text-xs font-semibold text-teal-600 hover:text-teal-800 flex items-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                {t.profile.addMember}
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {members.map((member, index) => (
-                <div
-                  key={index}
-                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 grid grid-cols-1 sm:grid-cols-12 gap-3 items-center"
-                >
-                  <div className="sm:col-span-3">
-                    <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                      {t.profile.name}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Liam"
-                      value={member.firstName}
-                      onChange={(e) => updateMember(index, 'firstName', e.target.value)}
-                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                      {t.profile.role}
-                    </label>
-                    <select
-                      value={member.role}
-                      onChange={(e) => updateMember(index, 'role', e.target.value)}
-                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-                    >
-                      <option value="PARENT">{t.profile.parent}</option>
-                      <option value="CHILD">{t.profile.child}</option>
-                      <option value="INFANT">{t.profile.infant}</option>
-                      <option value="OTHER">{t.profile.other}</option>
-                    </select>
-                  </div>
-
-                  <div className="sm:col-span-3">
-                    <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                      {t.profile.birthDate}
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={member.birthDate}
-                      onChange={(e) => updateMember(index, 'birthDate', e.target.value)}
-                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-3">
-                    <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                      {t.profile.passportExpiry}
-                    </label>
-                    <input
-                      type="date"
-                      value={member.passportExpiry}
-                      onChange={(e) => updateMember(index, 'passportExpiry', e.target.value)}
-                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-1 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => removeMember(index)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 transition"
-                      title="Remove member"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2.5 rounded-xl font-bold text-xs bg-teal-600 hover:bg-teal-700 text-white shadow transition flex items-center gap-2 disabled:opacity-60"
+              className="w-full py-3 rounded-xl font-bold text-sm bg-teal-600 hover:bg-teal-700 text-white shadow transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
             >
               {saving ? (
                 <>

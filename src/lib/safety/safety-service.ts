@@ -11,94 +11,44 @@ import countries from 'i18n-iso-countries';
 import enCountries from 'i18n-iso-countries/langs/en.json';
 import deCountries from 'i18n-iso-countries/langs/de.json';
 import { getCached, setCached } from '@/lib/cache/redis';
+import {
+  setAdvisoryStore,
+  registerAdvisoryRefresh,
+  getAdvisoryStore,
+  hasLiveAdvisories,
+  type AdvisoryCacheStore,
+  type TravelAdvisoryCacheEntry,
+} from './advisory-store';
+
+// Evaluation lives in the dependency-free advisory store (importable from client bundles and
+// statically from the optimizer); re-exported here for existing callers.
+export {
+  resolveIsoCountryCode,
+  isDestinationSafeForVacation,
+  isDestinationBanned,
+  getDestinationSafetyAssessment,
+  HIGH_RISK_AIRPORT_CODES,
+} from './advisory-store';
+export type {
+  SafetyLevel,
+  DestinationSafetyAssessment,
+  TravelAdvisoryCacheEntry,
+  AdvisoryCacheStore,
+} from './advisory-store';
 
 countries.registerLocale(enCountries);
 countries.registerLocale(deCountries);
 
-export type SafetyLevel = 'SAFE' | 'CAUTION' | 'WARNING' | 'DANGER';
-
-export interface DestinationSafetyAssessment {
-  score: number; // 0 - 100 (higher = safer)
-  level: SafetyLevel;
-  isSafe: boolean;
-  isSafeForFamilies: boolean;
-  advisoryLevel: 1 | 2 | 3 | 4;
-  safetyLabel: string;
-  source?: string;
-  warningDetails?: string;
-  countryName?: string;
-  countryCode?: string;
-  hasGermanWarning?: boolean;
-  hasGermanPartialWarning?: boolean;
-  usStateDeptLevel?: 1 | 2 | 3 | 4;
-  advisoryTitle?: string;
-}
-
-export interface TravelAdvisoryCacheEntry {
-  isoCode: string;
-  countryName: string;
-  hasGermanWarning: boolean;
-  hasGermanPartialWarning: boolean;
-  usStateDeptLevel: 1 | 2 | 3 | 4;
-  usTitle?: string;
-  isSafeForFamilies: boolean;
-  safetyScore: number;
-}
-
-export interface AdvisoryCacheStore {
-  timestamp: number;
-  entries: Record<string, TravelAdvisoryCacheEntry>;
-}
-
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 const CACHE_TTL_SECONDS = 6 * 60 * 60; // 21,600 seconds
 const TRAVEL_ADVISORIES_CACHE_KEY = 'famvac:travel-advisories';
 
-// In-memory cache singleton
-let memoryCache: AdvisoryCacheStore | null = null;
 let activeFetchPromise: Promise<AdvisoryCacheStore> | null = null;
 
 /**
- * High-risk airports in active conflict regions
- */
-const HIGH_RISK_AIRPORT_CODES = new Set<string>([
-  'KBP', 'IEV', 'ODS', 'LWO', 'DNK', 'HRK',
-  'SVO', 'DME', 'VKO', 'LED', 'AER', 'OVB',
-  'MSQ', 'DAM', 'ALP', 'SAH', 'ADE', 'KBL',
-  'BGW', 'EBL', 'BSR', 'IKA', 'THR', 'KRT',
-  'MGQ', 'TIP', 'MRA', 'BKO', 'OUA', 'BGF',
-  'FIH', 'PAP', 'CCS', 'RGN', 'MDL', 'FNJ',
-  'NIM', 'NDJ', 'BEY',
-]);
-
-/**
- * Reads cached advisories from in-memory cache
- */
-function getCachedAdvisories(): AdvisoryCacheStore {
-  if (memoryCache && Date.now() - memoryCache.timestamp < CACHE_TTL_MS && Object.keys(memoryCache.entries).length > 0) {
-    return memoryCache;
-  }
-
-  if (!memoryCache) {
-    memoryCache = {
-      timestamp: 0,
-      entries: {},
-    };
-  }
-
-  // Trigger background refresh on server only if expired or empty
-  if (typeof window === 'undefined' && (Date.now() - memoryCache.timestamp >= CACHE_TTL_MS || Object.keys(memoryCache.entries).length === 0)) {
-    ensureTravelAdvisoriesLoaded().catch(() => {});
-  }
-
-  return memoryCache;
-}
-
-/**
- * Saves advisories to memory and persistent Valkey / Dragonfly / Redis cache
+ * Saves advisories to the shared advisory store and persistent Valkey / Dragonfly / Redis cache
  */
 async function saveCachedAdvisories(store: AdvisoryCacheStore): Promise<void> {
-  memoryCache = store;
+  setAdvisoryStore(store);
   try {
     await setCached(TRAVEL_ADVISORIES_CACHE_KEY, store, CACHE_TTL_SECONDS);
   } catch (err) {
@@ -111,17 +61,17 @@ async function saveCachedAdvisories(store: AdvisoryCacheStore): Promise<void> {
  */
 export async function ensureTravelAdvisoriesLoaded(): Promise<AdvisoryCacheStore> {
   if (typeof window !== 'undefined') {
-    return memoryCache || { timestamp: 0, entries: {} };
+    return getAdvisoryStore();
   }
 
-  if (memoryCache && Date.now() - memoryCache.timestamp < CACHE_TTL_MS && Object.keys(memoryCache.entries).length > 0) {
-    return memoryCache;
+  if (hasLiveAdvisories()) {
+    return getAdvisoryStore();
   }
 
   try {
     const cached = await getCached<AdvisoryCacheStore>(TRAVEL_ADVISORIES_CACHE_KEY);
-    if (cached && typeof cached.timestamp === 'number' && Date.now() - cached.timestamp < CACHE_TTL_MS && Object.keys(cached.entries || {}).length > 0) {
-      memoryCache = cached;
+    if (cached && typeof cached.timestamp === 'number' && hasLiveAdvisories(cached)) {
+      setAdvisoryStore(cached);
       return cached;
     }
   } catch {
@@ -211,11 +161,11 @@ async function fetchUSStateDeptAdvisories(): Promise<Array<{ Title: string }>> {
  */
 export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCacheStore> {
   if (typeof window !== 'undefined') {
-    return memoryCache || { timestamp: 0, entries: {} };
+    return getAdvisoryStore();
   }
 
-  if (!force && memoryCache && Date.now() - memoryCache.timestamp < CACHE_TTL_MS && Object.keys(memoryCache.entries).length > 0) {
-    return memoryCache;
+  if (!force && hasLiveAdvisories()) {
+    return getAdvisoryStore();
   }
 
   if (activeFetchPromise) {
@@ -230,6 +180,11 @@ export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCa
       ]);
 
       const entries: Record<string, TravelAdvisoryCacheEntry> = {};
+      if (!aaData && (!Array.isArray(usData) || usData.length === 0)) {
+        // Both providers unreachable: keep whatever we have (stale live data or the offline
+        // full-warning snapshot) instead of caching an empty "everything is safe" store.
+        return getAdvisoryStore();
+      }
 
       // 1. Parse German Foreign Office (Auswärtiges Amt) warnings
       if (aaData) {
@@ -332,7 +287,7 @@ export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCa
       return store;
     } catch (err) {
       console.warn('[SafetyService] Failed to fetch live travel advisories, using cached fallback:', err);
-      return getCachedAdvisories();
+      return getAdvisoryStore();
     } finally {
       activeFetchPromise = null;
     }
@@ -341,143 +296,10 @@ export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCa
   return activeFetchPromise;
 }
 
-/**
- * Resolves standard 2-letter ISO country code from country name or code
- */
-export function resolveIsoCountryCode(countryCodeOrName: string): string {
-  const clean = (countryCodeOrName || '').trim().toUpperCase();
-  if (clean.length === 2) return clean;
-
-  const fromEn = countries.getAlpha2Code(countryCodeOrName, 'en');
-  if (fromEn) return fromEn.toUpperCase();
-
-  const fromDe = countries.getAlpha2Code(countryCodeOrName, 'de');
-  if (fromDe) return fromDe.toUpperCase();
-
-  return clean;
-}
-
-/**
- * Evaluates whether a destination is safe for flex discovery (open family vacation search).
- * Integrates live Auswärtiges Amt and US State Department advisories.
- * Only places with Level 1 (SAFE) or Level 2 (CAUTION) without travel warnings are accepted.
- */
-export function isDestinationSafeForVacation(
-  airportCode: string,
-  countryCodeOrName: string
-): boolean {
-  const apCode = (airportCode || '').trim().toUpperCase();
-  if (HIGH_RISK_AIRPORT_CODES.has(apCode)) {
-    return false;
-  }
-
-  const iso = resolveIsoCountryCode(countryCodeOrName);
-  const cache = getCachedAdvisories();
-  const entry = cache.entries[iso];
-
-  if (entry) {
-    return entry.isSafeForFamilies;
-  }
-
-  return true;
-}
-
-/**
- * Returns comprehensive safety assessment with official government sources
- */
-export function getDestinationSafetyAssessment(
-  airportCode: string,
-  countryCodeOrName: string
-): DestinationSafetyAssessment {
-  const apCode = (airportCode || '').trim().toUpperCase();
-  const iso = resolveIsoCountryCode(countryCodeOrName);
-  const cache = getCachedAdvisories();
-  const entry = cache.entries[iso];
-
-  if (HIGH_RISK_AIRPORT_CODES.has(apCode)) {
-    return {
-      score: 15,
-      level: 'DANGER',
-      isSafe: false,
-      isSafeForFamilies: false,
-      advisoryLevel: 4,
-      safetyLabel: 'Reisewarnung / Extreme Danger',
-      source: 'Auswärtiges Amt / US State Dept',
-      warningDetails: 'Destination is located in an active conflict or severe crisis zone.',
-      countryCode: iso,
-      countryName: entry?.countryName || countryCodeOrName,
-      hasGermanWarning: true,
-      hasGermanPartialWarning: false,
-      usStateDeptLevel: 4,
-      advisoryTitle: 'Level 4: Do Not Travel (High-Risk Conflict Zone)',
-    };
-  }
-
-  if (entry) {
-    let level: SafetyLevel = 'SAFE';
-    let advisory: 1 | 2 | 3 | 4 = entry.usStateDeptLevel;
-
-    if (entry.hasGermanWarning || entry.usStateDeptLevel === 4) {
-      level = 'DANGER';
-      advisory = 4;
-    } else if (entry.usStateDeptLevel === 3) {
-      level = 'WARNING';
-      advisory = 3;
-    } else if (entry.hasGermanPartialWarning || entry.usStateDeptLevel === 2) {
-      level = 'CAUTION';
-      advisory = 2;
-    }
-
-    const defaultTitle =
-      advisory === 4
-        ? 'Level 4: Do Not Travel'
-        : advisory === 3
-        ? 'Level 3: Reconsider Travel'
-        : advisory === 2
-        ? 'Level 2: Exercise Increased Caution'
-        : 'Level 1: Exercise Normal Precautions';
-
-    return {
-      score: entry.safetyScore,
-      level,
-      isSafe: entry.isSafeForFamilies,
-      isSafeForFamilies: entry.isSafeForFamilies,
-      advisoryLevel: advisory,
-      safetyLabel:
-        level === 'SAFE'
-          ? 'Sicheres Reiseziel'
-          : level === 'CAUTION'
-          ? 'Standard-Vorsicht'
-          : level === 'WARNING'
-          ? 'Reisewarnung (Teilbereich)'
-          : 'Reisewarnung',
-      source: 'Auswärtiges Amt & US State Dept',
-      warningDetails: entry.usTitle,
-      countryCode: iso,
-      countryName: entry.countryName,
-      hasGermanWarning: entry.hasGermanWarning,
-      hasGermanPartialWarning: entry.hasGermanPartialWarning,
-      usStateDeptLevel: entry.usStateDeptLevel,
-      advisoryTitle: entry.usTitle || defaultTitle,
-    };
-  }
-
-  return {
-    score: 92,
-    level: 'SAFE',
-    isSafe: true,
-    isSafeForFamilies: true,
-    advisoryLevel: 1,
-    safetyLabel: 'Sicheres Reiseziel',
-    source: 'Auswärtiges Amt & US State Dept (Keine Reisewarnung)',
-    countryCode: iso,
-    countryName: countryCodeOrName,
-    hasGermanWarning: false,
-    hasGermanPartialWarning: false,
-    usStateDeptLevel: 1,
-    advisoryTitle: 'Level 1: Exercise Normal Precautions',
-  };
-}
+// Stale or missing data read by the store triggers a background refresh on the server
+registerAdvisoryRefresh(() => {
+  ensureTravelAdvisoriesLoaded().catch(() => {});
+});
 
 // Background prime cache on server startup
 if (typeof window === 'undefined') {

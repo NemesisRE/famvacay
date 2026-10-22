@@ -58,6 +58,9 @@ export interface AggregatedTripPricing {
   deepLinks: DeepLinkUrls;
   party?: PricingPartyComposition;
   packageTourDeal?: import('./pricing-service').PackageTourComparison;
+  travelMode?: import('../optimizer/types').TravelVehicle; // How the "flight" leg is actually travelled (PLANE, or CAR/TRAIN/BUS for overland trips)
+  /** Price change (EUR, can be negative) from European source-market school holidays, already included in the totals */
+  demandAdjustmentEur?: number;
 }
 
 export interface TravelPricingProvider {

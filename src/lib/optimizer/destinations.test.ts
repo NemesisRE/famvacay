@@ -7,6 +7,7 @@ import {
   resolveDestinationCodes,
   discoverDestinationsDynamically,
   getDestinationVacationStyles,
+  getWorldRegion,
 } from './destinations';
 import {
   isCommercialPassengerAirport,
@@ -260,8 +261,10 @@ describe('Dynamic Vacation Destination Discovery Engine', () => {
     ).toBe(true);
     // Must NOT contain SYD itself
     expect(sydneyResults).not.toContain('SYD');
-    // European short-haul destinations must NOT be in Sydney discovery
-    expect(sydneyResults).not.toContain('PMI');
+    // No European bias: from Sydney, Europe is just one of ~10 long-haul world regions (it may
+    // contribute a token slot under proportional global representation), never the bulk.
+    const european = sydneyResults.filter((code) => getWorldRegion(getAirportByIata(code)!.lat, getAirportByIata(code)!.lon) === 'EUROPE_MED');
+    expect(european.length).toBeLessThanOrEqual(2);
     expect(sydneyResults).not.toContain('INN');
   });
 

@@ -8,30 +8,56 @@ import {
   DEFAULT_WEIGHTS,
   DestinationType,
   TravelVehicle,
+  WeatherAssessment,
 } from './types';
 import { calculateEffectivePtoDaysConsumed, ChildcareClosurePeriod } from './pto-calculator';
 import { applyChildcareArbitrageWarnings } from './childcare-arbitrage';
 import { calculatePassengerCostMultiplier } from './child-tiers';
 import {
-  POPULAR_DESTINATIONS,
   getEstimatedClimate,
   getDestinationSeasonalWarning,
   getIdealTemperatureBand,
   getDestinationProfile,
   getSeasonalWarningPenalty,
+  type SeasonalConstraintWarning,
 } from './weather';
-import { resolveDestinationCodes, OriginContext, getDestinationVacationStyles } from './destinations';
+import {
+  resolveDestinationCodes,
+  resolveOriginCoordinates,
+  OriginContext,
+  getDestinationVacationStyles,
+} from './destinations';
 import {
   getAirportByIata,
   calculateGeodesicDistanceKm,
   getMajorAirportsForCountry,
   getRecommendedAirportsForCoordinates,
+  type DynamicAirport,
 } from '../airports/airport-service';
-import { resolveFlightRoute, FlightRouteDetails } from '../airports/flight-routes';
+import { getDestinationPoint, type DestinationPoint } from '../geo/destination-points';
+import type { AggregatedTripPricing } from '../pricing/types';
+import { resolveFlightRoute, FlightRouteDetails, PRIMARY_GATEWAY_HUBS, resolveFlexOriginAirports } from '../airports/flight-routes';
+import {
+  buildSourceMarketDemandTimeline,
+  HIGH_DEMAND_THRESHOLD,
+  MAX_DEMAND_SURCHARGE,
+  type MarketHolidayCalendar,
+  type SourceMarketDemand,
+  type SourceMarketDemandTimeline,
+} from '../holidays/source-markets';
 import { getCountryCodeFromSubdivision } from '../regions/subdivisions';
 import { getSynchronousTripPricing } from '../pricing/pricing-service';
-import { getAvailableVehicles, calculateVehicleMetrics, classifyOverlandAccess, estimateUtcOffsetHours } from './vehicles';
-import { getDestinationSafetyAssessment } from '../safety/safety-service';
+import {
+  getAvailableVehicles,
+  calculateVehicleMetrics,
+  classifyOverlandAccess,
+  estimateUtcOffsetHours,
+  isOverlandVehicleInRange,
+  isOverlandReachable,
+  calculateOverlandFrictionScore,
+  type OverlandAccessResult,
+} from './vehicles';
+import { getDestinationSafetyAssessment, isDestinationBanned } from '../safety/advisory-store';
 
 /**
  * Filter blackout dates: Checks if [candidateStart, candidateEnd] overlaps with any blackout range.
@@ -231,7 +257,143 @@ export function calculateFlightFrictionScore(
 interface RawCandidate extends Omit<CandidateWindow, 'finalScore' | 'scoreBreakdown'> {
   holidayCoverage: HolidayCoverageResult;
   frictionBaseScore: number;
-  flightRoute?: FlightRouteDetails;
+}
+
+/**
+ * Origin code used for overland (car/train/bus) candidates: those trips start at the family's
+ * home address, not at any airport.
+ */
+export const OVERLAND_ORIGIN_CODE = 'HOME';
+
+type OverlandVehicle = Exclude<TravelVehicle, 'PLANE'>;
+
+/**
+ * Below this home-to-destination distance a flight is not offered when the destination can be
+ * reached overland (driving to the airport and checking in takes longer than the trip itself).
+ */
+const MIN_FLIGHT_DISTANCE_WITH_OVERLAND_KM = 350;
+
+interface OriginLeg {
+  origin: string;
+  airportDetails?: DynamicAirport;
+  airportState: string;
+  isArbitrage: boolean;
+  originDistKm?: number;
+  originDriveMins?: number;
+  originName: string;
+  originCity: string;
+  originCountry: string;
+  originHighSpeedRail: boolean;
+  frictionDriveScore: number;
+  /** Set for rail-fed hub legs ("Zug zum Flug"): train from home instead of the car */
+  rail?: { durationMinutes: number; distanceKm: number; isAlternativeOrigin: boolean };
+}
+
+// Rail-and-fly ("Zug zum Flug") parameters
+const RAIL_HUB_MAX_MINUTES = 330;       // Longest acceptable train ride to the departure hub
+const RAIL_AIRPORT_TRANSFER_MINUTES = 40; // Local transfer when the airport has no long-distance station
+const SHORT_FEEDER_FLIGHT_KM = 500;     // First legs below this are trains, not flights, if rail exists
+
+/** Travel friction of the train ride to the airport (replaces the car-to-airport baseline). */
+function railFeederFrictionScore(minutes: number): number {
+  if (minutes <= 90) return 94;
+  if (minutes <= 180) return 88;
+  if (minutes <= 270) return 81;
+  return 74;
+}
+
+interface PlaneOption {
+  leg: OriginLeg;
+  flightRoute: FlightRouteDetails;
+  directDist: number;
+  frictionScore: number;
+  replacesFeederFlight?: string;
+}
+
+interface OverlandOption {
+  vehicle: OverlandVehicle;
+  distKm: number;
+  access: OverlandAccessResult;
+  durationMinutes: number;
+  frictionScore: number;
+}
+
+interface DestinationContext {
+  code: string;
+  point: DestinationPoint;
+  destinationName: string;
+  destinationCity: string;
+  destinationCountry: string;
+  /** ISO country code of the destination (source-market demand) */
+  countryCode?: string;
+  destLat: number;
+  destLon: number;
+  homeDistKm: number;
+  availableVehicles: TravelVehicle[];
+  /** Every selected overland vehicle that can reach the destination (car, train, bus) */
+  overlandOptions: OverlandOption[];
+  planeOptions: PlaneOption[];
+  styles: DestinationType[];
+}
+
+/**
+ * Whether the minimum beach temperature (BEACH) or snow guarantee (ALPINE) can matter for a search:
+ * explicit destinations, the style itself, "all styles", or a long-range search preferring it.
+ */
+function climateSettingApplies(input: TripPlanInput, style: 'BEACH' | 'ALPINE'): boolean {
+  if ((input.targetDestinations && input.targetDestinations.length > 0) || input.targetRegion) return true;
+  const types = input.destinationTypes?.length ? input.destinationTypes : input.destinationType ? [input.destinationType] : ['ALL'];
+  if (types.includes('ALL') || types.includes(style) || (style === 'ALPINE' && types.includes('SKI'))) return true;
+  if (types.includes('LONGRANGE')) {
+    const prefs = input.longRangeStyles || [];
+    return prefs.length === 0 || prefs.includes(style);
+  }
+  return false;
+}
+
+export interface OptimizerContextOptions {
+  /** School-holiday calendars of Europe's big source markets (demand/crowding model) */
+  sourceMarketCalendars?: MarketHolidayCalendar[];
+}
+
+/** Destinations further than this from home are barely exposed to European school-holiday demand. */
+const LONG_HAUL_DEMAND_KM = 4500;
+/** Demand the month-based fare/hotel benchmarks already price in for June-August. */
+const SUMMER_BASELINE_DEMAND = 0.55;
+
+/**
+ * Relative price change from source-market demand. The benchmark prices already model the
+ * summer peak (June-August) and the Christmas surge, so the adjustment only adds what they miss:
+ * Easter, Whitsun, autumn and winter breaks of several markets at once - and inside summer it
+ * distinguishes early June / late August (fewer markets travelling) from the late July peak.
+ */
+export function getDemandPriceFactor(demand: SourceMarketDemand | undefined, startDate: string): number {
+  if (!demand) return 0;
+  const month = parseInt(startDate.slice(5, 7), 10);
+  const day = parseInt(startDate.slice(8, 10), 10);
+  if ((month === 12 && day >= 19) || (month === 1 && day <= 6)) return 0;
+  const baseline = month >= 6 && month <= 8 ? SUMMER_BASELINE_DEMAND : 0;
+  const factor = MAX_DEMAND_SURCHARGE * (demand.index - baseline);
+  return Math.round(Math.min(MAX_DEMAND_SURCHARGE, Math.max(-0.1, factor)) * 1000) / 1000;
+}
+
+/** Applies the demand factor to flight (if flown) and lodging cost of a pricing result. */
+function applyDemandAdjustment(pricing: AggregatedTripPricing, factor: number, includeTransport: boolean, travelers: number): AggregatedTripPricing {
+  if (!factor) return pricing;
+  const flightDelta = includeTransport ? Math.round(pricing.flight.totalFlightCost * factor) : 0;
+  const lodgingDelta = Math.round(pricing.lodging.totalLodgingCost * factor);
+  const delta = flightDelta + lodgingDelta;
+  if (!delta) return pricing;
+  const totalCost = pricing.totalCost + delta;
+  return {
+    ...pricing,
+    flight: { ...pricing.flight, totalFlightCost: pricing.flight.totalFlightCost + flightDelta },
+    lodging: { ...pricing.lodging, totalLodgingCost: pricing.lodging.totalLodgingCost + lodgingDelta },
+    totalCost,
+    pricePerPerson: Math.round(totalCost / Math.max(1, travelers)),
+    effectiveCost: pricing.effectiveCost !== undefined ? Math.max(0, pricing.effectiveCost + delta) : undefined,
+    demandAdjustmentEur: delta,
+  };
 }
 
 /**
@@ -241,9 +403,14 @@ export function optimizeVacationWindows(
   input: TripPlanInput,
   schoolHolidaysByState: Record<string, SchoolHoliday[]>,
   publicHolidaysByState: Record<string, PublicHoliday[]>,
-  weights: OptimizationWeights = DEFAULT_WEIGHTS
+  weights: OptimizationWeights = DEFAULT_WEIGHTS,
+  options: OptimizerContextOptions = {}
 ): CandidateWindow[] {
   const { userProfile, earliestDate, latestDate } = input;
+  const demandTimeline: SourceMarketDemandTimeline | undefined =
+    options.sourceMarketCalendars && options.sourceMarketCalendars.length > 0
+      ? buildSourceMarketDemandTimeline(options.sourceMarketCalendars, earliestDate, latestDate)
+      : undefined;
   const minDuration = input.durationDaysMin || input.durationDays || 7;
   const maxDuration = Math.max(minDuration, input.durationDaysMax || input.durationDays || minDuration);
 
@@ -267,12 +434,29 @@ export function optimizeVacationWindows(
     }));
 
   const homeState = userProfile.federalState || '';
-  const homeSchoolHolidays = homeState ? schoolHolidaysByState[homeState] || [] : [];
   const homePublicHolidays = homeState ? publicHolidaysByState[homeState] || [] : [];
 
+  // School holidays are evaluated per child: siblings at schools in different regions
+  // (or a child at a boarding/cross-border school) each follow their own calendar, and a
+  // window only counts as "inside school holidays" when it is inside every child's break.
+  const schoolCalendars = resolveChildSchoolCalendars(userProfile, homeState, schoolHolidaysByState, earliestDate);
+  const hasSchoolCalendarData = schoolCalendars.some((c) => c.holidays.length > 0);
+  // Families without school children: the home region's holidays still drive demand (and prices)
+  // at the home airports
+  const homeSchoolHolidays = homeState ? schoolHolidaysByState[homeState] || [] : [];
+
+  // Flexible airport search: with no airport selected, every sensible airport around home is
+  // evaluated and only the best one per destination and window is kept (see below).
+  const isFlexOrigin = !(userProfile.originAirports && userProfile.originAirports.length > 0);
+  const flexOrigins =
+    isFlexOrigin && userProfile.departureLat != null && userProfile.departureLon != null
+      ? resolveFlexOriginAirports(userProfile.departureLat, userProfile.departureLon)
+      : [];
   const originAirports =
     userProfile.originAirports && userProfile.originAirports.length > 0
       ? userProfile.originAirports
+      : flexOrigins.length > 0
+      ? flexOrigins
       : (userProfile.departureLat != null && userProfile.departureLon != null
           ? getRecommendedAirportsForCoordinates(userProfile.departureLat, userProfile.departureLon)
               .filter((a) => a.isMajorHub || (a.distanceKm || 0) <= 80)
@@ -288,6 +472,8 @@ export function optimizeVacationWindows(
       : input.travelVehicle
       ? [input.travelVehicle]
       : ['PLANE'];
+  const planeSelected = selectedVehicles.includes('PLANE');
+  const overlandSelected = selectedVehicles.filter((v): v is OverlandVehicle => v !== 'PLANE');
 
   const originContext: OriginContext = {
     departureLat: userProfile.departureLat,
@@ -297,11 +483,21 @@ export function optimizeVacationWindows(
     originAirports,
     travelVehicle: selectedVehicles[0],
     travelVehicles: selectedVehicles,
-    minBeachTemp: input.minBeachTemp,
-    requireSnow: input.requireSnow,
+    // Only when the style selection makes them relevant (as the search form does), so e.g. a beach
+    // temperature cannot reshuffle a city-only long-haul search
+    minBeachTemp: climateSettingApplies(input, 'BEACH') ? input.minBeachTemp : undefined,
+    requireSnow: climateSettingApplies(input, 'ALPINE') ? input.requireSnow : undefined,
     earliestDate: input.earliestDate,
     latestDate: input.latestDate,
+    maxOverlandTravelMinutes: input.maxOverlandTravelMinutes,
+    longRangeStyles: input.longRangeStyles,
   };
+
+  // Climate constraints (minimum beach temperature, snow guarantee) also apply to beach /
+  // alpine destinations of a long-range search, e.g. "long-haul beach, at least 26 °C".
+  const longRangePrefs = input.longRangeStyles || [];
+  const longRangeAppliesTo = (style: DestinationType) =>
+    selectedTypes.includes('LONGRANGE') && (longRangePrefs.length === 0 || longRangePrefs.includes(style));
 
   // Select candidate destination codes
   const hasUserSelectedDestinations = Boolean(
@@ -340,6 +536,276 @@ export function optimizeVacationWindows(
     candidateDestinations = resolveDestinationCodes(undefined, selectedTypes, originContext);
   }
 
+  const homeCoords = resolveOriginCoordinates(originContext);
+  const homeGeo = {
+    lat: userProfile.departureLat ?? homeCoords.lat,
+    lon: userProfile.departureLon ?? homeCoords.lon,
+    countryCode: homeState ? getCountryCodeFromSubdivision(homeState) : undefined,
+    state: homeState,
+  };
+  const maxToleratedStops = input.maxFlightStops ?? userProfile.maxFlightStops;
+  const isLongRangeSelected = selectedTypes.includes('LONGRANGE');
+
+  // ---------------------------------------------------------------------------------------
+  // Date-independent precomputation. Everything below depends only on the origin airport and
+  // destination, so it is resolved once instead of once per candidate window.
+  // ---------------------------------------------------------------------------------------
+  const originLegs: OriginLeg[] = originAirports.map((origin) => {
+    const airportDetails = getAirportByIata(origin);
+    const airportState = airportDetails?.state || homeState;
+    const isArbitrage = airportState !== homeState;
+
+    let originDistKm: number | undefined;
+    let originDriveMins: number | undefined;
+    if (userProfile.departureLat && userProfile.departureLon && airportDetails) {
+      originDistKm = Math.round(
+        calculateGeodesicDistanceKm(userProfile.departureLat, userProfile.departureLon, airportDetails.lat, airportDetails.lon)
+      );
+      originDriveMins = Math.round((originDistKm / 85) * 60);
+    }
+
+    return {
+      origin,
+      airportDetails,
+      airportState,
+      isArbitrage,
+      originDistKm,
+      originDriveMins,
+      originName: airportDetails?.name
+        ? (airportDetails.city ? `${airportDetails.name} (${airportDetails.city})` : airportDetails.name)
+        : origin,
+      originCity: airportDetails?.city || origin,
+      originCountry: airportDetails?.country || '',
+      originHighSpeedRail: Boolean(airportDetails?.isHighSpeedRailConnected),
+      // Travel friction of getting to the airport: the actual drive. Fares are priced by distance
+      // band, so without it a far airport with an equal fare (ZRH from Karlsruhe) won every tie on a
+      // slightly shorter flight, while a cross-border airport next door (SXB from Offenburg) was
+      // marked down like a distant one. Without home coordinates: flat baseline (lower for
+      // out-of-state departures, which are typically further away).
+      frictionDriveScore: originDriveMins !== undefined
+        ? Math.max(40, Math.round(95 - Math.max(0, originDriveMins - 30) / 5))
+        : (isArbitrage ? 80 : 95),
+    };
+  });
+
+  // "Zug zum Flug": intercontinental hubs the family can reach by train within a few hours,
+  // even when they are not among the selected departure airports (e.g. Karlsruhe -> Munich by
+  // ICE for a non-stop long-haul flight instead of FKB/STR + a short feeder flight to FRA/MUC).
+  const homeCountry = homeState ? getCountryCodeFromSubdivision(homeState) : undefined;
+  const railHubLegs: OriginLeg[] = [];
+  if (planeSelected && input.railAirSuggestions !== false) {
+    for (const hub of PRIMARY_GATEWAY_HUBS) {
+      const airport = getAirportByIata(hub);
+      if (!airport) continue;
+      const geodesic = Math.round(calculateGeodesicDistanceKm(homeGeo.lat, homeGeo.lon, airport.lat, airport.lon));
+      if (geodesic < 60 || geodesic > 900) continue;
+      const hubGeo = { lat: airport.lat, lon: airport.lon, countryCode: airport.state?.split('-')[0], state: airport.state, code: hub };
+      if (!isOverlandReachable(homeGeo, hubGeo)) continue;
+      const train = calculateVehicleMetrics('TRAIN', geodesic, 1, true);
+      const durationMinutes = train.durationMinutes + (airport.isHighSpeedRailConnected ? 0 : RAIL_AIRPORT_TRANSFER_MINUTES);
+      if (durationMinutes > RAIL_HUB_MAX_MINUTES) continue;
+      const airportState = airport.state || homeState;
+      railHubLegs.push({
+        origin: hub,
+        airportDetails: airport,
+        airportState,
+        isArbitrage: airportState !== homeState && airport.state?.split('-')[0] === homeCountry,
+        originName: airport.city ? `${airport.name} (${airport.city})` : airport.name,
+        originCity: airport.city || hub,
+        originCountry: airport.country || '',
+        originHighSpeedRail: Boolean(airport.isHighSpeedRailConnected),
+        frictionDriveScore: railFeederFrictionScore(durationMinutes),
+        rail: {
+          durationMinutes,
+          distanceKm: train.distanceKm,
+          isAlternativeOrigin: !originAirports.map((c) => c.toUpperCase()).includes(hub),
+        },
+      });
+    }
+    railHubLegs.sort((a, b) => a.rail!.durationMinutes - b.rail!.durationMinutes);
+  }
+
+  const destinationContexts: DestinationContext[] = [];
+  for (const dest of candidateDestinations) {
+    const point = getDestinationPoint(dest);
+    if (!point) continue;
+
+    // Hard safety boundary: full national travel warnings (Auswärtiges Amt Reisewarnung / US
+    // Level 4) and active conflict zones are never calculated, even when explicitly requested.
+    // Partial warnings (Teilreisewarnungen) stay allowed.
+    if (isDestinationBanned(dest, point.country)) continue;
+
+    const destGeo = {
+      lat: point.lat,
+      lon: point.lon,
+      countryCode: point.state ? point.state.split('-')[0] : undefined,
+      state: point.state,
+      code: dest,
+      isHighSpeedRailConnected: point.isHighSpeedRailConnected,
+    };
+    const highSpeedRail = Boolean(point.isHighSpeedRailConnected);
+    const homeDistKm = Math.round(calculateGeodesicDistanceKm(homeGeo.lat, homeGeo.lon, point.lat, point.lon));
+    const availableVehicles = getAvailableVehicles(homeGeo, destGeo, homeDistKm);
+
+    // Overland legs: from home, independent of any departure airport. One per selected vehicle in
+    // range - a destination can be reached by car *and* train *and* plane, and scoring (not a
+    // fixed preference) decides which trip ranks first.
+    const overlandOptions: OverlandOption[] = [];
+    const overlandVehicles = overlandSelected.filter(
+      (v) => availableVehicles.includes(v) && isOverlandVehicleInRange(v, homeDistKm, highSpeedRail)
+    );
+    if (overlandVehicles.length > 0) {
+      const access = classifyOverlandAccess(destGeo);
+      if (access.access !== 'FLIGHT_ONLY') {
+        for (const vehicle of overlandVehicles) {
+          const durationMinutes = calculateVehicleMetrics(vehicle, homeDistKm, 1, highSpeedRail, access, input.carFuelType).durationMinutes;
+          if (input.maxOverlandTravelMinutes && durationMinutes > input.maxOverlandTravelMinutes) continue;
+          overlandOptions.push({
+            vehicle,
+            distKm: homeDistKm,
+            access,
+            durationMinutes,
+            frictionScore: calculateOverlandFrictionScore(vehicle, durationMinutes, access.access),
+          });
+        }
+      }
+    }
+
+    // Flight legs: one per departure airport (airport destinations only).
+    const planeOptions: PlaneOption[] = [];
+    if (planeSelected && point.kind === 'AIRPORT') {
+      for (const leg of originLegs) {
+        const flightRoute = resolveFlightRoute(leg.origin, dest);
+        if (maxToleratedStops !== undefined && flightRoute.stops > maxToleratedStops) continue;
+        const directDist =
+          flightRoute.flightDistanceKm ||
+          (leg.airportDetails
+            ? Math.round(calculateGeodesicDistanceKm(leg.airportDetails.lat, leg.airportDetails.lon, point.lat, point.lon))
+            : 500);
+        if (directDist < 180) continue;
+        const flightFrictionScore = calculateFlightFrictionScore(
+          flightRoute.flightDistanceKm,
+          isLongRangeSelected,
+          flightRoute.stops,
+          flightRoute.totalLayoverMinutes
+        );
+        planeOptions.push({
+          leg,
+          flightRoute,
+          directDist,
+          frictionScore: Math.round(leg.frictionDriveScore * 0.4 + flightFrictionScore * 0.6),
+        });
+      }
+
+      const isShortFeeder = (o: PlaneOption) =>
+        o.flightRoute.stops > 0 && (o.flightRoute.segments[0]?.distanceKm ?? Infinity) < SHORT_FEEDER_FLIGHT_KM;
+      const fewestUserStops = planeOptions.reduce((min, o) => Math.min(min, o.flightRoute.stops), Infinity);
+
+      // Rail-and-fly: a train-reachable hub that saves at least one stop compared with the family's
+      // own airports (e.g. FKB -> FRA -> FNC becomes train to FRA + non-stop FRA -> FNC).
+      if (railHubLegs.length > 0) {
+        let best: PlaneOption | undefined;
+        let bestKey = [Infinity, Infinity];
+        for (const leg of railHubLegs) {
+          const flightRoute = resolveFlightRoute(leg.origin, dest);
+          // Worth suggesting when it saves a stop, or ties while every equally good routing from
+          // the family's own airports starts with a feeder flight the train replaces one-for-one.
+          const replacesFeederOnTie =
+            flightRoute.stops === fewestUserStops &&
+            planeOptions.filter((o) => o.flightRoute.stops === fewestUserStops).every(isShortFeeder);
+          if (flightRoute.stops > fewestUserStops || (flightRoute.stops === fewestUserStops && !replacesFeederOnTie)) continue;
+          if (maxToleratedStops !== undefined && flightRoute.stops > maxToleratedStops) continue;
+          const directDist = flightRoute.flightDistanceKm;
+          if (!directDist || directDist < 180) continue;
+          const key = [flightRoute.stops, leg.rail!.durationMinutes + flightRoute.totalFlightDurationMinutes];
+          if (key[0] > bestKey[0] || (key[0] === bestKey[0] && key[1] >= bestKey[1])) continue;
+          const flightFrictionScore = calculateFlightFrictionScore(
+            directDist,
+            isLongRangeSelected,
+            flightRoute.stops,
+            flightRoute.totalLayoverMinutes
+          );
+          bestKey = key;
+          best = {
+            leg,
+            flightRoute,
+            directDist,
+            frictionScore: Math.round(leg.frictionDriveScore * 0.4 + flightFrictionScore * 0.6),
+          };
+        }
+        if (best) {
+          const superseded = planeOptions.find(isShortFeeder);
+          if (superseded) {
+            const seg = superseded.flightRoute.segments[0];
+            best = { ...best, replacesFeederFlight: `${seg.departureAirport}-${seg.arrivalAirport}` };
+          }
+          planeOptions.push(best);
+        }
+      }
+
+      // Ultra-short feeder flights (STR -> FRA, FKB -> MUC) are dropped whenever the destination is
+      // also reachable without one, with no more stops - by driving to the hub (one of the family's
+      // airports), by train (rail-and-fly above) or via a real connection elsewhere.
+      const fewestNonFeederStops = planeOptions
+        .filter((o) => !isShortFeeder(o))
+        .reduce((min, o) => Math.min(min, o.flightRoute.stops), Infinity);
+      for (let i = planeOptions.length - 1; i >= 0; i--) {
+        if (isShortFeeder(planeOptions[i]) && planeOptions[i].flightRoute.stops >= fewestNonFeederStops) {
+          planeOptions.splice(i, 1);
+        }
+      }
+
+      // Real-network itineraries can chain low-cost legs (FKB -> SKG -> IST -> BKK); keep only options
+      // within one extra stop of the best one (e.g. a non-stop from another family airport).
+      const fewestStopsOverall = planeOptions.reduce((min, o) => Math.min(min, o.flightRoute.stops), Infinity);
+      for (let i = planeOptions.length - 1; i >= 0; i--) {
+        if (planeOptions[i].flightRoute.stops > fewestStopsOverall + 1) planeOptions.splice(i, 1);
+      }
+    }
+
+    // Short hops: no flight when the destination is reachable overland
+    if (overlandOptions.length > 0 && homeDistKm < MIN_FLIGHT_DISTANCE_WITH_OVERLAND_KM) planeOptions.length = 0;
+
+    if (overlandOptions.length === 0 && planeOptions.length === 0) continue;
+
+    destinationContexts.push({
+      code: dest,
+      point,
+      destinationName: point.city && point.country ? `${point.city}, ${point.country}` : (point.name || dest),
+      destinationCity: point.city || point.name || dest,
+      destinationCountry: point.country || '',
+      countryCode: destGeo.countryCode,
+      destLat: point.lat,
+      destLon: point.lon,
+      homeDistKm,
+      availableVehicles,
+      overlandOptions,
+      planeOptions,
+      styles: getDestinationVacationStyles(dest),
+    });
+  }
+
+  // Month-level climate memoization: climate and seasonal warnings depend only on the
+  // destination and month (and year for moving festivals), not on the individual window.
+  const climateCache = new Map<string, WeatherAssessment>();
+  const getClimate = (dest: string, monthIndex: number) => {
+    const key = `${dest}|${monthIndex}`;
+    let weather = climateCache.get(key);
+    if (!weather) {
+      weather = getEstimatedClimate(dest, monthIndex);
+      climateCache.set(key, weather);
+    }
+    return weather;
+  };
+  const seasonalCache = new Map<string, SeasonalConstraintWarning | null>();
+  const getSeasonal = (dest: string, monthIndex: number, year: number, weather: WeatherAssessment) => {
+    const key = `${dest}|${monthIndex}|${year}`;
+    if (!seasonalCache.has(key)) {
+      seasonalCache.set(key, getDestinationSeasonalWarning(dest, monthIndex, { year, weatherAssessment: weather }));
+    }
+    return seasonalCache.get(key) ?? null;
+  };
+
   const rawCandidatePool: RawCandidate[] = [];
 
   const earliest = parseISO(earliestDate);
@@ -347,6 +813,10 @@ export function optimizeVacationWindows(
 
   let totalWindowsChecked = 0;
   let blackoutFilteredCount = 0;
+
+  const adultsCount = typeof userProfile.adults === 'number' && userProfile.adults >= 1
+    ? userProfile.adults
+    : 2;
 
   // Generate candidate dates across flexible duration range
   for (let durationDays = minDuration; durationDays <= maxDuration; durationDays++) {
@@ -361,6 +831,14 @@ export function optimizeVacationWindows(
       const startStr = format(currentDate, 'yyyy-MM-dd');
       const endStr = format(windowEnd, 'yyyy-MM-dd');
       const monthIndex = currentDate.getMonth();
+      const travelYear = currentDate.getFullYear();
+
+      // 1. Blackout Filtering (STRICT_BLACKOUT only - CHILDCARE_CLOSURE never filters candidates)
+      if (overlapsWithBlackout(startStr, endStr, strictBlackouts)) {
+        blackoutFilteredCount++;
+        currentDate = addDays(currentDate, 1);
+        continue;
+      }
 
       // Dynamic Age Calculation relative to window start date
       let currentChildrenAges = userProfile.childrenAges || [];
@@ -370,26 +848,17 @@ export function optimizeVacationWindows(
         });
       }
 
-      const adultsCount = typeof userProfile.adults === 'number' && userProfile.adults >= 1
-        ? userProfile.adults
-        : 2;
-      const hasSchoolKids = currentChildrenAges.some((age) => age >= 6);
       const hasYoungChild = currentChildrenAges.some((age) => age < 6);
+      const travelsWithSchoolChildren = currentChildrenAges.some((age) => age >= 6);
+      const hasToddler = currentChildrenAges.some((age) => age <= 4);
       const pCostMultiplier = calculatePassengerCostMultiplier(adultsCount, currentChildrenAges, {
         birthDates: userProfile.childrenBirthDates,
         outboundDate: startStr,
         returnDate: endStr,
       });
 
-      // 1. Blackout Filtering (STRICT_BLACKOUT only - CHILDCARE_CLOSURE never filters candidates)
-      if (overlapsWithBlackout(startStr, endStr, strictBlackouts)) {
-        blackoutFilteredCount++;
-        currentDate = addDays(currentDate, 1);
-        continue;
-      }
-
-      // 2. School Holiday Coverage Evaluation
-      const holidayCoverage = calculateHolidayCoverage(startStr, endStr, homeSchoolHolidays);
+      // 2. School Holiday Coverage Evaluation (combined across every school child's calendar)
+      const holidayCoverage = calculateCombinedHolidayCoverage(startStr, endStr, schoolCalendars);
 
       // 3. PTO consumption calculation with configurable workweek, factoring in effective
       // marginal PTO consumed when a CHILDCARE_CLOSURE period overlaps this window.
@@ -400,205 +869,150 @@ export function optimizeVacationWindows(
         (userProfile as any).workweekDays,
         childcareClosures
       );
+      const ptoEfficiencyRatio = ptoInfo.effectivePtoDaysConsumed > 0
+        ? Math.round((durationDays / ptoInfo.effectivePtoDaysConsumed) * 10) / 10
+        : durationDays * 2;
 
-      // 4. Test each origin airport and destination combination
-      for (const origin of originAirports) {
-        const airportDetails = getAirportByIata(origin);
-        const airportState = airportDetails?.state || homeState;
-        const isArbitrage = airportState !== homeState;
-
-        let originDistKm: number | undefined;
-        let originDriveMins: number | undefined;
-        if (userProfile.departureLat && userProfile.departureLon && airportDetails) {
-          originDistKm = Math.round(
-            calculateGeodesicDistanceKm(
-              userProfile.departureLat,
-              userProfile.departureLon,
-              airportDetails.lat,
-              airportDetails.lon
-            )
-          );
-          originDriveMins = Math.round((originDistKm / 85) * 60);
-        }
-
-        const originName = airportDetails?.name
-          ? (airportDetails.city ? `${airportDetails.name} (${airportDetails.city})` : airportDetails.name)
-          : origin;
-        const originCity = airportDetails?.city || origin;
-        const originCountry = airportDetails?.country || '';
-        const originHighSpeedRail = Boolean(airportDetails?.isHighSpeedRailConnected);
-
-        // Arbitrage check: If departing from an airport in neighboring state/country, check if that state is NOT on holiday
-        let arbitrageNote: string | undefined;
-        let arbitrageState: string | undefined;
-
-        if (isArbitrage) {
-          const neighborHolidays = schoolHolidaysByState[airportState] || [];
-          const neighborCoverage = calculateHolidayCoverage(startStr, endStr, neighborHolidays);
-          if (!neighborCoverage.isFullyInside && neighborCoverage.overlapDays < durationDays / 2) {
-            arbitrageNote = `Arbitrage opportunity: Depart from ${origin} (${airportState}) where schools are in session! Flight fares typically 25-45% lower.`;
-            arbitrageState = airportState;
-          }
-        }
-
-        // Baseline travel friction score (lower for arbitrage/out-of-state departures)
-        const frictionDriveScore = isArbitrage ? 80 : 95;
-
-        for (const dest of candidateDestinations) {
-          const destAirportObj = getAirportByIata(dest);
-
-          // Flight route logistics: direct vs connecting, layovers, and transfer hubs
-          const flightRoute = resolveFlightRoute(origin, dest);
-
-          // Flight transit tolerance filter (direct flights only vs max 1 stop vs any)
-          const maxToleratedStops = input.maxFlightStops ?? userProfile.maxFlightStops;
-          if (maxToleratedStops !== undefined && flightRoute.stops > maxToleratedStops) {
-            // If user's selected mode is strictly PLANE or route is only viable by air, filter out
-            if (selectedVehicles.length === 1 && selectedVehicles[0] === 'PLANE') {
-              continue;
-            }
-          }
-
-          let flightDistKm: number | undefined = flightRoute.flightDistanceKm;
-          let flightDurationMins: number | undefined = flightRoute.totalFlightDurationMinutes;
-
-          const isLongRangeSelected = selectedTypes.includes('LONGRANGE');
-          const flightFrictionScore = calculateFlightFrictionScore(
-            flightDistKm,
-            isLongRangeSelected,
-            flightRoute.stops,
-            flightRoute.totalLayoverMinutes
-          );
-          const compositeFrictionScore = Math.round(frictionDriveScore * 0.4 + flightFrictionScore * 0.6);
-
-          const destinationName = destAirportObj?.city && destAirportObj?.country
-            ? `${destAirportObj.city}, ${destAirportObj.country}`
-            : (destAirportObj?.name || dest);
-          const destinationCity = destAirportObj?.city || destAirportObj?.name || dest;
-          const destinationCountry = destAirportObj?.country || '';
-
-          const originGeo = {
-            lat: userProfile.departureLat ?? airportDetails?.lat ?? 49.0069,
-            lon: userProfile.departureLon ?? airportDetails?.lon ?? 8.4037,
-            countryCode: originCountry || (homeState ? getCountryCodeFromSubdivision(homeState) : undefined),
-            state: airportState || homeState,
-          };
-          const destGeo = {
-            lat: destAirportObj?.lat ?? 0,
-            lon: destAirportObj?.lon ?? 0,
-            countryCode: destAirportObj?.state ? destAirportObj.state.split('-')[0] : undefined,
-            state: destAirportObj?.state,
-            code: dest,
-            isHighSpeedRailConnected: destAirportObj?.isHighSpeedRailConnected,
-          };
-
-          // Biological toddler friction: young children (<=4y) + a significant timezone shift
-          // on a short trip (< 10 days) compound travel fatigue disproportionately.
-          const hasToddler = currentChildrenAges.some((age) => age <= 4);
-          const utcShiftHours = Math.abs(estimateUtcOffsetHours(destGeo.lon) - estimateUtcOffsetHours(originGeo.lon));
-          const jetlagPenalty = hasToddler && utcShiftHours >= 3 && durationDays < 10
-            ? Math.round(utcShiftHours * 2.5 * (10 / durationDays) * 10) / 10
-            : 0;
-
-          const directDist = flightDistKm || (airportDetails && destAirportObj ? Math.round(calculateGeodesicDistanceKm(originGeo.lat, originGeo.lon, destGeo.lat, destGeo.lon)) : 500);
-          const availableVehicles = getAvailableVehicles(originGeo, destGeo, directDist);
-          const matchingVehicles = availableVehicles.filter((v) => selectedVehicles.includes(v));
-
-          // Destination must be physically viable for at least one of the user's selected vehicles
-          if (matchingVehicles.length === 0) {
-            continue;
-          }
-
-          // Choose the most appropriate active vehicle among matching options:
-          // For shorter distances, prefer Train/Car if selected by user; for longer hops, prefer Plane
-          let activeVehicle: TravelVehicle = matchingVehicles[0];
-          if (matchingVehicles.includes('TRAIN') && (destAirportObj?.isHighSpeedRailConnected || directDist <= 450)) {
-            activeVehicle = 'TRAIN';
-          } else if (matchingVehicles.includes('CAR') && directDist <= 550 && !matchingVehicles.includes('TRAIN')) {
-            activeVehicle = 'CAR';
-          } else if (matchingVehicles.includes('PLANE') && directDist >= 650) {
-            activeVehicle = 'PLANE';
-          }
-
-          // Flight transit tolerance filter (direct flights only vs max 1 stop vs any)
-          if (activeVehicle === 'PLANE' && maxToleratedStops !== undefined && flightRoute.stops > maxToleratedStops) {
-            continue;
-          }
-
-          const ferryAccess = classifyOverlandAccess(destGeo);
-
-          const vehicleDetails = calculateVehicleMetrics(
-            activeVehicle,
-            directDist,
-            pCostMultiplier,
-            destAirportObj?.isHighSpeedRailConnected,
-            activeVehicle !== 'PLANE' ? ferryAccess : undefined
-          );
-
-          // Non-flight transit duration filter
-          if (
-            activeVehicle !== 'PLANE' &&
-            input.maxOverlandTravelMinutes &&
-            vehicleDetails.durationMinutes > input.maxOverlandTravelMinutes
-          ) {
-            continue;
-          }
-
-          // Dynamic weather assessment
-          const weather = getEstimatedClimate(dest, monthIndex);
-          const travelYear = parseInt(startStr.split('-')[0], 10) || 2026;
-          const seasonalWarning = getDestinationSeasonalWarning(dest, monthIndex, {
-            year: travelYear,
-            weatherAssessment: weather,
+      // Arbitrage check per departure airport: the fare advantage exists when the family's own
+      // region is on holiday (peak demand at the home airports) while the departure airport's
+      // state/country is NOT. Outside the home holidays the home airports are just as cheap, so
+      // no discount applies there (it used to, which made FRA/ZRH win nearly every window).
+      const homeHolidayOverlap = hasSchoolCalendarData
+        ? holidayCoverage.overlapDays
+        : calculateHolidayCoverage(startStr, endStr, homeSchoolHolidays).overlapDays;
+      const isHomePeak = homeHolidayOverlap >= durationDays / 2;
+      const arbitrageByOrigin = new Map<string, { note?: string; state?: string }>();
+      for (const leg of isHomePeak ? [...originLegs, ...railHubLegs] : []) {
+        if (!leg.isArbitrage) continue;
+        const neighborHolidays = schoolHolidaysByState[leg.airportState] || [];
+        // Without a calendar for that region we cannot tell whether schools are in session there;
+        // an empty list must not read as "never on holiday" (a discount on every date).
+        if (!neighborHolidays.some((h) => h.startDate.slice(0, 4) === startStr.slice(0, 4) || h.endDate.slice(0, 4) === startStr.slice(0, 4))) continue;
+        const neighborCoverage = calculateHolidayCoverage(startStr, endStr, neighborHolidays);
+        if (!neighborCoverage.isFullyInside && neighborCoverage.overlapDays < durationDays / 2) {
+          arbitrageByOrigin.set(leg.origin, {
+            note: `Arbitrage opportunity: Depart from ${leg.origin} (${leg.airportState}) where schools are in session! Flight fares typically 25-45% lower.`,
+            state: leg.airportState,
           });
+        }
+      }
 
-          // Minimum beach temperature constraint
-          if (input.minBeachTemp && input.minBeachTemp > 0) {
-            const isBeachCandidate = selectedTypes.includes('BEACH') ||
-              (hasUserSelectedDestinations && getDestinationVacationStyles(dest).includes('BEACH'));
-            if (isBeachCandidate) {
-              const dayTemp = weather.maxTempC ?? weather.avgTempC;
-              if (dayTemp < input.minBeachTemp) {
-                continue; // Destination window too cold for user's minimum beach temperature
-              }
+      // Source-market demand depends on the destination country and distance only
+      const demandCache = new Map<string, SourceMarketDemand>();
+      const getDemand = (ctx: DestinationContext): SourceMarketDemand | undefined => {
+        if (!demandTimeline) return undefined;
+        const longHaul = ctx.homeDistKm > LONG_HAUL_DEMAND_KM;
+        const key = `${ctx.countryCode || ctx.destinationCountry}|${longHaul}`;
+        let demand = demandCache.get(key);
+        if (!demand) {
+          demand = demandTimeline.demandFor(startStr, endStr, ctx.countryCode, longHaul);
+          demandCache.set(key, demand);
+        }
+        return demand;
+      };
+      const travelers = adultsCount + currentChildrenAges.length;
+
+      for (const ctx of destinationContexts) {
+        const dest = ctx.code;
+        const sourceMarketDemand = getDemand(ctx);
+        const demandFactor = getDemandPriceFactor(sourceMarketDemand, startStr);
+
+        // Dynamic weather assessment
+        const weather = getClimate(dest, monthIndex);
+        const seasonalWarning = getSeasonal(dest, monthIndex, travelYear, weather);
+
+        // Minimum beach temperature constraint
+        if (input.minBeachTemp && input.minBeachTemp > 0) {
+          const isBeachCandidate = selectedTypes.includes('BEACH') ||
+            ((hasUserSelectedDestinations || longRangeAppliesTo('BEACH')) && ctx.styles.includes('BEACH'));
+          if (isBeachCandidate) {
+            const dayTemp = weather.maxTempC ?? weather.avgTempC;
+            if (dayTemp < input.minBeachTemp) {
+              continue; // Destination window too cold for user's minimum beach temperature
             }
           }
+        }
+
+        // Climate preference constraint: avoid extreme heat (>38°C)
+        if (input.avoidExtremeHeat && seasonalWarning?.seasonType === 'EXTREME_HEAT') {
+          continue; // Filtered out by user's extreme heat avoidance constraint
+        }
+
+        // Winter sports & snow guarantee constraint
+        if (input.requireSnow) {
+          const isAlpineCandidate = selectedTypes.includes('ALPINE') ||
+            ((hasUserSelectedDestinations || longRangeAppliesTo('ALPINE')) && ctx.styles.includes('ALPINE'));
+          if (isAlpineCandidate) {
+            const altMeters = (ctx.point.altitude || 0) * 0.3048;
+            const isWinterSeason = ctx.destLat >= 0
+              ? (monthIndex === 11 || monthIndex <= 3)
+              : (monthIndex >= 5 && monthIndex <= 9);
+            const hasFreezingTemps = weather.avgTempC <= 3 || (weather.minTempC != null && weather.minTempC <= 0);
+            const hasSnowConditions = isWinterSeason && hasFreezingTemps && (altMeters >= 450 || (ctx.point.keywords && /ski|snow|alps|dolomites|tirol/i.test(ctx.point.keywords)));
+            if (!hasSnowConditions) {
+              continue; // No snow / winter sports conditions during this window
+            }
+          }
+        }
+
+        // Biological toddler friction: young children (<=4y) + a significant timezone shift
+        // on a short trip (< 10 days) compound travel fatigue disproportionately.
+        const utcShiftHours = Math.abs(estimateUtcOffsetHours(ctx.destLon) - estimateUtcOffsetHours(homeGeo.lon));
+        const jetlagPenalty = hasToddler && utcShiftHours >= 3 && durationDays < 10
+          ? Math.round(utcShiftHours * 2.5 * (10 / durationDays) * 10) / 10
+          : 0;
+
+        const baseFields = {
+          startDate: startStr,
+          endDate: endStr,
+          durationDays,
+          destinationAirport: dest,
+          destinationName: ctx.destinationName,
+          destinationCity: ctx.destinationCity,
+          destinationCountry: ctx.destinationCountry,
+          totalWeekdays: ptoInfo.totalWeekdays,
+          publicHolidaysCount: ptoInfo.publicHolidaysCount,
+          ptoDaysConsumed: ptoInfo.effectivePtoDaysConsumed,
+          rawPtoDaysConsumed: ptoInfo.ptoDaysConsumed,
+          overlapsChildcareClosure: ptoInfo.overlappingClosureWeekdays > 0,
+          hasYoungChildAtDeparture: hasYoungChild,
+          ptoEfficiencyRatio,
+          suggestedShifts: ptoInfo.suggestedShifts,
+          weather,
+          seasonalWarning,
+          requiresSchoolExemption: false,
+          schoolHolidayDaysOverlap: holidayCoverage.overlapDays,
+          travelsWithSchoolChildren,
+          holidayCoverage,
+          availableVehicles: ctx.availableVehicles,
+          jetlagPenalty: jetlagPenalty > 0 ? jetlagPenalty : undefined,
+          sourceMarketDemand,
+        };
+
+        // ----- Overland candidates (one per vehicle and window, from home) -----
+        for (const ov of ctx.overlandOptions) {
 
           // Long-range & exotic category exclusion when not selected by user
           if (
             !hasUserSelectedDestinations &&
             !selectedTypes.includes('ALL') &&
             !selectedTypes.includes('LONGRANGE') &&
-            (directDist >= 3500 || getDestinationVacationStyles(dest, directDist).includes('LONGRANGE'))
+            (ov.distKm >= 3500 || getDestinationVacationStyles(dest, ov.distKm).includes('LONGRANGE'))
           ) {
-            continue; // Destination belongs to long-range/exotic category which was not selected
+            continue;
           }
 
-          // Climate preference constraint: avoid extreme heat (>38°C)
-          if (input.avoidExtremeHeat && seasonalWarning?.seasonType === 'EXTREME_HEAT') {
-            continue; // Filtered out by user's extreme heat avoidance constraint
-          }
+          const vehicleDetails = calculateVehicleMetrics(
+            ov.vehicle,
+            ov.distKm,
+            pCostMultiplier,
+            ctx.point.isHighSpeedRailConnected,
+            ov.access,
+            input.carFuelType
+          );
 
-          // Winter sports & snow guarantee constraint
-          if (input.requireSnow) {
-            const isAlpineCandidate = selectedTypes.includes('ALPINE') ||
-              (hasUserSelectedDestinations && getDestinationVacationStyles(dest).includes('ALPINE'));
-            if (isAlpineCandidate) {
-              const altMeters = (destAirportObj?.altitude || 0) * 0.3048;
-              const isWinterSeason = (destAirportObj?.lat || 0) >= 0
-                ? (monthIndex === 11 || monthIndex <= 3)
-                : (monthIndex >= 5 && monthIndex <= 9);
-              const hasFreezingTemps = weather.avgTempC <= 3 || (weather.minTempC != null && weather.minTempC <= 0);
-              const hasSnowConditions = isWinterSeason && hasFreezingTemps && (altMeters >= 450 || (destAirportObj?.keywords && /ski|snow|alps|dolomites|tirol/i.test(destAirportObj.keywords)));
-              if (!hasSnowConditions) {
-                continue; // No snow / winter sports conditions during this window
-              }
-            }
-          }
-
-          // Modular Pricing Engine with deep-links, realistic quotes, and board type modeling
-          const pricingDetails = getSynchronousTripPricing({
-            originAirport: origin,
+          const basePricing = getSynchronousTripPricing({
+            originAirport: OVERLAND_ORIGIN_CODE,
             destinationAirport: dest,
             startDate: startStr,
             endDate: endStr,
@@ -608,92 +1022,144 @@ export function optimizeVacationWindows(
               childrenAges: currentChildrenAges,
               cabinClass: (userProfile.preferredCabinClass as any) || 'ECONOMY',
             },
-            isArbitrage: Boolean(arbitrageNote),
             preferredBoardType: input.preferredBoardType,
           });
-
-          let totalCost = pricingDetails.totalCost;
-          let perPersonCost = pricingDetails.pricePerPerson;
-
-          if (activeVehicle !== 'PLANE') {
-            const travelCost = vehicleDetails.estimatedTravelCost;
-            totalCost = travelCost + pricingDetails.lodging.totalLodgingCost;
-            perPersonCost = Math.round(totalCost / Math.max(1, adultsCount + currentChildrenAges.length));
-            pricingDetails.flight.totalFlightCost = travelCost;
-            pricingDetails.flight.baseAdultFare = Math.round(travelCost / pCostMultiplier);
-            pricingDetails.totalCost = totalCost;
-            pricingDetails.pricePerPerson = perPersonCost;
-          }
-
-          const effectiveCost =
-            pricingDetails.effectiveCost ??
-            Math.max(0, totalCost - Math.round((pricingDetails.mealPlanValue || 0) * 0.75));
+          const pricingDetails = applyDemandAdjustment(
+            toOverlandPricing(basePricing, ov.vehicle, vehicleDetails.estimatedTravelCost, pCostMultiplier, travelers),
+            demandFactor,
+            false,
+            travelers
+          );
+          const totalCost = pricingDetails.totalCost;
 
           // Budget check
           if (input.maxBudgetTotal && totalCost > input.maxBudgetTotal) {
             continue;
           }
 
-          const ptoEfficiencyRatio = ptoInfo.effectivePtoDaysConsumed > 0
-            ? Math.round((durationDays / ptoInfo.effectivePtoDaysConsumed) * 10) / 10
-            : durationDays * 2;
-
           rawCandidatePool.push({
-            startDate: startStr,
-            endDate: endStr,
-            durationDays,
-            originAirport: origin,
-            destinationAirport: dest,
-            destinationName,
-            destinationCity,
-            destinationCountry,
-            originName,
-            originCity,
-            originCountry,
-            flightDistanceKm: flightDistKm,
-            flightDurationMinutes: flightDurationMins,
-            originDistanceKm: originDistKm,
-            originDriveMinutes: originDriveMins,
-            originHighSpeedRail,
-            isDirectFlight: activeVehicle === 'PLANE' ? flightRoute.isDirect : undefined,
-            flightStops: activeVehicle === 'PLANE' ? flightRoute.stops : undefined,
-            flightLayovers: activeVehicle === 'PLANE' ? flightRoute.layovers : undefined,
-            flightSegments: activeVehicle === 'PLANE' ? flightRoute.segments : undefined,
-            directFlightPremium: activeVehicle === 'PLANE' && flightRoute.isDirect ? flightRoute.directFlightPremiumMultiplier : undefined,
-            layoverPenalty: activeVehicle === 'PLANE' ? flightRoute.layoverScorePenalty : 0,
-            flightRoute: activeVehicle === 'PLANE' ? flightRoute : undefined,
-            totalWeekdays: ptoInfo.totalWeekdays,
-            publicHolidaysCount: ptoInfo.publicHolidaysCount,
-            ptoDaysConsumed: ptoInfo.effectivePtoDaysConsumed,
-            rawPtoDaysConsumed: ptoInfo.ptoDaysConsumed,
-            overlapsChildcareClosure: ptoInfo.overlappingClosureWeekdays > 0,
-            hasYoungChildAtDeparture: hasYoungChild,
-            ptoEfficiencyRatio,
-            suggestedShifts: ptoInfo.suggestedShifts,
+            ...baseFields,
+            originAirport: OVERLAND_ORIGIN_CODE,
+            originName: userProfile.homeLocation || undefined,
+            originCity: userProfile.homeLocation || undefined,
+            originCountry: homeGeo.countryCode,
             estimatedTotalCost: totalCost,
-            pricePerPerson: perPersonCost,
+            pricePerPerson: pricingDetails.pricePerPerson,
             isCachedBenchmark: pricingDetails.isCachedBenchmark,
             pricingDetails,
             boardType: pricingDetails.boardType,
             mealPlanValue: pricingDetails.mealPlanValue,
-            effectiveCost,
-            weather,
-            seasonalWarning,
-            isArbitrageOpportunity: Boolean(arbitrageNote),
-            arbitrageOriginState: arbitrageState,
-            arbitrageNote,
-            requiresSchoolExemption: false,
-            schoolHolidayDaysOverlap: holidayCoverage.overlapDays,
-            holidayCoverage,
-            frictionBaseScore: Math.max(5, compositeFrictionScore - jetlagPenalty),
-            travelVehicle: activeVehicle,
-            availableVehicles,
+            effectiveCost: pricingDetails.effectiveCost,
+            isArbitrageOpportunity: false,
+            layoverPenalty: 0,
+            frictionBaseScore: Math.max(5, ov.frictionScore - jetlagPenalty),
+            travelVehicle: ov.vehicle,
             vehicleDetails,
-            overlandAccess: activeVehicle !== 'PLANE' ? ferryAccess.access : undefined,
-            ferrySurchargeEur: activeVehicle !== 'PLANE' ? ferryAccess.ferrySurchargeEur : undefined,
-            ferryTransitMinutes: activeVehicle !== 'PLANE' ? ferryAccess.ferryTransitMinutes : undefined,
-            jetlagPenalty: jetlagPenalty > 0 ? jetlagPenalty : undefined,
-            parkSleepFlyRecommended: activeVehicle === 'PLANE' && (originDriveMins || 0) > 90,
+            overlandAccess: ov.access.access,
+            ferrySurchargeEur: ov.access.ferrySurchargeEur,
+            ferryTransitMinutes: ov.access.ferryTransitMinutes,
+          });
+        }
+
+        // ----- Flight candidates (one per departure airport) -----
+        for (const plane of ctx.planeOptions) {
+          const { leg, flightRoute, directDist } = plane;
+
+          // Long-range & exotic category exclusion when not selected by user
+          if (
+            !hasUserSelectedDestinations &&
+            !selectedTypes.includes('ALL') &&
+            !selectedTypes.includes('LONGRANGE') &&
+            (directDist >= 3500 || getDestinationVacationStyles(dest, directDist).includes('LONGRANGE'))
+          ) {
+            continue;
+          }
+
+          const arbitrage = arbitrageByOrigin.get(leg.origin);
+          const vehicleDetails = calculateVehicleMetrics('PLANE', directDist, pCostMultiplier);
+
+          // Modular Pricing Engine with deep-links, realistic quotes, and board type modeling
+          const pricingDetails = applyDemandAdjustment(getSynchronousTripPricing({
+            originAirport: leg.origin,
+            destinationAirport: dest,
+            startDate: startStr,
+            endDate: endStr,
+            durationDays,
+            party: {
+              adults: adultsCount,
+              childrenAges: currentChildrenAges,
+              cabinClass: (userProfile.preferredCabinClass as any) || 'ECONOMY',
+            },
+            isArbitrage: Boolean(arbitrage?.note),
+            preferredBoardType: input.preferredBoardType,
+          }), demandFactor, true, travelers);
+
+          // Rail-and-fly: the round-trip train ride to the hub is part of the trip cost
+          const railCost = leg.rail
+            ? calculateVehicleMetrics('TRAIN', leg.rail.distanceKm / 1.15, pCostMultiplier, true).estimatedTravelCost
+            : 0;
+          const totalCost = pricingDetails.totalCost + railCost;
+          const effectiveCost =
+            (pricingDetails.effectiveCost ??
+              Math.max(0, pricingDetails.totalCost - Math.round((pricingDetails.mealPlanValue || 0) * 0.75))) + railCost;
+
+          // Budget check
+          if (input.maxBudgetTotal && totalCost > input.maxBudgetTotal) {
+            continue;
+          }
+
+          rawCandidatePool.push({
+            ...baseFields,
+            originAirport: leg.origin,
+            originName: leg.originName,
+            originCity: leg.originCity,
+            originCountry: leg.originCountry,
+            flightDistanceKm: flightRoute.flightDistanceKm,
+            flightDurationMinutes: flightRoute.totalFlightDurationMinutes,
+            originDistanceKm: leg.rail ? undefined : leg.originDistKm,
+            originDriveMinutes: leg.rail ? undefined : leg.originDriveMins,
+            railFeeder: leg.rail
+              ? {
+                  hubAirport: leg.origin,
+                  durationMinutes: leg.rail.durationMinutes,
+                  distanceKm: leg.rail.distanceKm,
+                  costEur: railCost,
+                  isAlternativeOrigin: leg.rail.isAlternativeOrigin,
+                  replacesFeederFlight: plane.replacesFeederFlight,
+                }
+              : undefined,
+            originHighSpeedRail: leg.originHighSpeedRail,
+            isDirectFlight: flightRoute.isDirect,
+            flightStops: flightRoute.stops,
+            flightLayovers: flightRoute.layovers,
+            flightSegments: flightRoute.segments,
+            directFlightPremium: flightRoute.isDirect ? flightRoute.directFlightPremiumMultiplier : undefined,
+            layoverPenalty: flightRoute.layoverScorePenalty,
+            estimatedTotalCost: totalCost,
+            pricePerPerson: railCost
+              ? Math.round(totalCost / Math.max(1, adultsCount + currentChildrenAges.length))
+              : pricingDetails.pricePerPerson,
+            isCachedBenchmark: pricingDetails.isCachedBenchmark,
+            pricingDetails: railCost
+              ? {
+                  ...pricingDetails,
+                  travelMode: 'PLANE',
+                  totalCost,
+                  effectiveCost,
+                  pricePerPerson: Math.round(totalCost / Math.max(1, adultsCount + currentChildrenAges.length)),
+                }
+              : { ...pricingDetails, travelMode: 'PLANE' },
+            boardType: pricingDetails.boardType,
+            mealPlanValue: pricingDetails.mealPlanValue,
+            effectiveCost,
+            isArbitrageOpportunity: Boolean(arbitrage?.note),
+            arbitrageOriginState: arbitrage?.state,
+            arbitrageNote: arbitrage?.note,
+            frictionBaseScore: Math.max(5, plane.frictionScore - jetlagPenalty),
+            travelVehicle: 'PLANE',
+            vehicleDetails,
+            parkSleepFlyRecommended: !leg.rail && (leg.originDriveMins || 0) > 90,
+            autoSelectedOrigin: isFlexOrigin && flexOrigins.length > 0 ? true : undefined,
           });
         }
       }
@@ -709,9 +1175,11 @@ export function optimizeVacationWindows(
   //   marking non-enclosed windows with requiresSchoolExemption = true so they receive the score penalty without discarding entire months.
   let eligibleCandidates: RawCandidate[] = rawCandidatePool;
 
-  const hasAnySchoolKids = (userProfile.childrenAges || []).some((a) => a >= 6);
+  const hasAnySchoolKids = (userProfile.childrenAges || []).some((a) => a >= 6) ||
+    schoolCalendars.some((c) => c.childIndexes.length > 0);
+  const hasSchoolHolidayData = schoolCalendars.some((c) => c.holidays.length > 0);
 
-  if (hasAnySchoolKids && homeSchoolHolidays.length > 0) {
+  if (hasAnySchoolKids && hasSchoolHolidayData) {
     if (input.strictSchoolHolidays) {
       const fullHolidayMatches = rawCandidatePool.filter((c) => c.holidayCoverage.isFullyInside);
 
@@ -773,13 +1241,20 @@ export function optimizeVacationWindows(
   }
 
   // Find min/max for dynamic normalizations (factoring in meal plan value for fair comparisons)
-  const effectiveCosts = eligibleCandidates.map((c) => c.effectiveCost ?? c.estimatedTotalCost);
-  const minCost = Math.min(...effectiveCosts);
-  const maxCost = Math.max(...effectiveCosts);
+  let minCost = Infinity;
+  let maxCost = -Infinity;
+  let minPto = Infinity;
+  let maxPto = -Infinity;
+  for (const c of eligibleCandidates) {
+    const cost = c.effectiveCost ?? c.estimatedTotalCost;
+    if (cost < minCost) minCost = cost;
+    if (cost > maxCost) maxCost = cost;
+    if (c.ptoDaysConsumed < minPto) minPto = c.ptoDaysConsumed;
+    if (c.ptoDaysConsumed > maxPto) maxPto = c.ptoDaysConsumed;
+  }
 
-  const ptos = eligibleCandidates.map((c) => c.ptoDaysConsumed);
-  const minPto = Math.min(...ptos);
-  const maxPto = Math.max(...ptos);
+  const valueForMoneyStats = buildShorterDurationStats(eligibleCandidates);
+  const safetyByDestination = new Map<string, ReturnType<typeof getDestinationSafetyAssessment>>();
 
   // Score candidate windows
   const scoredWindows: CandidateWindow[] = eligibleCandidates.map((cand) => {
@@ -877,7 +1352,11 @@ export function optimizeVacationWindows(
     const dNum = startObj.getDate();
     const isPeakSummer = mNum === 7 || mNum === 8;
     const isPeakChristmas = (mNum === 12 && dNum >= 20) || (mNum === 1 && dNum <= 6);
-    const isGlobalHighPeak = isPeakSummer || isPeakChristmas;
+    // With source-market calendars the peak follows when Europe's big markets actually travel
+    // (e.g. late July is peak, mid-June is not; Easter/autumn breaks of several markets are).
+    const isGlobalHighPeak = cand.sourceMarketDemand
+      ? isPeakChristmas || cand.sourceMarketDemand.index >= HIGH_DEMAND_THRESHOLD
+      : isPeakSummer || isPeakChristmas;
 
     let offPeakBonus = 0;
     if (!hasAnySchoolKids) {
@@ -901,20 +1380,13 @@ export function optimizeVacationWindows(
     // Awarded when a user can travel for a longer duration at equal or lower total cost compared to shorter peak alternatives
     let valueForMoneyBonus = 0;
     const candTotalCost = cand.effectiveCost ?? cand.estimatedTotalCost;
-    const shorterAlternatives = eligibleCandidates.filter(
-      (o) => o.destinationAirport === cand.destinationAirport && o.durationDays < cand.durationDays
-    );
-    if (shorterAlternatives.length > 0) {
-      const cheaperThanOrEqualShorter = shorterAlternatives.some(
-        (s) => (s.effectiveCost ?? s.estimatedTotalCost) >= candTotalCost
-      );
-      if (cheaperThanOrEqualShorter) {
+    const shorter = valueForMoneyStats.get(cand.destinationAirport)?.get(cand.durationDays);
+    if (shorter && shorter.count > 0) {
+      if (shorter.maxCost >= candTotalCost) {
         valueForMoneyBonus = 8;
       } else {
         const candDaily = candTotalCost / cand.durationDays;
-        const avgShorterDaily =
-          shorterAlternatives.reduce((acc, s) => acc + (s.effectiveCost ?? s.estimatedTotalCost) / s.durationDays, 0) /
-          shorterAlternatives.length;
+        const avgShorterDaily = shorter.dailyCostSum / shorter.count;
         if (candDaily < avgShorterDaily * 0.80) {
           valueForMoneyBonus = 5;
         }
@@ -944,15 +1416,18 @@ export function optimizeVacationWindows(
 
     const { holidayCoverage, frictionBaseScore, ...cleanCand } = cand;
 
-    const safetyAssessment = getDestinationSafetyAssessment(
-      cand.destinationAirport,
-      cand.destinationCountry || ''
-    );
+    let safetyAssessment = safetyByDestination.get(cand.destinationAirport);
+    if (!safetyAssessment) {
+      safetyAssessment = getDestinationSafetyAssessment(
+        cand.destinationAirport,
+        cand.destinationCountry || ''
+      );
+      safetyByDestination.set(cand.destinationAirport, safetyAssessment);
+    }
 
     return {
       ...cleanCand,
       destinationSafety: safetyAssessment,
-      safetyAssessment,
       seasonalWarningImpact: seasonalImpact,
       seasonalWarningPenalty: seasonalImpact?.overallScorePenalty || 0,
       layoverPenalty: cand.layoverPenalty || 0,
@@ -971,8 +1446,316 @@ export function optimizeVacationWindows(
     };
   });
 
-  // Interleave distinct destinations to ensure balanced discovery across pages
-  return interleaveCandidateWindowsByDestination(scoredWindows);
+  // Flexible airport search: the app picks the departure airport, so only the best-scoring
+  // option per destination and window survives (e.g. FRA for a non-stop long-haul in July,
+  // FKB for a cheap low-cost hop to Mallorca in May).
+  const windowsForSelection = isFlexOrigin && flexOrigins.length > 0
+    ? keepBestOriginPerWindow(scoredWindows)
+    : scoredWindows;
+
+  // Keep a representative, diverse subset (every month/duration/origin covered per destination)
+  // instead of every +1-day shift, then interleave distinct destinations for balanced pages.
+  const representative = input.maxWindowsPerDestination === 0
+    ? windowsForSelection
+    : selectRepresentativeWindows(windowsForSelection, {
+        maxPerDestination: input.maxWindowsPerDestination ?? DEFAULT_MAX_WINDOWS_PER_DESTINATION,
+        maxTotal: input.maxTotalWindows ?? DEFAULT_MAX_TOTAL_WINDOWS,
+      });
+  return interleaveCandidateWindowsByDestination(representative);
+}
+
+/**
+ * Best-scoring departure airport per destination, start date, duration and vehicle (ties: lower
+ * effective cost). Car/train trips to the same destination are kept as alternatives.
+ */
+export function keepBestOriginPerWindow(windows: CandidateWindow[]): CandidateWindow[] {
+  const best = new Map<string, CandidateWindow>();
+  for (const w of windows) {
+    const key = `${w.destinationAirport}|${w.startDate}|${w.durationDays}|${w.travelVehicle || 'PLANE'}`;
+    const current = best.get(key);
+    const cost = (c: CandidateWindow) => c.effectiveCost ?? c.estimatedTotalCost;
+    if (!current || w.finalScore > current.finalScore || (w.finalScore === current.finalScore && cost(w) < cost(current))) {
+      best.set(key, w);
+    }
+  }
+  return Array.from(best.values());
+}
+
+/**
+ * Converts a lodging+flight benchmark quote into an overland trip quote: the flight leg is
+ * replaced by the vehicle's round-trip cost, flight-only artifacts (layovers, flight deep
+ * links, flight+hotel package comparison) are dropped, and the meal-plan-adjusted effective
+ * cost is recomputed from the overland total.
+ */
+function toOverlandPricing(
+  base: AggregatedTripPricing,
+  vehicle: OverlandVehicle,
+  travelCost: number,
+  passengerMultiplier: number,
+  travelers: number
+): AggregatedTripPricing {
+  const totalCost = travelCost + base.lodging.totalLodgingCost;
+  return {
+    ...base,
+    travelMode: vehicle,
+    flight: {
+      ...base.flight,
+      originAirport: OVERLAND_ORIGIN_CODE,
+      baseAdultFare: Math.round(travelCost / Math.max(1, passengerMultiplier)),
+      totalFlightCost: travelCost,
+      airlineCarrier: undefined,
+      isDirectFlight: undefined,
+      stops: undefined,
+      layovers: undefined,
+      segments: undefined,
+      directFlightPremiumMultiplier: undefined,
+      connectingSavingsDiscount: undefined,
+      dayOfWeekMultiplier: undefined,
+      isMidweekSaving: undefined,
+    },
+    totalCost,
+    pricePerPerson: Math.round(totalCost / Math.max(1, travelers)),
+    effectiveCost: Math.max(0, totalCost - Math.round((base.mealPlanValue || 0) * 0.75)),
+    deepLinks: { ...base.deepLinks, googleFlights: '', skyscanner: '' },
+    packageTourDeal: undefined,
+  };
+}
+
+interface ShorterDurationStats {
+  count: number;
+  maxCost: number;
+  dailyCostSum: number;
+}
+
+/**
+ * For every destination and duration D, aggregates the candidates of the same destination
+ * with a strictly shorter duration (count, max effective cost, sum of daily cost), so the
+ * value-for-money bonus is O(n) instead of re-filtering the whole pool per candidate.
+ */
+function buildShorterDurationStats(
+  candidates: RawCandidate[]
+): Map<string, Map<number, ShorterDurationStats>> {
+  const byDest = new Map<string, Map<number, ShorterDurationStats>>();
+  for (const c of candidates) {
+    let byDuration = byDest.get(c.destinationAirport);
+    if (!byDuration) {
+      byDuration = new Map();
+      byDest.set(c.destinationAirport, byDuration);
+    }
+    const cost = c.effectiveCost ?? c.estimatedTotalCost;
+    const entry = byDuration.get(c.durationDays) || { count: 0, maxCost: -Infinity, dailyCostSum: 0 };
+    entry.count++;
+    entry.maxCost = Math.max(entry.maxCost, cost);
+    entry.dailyCostSum += cost / c.durationDays;
+    byDuration.set(c.durationDays, entry);
+  }
+
+  // Convert per-duration buckets into "strictly shorter than D" prefix aggregates.
+  const result = new Map<string, Map<number, ShorterDurationStats>>();
+  for (const [dest, byDuration] of byDest) {
+    const durations = Array.from(byDuration.keys()).sort((a, b) => a - b);
+    const prefix = new Map<number, ShorterDurationStats>();
+    let running: ShorterDurationStats = { count: 0, maxCost: -Infinity, dailyCostSum: 0 };
+    for (const d of durations) {
+      prefix.set(d, { ...running });
+      const bucket = byDuration.get(d)!;
+      running = {
+        count: running.count + bucket.count,
+        maxCost: Math.max(running.maxCost, bucket.maxCost),
+        dailyCostSum: running.dailyCostSum + bucket.dailyCostSum,
+      };
+    }
+    result.set(dest, prefix);
+  }
+  return result;
+}
+
+interface SchoolCalendar {
+  region: string;
+  holidays: SchoolHoliday[];
+  childIndexes: number[];
+}
+
+/**
+ * Groups the school-age children by the region whose school calendar they follow. Children
+ * without an explicit school region follow the home region. Regions without any school
+ * holiday data are dropped (honest coverage: unknown calendars must not veto windows).
+ */
+export function resolveChildSchoolCalendars(
+  userProfile: TripPlanInput['userProfile'],
+  homeState: string,
+  schoolHolidaysByState: Record<string, SchoolHoliday[]>,
+  referenceDate?: string
+): SchoolCalendar[] {
+  const regions = userProfile.childrenSchoolRegions || [];
+  const birthDates = userProfile.childrenBirthDates || [];
+  const childCount = Math.max(
+    userProfile.childrenAges?.length || 0,
+    birthDates.length,
+    regions.length
+  );
+  const reference = referenceDate ? parseISO(referenceDate) : new Date();
+
+  // Regions are index-aligned with the birth dates (childrenAges may be sorted by the client),
+  // so derive each child's age from its own birth date whenever one is available.
+  const ageOf = (i: number): number | undefined => {
+    if (birthDates[i]) return Math.max(0, differenceInYears(reference, parseISO(birthDates[i])));
+    if (birthDates.length === 0) return userProfile.childrenAges?.[i];
+    return undefined;
+  };
+
+  const byRegion = new Map<string, number[]>();
+  for (let i = 0; i < childCount; i++) {
+    // Only school-age children follow a school calendar; a toddler's region must not
+    // constrain the search.
+    const age = ageOf(i);
+    if (age === undefined || age < 6) continue;
+    const region = (regions[i] || homeState || '').trim().toUpperCase();
+    if (!region) continue;
+    const list = byRegion.get(region) || [];
+    list.push(i);
+    byRegion.set(region, list);
+  }
+  if (byRegion.size === 0 && homeState) {
+    byRegion.set(homeState, []);
+  }
+
+  const calendars: SchoolCalendar[] = [];
+  for (const [region, childIndexes] of byRegion) {
+    const holidays = schoolHolidaysByState[region] || [];
+    if (holidays.length === 0) continue;
+    calendars.push({ region, holidays, childIndexes });
+  }
+  return calendars;
+}
+
+/**
+ * School-holiday coverage across several calendars: a window is fully inside only when it
+ * is inside every calendar's break, and the overlap/coverage is that of the least-covered
+ * calendar (the child who would miss the most school days).
+ */
+export function calculateCombinedHolidayCoverage(
+  startStr: string,
+  endStr: string,
+  calendars: SchoolCalendar[]
+): HolidayCoverageResult {
+  if (calendars.length === 0) {
+    return { isFullyInside: true, overlapDays: 0, coverageRatio: 1.0 };
+  }
+  if (calendars.length === 1) {
+    return calculateHolidayCoverage(startStr, endStr, calendars[0].holidays);
+  }
+  let combined: HolidayCoverageResult | undefined;
+  for (const cal of calendars) {
+    const cov = calculateHolidayCoverage(startStr, endStr, cal.holidays);
+    if (!combined) {
+      combined = cov;
+      continue;
+    }
+    combined = {
+      isFullyInside: combined.isFullyInside && cov.isFullyInside,
+      overlapDays: Math.min(combined.overlapDays, cov.overlapDays),
+      coverageRatio: Math.min(combined.coverageRatio, cov.coverageRatio),
+    };
+  }
+  return combined!;
+}
+
+export const DEFAULT_MAX_WINDOWS_PER_DESTINATION = 40;
+export const DEFAULT_MAX_TOTAL_WINDOWS = 1200;
+
+/**
+ * Reduces the scored pool to a representative subset per destination. A wide search produces
+ * every +1-day shift for every duration and departure airport (tens of thousands of windows,
+ * hundreds of MB of JSON) although the UI only ever shows a featured window plus a handful of
+ * curated alternatives per destination. Selection priority per destination:
+ *  1. the cheapest, the most PTO-efficient and the best fully-inside-school-holiday window
+ *     (the anchors curation surfaces),
+ *  2. the best window of every (start month, duration) bucket and of every departure airport,
+ *  3. the remaining windows by score, skipping near-duplicates (same origin and duration,
+ *     start within one day of an already kept window).
+ * When the total still exceeds maxTotal, every destination is trimmed to an even share,
+ * keeping its highest-priority windows.
+ */
+export function selectRepresentativeWindows(
+  windows: CandidateWindow[],
+  options: { maxPerDestination: number; maxTotal: number }
+): CandidateWindow[] {
+  const byDestination = new Map<string, CandidateWindow[]>();
+  for (const w of windows) {
+    const list = byDestination.get(w.destinationAirport) || [];
+    list.push(w);
+    byDestination.set(w.destinationAirport, list);
+  }
+
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const prioritized = new Map<string, CandidateWindow[]>();
+
+  for (const [dest, list] of byDestination) {
+    const sorted = [...list].sort((a, b) => b.finalScore - a.finalScore);
+    const kept: CandidateWindow[] = [];
+    const keptSet = new Set<CandidateWindow>();
+    const add = (w: CandidateWindow | undefined) => {
+      if (!w || keptSet.has(w)) return;
+      keptSet.add(w);
+      kept.push(w);
+    };
+
+    // 1. Curation anchors
+    add(sorted.reduce<CandidateWindow | undefined>((best, w) => (!best || w.estimatedTotalCost < best.estimatedTotalCost ? w : best), undefined));
+    add(sorted.reduce<CandidateWindow | undefined>((best, w) => (!best || w.ptoEfficiencyRatio > best.ptoEfficiencyRatio ? w : best), undefined));
+    add(sorted.find((w) => !w.requiresSchoolExemption));
+
+    // 2. Coverage buckets (sorted is score-desc, so the first hit per bucket is its best)
+    const seenBuckets = new Set<string>();
+    for (const w of sorted) {
+      const bucket = `${w.startDate.slice(0, 7)}|${w.durationDays}`;
+      if (!seenBuckets.has(bucket)) {
+        seenBuckets.add(bucket);
+        add(w);
+      }
+    }
+    // Every way of getting there (car, train, each departure airport) keeps its best window
+    const seenOrigins = new Set<string>();
+    for (const w of sorted) {
+      const route = `${w.originAirport}|${w.travelVehicle || 'PLANE'}`;
+      if (!seenOrigins.has(route)) {
+        seenOrigins.add(route);
+        add(w);
+      }
+    }
+
+    // 3. Fill by score, skipping +/-1 day shifts of an already kept window
+    for (const w of sorted) {
+      if (kept.length >= options.maxPerDestination) break;
+      if (keptSet.has(w)) continue;
+      const start = Date.parse(w.startDate);
+      const isShift = kept.some(
+        (k) =>
+          k.originAirport === w.originAirport &&
+          k.travelVehicle === w.travelVehicle &&
+          k.durationDays === w.durationDays &&
+          Math.abs(Date.parse(k.startDate) - start) <= DAY_MS
+      );
+      if (!isShift) add(w);
+    }
+
+    prioritized.set(dest, kept.slice(0, Math.max(options.maxPerDestination, 3)));
+  }
+
+  let total = 0;
+  for (const list of prioritized.values()) total += list.length;
+
+  if (total > options.maxTotal && prioritized.size > 0) {
+    const share = Math.max(3, Math.floor(options.maxTotal / prioritized.size));
+    for (const [dest, list] of prioritized) {
+      prioritized.set(dest, list.slice(0, share));
+    }
+  }
+
+  const result: CandidateWindow[] = [];
+  for (const list of prioritized.values()) result.push(...list);
+  return result;
 }
 
 /**
@@ -1026,15 +1809,3 @@ export function interleaveCandidateWindowsByDestination(
 
   return result;
 }
-
-/**
- * Curates a distinct, non-redundant set of alternative vacation date windows.
- * Eliminates noisy +1 day shifts and overlapping windows from the same origin.
- * Surfaces key vacation milestones:
- * 1. Absolute Lowest Price Deal (e.g. Midweek departure savings)
- * 2. Peak PTO Efficiency (bridge day / holiday savings)
- * 3. 100% School Holiday Window (if applicable)
- * 4. Alternative Origin Airport options (e.g. FKB vs STR vs FRA)
- * 5. Distinct travel periods across the search months
- */
-export { curateDistinctAlternativeWindows } from './curation';

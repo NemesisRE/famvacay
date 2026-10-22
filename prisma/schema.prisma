@@ -160,6 +160,7 @@ model FamilyMember {
   role            String        @default("MEMBER")
   birthDate       DateTime      @db.Date
   schoolRequired  Boolean       @default(false)
+  schoolSubdivision String?     // ISO 3166-2 region whose school calendar this child follows (null = home region)
   passportExpiry  DateTime?     @db.Date
   specialDiet     String?
   createdAt       DateTime      @default(now())

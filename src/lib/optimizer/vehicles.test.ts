@@ -3,6 +3,7 @@ import {
   isOverlandReachable,
   getAvailableVehicles,
   calculateVehicleMetrics,
+  OVERLAND_MAX_GEODESIC_KM,
 } from './vehicles';
 import { getDestinationVacationStyles } from './destinations';
 import { optimizeVacationWindows } from './engine';
@@ -123,8 +124,12 @@ describe('Travel Vehicles & Dynamic Overland Connectivity', () => {
       expect(win.travelVehicle).toBe('CAR');
       // No oceanic island airports like TFS (Tenerife) or PMI (Mallorca) allowed for CAR
       expect(['TFS', 'PMI', 'LPA', 'ACE', 'FUE', 'HER', 'LCA']).not.toContain(win.destinationAirport);
-      // All destinations must be within 1,200 km
-      expect(win.flightDistanceKm).toBeLessThanOrEqual(1200);
+      // Overland trips start at home and carry no flight logistics
+      expect(win.originAirport).toBe('HOME');
+      expect(win.flightDistanceKm).toBeUndefined();
+      expect(win.flightSegments).toBeUndefined();
+      // Road distance stays within the car's overland range (road km ~ 1.25x geodesic)
+      expect(win.vehicleDetails!.distanceKm).toBeLessThanOrEqual(Math.round(OVERLAND_MAX_GEODESIC_KM.CAR * 1.25));
     }
   });
 
@@ -155,7 +160,8 @@ describe('Travel Vehicles & Dynamic Overland Connectivity', () => {
       expect(['CAR', 'TRAIN']).toContain(win.travelVehicle);
       // Islands should be excluded for overland multi-selection
       expect(['TFS', 'PMI', 'LPA', 'HER', 'LCA']).not.toContain(win.destinationAirport);
-      expect(win.flightDistanceKm).toBeLessThanOrEqual(1200);
+      expect(win.flightDistanceKm).toBeUndefined();
+      expect(win.vehicleDetails!.distanceKm).toBeLessThanOrEqual(Math.round(OVERLAND_MAX_GEODESIC_KM.CAR * 1.25));
     }
   });
 });

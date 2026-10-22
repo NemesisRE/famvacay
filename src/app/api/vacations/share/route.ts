@@ -45,55 +45,40 @@ export async function POST(req: NextRequest) {
 
     const expiresAt = new Date(Date.now() + BOARD_TTL_SECONDS * 1000);
 
-    const board = await prisma.sharedTripBoard.upsert({
-      where: { shortCode },
-      create: {
-        shortCode,
-        familyProfileId: query?.userProfile?.id || null,
-        searchParams: { query: query || null, formState: formState || null },
-        expiresAt,
-      },
-      update: {
-        searchParams: { query: query || null, formState: formState || null },
-        expiresAt,
-      },
-    });
-
-    // Replace candidates on every (re-)share so the board always reflects the latest search
-    await prisma.sharedCandidate.deleteMany({ where: { boardId: board.id } });
-
-    const created = await prisma.$transaction(
-      windows.map((win: any) =>
-        prisma.sharedCandidate.create({
-          data: {
-            boardId: board.id,
-            destinationCode: win.destinationAirport || 'UNKNOWN',
-            startDate: new Date(win.startDate),
-            endDate: new Date(win.endDate),
-            snapshotData: win,
-          },
-        })
-      )
-    );
+    let persisted: { createdAt: Date; expiresAt: Date | null; candidateIds: string[] };
+    try {
+      persisted = await persistBoard(shortCode, query, formState, windows, expiresAt);
+    } catch (dbError) {
+      // Database unreachable (e.g. not started locally): the link still works from the cache for the
+      // board's lifetime - only voting needs the database (no candidate ids without it)
+      console.warn('[API /api/vacations/share] Database unavailable, sharing from cache only:', (dbError as Error)?.message);
+      persisted = { createdAt: new Date(), expiresAt, candidateIds: [] };
+    }
 
     const payload: SharedBoardPayload = {
       shortCode,
-      createdAt: board.createdAt.toISOString(),
-      expiresAt: board.expiresAt ? board.expiresAt.toISOString() : null,
+      createdAt: persisted.createdAt.toISOString(),
+      expiresAt: persisted.expiresAt ? persisted.expiresAt.toISOString() : null,
       query: query || null,
       formState: formState || null,
       count: windows.length,
       windows,
-      candidateIds: created.map((c) => c.id),
+      candidateIds: persisted.candidateIds,
     };
 
-    await setCached(`famvac:share:${shortCode}`, payload, CACHE_TTL_SECONDS).catch(() => {});
+    // Cache-only boards (no database) are kept for the board's full lifetime instead of 1h
+    await setCached(
+      `famvac:share:${shortCode}`,
+      payload,
+      persisted.candidateIds.length > 0 ? CACHE_TTL_SECONDS : BOARD_TTL_SECONDS
+    ).catch(() => {});
 
     return NextResponse.json({
       success: true,
       shareId: shortCode,
       shareUrl: `/?s=${shortCode}`,
       count: windows.length,
+      votingEnabled: persisted.candidateIds.length > 0,
     });
   } catch (error: any) {
     console.error('[API /api/vacations/share POST Error]:', error);
@@ -102,6 +87,45 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+async function persistBoard(shortCode: string, query: any, formState: any, windows: any[], expiresAt: Date) {
+  const board = await prisma.sharedTripBoard.upsert({
+    where: { shortCode },
+    create: {
+      shortCode,
+      familyProfileId: query?.userProfile?.id || null,
+      searchParams: { query: query || null, formState: formState || null },
+      expiresAt,
+    },
+    update: {
+      searchParams: { query: query || null, formState: formState || null },
+      expiresAt,
+    },
+  });
+
+  // Replace candidates on every (re-)share so the board always reflects the latest search
+  await prisma.sharedCandidate.deleteMany({ where: { boardId: board.id } });
+
+  const created = await prisma.$transaction(
+    windows.map((win: any) =>
+      prisma.sharedCandidate.create({
+        data: {
+          boardId: board.id,
+          destinationCode: win.destinationAirport || 'UNKNOWN',
+          startDate: new Date(win.startDate),
+          endDate: new Date(win.endDate),
+          snapshotData: win,
+        },
+      })
+    )
+  );
+
+  return {
+    createdAt: board.createdAt,
+    expiresAt: board.expiresAt,
+    candidateIds: created.map((c) => c.id),
+  };
 }
 
 export async function GET(req: NextRequest) {

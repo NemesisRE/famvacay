@@ -34,3 +34,16 @@ We implement a pluggable, provider-agnostic interface `FlightPriceProvider`:
 - Self-hosters can run FamVacay instantly without creating commercial travel API accounts.
 - Commercial or custom providers can be plugged in seamlessly via configuration.
 
+## Update (2026-10-21): Route network data & removal of the BYOK live-pricing hooks
+- **Removed:** the bring-your-own-key live pricing path (`AmadeusPricingProvider`,
+  `TequilaPricingProvider`, `getConfiguredLivePricingProvider`, `POST /api/pricing/live-enrich` and
+  the "Live verified" price badge). Amadeus Self-Service is decommissioned and Tequila is restricted
+  to approved partners, so the hooks could never return a live quote.
+- **Added:** a real airline route network for flight logistics. `scripts/generate-flight-routes.js`
+  (`npm run generate:flight-routes`) builds `src/lib/airports/data/flight-routes.json` from the
+  OpenFlights route database (Open Database License). Non-stop vs. connecting flights and the
+  connecting airports are resolved over routes that actually exist (fewest stops, then shortest
+  total distance); airports without route data fall back to the distance/hub heuristic.
+- **Limitation:** OpenFlights route data was last updated in 2014. A fresher (commercial) route
+  source can replace it by producing the same `{ "IATA": "IATA IATA ..." }` adjacency file.
+- Prices remain benchmark estimates (see Decision) and are presented as such.

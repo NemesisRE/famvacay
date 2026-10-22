@@ -8,30 +8,30 @@ import iso from 'iso-3166-2';
 import { parseISO } from 'date-fns';
 import { POPULAR_DESTINATIONS, getEstimatedClimate } from './weather';
 import type { DestinationType, TravelVehicle } from './types';
-import { isOverlandReachable } from './vehicles';
+import {
+  isOverlandReachable,
+  classifyOverlandAccess,
+  isOverlandVehicleInRange,
+  maxGeodesicKmForMinutes,
+  OVERLAND_MAX_GEODESIC_KM,
+} from './vehicles';
+import { getDestinationPoint, type DestinationPoint } from '../geo/destination-points';
+import { SURFACE_DESTINATIONS } from '../geo/surface-destinations';
 import {
   getAirportByIata,
   getAllCommercialAirports,
   getMajorAirportsForCountry,
   calculateGeodesicDistanceKm,
+  getAirportPassengersMillions,
   type DynamicAirport,
 } from '../airports/airport-service';
 import { getCountryCodeFromSubdivision } from '../regions/subdivisions';
 
-declare const __non_webpack_require__: any;
+// Static import of the dependency-free advisory store: the former runtime require() of
+// safety-service failed inside the Next.js bundle and silently treated every destination as safe.
+export { isDestinationSafeForVacation } from '../safety/advisory-store';
+import { isDestinationSafeForVacation } from '../safety/advisory-store';
 
-export function isDestinationSafeForVacation(airportCode: string, countryCodeOrName: string): boolean {
-  if (typeof window !== 'undefined') {
-    return true;
-  }
-  try {
-    const req = typeof __non_webpack_require__ !== 'undefined' ? __non_webpack_require__ : require;
-    const safety = req('../safety/safety-service');
-    return safety.isDestinationSafeForVacation(airportCode, countryCodeOrName);
-  } catch {
-    return true;
-  }
-}
 import {
   ISLAND_OR_COASTAL_COUNTRIES,
   ISLAND_SUBDIVISIONS,
@@ -658,6 +658,8 @@ export interface OriginContext {
   requireSnow?: boolean;
   earliestDate?: string;
   latestDate?: string;
+  maxOverlandTravelMinutes?: number;
+  longRangeStyles?: DestinationType[];
 }
 
 const CONTINENTAL_FEDERATIONS = new Set([
@@ -677,12 +679,24 @@ const MULTI_STATE_COUNTRIES = new Set([
   'Greece',
 ]);
 
+type OverlandVehicle = Exclude<TravelVehicle, 'PLANE'>;
 
+// Minimum daytime temperature in the travel month for a long-haul destination to count as a beach trip
+const LONG_HAUL_BEACH_MIN_DAY_TEMP = 22;
+
+function resolveVehicles(originContext?: OriginContext): TravelVehicle[] {
+  return originContext?.travelVehicles && originContext.travelVehicles.length > 0
+    ? originContext.travelVehicles
+    : originContext?.travelVehicle
+    ? [originContext.travelVehicle]
+    : ['PLANE'];
+}
 
 /**
  * Resolves the user's origin geographic coordinates from available context.
+ * Overland trips start here (the home address), not at an airport.
  */
-function resolveOriginCoordinates(originContext?: OriginContext): { lat: number; lon: number } {
+export function resolveOriginCoordinates(originContext?: OriginContext): { lat: number; lon: number } {
   if (originContext?.departureLat != null && originContext?.departureLon != null) {
     return { lat: originContext.departureLat, lon: originContext.departureLon };
   }
@@ -712,10 +726,214 @@ function resolveOriginCoordinates(originContext?: OriginContext): { lat: number;
 }
 
 /**
+ * Largest straight-line distance any of the selected overland vehicles can cover, capped by
+ * the user's maximum overland travel time when one is set. 0 when no overland vehicle is selected.
+ */
+export function resolveOverlandRangeKm(vehicles: TravelVehicle[], maxOverlandTravelMinutes?: number): number {
+  let best = 0;
+  for (const v of vehicles) {
+    if (v === 'PLANE') continue;
+    const hardCap =
+      v === 'CAR'
+        ? OVERLAND_MAX_GEODESIC_KM.CAR
+        : v === 'TRAIN'
+        ? OVERLAND_MAX_GEODESIC_KM.TRAIN_HIGH_SPEED
+        : OVERLAND_MAX_GEODESIC_KM.BUS;
+    const timeCap = maxOverlandTravelMinutes
+      ? maxGeodesicKmForMinutes(v, maxOverlandTravelMinutes, v === 'TRAIN')
+      : Infinity;
+    best = Math.max(best, Math.min(hardCap, timeCap));
+  }
+  return best;
+}
+
+function isOverlandFeasible(
+  vehicles: TravelVehicle[],
+  dist: number,
+  highSpeedRail: boolean,
+  maxOverlandTravelMinutes?: number
+): boolean {
+  return vehicles.some((v) => {
+    if (v === 'PLANE') return false;
+    const vehicle = v as OverlandVehicle;
+    if (!isOverlandVehicleInRange(vehicle, dist, highSpeedRail)) return false;
+    if (!maxOverlandTravelMinutes) return true;
+    return dist <= maxGeodesicKmForMinutes(vehicle, maxOverlandTravelMinutes, vehicle === 'TRAIN' && highSpeedRail);
+  });
+}
+
+interface DiscoveryCandidate {
+  code: string;
+  dist: number;
+  score: number;
+  country: string;
+  state?: string;
+  lat: number;
+  lon: number;
+  isSurface: boolean;
+  overlandOk: boolean;
+  /** Real long-haul gateway (see isLongHaulGateway) - only these fill long-haul slots */
+  longHaulGateway: boolean;
+}
+
+/**
+ * A long-haul destination must be a real passenger gateway: >= 1M annual passengers (Wikidata),
+ * or, without a recorded figure, the large airport of an island tourism nation (Maldives, Fiji,
+ * Seychelles...). The airport dataset's own "large/major" flags also cover remote airstrips
+ * (e.g. Corisco Island), which previously filled long-haul slots.
+ */
+function isLongHaulGateway(ap: DynamicAirport): boolean {
+  const pax = getAirportPassengersMillions(ap.code);
+  if (pax !== undefined) return pax >= 1;
+  return ap.type === 'large_airport' && ISLAND_OR_COASTAL_COUNTRIES.has(ap.country);
+}
+
+export type WorldRegion =
+  | 'EUROPE_MED'
+  | 'MIDDLE_EAST'
+  | 'AFRICA_INDIAN_OCEAN'
+  | 'CENTRAL_ASIA'
+  | 'SOUTH_ASIA'
+  | 'SOUTHEAST_ASIA'
+  | 'EAST_ASIA'
+  | 'OCEANIA'
+  | 'NORTH_AMERICA'
+  | 'CARIBBEAN_CENTRAL_AMERICA'
+  | 'SOUTH_AMERICA';
+
+/**
+ * Coarse world region of a coordinate, used to balance long-haul discovery. Purely geometric
+ * (no country tables), so every airport in the index gets a region.
+ */
+export function getWorldRegion(lat: number, lon: number): WorldRegion {
+  if (lon <= -150 || lon >= 150 || (lon >= 110 && lat <= -11)) return 'OCEANIA';
+  if (lon < -30) {
+    if (lat >= 24) return 'NORTH_AMERICA';
+    if (lat >= 7 || (lon < -77 && lat >= 0)) return 'CARIBBEAN_CENTRAL_AMERICA';
+    return 'SOUTH_AMERICA';
+  }
+  if (lon < 60) {
+    if (lat >= 36 && lon < 45) return 'EUROPE_MED';
+    if (lat >= 12 && lon >= 34) return 'MIDDLE_EAST';
+    if (lat >= 30) return 'EUROPE_MED';
+    return 'AFRICA_INDIAN_OCEAN';
+  }
+  if (lat >= 35 && lon < 90) return 'CENTRAL_ASIA';
+  if (lon < 92) return lat >= 30 ? 'CENTRAL_ASIA' : 'SOUTH_ASIA';
+  if (lat >= 22) return 'EAST_ASIA';
+  if (lat > -11) return 'SOUTHEAST_ASIA';
+  return 'OCEANIA';
+}
+
+/**
+ * Long-haul (> 3500 km) slots are filled round-robin across world regions: each round every
+ * region contributes its best-scoring eligible candidate. Pure score ordering let the region
+ * with the strongest heuristic bonuses (Caribbean/Gulf beaches) take every slot, so flexible
+ * searches never surfaced East/Southeast/Central Asia or Oceania at all.
+ */
+function selectAcrossWorldRegions(
+  candidates: DiscoveryCandidate[],
+  slots: number,
+  trySelect: (c: DiscoveryCandidate) => boolean
+): void {
+  if (slots <= 0) return;
+  const byRegion = new Map<WorldRegion, DiscoveryCandidate[]>();
+  for (const c of candidates) {
+    const region = getWorldRegion(c.lat, c.lon);
+    const list = byRegion.get(region) || [];
+    list.push(c);
+    byRegion.set(region, list);
+  }
+  const regions = Array.from(byRegion.keys()).sort(
+    (a, b) => byRegion.get(b)![0].score - byRegion.get(a)![0].score
+  );
+  let taken = 0;
+  let progressed = true;
+  while (taken < slots && progressed) {
+    progressed = false;
+    for (const region of regions) {
+      if (taken >= slots) break;
+      const list = byRegion.get(region)!;
+      while (list.length > 0) {
+        const c = list.shift()!;
+        if (trySelect(c)) {
+          taken++;
+          progressed = true;
+          break;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Diversity-first selection for road/rail discovery. Airport-style selection (1 airport per
+ * country for most countries, ranked by hub status) collapsed overland results to the same
+ * 5-8 places every time; here countries take turns (best remaining candidate per country per
+ * round), with per-country/per-state caps and a minimum spacing so two nodes on the same
+ * stretch of coast (e.g. an airport town and the resort next to it) do not both use a slot.
+ */
+function selectOverlandDiverse(
+  candidates: DiscoveryCandidate[],
+  limit: number,
+  alreadySelected: { lat: number; lon: number }[] = [],
+  excludeCodes: Set<string> = new Set()
+): string[] {
+  const MAX_PER_COUNTRY = 4;
+  const MAX_PER_STATE = 2;
+  const MIN_SEPARATION_KM = 30;
+
+  const pool = candidates
+    .filter((c) => c.overlandOk && !excludeCodes.has(c.code))
+    .sort((a, b) => b.score - a.score || a.dist - b.dist);
+
+  const byCountry = new Map<string, DiscoveryCandidate[]>();
+  for (const c of pool) {
+    const list = byCountry.get(c.country) || [];
+    list.push(c);
+    byCountry.set(c.country, list);
+  }
+  const countryOrder = Array.from(byCountry.keys()).sort(
+    (a, b) => byCountry.get(b)![0].score - byCountry.get(a)![0].score
+  );
+
+  const picked: string[] = [];
+  const placed = [...alreadySelected];
+  const perCountry = new Map<string, number>();
+  const perState = new Map<string, number>();
+
+  const isEligible = (c: DiscoveryCandidate) => {
+    if ((perCountry.get(c.country) || 0) >= MAX_PER_COUNTRY) return false;
+    if (c.state && (perState.get(c.state) || 0) >= MAX_PER_STATE) return false;
+    return !placed.some((p) => calculateGeodesicDistanceKm(p.lat, p.lon, c.lat, c.lon) < MIN_SEPARATION_KM);
+  };
+
+  let progressed = true;
+  while (picked.length < limit && progressed) {
+    progressed = false;
+    for (const country of countryOrder) {
+      if (picked.length >= limit) break;
+      const list = byCountry.get(country)!;
+      const idx = list.findIndex(isEligible);
+      if (idx < 0) continue;
+      const [c] = list.splice(idx, 1);
+      picked.push(c.code);
+      placed.push({ lat: c.lat, lon: c.lon });
+      perCountry.set(c.country, (perCountry.get(c.country) || 0) + 1);
+      if (c.state) perState.set(c.state, (perState.get(c.state) || 0) + 1);
+      progressed = true;
+    }
+  }
+  return picked;
+}
+
+/**
  * Dynamic Destination Discovery Engine
  * Completely eliminates static, hardcoded airport lists or regional tables.
  * Discovers candidate destinations from the worldwide commercial airport database (4,000+ airports)
  * based on geodesic distance from origin, airport passenger readiness, topography/altitude, and climatological modeling.
+ * Overland (car/train/bus) searches additionally index non-airport surface destinations and
+ * select them without any airport-hub bias.
  */
 export function discoverDestinationsDynamically(
   types: DestinationType[],
@@ -724,29 +942,20 @@ export function discoverDestinationsDynamically(
   const { lat: userLat, lon: userLon } = resolveOriginCoordinates(originContext);
   const originAirportSet = new Set((originContext?.originAirports || []).map((c) => c.toUpperCase()));
   const allAirports = getAllCommercialAirports();
-  const candidates: {
-    code: string;
-    dist: number;
-    score: number;
-    country: string;
-    state?: string;
-  }[] = [];
+  const candidates: DiscoveryCandidate[] = [];
 
   const isAll = types.includes('ALL');
-  const vehicles: TravelVehicle[] =
-    originContext?.travelVehicles && originContext.travelVehicles.length > 0
-      ? originContext.travelVehicles
-      : originContext?.travelVehicle
-      ? [originContext.travelVehicle]
-      : ['PLANE'];
+  const vehicles = resolveVehicles(originContext);
 
   const allowsPlane = vehicles.includes('PLANE');
-  const allowsCar = vehicles.includes('CAR');
+  const overlandVehicles = vehicles.filter((v) => v !== 'PLANE');
+  const allowsOverland = overlandVehicles.length > 0;
   const allowsTrain = vehicles.includes('TRAIN');
-  const allowsBus = vehicles.includes('BUS');
+  const maxOverlandMinutes = originContext?.maxOverlandTravelMinutes;
+  const overlandRangeKm = resolveOverlandRangeKm(vehicles, maxOverlandMinutes);
 
-  const minDistance = allowsPlane && !allowsCar && !allowsTrain && !allowsBus ? 180 : 40;
-  const maxDistance = allowsPlane ? 20000 : (allowsCar || allowsTrain ? 1200 : 750);
+  const minDistance = allowsPlane && !allowsOverland ? 180 : 40;
+  const maxDistance = allowsPlane ? 20000 : overlandRangeKm;
 
   const originGeo = {
     lat: userLat,
@@ -755,22 +964,32 @@ export function discoverDestinationsDynamically(
     state: originContext?.federalState,
   };
 
-  for (const ap of allAirports) {
-    if (originAirportSet.has(ap.code.toUpperCase())) continue;
+  const startMonth = originContext?.earliestDate ? parseISO(originContext.earliestDate).getMonth() : 6;
+  const endMonth = originContext?.latestDate ? parseISO(originContext.latestDate).getMonth() : startMonth;
+  const repMonth = Math.round((startMonth + (endMonth < startMonth ? endMonth + 12 : endMonth)) / 2) % 12;
+
+  const places: DestinationPoint[] = allAirports.map((ap) => getDestinationPoint(ap.code) || { ...ap, kind: 'AIRPORT' as const });
+  if (allowsOverland) {
+    for (const surface of SURFACE_DESTINATIONS) {
+      const point = getDestinationPoint(surface.code);
+      if (point) places.push(point);
+    }
+  }
+
+  for (const ap of places) {
+    const isSurface = ap.kind === 'SURFACE';
+    if (!isSurface && originAirportSet.has(ap.code.toUpperCase())) continue;
 
     // Safety Assessment Filter (Amadeus Safe Place / Travel Advisory Level 1 & 2):
     // Flex search / open discovery must only surface safe, family-friendly destinations.
-    if (!isDestinationSafeForVacation(ap.code, ap.country)) continue;
+    if (!isDestinationSafeForVacation(isSurface ? '' : ap.code, ap.country)) continue;
 
     const dist = calculateGeodesicDistanceKm(userLat, userLon, ap.lat, ap.lon);
     if (dist < minDistance || dist > maxDistance) continue;
 
-    let isFeasibleForAnyVehicle = false;
-    if (allowsPlane && dist >= 180) {
-      isFeasibleForAnyVehicle = true;
-    }
-
-    if (!isFeasibleForAnyVehicle && (allowsCar || allowsTrain || allowsBus)) {
+    const planeOk = allowsPlane && !isSurface && dist >= 180;
+    let overlandOk = false;
+    if (allowsOverland && dist <= overlandRangeKm) {
       const destGeo = {
         lat: ap.lat,
         lon: ap.lon,
@@ -779,14 +998,13 @@ export function discoverDestinationsDynamically(
         code: ap.code,
         isHighSpeedRailConnected: ap.isHighSpeedRailConnected,
       };
-      if (isOverlandReachable(originGeo, destGeo)) {
-        if (allowsCar && dist <= 1200) isFeasibleForAnyVehicle = true;
-        if (allowsTrain && (dist <= 900 || (dist <= 1200 && ap.isHighSpeedRailConnected))) isFeasibleForAnyVehicle = true;
-        if (allowsBus && dist <= 750) isFeasibleForAnyVehicle = true;
-      }
+      overlandOk =
+        isOverlandReachable(originGeo, destGeo) &&
+        classifyOverlandAccess(destGeo).access !== 'FLIGHT_ONLY' &&
+        isOverlandFeasible(overlandVehicles, dist, Boolean(ap.isHighSpeedRailConnected), maxOverlandMinutes);
     }
 
-    if (!isFeasibleForAnyVehicle) continue;
+    if (!planeOk && !overlandOk) continue;
 
     const altitudeMeters = (ap.altitude || 0) * 0.3048;
     const winterMonth = ap.lat >= 0 ? 0 : 6;
@@ -799,10 +1017,12 @@ export function discoverDestinationsDynamically(
     const geoText = `${ap.name} ${ap.city} ${ap.country} ${subName}`;
     const textToSearch = `${geoText} ${ap.keywords || ''}`;
 
+    const surfaceStyles = isSurface ? ap.surface?.styles || [] : [];
+
     const hasAlpineGeo =
       (altitudeMeters >= 900 && Math.abs(ap.lat) >= 28) ||
       ALPINE_KEYWORDS.test(textToSearch);
-    const isAlpine = hasAlpineGeo && winterClimate.avgTempC <= 6;
+    const isAlpine = isSurface ? surfaceStyles.includes('ALPINE') : hasAlpineGeo && winterClimate.avgTempC <= 6;
 
     // Physical marine basin and coastal/island detection
     const isRedSea = ap.lat >= 12 && ap.lat <= 29.5 && ap.lon >= 32.5 && ap.lon <= 44 && altitudeMeters < 150;
@@ -823,17 +1043,15 @@ export function discoverDestinationsDynamically(
       isRedSeaOrGulf ||
       isTropicalSeaLevel;
 
-    const startMonth = originContext?.earliestDate ? parseISO(originContext.earliestDate).getMonth() : 6;
-    const endMonth = originContext?.latestDate ? parseISO(originContext.latestDate).getMonth() : startMonth;
-    const repMonth = Math.round((startMonth + (endMonth < startMonth ? endMonth + 12 : endMonth)) / 2) % 12;
     const travelClimate = getEstimatedClimate(ap.code, repMonth, { lat: ap.lat, lon: ap.lon });
     const travelDayTemp = travelClimate.maxTempC ?? travelClimate.avgTempC;
 
-    const isBeach =
-      !isAlpine &&
-      hasCoastalGeo &&
-      altitudeMeters <= 75 &&
-      (summerClimate.maxTempC ?? summerClimate.avgTempC) >= 22;
+    const isBeach = isSurface
+      ? surfaceStyles.includes('BEACH')
+      : !isAlpine &&
+        hasCoastalGeo &&
+        altitudeMeters <= 75 &&
+        (summerClimate.maxTempC ?? summerClimate.avgTempC) >= 22;
 
     let effectiveBeach = isBeach;
     if (originContext?.minBeachTemp && originContext.minBeachTemp > 0 && isBeach) {
@@ -854,8 +1072,12 @@ export function discoverDestinationsDynamically(
       }
     }
 
-    const isCity = Boolean(ap.isMajorHub) && (MAJOR_CULTURE_CITIES.test(textToSearch) || dist >= 300);
-    const isNature = isAlpine || (hasCoastalGeo && altitudeMeters < 250) || Math.abs(ap.lat) >= 55;
+    const isCity = isSurface
+      ? surfaceStyles.includes('CITY')
+      : Boolean(ap.isMajorHub) && (MAJOR_CULTURE_CITIES.test(textToSearch) || dist >= 300);
+    const isNature = isSurface
+      ? surfaceStyles.includes('NATURE')
+      : isAlpine || (hasCoastalGeo && altitudeMeters < 250) || Math.abs(ap.lat) >= 55;
     const isLongRange =
       dist >= 3500 &&
       (Boolean(ap.isMajorHub) ||
@@ -878,15 +1100,27 @@ export function discoverDestinationsDynamically(
         if (types.includes('BEACH') && effectiveBeach) matchStyle = true;
         if ((types.includes('ALPINE') || types.includes('SKI')) && effectiveAlpine) matchStyle = true;
         if (types.includes('CITY') && isCity) matchStyle = true;
-        if (types.includes('LONGRANGE') && isLongRange) matchStyle = true;
+        if (types.includes('LONGRANGE') && isLongRange) {
+          // Preferred kind of long-haul trip (e.g. only beach or only city long-haul)
+          const prefs = originContext?.longRangeStyles || [];
+          const matchesPreference =
+            prefs.length === 0 ||
+            // A long-haul beach trip needs beach weather in the travel month itself, not just in summer
+            (prefs.includes('BEACH') && effectiveBeach && travelDayTemp >= LONG_HAUL_BEACH_MIN_DAY_TEMP) ||
+            ((prefs.includes('ALPINE') || prefs.includes('SKI')) && effectiveAlpine) ||
+            (prefs.includes('CITY') && isCity) ||
+            (prefs.includes('NATURE') && isNature);
+          if (matchesPreference) matchStyle = true;
+        }
         if (types.includes('NATURE') && isNature) matchStyle = true;
       }
     }
 
     if (!matchStyle) continue;
 
-    // Prioritize major passenger hubs with reliable airline services
-    let score = ap.isMajorHub ? 60 : 25;
+    // Flight discovery prioritizes major passenger hubs with reliable airline service. That
+    // bias is meaningless for a road trip, so overland-only candidates start level.
+    let score = planeOk ? (ap.isMajorHub ? 60 : 25) : 40;
 
     // Vacation appeal boosts: Beach and Alpine represent primary family holiday archetypes
     if (effectiveBeach) score += 20;
@@ -911,9 +1145,11 @@ export function discoverDestinationsDynamically(
 
     if (MAJOR_CULTURE_CITIES.test(textToSearch)) score += 20;
 
-    if (dist <= 1200 && (allowsCar || allowsTrain || allowsBus)) {
+    if (overlandOk) {
       if (dist >= 60 && dist <= 850) {
         score += 45;
+      } else if (dist <= 1400) {
+        score += 32;
       } else {
         score += 20;
       }
@@ -922,7 +1158,11 @@ export function discoverDestinationsDynamically(
       }
     }
 
-    if (allowsPlane) {
+    if (planeOk) {
+      // Popularity: real holiday gateways (Palma, Bangkok) over minor airfields
+      const pax = getAirportPassengersMillions(ap.code) || 0;
+      score += Math.min(20, Math.round(10 * Math.log10(1 + pax)));
+
       const includeLongRange = isAll || types.includes('LONGRANGE');
 
       // Sweet spot distance corridors for family travel:
@@ -952,11 +1192,23 @@ export function discoverDestinationsDynamically(
       score,
       country: ap.country,
       state: ap.state,
+      lat: ap.lat,
+      lon: ap.lon,
+      isSurface,
+      overlandOk,
+      longHaulGateway: !isSurface && isLongHaulGateway(ap),
     });
   }
 
+  // Overland-only search: diversity-first selection across airports-as-places and surface nodes.
+  if (!allowsPlane) {
+    return selectOverlandDiverse(candidates, 36);
+  }
+
+  const airportCandidates = candidates.filter((c) => !c.isSurface);
+
   // Sort candidates by score descending, then distance ascending
-  candidates.sort((a, b) => b.score - a.score || a.dist - b.dist);
+  airportCandidates.sort((a, b) => b.score - a.score || a.dist - b.dist);
 
   // Geographic diversity deduplication:
   // - Maximum 1 airport per state/subdivision/island
@@ -967,7 +1219,7 @@ export function discoverDestinationsDynamically(
   const seenCountryCount = new Map<string, number>();
   const seenSubdivision = new Set<string>();
 
-  const canSelect = (c: (typeof candidates)[0]) => {
+  const canSelect = (c: DiscoveryCandidate) => {
     if (c.state && seenSubdivision.has(c.state)) return false;
 
     const isSpain = c.country === 'Spain' || c.country === 'ES';
@@ -993,51 +1245,86 @@ export function discoverDestinationsDynamically(
     return true;
   };
 
-  if (!allowsPlane) {
-    for (const c of candidates) {
-      canSelect(c);
-      if (selected.length >= 28) break;
-    }
-  } else if (isAll) {
+  const longHaul = airportCandidates.filter((c) => c.dist > 3500 && c.longHaulGateway);
+
+  if (isAll) {
     // 1. Core Regional & Mediterranean Corridor (dist <= 2500 km): Alpine, Med Coast & Culture
-    const coreRegional = candidates.filter((c) => c.dist <= 2500);
+    const coreRegional = airportCandidates.filter((c) => c.dist <= 2500);
     for (const c of coreRegional) {
       canSelect(c);
-      if (selected.length >= 16) break;
+      if (selected.length >= 14) break;
     }
 
     // 2. Extended Island & Sea Corridor (2500 < dist <= 3500 km): Canary Islands, Madeira, Azores, Cyprus, Red Sea
-    const extendedIsland = candidates.filter((c) => c.dist > 2500 && c.dist <= 3500);
+    const extendedIsland = airportCandidates.filter((c) => c.dist > 2500 && c.dist <= 3500);
     for (const c of extendedIsland) {
       canSelect(c);
-      if (selected.length >= 22) break;
+      if (selected.length >= 19) break;
     }
 
-    // 3. Long-range & Exotic Corridor (dist > 3500 km):
-    // Balanced between Extended Long-range (3500-6500 km, e.g. Dubai, Red Sea, Near East)
-    // and Intercontinental Exotic (>6500 km, e.g. Caribbean, Indian Ocean, Southeast Asia)
-    const extendedLong = candidates.filter((c) => c.dist > 3500 && c.dist <= 6500);
-    for (const c of extendedLong) {
-      canSelect(c);
-      if (selected.length >= 26) break;
+    // 3. Long-range & Exotic Corridor (dist > 3500 km): balanced across world regions
+    // (Middle East, Africa & Indian Ocean, South/Southeast/East/Central Asia, Oceania, Americas)
+    selectAcrossWorldRegions(longHaul, 34 - selected.length, canSelect);
+  } else if (types.includes('LONGRANGE')) {
+    // Long-range requested (alone or combined with other styles): short/medium-haul matches by
+    // score, long-haul slots balanced across world regions.
+    const onlyLongRange = types.every((t) => t === 'LONGRANGE');
+    if (!onlyLongRange) {
+      for (const c of airportCandidates.filter((x) => x.dist <= 3500)) {
+        canSelect(c);
+        if (selected.length >= 14) break;
+      }
     }
-
-    const intercontinentalLong = candidates.filter((c) => c.dist > 6500);
-    for (const c of intercontinentalLong) {
-      canSelect(c);
-      if (selected.length >= 32) break;
-    }
+    selectAcrossWorldRegions(longHaul, 30 - selected.length, canSelect);
   } else {
-    for (const c of candidates) {
+    for (const c of airportCandidates) {
       canSelect(c);
       if (selected.length >= 28) break;
     }
   }
 
+  // Mixed flight + overland search: add a diverse set of road/rail-only destinations on top
+  // of the flight corridor picks, so a "plane or car" search is not airport-bound either.
+  if (allowsOverland) {
+    const selectedSet = new Set(selected);
+    const anchors = candidates
+      .filter((c) => selectedSet.has(c.code))
+      .map((c) => ({ lat: c.lat, lon: c.lon }));
+    const surfaceOnly = candidates.filter((c) => c.isSurface);
+    selected.push(...selectOverlandDiverse(surfaceOnly, 10, anchors, selectedSet));
+  }
+
   return selected;
 }
 
-
+/**
+ * Surface (non-airport) destinations matching a user destination tag by resort name, coast /
+ * region name, ISO subdivision or country, e.g. "Algarve", "Istria", "Mallorca", "Spain".
+ */
+function matchSurfaceDestinationsForTag(tag: string): string[] {
+  const clean = normalizeDestinationString(tag);
+  if (!clean || clean.length < 2) return [];
+  const countryCode = clean.length === 2 ? clean.toUpperCase() : resolveCountryCode(clean);
+  const matches: string[] = [];
+  for (const s of SURFACE_DESTINATIONS) {
+    const city = normalizeDestinationString(s.city);
+    const region = normalizeDestinationString(s.region);
+    const subName = normalizeDestinationString(iso.subdivision(s.state)?.name || '');
+    const nodeCountry = s.state.split('-')[0];
+    if (
+      city === clean ||
+      region === clean ||
+      isWordMatch(region, clean) ||
+      isWordMatch(city, clean) ||
+      (subName && (subName === clean || isWordMatch(subName, clean))) ||
+      s.state.toLowerCase() === clean.replace(/\s+/g, '-') ||
+      (countryCode !== 'XX' && nodeCountry === countryCode)
+    ) {
+      matches.push(s.code);
+    }
+  }
+  return matches;
+}
 
 
 /**
@@ -1121,43 +1408,47 @@ export function resolveDestinationCodes(
     }
   }
 
-  const vehicles: TravelVehicle[] =
-    originContext?.travelVehicles && originContext.travelVehicles.length > 0
-      ? originContext.travelVehicles
-      : originContext?.travelVehicle
-      ? [originContext.travelVehicle]
-      : ['PLANE'];
-
+  const vehicles = resolveVehicles(originContext);
   const allowsPlane = vehicles.includes('PLANE');
-  if (!allowsPlane) {
-    const { lat: userLat, lon: userLon } = resolveOriginCoordinates(originContext);
-    const originGeo = {
-      lat: userLat,
-      lon: userLon,
-      countryCode: originContext?.country || (originContext?.federalState ? originContext.federalState.split('-')[0] : undefined),
-      state: originContext?.federalState,
-    };
-    const maxDist = vehicles.includes('CAR') || vehicles.includes('TRAIN') ? 1200 : 750;
-    return Array.from(resolved).filter((code) => {
-      const ap = getAirportByIata(code);
-      if (!ap) return false;
-      const dist = calculateGeodesicDistanceKm(userLat, userLon, ap.lat, ap.lon);
-      if (dist > maxDist) return false;
-      const destGeo = {
-        lat: ap.lat,
-        lon: ap.lon,
-        countryCode: ap.state ? ap.state.split('-')[0] : undefined,
-        state: ap.state,
-        code: ap.code,
-        isHighSpeedRailConnected: ap.isHighSpeedRailConnected,
-      };
-      if (!isOverlandReachable(originGeo, destGeo)) return false;
-      if (!vehicles.includes('CAR') && vehicles.includes('TRAIN') && dist > 900 && !ap.isHighSpeedRailConnected) return false;
-      return true;
-    });
+  const overlandVehicles = vehicles.filter((v) => v !== 'PLANE');
+  if (overlandVehicles.length === 0) {
+    return Array.from(resolved);
   }
 
-  return Array.from(resolved);
+  for (const tag of destinationTags) {
+    matchSurfaceDestinationsForTag(tag).forEach((code) => resolved.add(code));
+  }
+
+  const { lat: userLat, lon: userLon } = resolveOriginCoordinates(originContext);
+  const originGeo = {
+    lat: userLat,
+    lon: userLon,
+    countryCode: originContext?.country || (originContext?.federalState ? originContext.federalState.split('-')[0] : undefined),
+    state: originContext?.federalState,
+  };
+  const maxOverlandMinutes = originContext?.maxOverlandTravelMinutes;
+  const overlandRangeKm = resolveOverlandRangeKm(vehicles, maxOverlandMinutes);
+
+  return Array.from(resolved).filter((code) => {
+    const point = getDestinationPoint(code);
+    if (!point) return false;
+    // Airports stay eligible for flights; only overland-only searches (or surface nodes,
+    // which have no runway) must be physically reachable by road/rail.
+    if (allowsPlane && point.kind === 'AIRPORT') return true;
+    const dist = calculateGeodesicDistanceKm(userLat, userLon, point.lat, point.lon);
+    if (dist > overlandRangeKm) return false;
+    const destGeo = {
+      lat: point.lat,
+      lon: point.lon,
+      countryCode: point.state ? point.state.split('-')[0] : undefined,
+      state: point.state,
+      code: point.code,
+      isHighSpeedRailConnected: point.isHighSpeedRailConnected,
+    };
+    if (!isOverlandReachable(originGeo, destGeo)) return false;
+    if (classifyOverlandAccess(destGeo).access === 'FLIGHT_ONLY') return false;
+    return isOverlandFeasible(overlandVehicles, dist, Boolean(point.isHighSpeedRailConnected), maxOverlandMinutes);
+  });
 }
 
 /**

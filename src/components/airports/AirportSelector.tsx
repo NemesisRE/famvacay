@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Plane, Search, X, ChevronDown, ChevronUp, Train, Check } from 'lucide-react';
+import { Plane, Search, X, ChevronDown, ChevronUp, Train, Check, Sparkles } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
 export interface AirportItem {
@@ -124,11 +124,9 @@ export function AirportSelector({
               return changed ? updated : prev;
             });
 
-            // Automatically synchronize pruned airports if selection became stale
-            if (
-              Array.isArray(data.updatedSelection) &&
-              (data.prunedCodes?.length > 0 || (selectedAirports.length === 0 && data.updatedSelection.length > 0))
-            ) {
+            // Automatically synchronize pruned airports if selection became stale. An empty
+            // selection is the flexible mode (the app picks the airport) and is never auto-filled.
+            if (Array.isArray(data.updatedSelection) && data.prunedCodes?.length > 0 && selectedAirports.length > 0) {
               const currentStr = selectedAirports.slice().sort().join(',');
               const newStr = data.updatedSelection.slice().sort().join(',');
               if (currentStr !== newStr) {
@@ -219,17 +217,14 @@ export function AirportSelector({
     setShowDropdown(false);
   };
 
+  // Removing the last airport switches to the flexible mode
   const handleRemoveAirport = (code: string) => {
-    if (selectedAirports.length > 1) {
-      onChange(selectedAirports.filter((c) => c !== code));
-    }
+    onChange(selectedAirports.filter((c) => c !== code));
   };
 
   const toggleSuggestion = (code: string) => {
     if (selectedAirports.includes(code)) {
-      if (selectedAirports.length > 1) {
-        onChange(selectedAirports.filter((c) => c !== code));
-      }
+      onChange(selectedAirports.filter((c) => c !== code));
     } else {
       onChange([...selectedAirports, code]);
     }
@@ -254,17 +249,35 @@ export function AirportSelector({
         <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
           <span className="flex items-center gap-1.5">
             <Plane className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-            {t.home.airportsLabel} ({selectedAirports.length})
+            {t.home.airportsLabel}
           </span>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">
-            {selectedAirports.length === 1 ? '1 selected' : `${selectedAirports.length} selected`}
-          </span>
+          {selectedAirports.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="inline-flex items-center gap-1 text-[10px] font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-900 dark:hover:text-teal-300 cursor-pointer"
+              title={t.home.airportsFlexHint}
+            >
+              <Sparkles className="w-3 h-3" />
+              {t.home.airportsFlexButton}
+            </button>
+          ) : (
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">
+              {t.home.airportsFlexTitle}
+            </span>
+          )}
         </label>
         <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">{t.home.airportsHint}</p>
 
         <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-slate-50/80 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
           {selectedAirports.length === 0 ? (
-            <span className="text-xs text-slate-400 dark:text-slate-500 italic">No airports selected</span>
+            <span className="flex items-start gap-2 text-xs text-teal-800 dark:text-teal-200">
+              <span className="inline-flex items-center gap-1 font-semibold px-2.5 py-1 rounded-lg bg-teal-600 text-white shadow-sm flex-shrink-0">
+                <Sparkles className="w-3 h-3 text-teal-200" />
+                {t.home.airportsFlexTitle}
+              </span>
+              <span className="text-[11px] leading-snug text-slate-600 dark:text-slate-300 self-center">{t.home.airportsFlexHint}</span>
+            </span>
           ) : (
             selectedAirports.map((code) => {
               const details = airportDetails[code];
@@ -280,16 +293,15 @@ export function AirportSelector({
                       · {details.city || details.name}
                     </span>
                   )}
-                  {selectedAirports.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveAirport(code)}
-                      className="ml-0.5 hover:bg-teal-700 p-0.5 rounded-full transition-colors text-teal-200 hover:text-white"
-                      title="Remove airport"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAirport(code)}
+                    className="ml-0.5 hover:bg-teal-700 p-0.5 rounded-full transition-colors text-teal-200 hover:text-white cursor-pointer"
+                    title={t.home.airportsRemove}
+                    aria-label={t.home.airportsRemove}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
                 </span>
               );
             })
@@ -354,11 +366,11 @@ export function AirportSelector({
                   </div>
                   {isSelected ? (
                     <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-[11px] font-semibold flex-shrink-0">
-                      <Check className="w-3 h-3" /> Selected
+                      <Check className="w-3 h-3" /> {t.home.airportsSelectedLabel}
                     </span>
                   ) : (
                     <span className="text-teal-600 dark:text-teal-400 text-[11px] font-semibold flex-shrink-0">
-                      + Add
+                      {t.home.airportsAdd}
                     </span>
                   )}
                 </button>
@@ -392,10 +404,10 @@ export function AirportSelector({
           <div className="mt-2 p-3 bg-slate-50/70 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                Nearby Hubs &amp; Train-Connected Airports
+                {t.home.airportsNearbyHubs}
               </span>
               {loadingSuggestions && (
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 animate-pulse">Updating...</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 animate-pulse">{t.home.airportsUpdating}</span>
               )}
             </div>
 
@@ -431,7 +443,7 @@ export function AirportSelector({
                         title={airport.railConnectivityNote || t.home.railConnected}
                       >
                         <Train className="w-3 h-3" />
-                        <span>Rail</span>
+                        <span>{t.home.airportsRailBadge}</span>
                       </span>
                     )}
                   </button>

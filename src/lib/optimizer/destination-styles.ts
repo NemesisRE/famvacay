@@ -6,7 +6,7 @@
 
 import iso from 'iso-3166-2';
 import { DestinationType } from './types';
-import { getAirportByIata } from '../airports/airport-service';
+import { getDestinationPoint } from '../geo/destination-points';
 import { getEstimatedClimate } from './weather';
 
 export const ISLAND_OR_COASTAL_COUNTRIES = new Set([
@@ -55,8 +55,28 @@ export function getDestinationVacationStyles(
   airportCode: string,
   distanceKm?: number
 ): DestinationType[] {
-  const ap = getAirportByIata(airportCode);
+  // Distance only matters for the LONGRANGE >= 3500 km threshold (and the "unknown" 0 case),
+  // so bucket it: results list filtering calls this for every rendered window.
+  const dist = distanceKm || 0;
+  const cacheKey = `${airportCode}|${dist >= 3500 ? 'L' : dist === 0 ? '0' : 'S'}`;
+  const cached = stylesCache.get(cacheKey);
+  if (cached) return cached;
+  const computed = computeDestinationVacationStyles(airportCode, dist);
+  stylesCache.set(cacheKey, computed);
+  return computed;
+}
+
+const stylesCache = new Map<string, DestinationType[]>();
+
+function computeDestinationVacationStyles(airportCode: string, dist: number): DestinationType[] {
+  const ap = getDestinationPoint(airportCode);
   if (!ap) return ['ALL'];
+
+  // Surface nodes are curated with their real vacation styles; airport-style inference
+  // (hub status, elevation of the runway) does not apply to a beach town or a lake.
+  if (ap.kind === 'SURFACE' && ap.surface) {
+    return ['ALL', ...ap.surface.styles];
+  }
 
   const styles = new Set<DestinationType>(['ALL']);
   const altitudeMeters = (ap.altitude || 0) * 0.3048;
@@ -122,7 +142,6 @@ export function getDestinationVacationStyles(
     styles.add('NATURE');
   }
 
-  const dist = distanceKm || 0;
   const isLongRange =
     dist >= 3500 ||
     isCaribbeanOrGulf ||

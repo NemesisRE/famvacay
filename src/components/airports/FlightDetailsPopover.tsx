@@ -12,6 +12,7 @@ import {
   useInteractions,
   FloatingPortal,
 } from '@floating-ui/react';
+import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop } from '@/components/ui/responsive-popover';
 import {
   Plane,
   MapPin,
@@ -28,6 +29,7 @@ import {
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { getAirportByIata, getLocalizedAirportDetails } from '@/lib/airports/airport-service';
 import type { FlightLayover, FlightSegment } from '@/lib/airports/flight-routes';
+import type { RailFeederLeg } from '@/lib/optimizer/types';
 
 export interface FlightDetailsPopoverProps {
   originAirport: string;
@@ -58,6 +60,7 @@ export interface FlightDetailsPopoverProps {
   segments?: FlightSegment[];
   directFlightPremiumMultiplier?: number;
   connectingSavingsDiscount?: number;
+  railFeeder?: RailFeederLeg;
   className?: string;
 }
 
@@ -90,6 +93,7 @@ export function FlightDetailsPopover({
   segments = [],
   directFlightPremiumMultiplier,
   connectingSavingsDiscount,
+  railFeeder,
   className = '',
 }: FlightDetailsPopoverProps) {
   const { t, locale } = useI18n();
@@ -106,6 +110,8 @@ export function FlightDetailsPopover({
   const displayOrigName = localizedOrig?.name || originName || `${originCity || originAirport} Airport`;
   const displayOrigCity = localizedOrig?.city || originCity;
   const displayOrigCountry = localizedOrig?.country || originCountry;
+
+  const isSmallScreen = useIsSmallScreen();
 
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
@@ -179,14 +185,12 @@ export function FlightDetailsPopover({
       {/* Popover Card anchored via FloatingPortal */}
       {isOpen && (
         <FloatingPortal>
+          <PopoverBackdrop show={isSmallScreen} zIndex={9998} />
           <div
             ref={refs.setFloating}
-            style={{
-              ...floatingStyles,
-              zIndex: 9999,
-            }}
+            style={getResponsivePopoverStyle(isSmallScreen, floatingStyles, 9999)}
             {...getFloatingProps()}
-            className="w-84 sm:w-[420px] max-w-[95vw] bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 text-slate-800 dark:text-slate-100 transition-opacity duration-150 ease-out space-y-3.5"
+            className="animate-in fade-in zoom-in-95 w-84 sm:w-[420px] max-w-[95vw] bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 text-slate-800 dark:text-slate-100 transition-opacity duration-150 ease-out space-y-3.5"
           >
             {/* Header */}
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
@@ -260,7 +264,28 @@ export function FlightDetailsPopover({
                   </div>
                 )}
 
-                {originHighSpeedRail && (
+                {railFeeder && (
+                  <div className="text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 text-[11px] space-y-0.5">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <Train className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                      <span>{t.home.railAirTitle}</span>
+                    </div>
+                    <div>
+                      {t.home.railAirDetail
+                        .replace('{duration}', `${Math.floor(railFeeder.durationMinutes / 60)}h ${String(railFeeder.durationMinutes % 60).padStart(2, '0')}m`)
+                        .replace('{airport}', displayOrigCity || railFeeder.hubAirport)
+                        .replace('{cost}', String(railFeeder.costEur))}
+                    </div>
+                    {railFeeder.replacesFeederFlight && (
+                      <div className="text-[10px] opacity-90">{t.home.railAirReplaces.replace('{route}', railFeeder.replacesFeederFlight.replace('-', ' ➔ '))}</div>
+                    )}
+                    {railFeeder.isAlternativeOrigin && (
+                      <div className="text-[10px] opacity-90">{t.home.railAirAlternative}</div>
+                    )}
+                  </div>
+                )}
+
+                {originHighSpeedRail && !railFeeder && (
                   <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800 font-medium text-[10px]">
                     <Train className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                     <span>{t.home.railConnected} ({t.home.railConnectedStation})</span>

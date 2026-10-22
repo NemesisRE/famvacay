@@ -81,3 +81,35 @@ body {
 .rdp-themed .rdp-chevron {
   fill: currentColor;
 }
+
+/*
+ * Enter animations used across popovers and dialogs (animate-in + fade-in / zoom-in-95 /
+ * slide-in-from-top-1). The project has no tailwindcss-animate plugin, so these class names
+ * previously rendered without any animation.
+ */
+@keyframes famvac-enter {
+  from {
+    opacity: var(--famvac-enter-opacity, 1);
+    /* individual translate/scale properties compose with (rather than replace) the transform
+       floating-ui and centered overlays use for positioning */
+    translate: 0 var(--famvac-enter-translate-y, 0);
+    scale: var(--famvac-enter-scale, 1);
+  }
+}
+.animate-in {
+  animation: famvac-enter 160ms ease-out both;
+}
+.fade-in {
+  --famvac-enter-opacity: 0;
+}
+.zoom-in-95 {
+  --famvac-enter-scale: 0.95;
+}
+.slide-in-from-top-1 {
+  --famvac-enter-translate-y: -0.25rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-in {
+    animation: none;
+  }
+}

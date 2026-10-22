@@ -92,6 +92,26 @@ describe('Vacations Share API - Persist & Hydrate', () => {
     expect(getData.payload.windows[0].destinationAirport).toBe('PMI');
   });
 
+  it('still creates a working link from the cache when the database is unreachable', async () => {
+    const upsert = vi.spyOn(fakePrisma.sharedTripBoard, 'upsert').mockRejectedValueOnce(new Error("Can't reach database server"));
+    const res = await POST(
+      new NextRequest('http://localhost:3000/api/vacations/share', {
+        method: 'POST',
+        body: JSON.stringify({ query: { earliestDate: '2031-01-01' }, formState: { x: 1 }, windows: mockWindows }),
+      })
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.shareId).toMatch(/^s_/);
+    expect(data.votingEnabled).toBe(false);
+
+    const read = await GET(new NextRequest(`http://localhost:3000/api/vacations/share?id=${data.shareId}`));
+    expect(read.status).toBe(200);
+    const body = await read.json();
+    expect(body.payload.windows).toHaveLength(1);
+    upsert.mockRestore();
+  });
+
   it('returns 404 for non-existent shareId', async () => {
     const getReq = new NextRequest('http://localhost:3000/api/vacations/share?id=non_existent_id_99999', {
       method: 'GET',

@@ -12,6 +12,7 @@ import {
   useInteractions,
   FloatingPortal,
 } from '@floating-ui/react';
+import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop } from '@/components/ui/responsive-popover';
 import {
   Info,
   X,
@@ -44,6 +45,8 @@ export function MetricExplanationPopover({
 }: MetricExplanationPopoverProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+
+  const isSmallScreen = useIsSmallScreen();
 
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
@@ -106,12 +109,10 @@ export function MetricExplanationPopover({
 
       {isOpen && (
         <FloatingPortal>
+          <PopoverBackdrop show={isSmallScreen} zIndex={99998} />
           <div
             ref={refs.setFloating}
-            style={{
-              ...floatingStyles,
-              zIndex: 99999,
-            }}
+            style={getResponsivePopoverStyle(isSmallScreen, floatingStyles, 99999)}
             {...getFloatingProps()}
             className="w-80 sm:w-96 max-w-[94vw] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 text-slate-800 dark:text-slate-100 transition-all duration-150 animate-in fade-in zoom-in-95"
             onClick={(e) => e.stopPropagation()}

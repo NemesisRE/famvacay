@@ -6,7 +6,6 @@ import {
   normalizeScore,
   interleaveCandidateWindowsByDestination,
   calculateFlightFrictionScore,
-  curateDistinctAlternativeWindows,
 } from './engine';
 import { getSynchronousTripPricing } from '../pricing/pricing-service';
 import { calculatePtoDaysConsumed } from './pto-calculator';
@@ -878,89 +877,7 @@ describe('Arbitrage Airport Info & Localized Seasonal Warnings', () => {
     expect(beachResults[0].scoreBreakdown.weatherIndex).toBeGreaterThanOrEqual(80);
   });
 
-  describe('Alternative Dates Curation & Airline Day-of-Week Pricing', () => {
-    it('curates distinct alternative dates eliminating redundant +1 day shifts and caps at maxAlternatives', () => {
-      // Simulate raw candidate windows with repetitive daily shifts across 2 origins
-      const mockWindows: CandidateWindow[] = [];
-      const baseDate = new Date('2026-11-01');
-
-      for (let day = 0; day < 30; day++) {
-        const d1 = new Date(baseDate.getTime() + day * 86400000).toISOString().split('T')[0];
-        const d2 = new Date(baseDate.getTime() + (day + 10) * 86400000).toISOString().split('T')[0];
-
-        // Origin 1: FKB
-        mockWindows.push({
-          startDate: d1,
-          endDate: d2,
-          durationDays: 10,
-          originAirport: 'FKB',
-          destinationAirport: 'PUJ',
-          destinationName: 'Punta Cana',
-          destinationCity: 'Punta Cana',
-          destinationCountry: 'Dominican Republic',
-          estimatedTotalCost: 2200 + day * 10,
-          pricePerPerson: 1100,
-          ptoDaysConsumed: 6 + (day % 3),
-          ptoEfficiencyRatio: 1.6,
-          publicHolidaysCount: day === 5 ? 2 : 0,
-          requiresSchoolExemption: false,
-          isArbitrageOpportunity: false,
-          finalScore: 85 - (day % 10),
-          scoreBreakdown: { priceIndex: 80, weatherIndex: 90, ptoEfficiencyIndex: 75, travelFrictionIndex: 85 },
-        } as CandidateWindow);
-
-        // Origin 2: FRA
-        mockWindows.push({
-          startDate: d1,
-          endDate: d2,
-          durationDays: 10,
-          originAirport: 'FRA',
-          destinationAirport: 'PUJ',
-          destinationName: 'Punta Cana',
-          destinationCity: 'Punta Cana',
-          destinationCountry: 'Dominican Republic',
-          estimatedTotalCost: 2050 + (day % 7) * 20,
-          pricePerPerson: 1025,
-          ptoDaysConsumed: 6,
-          ptoEfficiencyRatio: 1.6,
-          publicHolidaysCount: 0,
-          requiresSchoolExemption: false,
-          isArbitrageOpportunity: false,
-          finalScore: 82 - (day % 8),
-          scoreBreakdown: { priceIndex: 85, weatherIndex: 90, ptoEfficiencyIndex: 75, travelFrictionIndex: 80 },
-        } as CandidateWindow);
-      }
-
-      const featured = mockWindows[0];
-      const curated = curateDistinctAlternativeWindows(mockWindows, featured, 8);
-
-      expect(curated.length).toBeLessThanOrEqual(8);
-      expect(curated.length).toBeGreaterThanOrEqual(4);
-
-      // Featured window itself must not be in the alternatives list
-      const hasFeatured = curated.some(
-        (c) => c.startDate === featured.startDate && c.originAirport === featured.originAirport
-      );
-      expect(hasFeatured).toBe(false);
-
-      // No redundant consecutive dates (diff <= 2 days) for the same origin airport
-      for (let i = 0; i < curated.length; i++) {
-        for (let j = i + 1; j < curated.length; j++) {
-          if (curated[i].originAirport === curated[j].originAirport) {
-            const timeDiff = Math.abs(
-              new Date(curated[i].startDate).getTime() - new Date(curated[j].startDate).getTime()
-            );
-            const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
-            expect(daysDiff).toBeGreaterThan(2);
-          }
-        }
-      }
-
-      // Alternative origin airport (FRA) is included among curated options
-      const hasFra = curated.some((c) => c.originAirport === 'FRA');
-      expect(hasFra).toBe(true);
-    });
-
+  describe('Airline Day-of-Week Pricing', () => {
     it('models realistic airline day-of-week yield pricing (midweek flight discount vs weekend surge)', () => {
       // Midweek: Tuesday departure (2026-11-10) to Thursday return (2026-11-19)
       const midweekPricing = getSynchronousTripPricing({

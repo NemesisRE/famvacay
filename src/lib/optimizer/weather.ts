@@ -1,7 +1,8 @@
-import Holidays from 'date-holidays';
 import iso from 'iso-3166-2';
+import { getCalendarHolidays, type CachedCalendarHoliday } from '../holidays/date-holidays-cache';
 import { DestinationType, WeatherAssessment } from './types';
 import { getAirportByIata } from '../airports/airport-service';
+import { getDestinationPoint } from '../geo/destination-points';
 
 export interface DestinationProfile {
   code: string;
@@ -22,7 +23,7 @@ export interface DestinationProfile {
  * Completely eliminates static, hardcoded city lists and keyword matching.
  */
 export function getDestinationProfile(code: string): DestinationProfile | null {
-  const airport = getAirportByIata(code);
+  const airport = getDestinationPoint(code);
   if (!airport) return null;
 
   const lat = airport.lat;
@@ -54,7 +55,10 @@ export function getDestinationProfile(code: string): DestinationProfile | null {
     summerClimate.waterTempC >= 19 &&
     (summerClimate.maxTempC ?? summerClimate.avgTempC) >= 22;
 
-  if (isSki) {
+  const surfaceStyles = airport.kind === 'SURFACE' ? airport.surface?.styles : undefined;
+  if (surfaceStyles && surfaceStyles.length > 0) {
+    type = surfaceStyles.includes('BEACH') ? 'BEACH' : surfaceStyles.includes('ALPINE') ? 'ALPINE' : surfaceStyles[0];
+  } else if (isSki) {
     type = 'SKI';
   } else if (isAlpine) {
     type = 'ALPINE';
@@ -322,7 +326,7 @@ export function getEstimatedClimate(
   let altitude = 0;
   let type: DestinationType = 'CITY';
 
-  const airport = getAirportByIata(destinationCode);
+  const airport = getDestinationPoint(destinationCode);
   if (airport) {
     altitude = (airport.altitude || 0) * 0.3048;
   }
@@ -483,7 +487,7 @@ export function getDestinationSeasonalWarning(
     weatherAssessment?: WeatherAssessment;
   }
 ): SeasonalConstraintWarning | null {
-  const airport = getAirportByIata(destinationCode);
+  const airport = getDestinationPoint(destinationCode);
   if (!airport) return null;
 
   const lat = airport.lat;
@@ -562,20 +566,11 @@ export function getDestinationSeasonalWarning(
     }
   }
 
-  let destinationHolidays: any[] = [];
-  try {
-    if (countryCode && countryCode.length === 2) {
-      const hd = new Holidays(countryCode);
-      const yearHolidays = hd.getHolidays(year);
-      if (Array.isArray(yearHolidays)) {
-        destinationHolidays = yearHolidays.filter((h: any) => {
-          const d = new Date(h.date);
-          return d.getMonth() === monthIndex;
-        });
-      }
-    }
-  } catch {
-    // Non-critical holiday resolution fallback
+  let destinationHolidays: CachedCalendarHoliday[] = [];
+  if (countryCode && countryCode.length === 2) {
+    destinationHolidays = getCalendarHolidays(countryCode, year).filter(
+      (h) => parseInt(h.date.slice(5, 7), 10) - 1 === monthIndex
+    );
   }
 
   // A) Carnival Hyper-Peak: Evaluates real carnival holidays from date-holidays or cultural calendar

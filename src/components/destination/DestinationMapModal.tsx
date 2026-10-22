@@ -15,7 +15,8 @@ import {
   Trees,
   Globe,
 } from 'lucide-react';
-import { getAirportByIata } from '@/lib/airports/airport-service';
+import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/destination-points';
+import type { TravelVehicle } from '@/lib/optimizer/types';
 import { DestinationType } from '@/lib/optimizer/types';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
@@ -31,6 +32,10 @@ export interface DestinationMapModalProps {
   flightDurationMinutes?: number;
   departureLocation?: string;
   originAirport?: string;
+  /** Mode of the featured trip; overland trips show door-to-door time from home, not flight time. */
+  travelVehicle?: TravelVehicle;
+  overlandDistanceKm?: number;
+  overlandDurationMinutes?: number;
 }
 
 export function DestinationMapModal({
@@ -45,6 +50,9 @@ export function DestinationMapModal({
   flightDurationMinutes,
   departureLocation,
   originAirport,
+  travelVehicle,
+  overlandDistanceKm,
+  overlandDurationMinutes,
 }: DestinationMapModalProps) {
   const { t, locale } = useI18n();
   const [mapProvider, setMapProvider] = useState<'google' | 'osm'>('google');
@@ -74,7 +82,8 @@ export function DestinationMapModal({
 
   if (!isOpen) return null;
 
-  const airport = getAirportByIata(destinationCode);
+  const airport = getDestinationPoint(destinationCode);
+  const isOverland = Boolean(travelVehicle && travelVehicle !== 'PLANE');
   const lat = airport?.lat ?? 0;
   const lon = airport?.lon ?? 0;
 
@@ -162,8 +171,14 @@ export function DestinationMapModal({
         <div className="bg-gradient-to-r from-slate-50 via-teal-50/40 to-slate-100/50 dark:from-slate-800 dark:via-slate-800/60 dark:to-teal-950/20 p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             <div className="w-11 h-11 rounded-xl bg-teal-600 dark:bg-teal-700 text-white flex flex-col items-center justify-center font-black text-xs shadow-xs flex-shrink-0">
-              <span className="leading-none">{destinationCode}</span>
-              <Plane className="w-2.5 h-2.5 mt-0.5 opacity-80" />
+              {airport?.kind === 'AIRPORT' ? (
+                <>
+                  <span className="leading-none">{destinationCode}</span>
+                  <Plane className="w-2.5 h-2.5 mt-0.5 opacity-80" />
+                </>
+              ) : (
+                <MapPin className="w-5 h-5" />
+              )}
             </div>
 
             <div>
@@ -185,8 +200,7 @@ export function DestinationMapModal({
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex flex-wrap items-center gap-2">
                 <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
                   <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
-                  {destinationCity ? `${destinationCity}, ` : ''}
-                  {destinationCountry || airport?.country || ''}
+                  {getLocalizedDestinationLabel(destinationCode, locale, { city: destinationCity, country: destinationCountry }).label}
                 </span>
                 <span>•</span>
                 <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">
@@ -211,9 +225,13 @@ export function DestinationMapModal({
           <div className="flex items-center gap-2">
             <Navigation className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
             <div>
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">Distance</span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">
+                {isOverland ? (travelVehicle === 'TRAIN' ? t.home.overlandRailDistance : t.home.overlandRoadDistance) : 'Distance'}
+              </span>
               <span className="font-extrabold text-slate-800 dark:text-slate-200">
-                {flightDistanceKm ? `~${flightDistanceKm.toLocaleString()} km` : 'Geodesic corridor'}
+                {isOverland
+                  ? (overlandDistanceKm ? `~${overlandDistanceKm.toLocaleString()} km` : '-')
+                  : (flightDistanceKm ? `~${flightDistanceKm.toLocaleString()} km` : 'Geodesic corridor')}
               </span>
             </div>
           </div>
@@ -221,19 +239,27 @@ export function DestinationMapModal({
           <div className="flex items-center gap-2">
             <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
             <div>
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">Flight Time</span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">
+                {isOverland ? t.home.overlandDoorToDoor : 'Flight Time'}
+              </span>
               <span className="font-extrabold text-slate-800 dark:text-slate-200">
-                {flightDurationMinutes ? `~${formatFlightTime(flightDurationMinutes)} (non-stop)` : 'Variable'}
+                {isOverland
+                  ? (overlandDurationMinutes ? `~${formatFlightTime(overlandDurationMinutes)}` : 'Variable')
+                  : (flightDurationMinutes ? `~${formatFlightTime(flightDurationMinutes)} (non-stop)` : 'Variable')}
               </span>
             </div>
           </div>
 
           <div className="hidden sm:flex items-center gap-2">
-            <Plane className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+            {isOverland ? (
+              <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+            ) : (
+              <Plane className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+            )}
             <div>
               <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">Departure Origin</span>
               <span className="font-extrabold text-slate-800 dark:text-slate-200 truncate max-w-[140px]">
-                {originAirport || departureLocation || 'Home'}
+                {isOverland ? (departureLocation || t.home.overlandFromHome) : (originAirport || departureLocation || 'Home')}
               </span>
             </div>
           </div>
