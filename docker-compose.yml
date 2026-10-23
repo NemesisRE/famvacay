@@ -54,11 +54,28 @@ services:
       - PHOTON_API_URL=${PHOTON_API_URL:-https://photon.komoot.io/api}
       - OPEN_HOLIDAYS_API_URL=${OPEN_HOLIDAYS_API_URL:-https://openholidaysapi.org}
       - NAGER_DATE_API_URL=${NAGER_DATE_API_URL:-https://date.nager.at/api/v3}
+      - LEGAL_OPERATION_MODE=${LEGAL_OPERATION_MODE:-private}
+      - LEGAL_OPERATOR_NAME=${LEGAL_OPERATOR_NAME:-}
+      - LEGAL_OPERATOR_STREET=${LEGAL_OPERATOR_STREET:-}
+      - LEGAL_OPERATOR_POSTAL_CITY=${LEGAL_OPERATOR_POSTAL_CITY:-}
+      - LEGAL_OPERATOR_COUNTRY=${LEGAL_OPERATOR_COUNTRY:-Deutschland / Germany}
+      - LEGAL_CONTACT_EMAIL=${LEGAL_CONTACT_EMAIL:-}
+      - LEGAL_CONTACT_PHONE=${LEGAL_CONTACT_PHONE:-}
+      - LEGAL_VAT_ID=${LEGAL_VAT_ID:-}
+      - LEGAL_HOSTING_PROVIDER_NAME=${LEGAL_HOSTING_PROVIDER_NAME:-}
+      - LEGAL_HOSTING_PROVIDER_ADDRESS=${LEGAL_HOSTING_PROVIDER_ADDRESS:-}
+      - LEGAL_DPA_CONCLUDED=${LEGAL_DPA_CONCLUDED:-false}
+      - NEXT_PUBLIC_COOKIE_BANNER_MODE=${NEXT_PUBLIC_COOKIE_BANNER_MODE:-TRANSPARENCY_AND_CHOICE}
+      - NEXT_PUBLIC_UMAMI_SCRIPT_URL=${NEXT_PUBLIC_UMAMI_SCRIPT_URL:-/stats/script.js}
+      - NEXT_PUBLIC_UMAMI_WEBSITE_ID=${NEXT_PUBLIC_UMAMI_WEBSITE_ID:-}
+      - UMAMI_INTERNAL_URL=http://umami:3000
     depends_on:
       migrate:
         condition: service_completed_successfully
       cache:
         condition: service_healthy
+      umami:
+        condition: service_started
     networks:
       - backend-internal
       - proxy-network
@@ -93,6 +110,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-famvacay}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-famvacay_secure_password}
       POSTGRES_DB: ${POSTGRES_DB:-famvacay_db}
+      # Separate database for the self-hosted Umami service (see scripts/postgres-init/).
+      UMAMI_DB: ${UMAMI_DB:-famvacay_umami}
     # No host port mapping: Postgres is reachable only from other containers on
     # backend-internal. For ad-hoc local access use:
     #   docker compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
@@ -100,6 +119,7 @@ services:
       - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/postgres-init:/docker-entrypoint-initdb.d:ro
     networks:
       - backend-internal
     security_opt:
@@ -150,6 +170,47 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+
+  # Self-hosted, cookieless analytics (Umami) - reachable only via the web container's
+  # /stats/* rewrite proxy (next.config.js), never exposed on proxy-network directly.
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    container_name: famvacay-umami
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-famvacay}:${POSTGRES_PASSWORD:-famvacay_secure_password}@postgres:5432/${UMAMI_DB:-famvacay_umami}?schema=public
+      - APP_SECRET=${UMAMI_APP_SECRET:-changeme-umami-secret-min32chars}
+      - DISABLE_TELEMETRY=1
+      - DO_NOT_TRACK=1
+      - CLIENT_IP_HEADER=X-Forwarded-For
+    expose:
+      - "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend-internal
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.05"
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/heartbeat', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1));"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
 volumes:
   postgres_data:

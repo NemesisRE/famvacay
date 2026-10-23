@@ -1,0 +1,121 @@
+# Self-hosted, cookieless analytics (Umami). Reuses the famvacay-postgres instance with its own
+# database (see comment on UMAMI_DATABASE_URL below) - never exposed outside the cluster
+# directly; famvacay-web proxies /stats/* to it first-party (see next.config.js rewrites()).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: famvacay-umami-config
+  namespace: default
+  labels:
+    app.kubernetes.io/name: famvacay-umami
+data:
+  DISABLE_TELEMETRY: "1"
+  DO_NOT_TRACK: "1"
+  CLIENT_IP_HEADER: "X-Forwarded-For"
+---
+# NOTE: UMAMI_DATABASE_URL points at a separate database ("famvacay_umami" by default) on the
+# same famvacay-postgres instance. Unlike the Docker Compose setup (which creates it automatically
+# via scripts/postgres-init/), this StatefulSet has no init-script mechanism - create the database
+# once manually before first deploy:
+#   kubectl exec -it famvacay-postgres-0 -- psql -U famvacay -d famvacay_db \
+#     -c 'CREATE DATABASE famvacay_umami;'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: famvacay-umami-secrets
+  namespace: default
+  labels:
+    app.kubernetes.io/name: famvacay-umami
+type: Opaque
+stringData:
+  UMAMI_DATABASE_URL: "postgresql://famvacay:change_this_secret_in_prod@famvacay-postgres:5432/famvacay_umami?schema=public"
+  UMAMI_APP_SECRET: "changeme-umami-secret-min32chars"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: famvacay-umami
+  namespace: default
+  labels:
+    app.kubernetes.io/name: famvacay-umami
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: famvacay-umami
+  template:
+    metadata:
+      labels:
+        app: famvacay-umami
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: umami
+          image: ghcr.io/umami-software/umami:postgresql-latest
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: famvacay-umami-secrets
+                  key: UMAMI_DATABASE_URL
+            - name: APP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: famvacay-umami-secrets
+                  key: UMAMI_APP_SECRET
+          envFrom:
+            - configMapRef:
+                name: famvacay-umami-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /api/heartbeat
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/heartbeat
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: famvacay-umami
+  namespace: default
+spec:
+  ports:
+    - port: 3000
+      targetPort: 3000
+      name: http
+  selector:
+    app: famvacay-umami

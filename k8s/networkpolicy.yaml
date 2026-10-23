@@ -47,4 +47,53 @@ spec:
     - ports:
         - protocol: TCP
           port: 443
+    # 5. Allow TCP connection to self-hosted Umami analytics (port 3000, proxied via /stats/*)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: famvacay-umami
+      ports:
+        - protocol: TCP
+          port: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: famvacay-umami-network-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: famvacay-umami
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Only famvacay-web may reach Umami - it is never exposed outside the cluster directly
+    - from:
+        - podSelector:
+            matchLabels:
+              app: famvacay-web
+      ports:
+        - protocol: TCP
+          port: 3000
+  egress:
+    # Umami needs its own Postgres database (see k8s/umami-deployment.yaml)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: famvacay-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
 
