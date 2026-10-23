@@ -16,7 +16,7 @@ services:
     image: famvacay:migrator
     container_name: famvacay-migrate
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-famvacay}:${POSTGRES_PASSWORD:-supersecret123}@postgres:5432/${POSTGRES_DB:-famvacay_db}?schema=public
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-famvacay}:${POSTGRES_PASSWORD:-famvacay_secure_password}@postgres:5432/${POSTGRES_DB:-famvacay_db}?schema=public
     depends_on:
       postgres:
         condition: service_healthy
@@ -41,7 +41,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-famvacay}:${POSTGRES_PASSWORD:-supersecret123}@postgres:5432/${POSTGRES_DB:-famvacay_db}?schema=public
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-famvacay}:${POSTGRES_PASSWORD:-famvacay_secure_password}@postgres:5432/${POSTGRES_DB:-famvacay_db}?schema=public
       - APP_URL=${APP_URL:-http://localhost:3000}
       - TRUST_PROXY=${TRUST_PROXY:-true}
       - TRUSTED_PROXY_HOPS=${TRUSTED_PROXY_HOPS:-1}
@@ -78,7 +78,7 @@ services:
           cpus: "0.2"
           memory: 256M
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1));"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/ready', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1));"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -93,8 +93,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-famvacay}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-famvacay_secure_password}
       POSTGRES_DB: ${POSTGRES_DB:-famvacay_db}
-    ports:
-      - "${POSTGRES_BIND:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
+    # No host port mapping: Postgres is reachable only from other containers on
+    # backend-internal. For ad-hoc local access use:
+    #   docker compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
     expose:
       - "5432"
     volumes:
@@ -124,8 +125,9 @@ services:
     container_name: famvacay-cache
     restart: unless-stopped
     command: ["valkey-server", "--save", "60", "1", "--loglevel", "warning"]
-    ports:
-      - "${CACHE_BIND:-127.0.0.1}:${CACHE_PORT:-6379}:6379"
+    # No host port mapping: Valkey is reachable only from other containers on
+    # backend-internal. For ad-hoc local access use:
+    #   docker compose exec cache valkey-cli
     expose:
       - "6379"
     volumes:
@@ -159,7 +161,7 @@ networks:
   # Isolated bridge network for web <-> migrate <-> db <-> cache
   backend-internal:
     driver: bridge
-    internal: false
+    internal: true
 
   # External network joined only by web to connect to reverse proxy
   proxy-network:
