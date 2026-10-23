@@ -83,10 +83,10 @@ export function LongRangeStylePopover({ longRangeStyles, onChange, isOpen, onOpe
         title={t.home.longRangeStylePreference}
       >
         <span className="flex items-center gap-1 truncate">
-          <Globe className={`w-2.5 h-2.5 flex-shrink-0 ${!isAny ? 'text-slate-950' : 'text-teal-200'}`} />
+          <Globe className={`w-2.5 h-2.5 shrink-0 ${!isAny ? 'text-slate-950' : 'text-teal-200'}`} />
           <span className="truncate">{currentLabel}</span>
         </span>
-        <ChevronDown className="w-2.5 h-2.5 flex-shrink-0 opacity-80" />
+        <ChevronDown className="w-2.5 h-2.5 shrink-0 opacity-80" />
       </button>
 
       {isOpen && (
@@ -133,7 +133,7 @@ export function LongRangeStylePopover({ longRangeStyles, onChange, isOpen, onOpe
                   }`}
                 >
                   <span className="truncate">{labels[style]}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[2.5] flex-shrink-0" />}
+                  {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[2.5] shrink-0" />}
                 </button>
               );
             })}

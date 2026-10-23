@@ -70,13 +70,13 @@ export function FlightStopsPopover({
       >
         <span className="flex items-center gap-1 truncate">
           <Plane
-            className={`w-2.5 h-2.5 flex-shrink-0 ${
+            className={`w-2.5 h-2.5 shrink-0 ${
               maxFlightStops !== undefined ? 'text-slate-950' : 'text-teal-200'
             }`}
           />
           <span className="truncate">{currentLabel}</span>
         </span>
-        <ChevronDown className="w-2.5 h-2.5 flex-shrink-0 opacity-80" />
+        <ChevronDown className="w-2.5 h-2.5 shrink-0 opacity-80" />
       </button>
 
       {isOpen && (
@@ -131,7 +131,7 @@ export function FlightStopsPopover({
                   }`}
                 >
                   <span className="truncate">{opt.label}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[2.5] flex-shrink-0" />}
+                  {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[2.5] shrink-0" />}
                 </button>
               );
             })}

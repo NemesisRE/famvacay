@@ -70,10 +70,10 @@ export function CarFuelPopover({ carFuelType, onSelect, isOpen, onOpenChange, t 
         title={t.home.carFuelPreference}
       >
         <span className="flex items-center gap-1 truncate">
-          <Icon className={`w-2.5 h-2.5 flex-shrink-0 ${carFuelType !== undefined ? 'text-slate-950' : 'text-teal-200'}`} />
+          <Icon className={`w-2.5 h-2.5 shrink-0 ${carFuelType !== undefined ? 'text-slate-950' : 'text-teal-200'}`} />
           <span className="truncate">{currentLabel}</span>
         </span>
-        <ChevronDown className="w-2.5 h-2.5 flex-shrink-0 opacity-80" />
+        <ChevronDown className="w-2.5 h-2.5 shrink-0 opacity-80" />
       </button>
 
       {isOpen && (
@@ -109,7 +109,7 @@ export function CarFuelPopover({ carFuelType, onSelect, isOpen, onOpenChange, t 
                   }`}
                 >
                   <span className="truncate">{opt.label}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[2.5] flex-shrink-0" />}
+                  {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[2.5] shrink-0" />}
                 </button>
               );
             })}

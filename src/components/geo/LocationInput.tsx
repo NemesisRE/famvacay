@@ -185,10 +185,10 @@ export function LocationInput({
       {label && (
         <div className="h-5 flex items-center justify-between mb-1.5">
           <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 truncate min-w-0">
-            <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+            <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
             <span className="truncate">{label}</span>
           </span>
-          <span className="flex items-center gap-2 flex-shrink-0 ml-1.5">
+          <span className="flex items-center gap-2 shrink-0 ml-1.5">
             {isVerified && query.trim() ? (
               <span title={t.home.locationVerified} aria-label={t.home.locationVerified}>
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
@@ -235,7 +235,7 @@ export function LocationInput({
             }
           }}
           placeholder={placeholder || t.home.departureLocationPlaceholder}
-          className={`w-full text-xs font-medium rounded-lg border pl-3 pr-8 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:font-normal focus:outline-none focus:ring-2 shadow-2xs ${
+          className={`w-full text-xs font-medium rounded-lg border pl-3 pr-8 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:font-normal focus:outline-hidden focus:ring-2 shadow-2xs ${
             validationWarning
               ? 'border-amber-400 focus:ring-amber-500 bg-amber-50/20 dark:bg-amber-950/20'
               : 'border-slate-300 dark:border-slate-700 focus:ring-teal-500'
@@ -264,7 +264,7 @@ export function LocationInput({
       {/* Validation warning */}
       {validationWarning && (
         <div className="mt-1.5 p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg flex items-start gap-1.5 text-xs text-amber-800 dark:text-amber-200">
-          <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+          <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <span className="text-[11px] leading-tight">{validationWarning}</span>
         </div>
       )}
@@ -284,7 +284,7 @@ export function LocationInput({
               className="w-full text-left px-3 py-2 text-xs hover:bg-teal-50 dark:hover:bg-slate-700/70 transition-colors flex items-center justify-between cursor-pointer"
             >
               <div className="flex items-center gap-2 min-w-0">
-                <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
                 <div className="truncate">
                   <span className="font-semibold text-slate-800 dark:text-slate-100">
                     {loc.name}
@@ -292,7 +292,7 @@ export function LocationInput({
                   {loc.stateName && <span className="text-slate-500 dark:text-slate-400 ml-1">· {loc.stateName}</span>}
                 </div>
               </div>
-              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded flex-shrink-0 ml-2">
+              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded shrink-0 ml-2">
                 {(loc.countryCode || '').toUpperCase()}
               </span>
             </button>

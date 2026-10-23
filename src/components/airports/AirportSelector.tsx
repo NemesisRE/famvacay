@@ -282,7 +282,7 @@ export function AirportSelector({
         <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-slate-50/80 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
           {selectedAirports.length === 0 ? (
             <span className="flex items-start gap-2 text-xs text-teal-800 dark:text-teal-200">
-              <span className="inline-flex items-center gap-1 font-semibold px-2.5 py-1 rounded-lg bg-teal-600 text-white shadow-sm flex-shrink-0">
+              <span className="inline-flex items-center gap-1 font-semibold px-2.5 py-1 rounded-lg bg-teal-600 text-white shadow-xs shrink-0">
                 <Sparkles className="w-3 h-3 text-teal-200" />
                 {t.home.airportsFlexTitle}
               </span>
@@ -294,7 +294,7 @@ export function AirportSelector({
               return (
                 <span
                   key={code}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-teal-600 text-white shadow-sm"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-teal-600 text-white shadow-xs"
                 >
                   <Plane className="w-3 h-3 text-teal-200" />
                   <span>{code}</span>
@@ -330,7 +330,7 @@ export function AirportSelector({
               if (searchResults.length > 0) setShowDropdown(true);
             }}
             placeholder={t.home.searchAirportsPlaceholder}
-            className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 pl-8 pr-8 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm"
+            className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 pl-8 pr-8 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-teal-500 shadow-xs"
           />
           <Search className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-2.5 top-2.5" />
           {searching && (
@@ -375,11 +375,11 @@ export function AirportSelector({
                     </div>
                   </div>
                   {isSelected ? (
-                    <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-[11px] font-semibold flex-shrink-0">
+                    <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-[11px] font-semibold shrink-0">
                       <Check className="w-3 h-3" /> {t.home.airportsSelectedLabel}
                     </span>
                   ) : (
-                    <span className="text-teal-600 dark:text-teal-400 text-[11px] font-semibold flex-shrink-0">
+                    <span className="text-teal-600 dark:text-teal-400 text-[11px] font-semibold shrink-0">
                       {t.home.airportsAdd}
                     </span>
                   )}
@@ -431,7 +431,7 @@ export function AirportSelector({
                     onClick={() => toggleSuggestion(airport.code)}
                     className={`text-xs px-2.5 py-1.5 rounded-lg border font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
                       isSelected
-                        ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                        ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
                         : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                     }`}
                   >

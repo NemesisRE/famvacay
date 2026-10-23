@@ -106,7 +106,7 @@ export function DateRangePicker({ startDate, endDate, onChange, minDate, classNa
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         title={fullLabel}
-        className="w-full flex items-center gap-1 text-xs rounded border border-slate-300 dark:border-slate-700 px-1.5 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer hover:border-amber-300 dark:hover:border-amber-700 transition"
+        className="w-full flex items-center gap-1 text-xs rounded border border-slate-300 dark:border-slate-700 px-1.5 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-hidden focus:ring-1 focus:ring-amber-500 cursor-pointer hover:border-amber-300 dark:hover:border-amber-700 transition"
       >
         <Calendar className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
         <span className={`truncate ${shortLabel ? '' : 'text-slate-400 dark:text-slate-500'}`}>

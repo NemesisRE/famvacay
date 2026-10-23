@@ -102,7 +102,7 @@ export function ChildrenSelector({
               >
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                 {/* Number & Date Input */}
-                <div className="order-1 flex items-center gap-2 flex-shrink-0">
+                <div className="order-1 flex items-center gap-2 shrink-0">
                   <span className="text-[11px] font-bold text-slate-500 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 w-5 h-5 rounded-full flex items-center justify-center">
                     {index + 1}
                   </span>
@@ -110,7 +110,7 @@ export function ChildrenSelector({
                     type="date"
                     value={child.birthDate}
                     onChange={(e) => handleDateChange(child.id, e.target.value)}
-                    className="text-xs rounded border border-slate-300 dark:border-slate-600 px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-teal-500 outline-none w-32"
+                    className="text-xs rounded border border-slate-300 dark:border-slate-600 px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-teal-500 outline-hidden w-32"
                   />
                 </div>
 
@@ -123,7 +123,7 @@ export function ChildrenSelector({
                 <button
                   type="button"
                   onClick={() => handleRemoveChild(child.id)}
-                  className="order-2 ml-auto sm:order-3 sm:ml-0 p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors flex-shrink-0 cursor-pointer"
+                  className="order-2 ml-auto sm:order-3 sm:ml-0 p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors shrink-0 cursor-pointer"
                   title={t.home.removeChild}
                 >
                   <Trash2 className="w-3.5 h-3.5" />

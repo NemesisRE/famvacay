@@ -99,7 +99,7 @@ export function ResultsCountPopover({ shown, total, rows, onInclude, onIncludeAl
             {rows.map((row) => (
               <div key={row.warningKey ? `${row.key}:${row.warningKey}` : row.key} className="flex items-center justify-between gap-2 text-slate-600 dark:text-slate-300">
                 <span className="min-w-0 truncate" title={row.label}>− {row.label}</span>
-                <span className="flex items-center gap-2 flex-shrink-0">
+                <span className="flex items-center gap-2 shrink-0">
                   <span className="tabular-nums text-rose-600 dark:text-rose-400 font-semibold">−{row.excluded}</span>
                   <button
                     type="button"

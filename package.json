@@ -56,6 +56,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/bcryptjs": "^2.4.6",
     "@types/iso-3166-2": "^1.0.4",
     "@types/node": "^20.17.6",
@@ -64,12 +65,11 @@
     "@vitejs/plugin-react": "6.1.2",
     "@vitest/coverage-v8": "5.0.5",
     "airport-data": "^1.0.1",
-    "autoprefixer": "^10.4.20",
     "eslint": "^10.13.0",
     "eslint-config-next": "^16.4.3",
     "postcss": "^8.5.30",
     "prisma": "^6.19.3",
-    "tailwindcss": "^3.4.15",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "vitest": "5.0.5"
   },

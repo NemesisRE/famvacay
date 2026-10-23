@@ -275,7 +275,7 @@ export function BookingDealsPopover({
                         }`}
                       >
                         <span className="truncate">{portal.name}</span>
-                        {isChecked && <Check className="w-3 h-3 text-teal-600 dark:text-teal-400 flex-shrink-0 ml-1" />}
+                        {isChecked && <Check className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0 ml-1" />}
                       </button>
                     );
                   })}
@@ -331,7 +331,7 @@ export function BookingDealsPopover({
                 {/* Package Tour Child Fixed-Price Discount (Kinderfestpreis) vs. Modular Booking */}
                 {pricingDetails.packageTourDeal && (
                   <div className="p-2 rounded-lg bg-violet-50/70 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-900/60 text-[11px] flex items-start gap-1.5">
-                    <Package className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 flex-shrink-0 mt-0.5" />
+                    <Package className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
                     <span className="text-violet-800 dark:text-violet-300">
                       {pricingDetails.packageTourDeal.cheaperStrategy === 'PACKAGE'
                         ? (t.home.packageTourCheaper || 'Package tour (Kinderfestpreis) is cheaper by')
@@ -348,7 +348,7 @@ export function BookingDealsPopover({
                 {/* Park-Sleep-Fly notice when airport driving duration exceeds 90 minutes */}
                 {!isOverland && candidate?.parkSleepFlyRecommended && (
                   <div className="p-2 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/60 text-[11px] flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
-                    <ParkingCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <ParkingCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>{t.home.parkSleepFlyNotice || 'Long drive to the airport - consider a Park & Sleep & Fly hotel (+130 €)'}</span>
                   </div>
                 )}
@@ -377,10 +377,10 @@ export function BookingDealsPopover({
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`text-center py-1.5 px-2 rounded-lg font-semibold text-[11px] shadow-xs flex items-center justify-between transition-colors ${portal.colorClass}`}
+                          className={`text-center py-1.5 px-2 rounded-lg font-semibold text-[11px] shadow-2xs flex items-center justify-between transition-colors ${portal.colorClass}`}
                         >
                           <span className="truncate">{portal.name}</span>
-                          <div className="flex items-center gap-1 flex-shrink-0 ml-1">
+                          <div className="flex items-center gap-1 shrink-0 ml-1">
                             {(portal.badgeKey || portal.badge) && (
                               <span className="text-[8px] uppercase font-extrabold bg-white/20 px-1 py-0.2 rounded">
                                 {portal.badgeKey ? t.home[PORTAL_BADGE_LABEL_KEYS[portal.badgeKey]] : portal.badge}
@@ -399,7 +399,7 @@ export function BookingDealsPopover({
             {/* Footer Transparency Notice + .ics Export */}
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 gap-2">
               <span className="truncate">{t.home.dealsEstimateNote}</span>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
                 {candidate && (
                   <button
                     type="button"

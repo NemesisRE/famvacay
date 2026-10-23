@@ -163,16 +163,16 @@ export function FlightDetailsPopover({
         className="relative h-7 w-full inline-flex items-center justify-center gap-1.5 font-semibold text-xs text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-slate-700/60 hover:text-teal-800 dark:hover:text-teal-300 pl-2.5 pr-7 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-teal-300 transition-colors cursor-pointer group shadow-2xs"
         title={t.home.flightDetailsTooltip}
       >
-        <Plane className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform flex-shrink-0" />
+        <Plane className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform shrink-0" />
         <span className="font-bold tracking-tight">
           {originAirport} ➔ {destinationAirport}
         </span>
         {isActuallyDirect ? (
-          <span className="text-[9px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800 flex-shrink-0">
+          <span className="text-[9px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800 shrink-0">
             {t.home.nonStopFlight}
           </span>
         ) : (
-          <span className="text-[9px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100/90 dark:bg-amber-950/60 px-1.5 py-0.2 rounded border border-amber-200 dark:border-amber-800 flex-shrink-0">
+          <span className="text-[9px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100/90 dark:bg-amber-950/60 px-1.5 py-0.2 rounded border border-amber-200 dark:border-amber-800 shrink-0">
             {stops === 1 ? t.home.oneStopFlight : t.home.multipleStopsFlight.replace('{stops}', String(stops))}
           </span>
         )}
@@ -249,7 +249,7 @@ export function FlightDetailsPopover({
               <div className="pt-1 border-t border-slate-200/70 dark:border-slate-700/60 text-[11px] space-y-1">
                 {originDistanceKm !== undefined && (
                   <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
-                    <MapPin className="w-3 h-3 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                    <MapPin className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
                     <span>
                       <strong className="text-slate-900 dark:text-slate-100">~{originDistanceKm} km</strong>{' '}
                       {departureLocation ? `${t.home.distanceFromHome} (${departureLocation.split(',')[0]})` : t.home.distanceFromHome}
@@ -259,7 +259,7 @@ export function FlightDetailsPopover({
 
                 {driveTimeStr && (
                   <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
-                    <Car className="w-3 h-3 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+                    <Car className="w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0" />
                     <span>
                       {t.home.driveTime}: <strong className="text-slate-800 dark:text-slate-200">{driveTimeStr}</strong>
                     </span>
@@ -269,7 +269,7 @@ export function FlightDetailsPopover({
                 {railFeeder && (
                   <div className="text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 text-[11px] space-y-0.5">
                     <div className="flex items-center gap-1.5 font-bold">
-                      <Train className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                      <Train className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                       <span>{t.home.railAirTitle}</span>
                     </div>
                     <div>
@@ -289,14 +289,14 @@ export function FlightDetailsPopover({
 
                 {originHighSpeedRail && !railFeeder && (
                   <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800 font-medium text-[10px]">
-                    <Train className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                    <Train className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span>{t.home.railConnected} ({t.home.railConnectedStation})</span>
                   </div>
                 )}
 
                 {isArbitrage && (
                   <div className="flex items-center gap-1.5 text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded-lg border border-amber-200 dark:border-amber-800 text-[10px]">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                     <span>
                       {t.home.arbitrageNoteTemplate
                         .replace('{origin}', originAirport)
@@ -365,7 +365,7 @@ export function FlightDetailsPopover({
 
                         {nextLayover && (
                           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-100/90 dark:bg-amber-900/50 text-amber-950 dark:text-amber-200 font-medium text-[10px] border border-amber-300/80 dark:border-amber-700/60">
-                            <Clock className="w-3 h-3 text-amber-700 dark:text-amber-400 flex-shrink-0" />
+                            <Clock className="w-3 h-3 text-amber-700 dark:text-amber-400 shrink-0" />
                             <span>
                               <strong>{t.home.layoverDuration}:</strong> {Math.floor(nextLayover.durationMinutes / 60)}h {nextLayover.durationMinutes % 60}m {t.home.connectionAtHub.replace('{hub}', nextLayover.airportCode)} ({nextLayover.city})
                             </span>
@@ -436,7 +436,7 @@ export function FlightDetailsPopover({
                 href={googleFlightsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-1.5 px-3 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                className="w-full py-1.5 px-3 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
               >
                 <span>Check Live Flights on Google Flights</span>
                 <ExternalLink className="w-3.5 h-3.5" />

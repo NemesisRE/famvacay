@@ -127,7 +127,7 @@ export function DestinationFilterDropdown({
         >
           <span className="truncate">{getButtonLabel()}</span>
           <ChevronDown
-            className={`w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform flex-shrink-0 ${
+            className={`w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform shrink-0 ${
               isOpen ? 'rotate-180' : ''
             }`}
           />
@@ -152,7 +152,7 @@ export function DestinationFilterDropdown({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header / Clear all */}
-            <div className="flex-shrink-0 flex items-center justify-between pb-1.5 px-1 border-b border-slate-100 dark:border-slate-800 mb-1.5 text-[11px]">
+            <div className="shrink-0 flex items-center justify-between pb-1.5 px-1 border-b border-slate-100 dark:border-slate-800 mb-1.5 text-[11px]">
               <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {t.home.filterByDestination}
               </span>
@@ -169,14 +169,14 @@ export function DestinationFilterDropdown({
 
             {/* Search Input when more than 5 destinations */}
             {destinations.length > 5 && (
-              <div className="relative mb-2 px-0.5 flex-shrink-0">
+              <div className="relative mb-2 px-0.5 shrink-0">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t.common.search}
-                  className="w-full text-xs rounded-lg pl-7 pr-7 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-teal-500"
+                  className="w-full text-xs rounded-lg pl-7 pr-7 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 outline-hidden focus:ring-1 focus:ring-teal-500"
                 />
                 {searchQuery && (
                   <button
@@ -209,7 +209,7 @@ export function DestinationFilterDropdown({
                       : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
                   }`}
                 >
-                  {isAllSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                  {isAllSelected && <Check className="w-3 h-3 stroke-3" />}
                 </div>
                 <span>{t.home.allDestinations}</span>
               </div>
@@ -236,18 +236,18 @@ export function DestinationFilterDropdown({
                   >
                     <div className="flex items-center gap-2 truncate min-w-0">
                       <div
-                        className={`w-4 h-4 rounded border flex items-center justify-center transition-colors flex-shrink-0 ${
+                        className={`w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0 ${
                           isSelected
                             ? 'bg-teal-600 border-teal-600 text-white'
                             : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
                         }`}
                       >
-                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                        {isSelected && <Check className="w-3 h-3 stroke-3" />}
                       </div>
                       <span className="truncate" title={dest.name}>{dest.name}</span>
                     </div>
                     <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ml-1.5 ${
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-1.5 ${
                         isSelected
                           ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-900 dark:text-teal-200 font-bold'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
@@ -263,7 +263,7 @@ export function DestinationFilterDropdown({
             </div>
 
             {/* Clear way out: close the menu once the selection is done */}
-            <div className="flex-shrink-0 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="shrink-0 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}

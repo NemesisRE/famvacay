@@ -108,7 +108,7 @@ export default function SignInPage() {
 
   return (
     <div className="max-w-md mx-auto py-12 px-4 sm:px-6">
-      <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6">
+      <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs space-y-6">
         <div className="text-center space-y-2">
           <div className="w-12 h-12 bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 rounded-xl mx-auto flex items-center justify-center">
             <Lock className="w-6 h-6" />
@@ -130,9 +130,9 @@ export default function SignInPage() {
             }`}
           >
             {message.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             ) : (
-              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
             )}
             <span>{message.text}</span>
           </div>
@@ -198,7 +198,7 @@ export default function SignInPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t.auth.fullNamePlaceholder}
-                className="w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2.5 focus:ring-2 focus:ring-teal-500 outline-none"
+                className="w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2.5 focus:ring-2 focus:ring-teal-500 outline-hidden"
               />
             </div>
           )}
@@ -212,7 +212,7 @@ export default function SignInPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="parent@example.com"
-                className="w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2.5 pl-9 focus:ring-2 focus:ring-teal-500 outline-none"
+                className="w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2.5 pl-9 focus:ring-2 focus:ring-teal-500 outline-hidden"
               />
               <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             </div>
@@ -227,7 +227,7 @@ export default function SignInPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2.5 pl-9 focus:ring-2 focus:ring-teal-500 outline-none"
+                className="w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2.5 pl-9 focus:ring-2 focus:ring-teal-500 outline-hidden"
               />
               <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             </div>
@@ -236,7 +236,7 @@ export default function SignInPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-teal-600 hover:bg-teal-700 text-white shadow transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+            className="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-teal-600 hover:bg-teal-700 text-white shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
           >
             {loading ? (
               <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
@@ -258,7 +258,7 @@ export default function SignInPage() {
             className="w-full min-h-10 py-2 px-3 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/60 dark:bg-indigo-950/40 hover:bg-indigo-50 dark:hover:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-semibold text-xs transition flex items-center justify-center gap-2 text-center cursor-pointer disabled:opacity-60"
           >
             <Shield className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-            <span className="leading-snug break-words text-left sm:text-center">{t.auth.passkeyBtn}</span>
+            <span className="leading-snug wrap-break-word text-left sm:text-center">{t.auth.passkeyBtn}</span>
           </button>
         </div>
 

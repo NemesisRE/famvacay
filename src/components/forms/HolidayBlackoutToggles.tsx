@@ -65,7 +65,7 @@ export function HolidayBlackoutToggles({ selected, onChange, earliestDate, lates
               title={title}
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
                 isSelected
-                  ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                  ? 'bg-amber-600 text-white border-amber-700 shadow-2xs'
                   : 'bg-white/80 dark:bg-slate-800/80 hover:bg-white dark:hover:bg-slate-800 text-amber-900 dark:text-amber-200 border-amber-200/90 dark:border-amber-800/60 hover:border-amber-300 dark:hover:border-amber-700 shadow-2xs'
               }`}
             >

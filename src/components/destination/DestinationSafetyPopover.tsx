@@ -160,7 +160,7 @@ export function DestinationSafetyPopover({
             style={getResponsivePopoverStyle(isSmallScreen, floatingStyles, 9999)}
             {...getFloatingProps()}
             onClick={(e) => e.stopPropagation()}
-            className="z-50 w-[92vw] max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-slate-800 text-slate-800 dark:text-slate-100 p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150 focus:outline-none"
+            className="z-50 w-[92vw] max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-slate-800 text-slate-800 dark:text-slate-100 p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150 focus:outline-hidden"
           >
             {/* Popout Header */}
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">

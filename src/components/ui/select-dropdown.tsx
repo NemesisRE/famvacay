@@ -158,17 +158,17 @@ export function SelectDropdown({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`${triggerSize} ${triggerTone} border text-xs flex items-center justify-between gap-2 transition cursor-pointer shadow-2xs select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 disabled:cursor-not-allowed disabled:opacity-60`}
+        className={`${triggerSize} ${triggerTone} border text-xs flex items-center justify-between gap-2 transition cursor-pointer shadow-2xs select-none focus:outline-hidden focus-visible:ring-2 focus-visible:ring-teal-500 disabled:cursor-not-allowed disabled:opacity-60`}
       >
         <span className="flex items-center gap-2 truncate min-w-0">
-          {icon && <span className="flex-shrink-0 flex items-center">{icon}</span>}
+          {icon && <span className="shrink-0 flex items-center">{icon}</span>}
           <span className="truncate" suppressHydrationWarning>{selected?.label ?? value}</span>
           {selected?.hint !== undefined && (
-            <span className="text-[10px] font-medium opacity-70 flex-shrink-0">({selected.hint})</span>
+            <span className="text-[10px] font-medium opacity-70 shrink-0">({selected.hint})</span>
           )}
         </span>
         <ChevronDown
-          className={`w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform shrink-0 ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -188,13 +188,13 @@ export function SelectDropdown({
             onClick={(e) => e.stopPropagation()}
           >
             {menuTitle && (
-              <div className="flex-shrink-0 pb-1.5 px-1 border-b border-slate-100 dark:border-slate-800 mb-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <div className="shrink-0 pb-1.5 px-1 border-b border-slate-100 dark:border-slate-800 mb-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {menuTitle}
               </div>
             )}
 
             {showSearch && (
-              <div className="relative mb-2 px-0.5 flex-shrink-0">
+              <div className="relative mb-2 px-0.5 shrink-0">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
@@ -212,7 +212,7 @@ export function SelectDropdown({
                     }
                   }}
                   placeholder={t.common.search}
-                  className="w-full text-base sm:text-xs rounded-lg pl-7 pr-7 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-teal-500"
+                  className="w-full text-base sm:text-xs rounded-lg pl-7 pr-7 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 outline-hidden focus:ring-1 focus:ring-teal-500"
                 />
                 {query && (
                   <button
@@ -238,7 +238,7 @@ export function SelectDropdown({
                     aria-selected={isSelected}
                     disabled={option.disabled}
                     onClick={() => choose(option)}
-                    className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs transition text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 ${
+                    className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs transition text-left focus:outline-hidden focus-visible:ring-2 focus-visible:ring-teal-500 ${
                       option.disabled
                         ? 'opacity-40 cursor-not-allowed text-slate-500 dark:text-slate-500'
                         : isSelected
@@ -247,14 +247,14 @@ export function SelectDropdown({
                     }`}
                   >
                     <span className="flex items-center gap-2 min-w-0">
-                      <span className="w-3.5 flex-shrink-0">
-                        {isSelected && <Check className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 stroke-[3]" />}
+                      <span className="w-3.5 shrink-0">
+                        {isSelected && <Check className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 stroke-3" />}
                       </span>
                       <span className="truncate" title={option.label}>{option.label}</span>
                     </span>
                     {option.hint !== undefined && (
                       <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${
                           isSelected
                             ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300'
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
@@ -273,7 +273,7 @@ export function SelectDropdown({
 
             {/* Long, searchable lists: a clear way out, like the destination filter */}
             {showSearch && (
-              <div className="flex-shrink-0 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="shrink-0 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => {

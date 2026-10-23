@@ -123,14 +123,14 @@ export function OverlandTripDetailsPopover({
         className="relative h-7 w-full inline-flex items-center justify-center gap-1.5 font-semibold text-xs text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-slate-700/60 hover:text-teal-800 dark:hover:text-teal-300 pl-2.5 pr-7 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-teal-300 transition-colors cursor-pointer group shadow-2xs"
         title={t.home.overlandRouteTitle}
       >
-        <Icon className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform flex-shrink-0" />
+        <Icon className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform shrink-0" />
         <span className="font-bold tracking-tight">{t.home.tripDetailsButton}</span>
         {durationMinutes ? (
-          <span className="text-[9px] font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 px-1.5 py-0.2 rounded border border-slate-200 dark:border-slate-700 flex-shrink-0">
+          <span className="text-[9px] font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 px-1.5 py-0.2 rounded border border-slate-200 dark:border-slate-700 shrink-0">
             {formatDuration(durationMinutes)}
           </span>
         ) : null}
-        {hasFerry && <Ship className="w-3 h-3 text-cyan-600 dark:text-cyan-400 flex-shrink-0" />}
+        {hasFerry && <Ship className="w-3 h-3 text-cyan-600 dark:text-cyan-400 shrink-0" />}
         <ChevronDown className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 group-hover:text-teal-600 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
@@ -166,7 +166,7 @@ export function OverlandTripDetailsPopover({
             {/* Route: home -> destination */}
             <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] space-y-1">
               <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200">
-                <MapPin className="w-3 h-3 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                <MapPin className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
                 <span className="truncate">{homeLabel}</span>
                 <span className="text-slate-400">➔</span>
                 <span className="truncate font-bold text-slate-900 dark:text-slate-100">
@@ -226,7 +226,7 @@ export function OverlandTripDetailsPopover({
             )}
             {chargingStops > 0 && (
               <div className="p-2 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/60 text-[11px] flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
-                <Zap className="w-3.5 h-3.5 flex-shrink-0" />
+                <Zap className="w-3.5 h-3.5 shrink-0" />
                 <span>{t.home.chargingStopsLabel.replace('{count}', String(chargingStops))}</span>
               </div>
             )}
@@ -238,7 +238,7 @@ export function OverlandTripDetailsPopover({
 
             {hasFerry && (
               <div className="p-2 rounded-lg bg-cyan-50/70 dark:bg-cyan-950/30 border border-cyan-100 dark:border-cyan-900/60 text-[11px] flex items-start gap-1.5 text-cyan-900 dark:text-cyan-200">
-                <Ship className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <Ship className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                 <span>
                   <strong>{overlandAccess === 'SHORT_FERRY' ? t.home.shortFerryBadge : t.home.longFerryBadge}</strong>
                   {ferryTransitMinutes
@@ -252,7 +252,7 @@ export function OverlandTripDetailsPopover({
 
             {needsOvernightStop && (
               <div className="p-2 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/60 text-[11px] flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
-                <BedDouble className="w-3.5 h-3.5 flex-shrink-0" />
+                <BedDouble className="w-3.5 h-3.5 shrink-0" />
                 <span>{t.home.overnightStopRecommended}</span>
               </div>
             )}
@@ -262,20 +262,20 @@ export function OverlandTripDetailsPopover({
                 href={routeUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-center py-1.5 px-2 rounded-lg font-semibold text-[11px] shadow-xs flex items-center justify-between bg-teal-600 hover:bg-teal-700 text-white transition-colors"
+                className="text-center py-1.5 px-2 rounded-lg font-semibold text-[11px] shadow-2xs flex items-center justify-between bg-teal-600 hover:bg-teal-700 text-white transition-colors"
               >
                 <span className="truncate">{t.home.openRoutePlanner}</span>
-                <ExternalLink className="w-3 h-3 flex-shrink-0 ml-1" />
+                <ExternalLink className="w-3 h-3 shrink-0 ml-1" />
               </a>
               {ticketSearchUrl && (
                 <a
                   href={ticketSearchUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-center py-1.5 px-2 rounded-lg font-semibold text-[11px] shadow-xs flex items-center justify-between bg-slate-700 hover:bg-slate-800 text-white transition-colors"
+                  className="text-center py-1.5 px-2 rounded-lg font-semibold text-[11px] shadow-2xs flex items-center justify-between bg-slate-700 hover:bg-slate-800 text-white transition-colors"
                 >
                   <span className="truncate">{vehicle === 'TRAIN' ? t.home.searchTrainTickets : t.home.searchBusTickets}</span>
-                  <ExternalLink className="w-3 h-3 flex-shrink-0 ml-1" />
+                  <ExternalLink className="w-3 h-3 shrink-0 ml-1" />
                 </a>
               )}
             </div>

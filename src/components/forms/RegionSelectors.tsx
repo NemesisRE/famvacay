@@ -16,7 +16,7 @@ import {
  * control (previously each page carried its own slightly different class list).
  */
 export const FORM_SELECT_CLASS =
-  'w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs';
+  'w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-medium focus:outline-hidden focus:ring-2 focus:ring-teal-500 shadow-2xs';
 
 
 /**

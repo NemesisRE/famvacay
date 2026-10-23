@@ -72,7 +72,7 @@ export function ClimateDetailsPopover({
         aria-haspopup="dialog"
         aria-expanded={isOpen}
       >
-        <Sun className="w-3 h-3 text-amber-500 group-hover:rotate-45 transition-transform flex-shrink-0" />
+        <Sun className="w-3 h-3 text-amber-500 group-hover:rotate-45 transition-transform shrink-0" />
         <span>{weather.avgTempC}°C</span>
         {/* Same "more info" cue as the safety badge */}
         <span className="opacity-60 group-hover:opacity-100 text-[10px] font-normal transition-opacity ml-0.5" aria-hidden="true">

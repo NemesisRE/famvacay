@@ -44,12 +44,12 @@ export function SelectionTile({ icon: Icon, label, hint, isSelected, onToggle, s
         raised ? 'z-30' : 'z-10'
       } ${
         isSelected
-          ? 'bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-600/25'
+          ? 'bg-teal-600 text-white border-teal-600 shadow-xs ring-2 ring-teal-600/25'
           : 'bg-white dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600'
       }`}
     >
       <div className="flex items-center justify-between w-full">
-        <Icon className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-white' : 'text-teal-600 dark:text-teal-400'}`} />
+        <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-teal-600 dark:text-teal-400'}`} />
         {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />}
       </div>
 

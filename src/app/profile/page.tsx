@@ -396,7 +396,7 @@ export default function FamilyProfilePage() {
 
   return (
     <div className="max-w-4xl mx-auto py-6 space-y-6">
-      <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
+      <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-100 dark:border-slate-800 gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -452,9 +452,9 @@ export default function FamilyProfilePage() {
                 }`}
               >
                 {message.type === 'success' ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 ) : (
-                  <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
                 )}
                 <span>{message.text}</span>
               </div>
@@ -509,7 +509,7 @@ export default function FamilyProfilePage() {
               />
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <Info className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+              <Info className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
               <span>{t.home.holidayScopeNotice}</span>
             </p>
           </div>
@@ -662,7 +662,7 @@ export default function FamilyProfilePage() {
                   key={index}
                   className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-12 gap-3 items-center"
                 >
-                  <div className="order-1 sm:order-none sm:col-span-3">
+                  <div className="order-1 sm:order-0 sm:col-span-3">
                     <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
                       {t.profile.name}
                     </label>
@@ -675,7 +675,7 @@ export default function FamilyProfilePage() {
                     />
                   </div>
 
-                  <div className="order-3 col-span-2 sm:order-none sm:col-span-2">
+                  <div className="order-3 col-span-2 sm:order-0 sm:col-span-2">
                     <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
                       {t.profile.role}
                     </label>
@@ -692,7 +692,7 @@ export default function FamilyProfilePage() {
                     />
                   </div>
 
-                  <div className="order-3 col-span-2 sm:order-none sm:col-span-3">
+                  <div className="order-3 col-span-2 sm:order-0 sm:col-span-3">
                     <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
                       {t.profile.birthDate}
                     </label>
@@ -705,7 +705,7 @@ export default function FamilyProfilePage() {
                     />
                   </div>
 
-                  <div className="order-3 col-span-2 sm:order-none sm:col-span-3">
+                  <div className="order-3 col-span-2 sm:order-0 sm:col-span-3">
                     <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
                       {t.profile.passportExpiry}
                     </label>
@@ -718,7 +718,7 @@ export default function FamilyProfilePage() {
                   </div>
 
                   {/* Phones: next to the name field (it used to get a row of its own) */}
-                  <div className="order-2 self-end sm:self-auto sm:order-none sm:col-span-1 flex justify-end">
+                  <div className="order-2 self-end sm:self-auto sm:order-0 sm:col-span-1 flex justify-end">
                     <button
                       type="button"
                       onClick={() => removeMember(index)}
@@ -731,13 +731,13 @@ export default function FamilyProfilePage() {
                   </div>
 
                   {(member.role === 'CHILD' || member.role === 'INFANT') && member.birthDate && (
-                    <div className="order-3 col-span-2 sm:order-none sm:col-span-12 flex flex-wrap items-center gap-1.5">
+                    <div className="order-3 col-span-2 sm:order-0 sm:col-span-12 flex flex-wrap items-center gap-1.5">
                       <ChildAgeBadges age={Math.max(0, differenceInYears(new Date(), new Date(member.birthDate)))} />
                     </div>
                   )}
 
                   {(member.role === 'CHILD' || member.role === 'INFANT') && (
-                    <div className="order-3 col-span-2 sm:order-none sm:col-span-12">
+                    <div className="order-3 col-span-2 sm:order-0 sm:col-span-12">
                       <SchoolRegionSelect
                         homeRegion={federalState}
                         value={member.schoolSubdivision}
@@ -795,9 +795,9 @@ export default function FamilyProfilePage() {
                     {blackoutRanges.map((range, index) => (
                       <div
                         key={index}
-                        className="px-2.5 py-1.5 bg-white/95 dark:bg-slate-800/80 rounded-lg border border-amber-200/90 dark:border-amber-800/60 flex items-center gap-1.5 text-xs transition-all hover:bg-white dark:hover:bg-slate-800 hover:border-amber-300 dark:hover:border-amber-700 shadow-xs"
+                        className="px-2.5 py-1.5 bg-white/95 dark:bg-slate-800/80 rounded-lg border border-amber-200/90 dark:border-amber-800/60 flex items-center gap-1.5 text-xs transition-all hover:bg-white dark:hover:bg-slate-800 hover:border-amber-300 dark:hover:border-amber-700 shadow-2xs"
                       >
-                        <span className="text-[11px] font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 dark:bg-amber-900/40 border border-amber-300/80 dark:border-amber-700/60 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-[11px] font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 dark:bg-amber-900/40 border border-amber-300/80 dark:border-amber-700/60 w-5 h-5 rounded-full flex items-center justify-center shrink-0">
                           {index + 1}
                         </span>
                         <DateRangePicker
@@ -812,13 +812,13 @@ export default function FamilyProfilePage() {
                           placeholder={t.home.blackoutReasonPlaceholder}
                           value={range.reason || ''}
                           onChange={(e) => updateBlackout(index, 'reason', e.target.value)}
-                          className="flex-1 min-w-0 text-xs rounded border border-slate-300 dark:border-slate-700 px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                          className="flex-1 min-w-0 text-xs rounded border border-slate-300 dark:border-slate-700 px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-hidden focus:ring-1 focus:ring-amber-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                         />
                         <button
                           type="button"
                           onClick={() => toggleBlackoutType(index)}
                           title={t.profile.childcareClosureToggleHint}
-                          className={`flex-shrink-0 px-2 py-1 rounded text-[11px] font-semibold border transition-colors cursor-pointer ${
+                          className={`shrink-0 px-2 py-1 rounded text-[11px] font-semibold border transition-colors cursor-pointer ${
                             range.type === 'CHILDCARE_CLOSURE'
                               ? 'bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-700'
                               : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
@@ -835,13 +835,13 @@ export default function FamilyProfilePage() {
                             value={Math.round((range.coverageFactor ?? 1.0) * 100)}
                             onChange={(e) => updateBlackoutCoverage(index, Number(e.target.value) / 100)}
                             title={t.profile.childcareCoverageHint}
-                            className="w-14 flex-shrink-0 text-xs rounded border border-sky-300 dark:border-sky-700 px-1.5 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-sky-500"
+                            className="w-14 shrink-0 text-xs rounded border border-sky-300 dark:border-sky-700 px-1.5 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-hidden focus:ring-1 focus:ring-sky-500"
                           />
                         )}
                         <button
                           type="button"
                           onClick={() => removeBlackout(index)}
-                          className="p-1 text-slate-400 hover:text-red-600 transition cursor-pointer flex-shrink-0"
+                          className="p-1 text-slate-400 hover:text-red-600 transition cursor-pointer shrink-0"
                           title={t.profile.removeBlackout}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -876,7 +876,7 @@ export default function FamilyProfilePage() {
             <button
               type="submit"
               disabled={saving}
-              className="w-full py-3 rounded-xl font-bold text-sm bg-teal-600 hover:bg-teal-700 text-white shadow transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+              className="w-full py-3 rounded-xl font-bold text-sm bg-teal-600 hover:bg-teal-700 text-white shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
             >
               {saving ? (
                 <>
