@@ -139,18 +139,18 @@ export default function HomePage() {
   const getStyleMeta = (type: DestinationType) => {
     switch (type) {
       case 'BEACH':
-        return { label: t.home.vacationKindBeach, icon: Sun, color: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800' };
+        return { label: t.home.vacationKindBeach, icon: Sun, color: 'bg-amber-50/90 text-amber-800 border-amber-200 border-l-amber-500 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800 dark:border-l-amber-400' };
       case 'ALPINE':
       case 'SKI':
-        return { label: t.home.vacationKindAlpine, icon: Mountain, color: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800' };
+        return { label: t.home.vacationKindAlpine, icon: Mountain, color: 'bg-sky-50/90 text-sky-800 border-sky-200 border-l-sky-500 dark:bg-sky-950/40 dark:text-sky-200 dark:border-sky-800 dark:border-l-sky-400' };
       case 'CITY':
-        return { label: t.home.vacationKindCity, icon: Building2, color: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800' };
+        return { label: t.home.vacationKindCity, icon: Building2, color: 'bg-purple-50/90 text-purple-800 border-purple-200 border-l-purple-500 dark:bg-purple-950/40 dark:text-purple-200 dark:border-purple-800 dark:border-l-purple-400' };
       case 'NATURE':
-        return { label: t.home.vacationKindNature, icon: Trees, color: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' };
+        return { label: t.home.vacationKindNature, icon: Trees, color: 'bg-emerald-50/90 text-emerald-800 border-emerald-200 border-l-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-800 dark:border-l-emerald-400' };
       case 'LONGRANGE':
-        return { label: t.home.vacationKindLongrange, icon: Globe, color: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800' };
+        return { label: t.home.vacationKindLongrange, icon: Globe, color: 'bg-indigo-50/90 text-indigo-800 border-indigo-200 border-l-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-200 dark:border-indigo-800 dark:border-l-indigo-400' };
       default:
-        return { label: type, icon: Compass, color: 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800' };
+        return { label: type, icon: Compass, color: 'bg-teal-50/90 text-teal-800 border-teal-200 border-l-teal-500 dark:bg-teal-950/40 dark:text-teal-200 dark:border-teal-800 dark:border-l-teal-400' };
     }
   };
 
@@ -168,31 +168,36 @@ export default function HomePage() {
   };
 
   const getVehicleMeta = (vehicle?: TravelVehicle) => {
+    const baseChassis = 'bg-slate-100/90 text-slate-700 border-slate-300/80 dark:bg-slate-800/90 dark:text-slate-200 dark:border-slate-700';
     switch (vehicle) {
       case 'CAR':
         return {
           label: t.home.vehicleCar,
           icon: Car,
-          color: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+          iconColor: 'text-emerald-600 dark:text-emerald-400',
+          color: baseChassis,
         };
       case 'TRAIN':
         return {
           label: t.home.vehicleTrain,
           icon: Train,
-          color: 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800',
+          iconColor: 'text-teal-600 dark:text-teal-400',
+          color: baseChassis,
         };
       case 'BUS':
         return {
           label: t.home.vehicleBus,
           icon: Bus,
-          color: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800',
+          iconColor: 'text-amber-600 dark:text-amber-400',
+          color: baseChassis,
         };
       case 'PLANE':
       default:
         return {
           label: t.home.vehiclePlane,
           icon: Plane,
-          color: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800',
+          iconColor: 'text-sky-600 dark:text-sky-400',
+          color: baseChassis,
         };
     }
   };
@@ -283,7 +288,7 @@ export default function HomePage() {
   const [resultStyleFilter, setResultStyleFilter] = useState<DestinationType>('ALL');
   const [distanceFilter, setDistanceFilter] = useState<string>('ALL');
   const [vehicleFilter, setVehicleFilter] = useState<string>('ALL');
-  const [safetyFilter, setSafetyFilter] = useState<'SAFE_ONLY' | 'ALL'>('SAFE_ONLY');
+  const [safetyFilter, setSafetyFilter] = useState<'LEVEL_1' | 'SAFE_ONLY' | 'ALL'>('SAFE_ONLY');
   const [warningFilter, setWarningFilter] = useState<'CLEAN_ONLY' | 'ALL'>('CLEAN_ONLY');
   const [allowedWarnings, setAllowedWarnings] = useState<string[]>([]);
   const [seasonalInfoFilter, setSeasonalInfoFilter] = useState<'ALL' | 'QUIET_ONLY'>('ALL');
@@ -502,7 +507,7 @@ export default function HomePage() {
       const urlVehicle = urlParams.get('vehicle');
       if (urlVehicle) setVehicleFilter(urlVehicle);
       const urlSafety = urlParams.get('safety');
-      if (urlSafety === 'SAFE_ONLY' || urlSafety === 'ALL') setSafetyFilter(urlSafety);
+      if (urlSafety === 'LEVEL_1' || urlSafety === 'SAFE_ONLY' || urlSafety === 'ALL') setSafetyFilter(urlSafety);
       const urlWarning = urlParams.get('warning');
       if (urlWarning === 'CLEAN_ONLY' || urlWarning === 'ALL') setWarningFilter(urlWarning);
       else if (urlWarning === 'QUIET_ONLY') {
@@ -1542,7 +1547,7 @@ export default function HomePage() {
             style: ['ALL', 'BEACH', 'ALPINE', 'CITY', 'NATURE', 'LONGRANGE'],
             distance: ['ALL', 'SHORT', 'MID', 'EXTENDED', 'LONG', 'INTERCONTINENTAL'],
             vehicle: ['ALL', 'PLANE', 'CAR', 'TRAIN', 'BUS'],
-            safety: ['SAFE_ONLY', 'ALL'],
+            safety: ['LEVEL_1', 'SAFE_ONLY', 'ALL'],
             warning: ['CLEAN_ONLY', 'ALL'],
             seasonalInfo: ['ALL', 'QUIET_ONLY'],
             heat: ['ALL', 'AVOID_EXTREME_HEAT'],
@@ -1760,7 +1765,7 @@ export default function HomePage() {
                   return (
                     <span
                       key={meta.label}
-                      className={`text-[9px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 shadow-2xs ${meta.color}`}
+                      className={`text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border border-l-[3px] inline-flex items-center gap-1 shadow-2xs ${meta.color}`}
                     >
                       <StyleIcon className="w-2.5 h-2.5 flex-shrink-0" />
                       <span>{meta.label}</span>
@@ -1769,9 +1774,9 @@ export default function HomePage() {
                 })}
                 {win.travelVehicle && (
                   <span
-                    className={`text-[9px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 shadow-2xs ${getVehicleMeta(win.travelVehicle).color}`}
+                    className={`text-[9px] font-semibold px-2 py-0.5 rounded-lg border inline-flex items-center gap-1 shadow-2xs ${getVehicleMeta(win.travelVehicle).color}`}
                   >
-                    {React.createElement(getVehicleMeta(win.travelVehicle).icon, { className: 'w-2.5 h-2.5 flex-shrink-0' })}
+                    {React.createElement(getVehicleMeta(win.travelVehicle).icon, { className: `w-2.5 h-2.5 flex-shrink-0 ${getVehicleMeta(win.travelVehicle).iconColor}` })}
                     <span>{getVehicleMeta(win.travelVehicle).label}</span>
                     {win.vehicleDetails?.distanceKm ? (
                       <span className="opacity-75 font-normal">
@@ -1782,10 +1787,10 @@ export default function HomePage() {
                 )}
                 {win.railFeeder && (
                   <span
-                    className="text-[9px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 shadow-2xs bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                    className="text-[9px] font-semibold px-2 py-0.5 rounded-lg border inline-flex items-center gap-1 shadow-2xs bg-slate-100/90 text-slate-700 border-slate-300/80 dark:bg-slate-800/90 dark:text-slate-200 dark:border-slate-700"
                     title={t.home.railAirTitle}
                   >
-                    <Train className="w-2.5 h-2.5 flex-shrink-0" />
+                    <Train className="w-2.5 h-2.5 flex-shrink-0 text-teal-600 dark:text-teal-400" />
                     <span>
                       {t.home.railAirBadge} · {win.railFeeder.hubAirport}
                     </span>
@@ -1793,10 +1798,10 @@ export default function HomePage() {
                 )}
                 {win.overlandAccess && (win.overlandAccess === 'SHORT_FERRY' || win.overlandAccess === 'LONG_FERRY') && (
                   <span
-                    className="text-[9px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 shadow-2xs bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800"
+                    className="text-[9px] font-semibold px-2 py-0.5 rounded-lg border inline-flex items-center gap-1 shadow-2xs bg-slate-100/90 text-slate-700 border-slate-300/80 dark:bg-slate-800/90 dark:text-slate-200 dark:border-slate-700"
                     title={win.overlandAccess === 'SHORT_FERRY' ? t.home.shortFerryBadge : t.home.longFerryBadge}
                   >
-                    <Ship className="w-2.5 h-2.5 flex-shrink-0" />
+                    <Ship className="w-2.5 h-2.5 flex-shrink-0 text-cyan-600 dark:text-cyan-400" />
                     <span>
                       {win.overlandAccess === 'SHORT_FERRY' ? t.home.shortFerryBadge : t.home.longFerryBadge}
                       {win.ferrySurchargeEur ? ` (+${win.ferrySurchargeEur} €)` : ''}
@@ -1815,21 +1820,21 @@ export default function HomePage() {
               <span className="font-extrabold text-slate-900 dark:text-slate-100 text-base sm:text-lg">
                 {formatLocalizedDate(win.startDate, true)} → {formatLocalizedDate(win.endDate, true)}
               </span>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-teal-600/10 dark:bg-teal-400/15 text-teal-800 dark:text-teal-200 border border-teal-300/80 dark:border-teal-700">
                 {win.durationDays} {t.home.days}
               </span>
               {win.autoSelectedOrigin && !win.railFeeder && (
                 <span
-                  className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 flex items-center gap-1"
+                  className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-dashed border-emerald-400 dark:border-emerald-700 flex items-center gap-1"
                   title={t.home.autoOriginTitle}
                 >
-                  <Sparkles className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                  <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                   {t.home.autoOriginBadge} · {win.originAirport}
                 </span>
               )}
               {win.sourceMarketDemand && win.sourceMarketDemand.index <= 0.1 && (
                 <span
-                  className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 flex items-center gap-1"
+                  className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-sky-50/90 dark:bg-sky-950/40 text-sky-800 dark:text-sky-200 border border-sky-200/90 dark:border-sky-800 flex items-center gap-1"
                   title={t.home.demandTitle}
                 >
                   <Users className="w-3 h-3 text-sky-600 dark:text-sky-400" />
@@ -1837,13 +1842,13 @@ export default function HomePage() {
                 </span>
               )}
               {win.pricingDetails?.flight?.isMidweekSaving && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-dashed border-emerald-400 dark:border-emerald-700 flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                   {t.home.midweekFlightDealBadge}
                 </span>
               )}
               {win.weather?.hasSnow && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1">
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-50/90 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200 border border-indigo-200/90 dark:border-indigo-800 flex items-center gap-1">
                   <Snowflake className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                   {t.home.winterSportsActiveBadge}
                   {win.weather.snowDepthCm ? ` (~${win.weather.snowDepthCm} cm)` : ''}
@@ -1856,7 +1861,7 @@ export default function HomePage() {
                 />
               )}
               {win.boardType && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-violet-50 dark:bg-violet-950/40 text-violet-800 dark:text-violet-300 border border-violet-200 dark:border-violet-800 flex items-center gap-1">
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-violet-50 dark:bg-violet-950/40 text-violet-800 dark:text-violet-300 border border-violet-200 dark:border-violet-800 border-l-[3px] border-l-violet-500 dark:border-l-violet-400 flex items-center gap-1">
                   <Utensils className="w-3 h-3 text-violet-600 dark:text-violet-400" />
                   {win.boardType === 'ALL_INCLUSIVE'
                     ? t.home.boardTypeAllInclusive
@@ -2134,7 +2139,7 @@ export default function HomePage() {
         {/* Form column: heading above the card, like "Optimal vacation windows" */}
         <div className="lg:col-span-5 space-y-4">
           <div className="border-b border-slate-200 dark:border-slate-800 pb-2.5 space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between min-h-[2.25rem]">
               <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" />
                 {t.home.constraintsTitle}
@@ -2143,19 +2148,21 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={handleResetForm}
-                  className="text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1 px-2 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition border border-transparent hover:border-slate-200 dark:hover:border-slate-700 cursor-pointer"
+                  className="whitespace-nowrap text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1 px-2 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition border border-transparent hover:border-slate-200 dark:hover:border-slate-700 cursor-pointer"
                   title={t.home.formResetTitle}
                 >
                   <RotateCcw className="w-3 h-3" />
-                  <span>{t.home.formReset}</span>
+                  {/* Icon only between 1024 and 1279px, where the form column is narrowest */}
+                  <span className="lg:sr-only xl:not-sr-only">{t.home.formReset}</span>
                 </button>
                 {profileLoaded && (
                   <span
-                    className="hidden sm:flex text-[10px] font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/50 px-2.5 py-0.5 rounded-full border border-teal-200 dark:border-teal-800 items-center gap-1.5"
+                    className="hidden sm:flex whitespace-nowrap text-[10px] font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/50 px-2.5 py-0.5 rounded-full border border-teal-200 dark:border-teal-800 items-center gap-1.5"
                     title={t.home.prefilledFromProfile}
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-teal-600 dark:bg-teal-400 animate-pulse"></span>
-                    {t.home.prefilledFromProfile}
+                    {/* Short next to the heading (the full text wrapped in German and Italian) */}
+                    <span className="lg:sr-only xl:not-sr-only">{t.home.prefilledFromProfileShort}</span>
                   </span>
                 )}
               </div>
@@ -2593,13 +2600,15 @@ export default function HomePage() {
 
         {/* Results Stream */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="border-b border-slate-200 dark:border-slate-800 pb-2.5 space-y-1">
-            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <Award className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              {t.home.resultsTitle}
+          {/* One row like the form's heading (title left, action right), so both cards start level */}
+          <div className="border-b border-slate-200 dark:border-slate-800 pb-2.5">
+            <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2 min-h-[2.25rem]">
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 min-w-0">
+              <Award className="w-5 h-5 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+              <span className="truncate">{t.home.resultsTitle}</span>
             </h2>
             {results && (
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400 flex-shrink-0">
                 <ResultsCountPopover
                   shown={filteredResults.length}
                   total={results.length}
@@ -2607,8 +2616,9 @@ export default function HomePage() {
                   onInclude={includeFilter}
                   onIncludeAll={() => exclusionRows.forEach((r) => includeFilter(r.key))}
                 />
-              </p>
+              </div>
             )}
+            </div>
           </div>
 
           {error && (
@@ -2806,41 +2816,93 @@ export default function HomePage() {
                   const isDestinationActive = selectedDestinationsList.length > 0;
 
                   return (
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                      {/* Line 0: Destination Filter (only meaningful with more than one destination) */}
-                      {activeQueryDestinations.length > 1 && (
-                        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isDestinationActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
-                          <label className={`text-xs flex items-center gap-1.5 transition-colors ${isDestinationActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                            <MapPin className="w-3.5 h-3.5 text-teal-600" />
-                            <span>{t.home.filterByDestination}</span>
-                            {isDestinationActive && (
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                      {/* Group 1: Destination & Safety */}
+                      <div className="space-y-1.5">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1">
+                          {t.home.filterGroupDestination}
+                        </div>
+                        {/* Destination Filter (only meaningful with more than one destination) */}
+                        {activeQueryDestinations.length > 1 && (
+                          <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isDestinationActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                            <label className={`text-xs flex items-center gap-1.5 transition-colors ${isDestinationActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                              <MapPin className="w-3.5 h-3.5 text-teal-600" />
+                              <span>{t.home.filterByDestination}</span>
+                              {isDestinationActive && (
+                                <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
+                              )}
+                            </label>
+                            <div className="flex items-center gap-1.5 w-full sm:w-auto min-w-0">
+                              <DestinationFilterDropdown
+                                destinations={activeQueryDestinations}
+                                selectedDestinations={selectedDestinationsList}
+                                onChange={(selected) => {
+                                  setSelectedDestinationsList(selected);
+                                  setCurrentPage(1);
+                                  setTimeframeCurrentPage(1);
+                                }}
+                                totalCount={results?.length || 0}
+                                className="flex-1 sm:flex-none min-w-0"
+                              />
+                              <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                                {isDestinationActive && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedDestinationsList([]);
+                                      setCurrentPage(1);
+                                      setTimeframeCurrentPage(1);
+                                    }}
+                                    className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                    title={t.home.filterReset}
+                                    aria-label={t.home.filterReset}
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Vacation Style Filter */}
+                        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isStyleActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                          <label className={`text-xs flex items-center gap-1.5 transition-colors ${isStyleActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                            <Compass className={`w-3.5 h-3.5 ${isStyleActive ? 'text-teal-600' : 'text-teal-600'}`} />
+                            <span>{t.home.filterByVacationStyle}</span>
+                            {isStyleActive && (
                               <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
                             )}
                           </label>
-                          <div className="flex items-center gap-1.5 w-full sm:w-auto min-w-0">
-                            <DestinationFilterDropdown
-                              destinations={activeQueryDestinations}
-                              selectedDestinations={selectedDestinationsList}
-                              onChange={(selected) => {
-                                setSelectedDestinationsList(selected);
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                            <SelectDropdown
+                              variant="compact"
+                              value={resultStyleFilter}
+                              onChange={(v) => {
+                                setResultStyleFilter(v as DestinationType);
                                 setCurrentPage(1);
-                                setTimeframeCurrentPage(1);
                               }}
-                              totalCount={results?.length || 0}
-                              className="flex-1 sm:flex-none min-w-0"
+                              highlighted={isStyleActive}
+                              options={[
+                                filterOption('style', 'ALL', t.home.vacationKindAll, resultStyleFilter),
+                                filterOption('style', 'BEACH', t.home.vacationKindBeach, resultStyleFilter),
+                                filterOption('style', 'ALPINE', t.home.vacationKindAlpine, resultStyleFilter),
+                                filterOption('style', 'CITY', t.home.vacationKindCity, resultStyleFilter),
+                                filterOption('style', 'NATURE', t.home.vacationKindNature, resultStyleFilter),
+                                filterOption('style', 'LONGRANGE', t.home.vacationKindLongrange, resultStyleFilter),
+                              ]}
                             />
                             <div className="w-7 h-7 flex items-center justify-center shrink-0">
-                              {isDestinationActive && (
+                              {isStyleActive && (
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setSelectedDestinationsList([]);
+                                    setResultStyleFilter('ALL');
                                     setCurrentPage(1);
-                                    setTimeframeCurrentPage(1);
                                   }}
                                   className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
-                                aria-label={t.home.filterReset}
+                                  aria-label={t.home.filterReset}
                                 >
                                   <X className="w-3.5 h-3.5" />
                                 </button>
@@ -2848,626 +2910,599 @@ export default function HomePage() {
                             </div>
                           </div>
                         </div>
-                      )}
 
-                      {/* Line 1: Month Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isMonthActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isMonthActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                          <Calendar className={`w-3.5 h-3.5 ${isMonthActive ? 'text-teal-600' : 'text-teal-600'}`} />
-                          <span>{t.home.filterByMonth}</span>
-                          {isMonthActive && (
-                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
-                          )}
-                        </label>
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <SelectDropdown
-                            variant="compact"
-                            value={selectedMonth.length === 2
-                                ? availableMonths.find((ym) => ym.endsWith('-' + selectedMonth)) ?? 'ALL'
-                                : selectedMonth}
-                            onChange={(v) => {
-                              setSelectedMonth(v);
-                              setCurrentPage(1);
-                            }}
-                            highlighted={isMonthActive}
-                            options={[
-                              filterOption('month', 'ALL', t.home.allMonths, selectedMonth),
-                              ...availableMonths.map((ym) => {
-                                const [y, m] = ym.split('-').map((n) => parseInt(n, 10));
-                                return filterOption('month', ym, formatDate(new Date(y, m - 1, 1), { month: 'long', year: 'numeric' }), selectedMonth);
-                              }),
-                            ]}
-                          />
-                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
-                            {isMonthActive && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedMonth('ALL');
-                                  setCurrentPage(1);
-                                }}
-                                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title={t.home.filterReset}
-                                aria-label={t.home.filterReset}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Line 2: Vacation Style Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isStyleActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isStyleActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                          <Compass className={`w-3.5 h-3.5 ${isStyleActive ? 'text-teal-600' : 'text-teal-600'}`} />
-                          <span>{t.home.filterByVacationStyle}</span>
-                          {isStyleActive && (
-                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
-                          )}
-                        </label>
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <SelectDropdown
-                            variant="compact"
-                            value={resultStyleFilter}
-                            onChange={(v) => {
-                              setResultStyleFilter(v as DestinationType);
-                              setCurrentPage(1);
-                            }}
-                            highlighted={isStyleActive}
-                            options={[
-                              filterOption('style', 'ALL', t.home.vacationKindAll, resultStyleFilter),
-                              filterOption('style', 'BEACH', t.home.vacationKindBeach, resultStyleFilter),
-                              filterOption('style', 'ALPINE', t.home.vacationKindAlpine, resultStyleFilter),
-                              filterOption('style', 'CITY', t.home.vacationKindCity, resultStyleFilter),
-                              filterOption('style', 'NATURE', t.home.vacationKindNature, resultStyleFilter),
-                              filterOption('style', 'LONGRANGE', t.home.vacationKindLongrange, resultStyleFilter),
-                            ]}
-                          />
-                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
-                            {isStyleActive && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setResultStyleFilter('ALL');
-                                  setCurrentPage(1);
-                                }}
-                                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title={t.home.filterReset}
-                                aria-label={t.home.filterReset}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Line 3: Flight Distance Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isDistanceActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isDistanceActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                          <Route className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>{t.home.filterByDistance}</span>
-                          {isDistanceActive && (
-                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
-                          )}
-                        </label>
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <SelectDropdown
-                            variant="compact"
-                            value={distanceFilter}
-                            onChange={(v) => {
-                              setDistanceFilter(v);
-                              setCurrentPage(1);
-                            }}
-                            highlighted={isDistanceActive}
-                            options={[
-                              filterOption('distance', 'ALL', t.home.allDistances, distanceFilter),
-                              filterOption('distance', 'SHORT', t.home.distShort, distanceFilter),
-                              filterOption('distance', 'MID', t.home.distMid, distanceFilter),
-                              filterOption('distance', 'EXTENDED', t.home.distExtended, distanceFilter),
-                              filterOption('distance', 'LONG', t.home.distLong, distanceFilter),
-                              filterOption('distance', 'INTERCONTINENTAL', t.home.distIntercontinental, distanceFilter),
-                            ]}
-                          />
-                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
-                            {isDistanceActive && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setDistanceFilter('ALL');
-                                  setCurrentPage(1);
-                                }}
-                                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title={t.home.filterReset}
-                                aria-label={t.home.filterReset}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Line 4: Travel Vehicle Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isVehicleActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isVehicleActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                          <Car className={`w-3.5 h-3.5 ${isVehicleActive ? 'text-emerald-600' : 'text-emerald-600'}`} />
-                          <span>{t.home.filterByVehicle}</span>
-                          {isVehicleActive && (
-                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
-                          )}
-                        </label>
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <SelectDropdown
-                            variant="compact"
-                            value={vehicleFilter}
-                            onChange={(v) => {
-                              setVehicleFilter(v);
-                              setCurrentPage(1);
-                            }}
-                            highlighted={isVehicleActive}
-                            options={[
-                              filterOption('vehicle', 'ALL', t.home.vehicleAll, vehicleFilter),
-                              filterOption('vehicle', 'PLANE', t.home.vehiclePlane, vehicleFilter),
-                              filterOption('vehicle', 'CAR', t.home.vehicleCar, vehicleFilter),
-                              filterOption('vehicle', 'TRAIN', t.home.vehicleTrain, vehicleFilter),
-                              filterOption('vehicle', 'BUS', t.home.vehicleBus, vehicleFilter),
-                            ]}
-                          />
-                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
-                            {isVehicleActive && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setVehicleFilter('ALL');
-                                  setCurrentPage(1);
-                                }}
-                                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title={t.home.filterReset}
-                                aria-label={t.home.filterReset}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Line 5: Destination Safety Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isSafetyActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSafetyActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                          <ShieldCheck className={`w-3.5 h-3.5 ${isSafetyActive ? 'text-emerald-600' : 'text-emerald-600'}`} />
-                          <span>{t.home.filterBySafety}</span>
-                          {isSafetyActive && (
-                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
-                          )}
-                        </label>
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <SelectDropdown
-                            variant="compact"
-                            value={safetyFilter}
-                            onChange={(v) => {
-                              setSafetyFilter(v as any);
-                              setCurrentPage(1);
-                            }}
-                            highlighted={isSafetyActive}
-                            options={[
-                              filterOption('safety', 'SAFE_ONLY', t.home.safetyFilterSafeOnly, safetyFilter),
-                              filterOption('safety', 'ALL', t.home.safetyFilterAll, safetyFilter),
-                            ]}
-                          />
-                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                        {/* Destination Safety Filter */}
+                        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isSafetyActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                          <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSafetyActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                            <ShieldCheck className={`w-3.5 h-3.5 ${isSafetyActive ? 'text-emerald-600' : 'text-emerald-600'}`} />
+                            <span>{t.home.filterBySafety}</span>
                             {isSafetyActive && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSafetyFilter('SAFE_ONLY');
-                                  setCurrentPage(1);
-                                }}
-                                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title={t.home.filterReset}
-                                aria-label={t.home.filterReset}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
                             )}
+                          </label>
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                            <SelectDropdown
+                              variant="compact"
+                              value={safetyFilter}
+                              onChange={(v) => {
+                                setSafetyFilter(v as any);
+                                setCurrentPage(1);
+                              }}
+                              highlighted={isSafetyActive}
+                              options={[
+                                filterOption('safety', 'LEVEL_1', t.home.safetyFilterLevel1, safetyFilter),
+                                filterOption('safety', 'SAFE_ONLY', t.home.safetyFilterSafeOnly, safetyFilter),
+                                filterOption('safety', 'ALL', t.home.safetyFilterAll, safetyFilter),
+                              ]}
+                            />
+                            <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                              {isSafetyActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSafetyFilter('SAFE_ONLY');
+                                    setCurrentPage(1);
+                                  }}
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  title={t.home.filterReset}
+                                  aria-label={t.home.filterReset}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Line 6: Seasonal Warnings Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isWarningActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isWarningActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                          <AlertCircle className={`w-3.5 h-3.5 ${isWarningActive ? 'text-amber-500' : 'text-amber-500'}`} />
-                          <span>{t.home.filterByWarnings}</span>
-                          {isWarningActive && (
-                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
-                          )}
-                        </label>
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto min-w-0">
-                          <SeasonalWarningFilterDropdown
-                            warningOptions={warningFilterStats.options}
-                            warningFilter={warningFilter}
-                            allowedWarnings={allowedWarnings}
-                            onChange={(nextFilter, nextAllowed) => {
-                              setWarningFilter(nextFilter);
-                              setAllowedWarnings(nextAllowed);
-                              setCurrentPage(1);
-                              setTimeframeCurrentPage(1);
-                            }}
-                            cleanCount={warningFilterStats.cleanCount}
-                            totalCount={warningFilterStats.totalCount}
-                            className="flex-1 sm:flex-none min-w-0"
-                          />
-                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
-                            {isWarningActive && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setWarningFilter('CLEAN_ONLY');
-                                  setAllowedWarnings([]);
-                                  setCurrentPage(1);
-                                  setTimeframeCurrentPage(1);
-                                }}
-                                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title={t.home.filterReset}
-                                aria-label={t.home.filterReset}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
+                      {/* Group 2: Dates, Season & Weather */}
+                      <div className="space-y-1.5">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1">
+                          {t.home.filterGroupDatesSeason}
+                        </div>
+                        {/* Month Filter */}
+                        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isMonthActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                          <label className={`text-xs flex items-center gap-1.5 transition-colors ${isMonthActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                            <Calendar className={`w-3.5 h-3.5 ${isMonthActive ? 'text-teal-600' : 'text-teal-600'}`} />
+                            <span>{t.home.filterByMonth}</span>
+                            {isMonthActive && (
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
                             )}
+                          </label>
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                            <SelectDropdown
+                              variant="compact"
+                              value={selectedMonth.length === 2
+                                  ? availableMonths.find((ym) => ym.endsWith('-' + selectedMonth)) ?? 'ALL'
+                                  : selectedMonth}
+                              onChange={(v) => {
+                                setSelectedMonth(v);
+                                setCurrentPage(1);
+                              }}
+                              highlighted={isMonthActive}
+                              options={[
+                                filterOption('month', 'ALL', t.home.allMonths, selectedMonth),
+                                ...availableMonths.map((ym) => {
+                                  const [y, m] = ym.split('-').map((n) => parseInt(n, 10));
+                                  return filterOption('month', ym, formatDate(new Date(y, m - 1, 1), { month: 'long', year: 'numeric' }), selectedMonth);
+                                }),
+                              ]}
+                            />
+                            <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                              {isMonthActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedMonth('ALL');
+                                    setCurrentPage(1);
+                                  }}
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  title={t.home.filterReset}
+                                  aria-label={t.home.filterReset}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Line 6b: Seasonal Information Filter (Quiet Travel Periods) */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isSeasonalInfoActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSeasonalInfoActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                          <Users className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                          <span>{t.home.filterBySeasonalInfo}</span>
-                          {isSeasonalInfoActive && (
-                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
-                          )}
-                        </label>
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <SelectDropdown
-                            variant="compact"
-                            value={seasonalInfoFilter}
-                            onChange={(v) => {
-                              setSeasonalInfoFilter(v as 'ALL' | 'QUIET_ONLY');
-                              setCurrentPage(1);
-                              setTimeframeCurrentPage(1);
-                            }}
-                            highlighted={isSeasonalInfoActive}
-                            options={[
-                              filterOption('seasonalInfo', 'ALL', t.home.seasonalInfoAll, seasonalInfoFilter),
-                              filterOption('seasonalInfo', 'QUIET_ONLY', t.home.warningsFilterQuietOnly, seasonalInfoFilter),
-                            ]}
-                          />
-                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
-                            {isSeasonalInfoActive && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSeasonalInfoFilter('ALL');
-                                  setCurrentPage(1);
-                                  setTimeframeCurrentPage(1);
-                                }}
-                                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title={t.home.filterReset}
-                                aria-label={t.home.filterReset}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Line 7: Extreme Summer Heat Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isHeatActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isHeatActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                          <Sun className={`w-3.5 h-3.5 ${isHeatActive ? 'text-amber-500' : 'text-amber-500'}`} />
-                          <span>{t.home.filterByHeat}</span>
-                          {isHeatActive && (
-                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
-                          )}
-                        </label>
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <SelectDropdown
-                            variant="compact"
-                            value={heatFilter}
-                            onChange={(v) => {
-                              setHeatFilter(v as any);
-                              setCurrentPage(1);
-                            }}
-                            highlighted={isHeatActive}
-                            options={[
-                              filterOption('heat', 'ALL', t.home.heatFilterAll, heatFilter),
-                              filterOption('heat', 'AVOID_EXTREME_HEAT', t.home.heatFilterAvoid, heatFilter),
-                            ]}
-                          />
-                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
-                            {isHeatActive && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setHeatFilter('ALL');
-                                  setCurrentPage(1);
-                                }}
-                                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title={t.home.filterReset}
-                                aria-label={t.home.filterReset}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Line 8: Board Type Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isBoardTypeActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isBoardTypeActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                          <Utensils className={`w-3.5 h-3.5 ${isBoardTypeActive ? 'text-violet-600' : 'text-violet-600'}`} />
-                          <span>{t.home.filterByBoardType}</span>
-                          {isBoardTypeActive && (
-                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
-                          )}
-                        </label>
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <SelectDropdown
-                            variant="compact"
-                            value={boardTypeFilter}
-                            onChange={(v) => {
-                              setBoardTypeFilter(v);
-                              setCurrentPage(1);
-                            }}
-                            highlighted={isBoardTypeActive}
-                            options={[
-                              filterOption('boardType', 'ALL', t.home.allBoardTypes, boardTypeFilter),
-                              filterOption('boardType', 'ALL_INCLUSIVE', t.home.boardTypeAllInclusive, boardTypeFilter),
-                              filterOption('boardType', 'HALF_BOARD', t.home.boardTypeHalfBoard, boardTypeFilter),
-                              filterOption('boardType', 'BREAKFAST', t.home.boardTypeBreakfast, boardTypeFilter),
-                              filterOption('boardType', 'ROOM_ONLY', t.home.boardTypeRoomOnly, boardTypeFilter),
-                            ]}
-                          />
-                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
-                            {isBoardTypeActive && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setBoardTypeFilter('ALL');
-                                  setCurrentPage(1);
-                                }}
-                                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title={t.home.filterReset}
-                                aria-label={t.home.filterReset}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Line 9: Max Overland Duration Filter */}
-                      <div title={!overlandDurationApplicable ? t.home.filterNoOverland : undefined} className={`${!overlandDurationApplicable ? 'opacity-50 ' : ''}flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isOverlandDurationActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isOverlandDurationActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                          <Car className={`w-3.5 h-3.5 ${isOverlandDurationActive ? 'text-teal-600' : 'text-teal-600'}`} />
-                          <span>{t.home.filterByOverlandDuration}</span>
-                          {!overlandDurationApplicable && (
-                            <span className="font-normal text-[10px] text-slate-500 dark:text-slate-400">({t.home.filterNoOverland})</span>
-                          )}
-                          {isOverlandDurationActive && (
-                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
-                          )}
-                        </label>
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <SelectDropdown
-                            variant="compact"
-                            value={overlandDurationFilter}
-                            onChange={(v) => {
-                              setOverlandDurationFilter(v);
-                              setCurrentPage(1);
-                            }}
-                            disabled={!overlandDurationApplicable}
-                            highlighted={isOverlandDurationActive}
-                            options={[
-                              filterOption('overlandDuration', 'ALL', t.home.overlandDurationAny, overlandDurationFilter),
-                              filterOption('overlandDuration', '360', t.home.overlandDuration6h, overlandDurationFilter),
-                              filterOption('overlandDuration', '600', t.home.overlandDuration10h, overlandDurationFilter),
-                              filterOption('overlandDuration', '840', t.home.overlandDuration14h, overlandDurationFilter),
-                            ]}
-                          />
-                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
-                            {isOverlandDurationActive && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setOverlandDurationFilter('ALL');
-                                  setCurrentPage(1);
-                                }}
-                                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title={t.home.filterReset}
-                                aria-label={t.home.filterReset}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Line 10: Flight Transit & Stops Filter */}
-                      <div title={!flightStopsApplicable ? t.home.filterNoFlights : undefined} className={`${!flightStopsApplicable ? 'opacity-50 ' : ''}flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isFlightStopsActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isFlightStopsActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                          <Plane className={`w-3.5 h-3.5 ${isFlightStopsActive ? 'text-teal-600' : 'text-teal-600'}`} />
-                          <span>{t.home.filterByFlightStops}</span>
-                          {!flightStopsApplicable && (
-                            <span className="font-normal text-[10px] text-slate-500 dark:text-slate-400">({t.home.filterNoFlights})</span>
-                          )}
-                          {isFlightStopsActive && (
-                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
-                          )}
-                        </label>
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <SelectDropdown
-                            variant="compact"
-                            value={flightStopsFilter}
-                            onChange={(v) => {
-                              setFlightStopsFilter(v);
-                              setCurrentPage(1);
-                            }}
-                            disabled={!flightStopsApplicable}
-                            highlighted={isFlightStopsActive}
-                            options={[
-                              filterOption('flightStops', 'ALL', t.home.flightStopsAny, flightStopsFilter),
-                              filterOption('flightStops', 'DIRECT_ONLY', t.home.flightStopsDirectOnly, flightStopsFilter),
-                              filterOption('flightStops', 'MAX_1_STOP', t.home.flightStopsMax1, flightStopsFilter),
-                            ]}
-                          />
-                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
-                            {isFlightStopsActive && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setFlightStopsFilter('ALL');
-                                  setCurrentPage(1);
-                                }}
-                                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title={t.home.filterReset}
-                                aria-label={t.home.filterReset}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Line 11: School Calendar Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isSchoolHolidayActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSchoolHolidayActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                          <Award className={`w-3.5 h-3.5 ${isSchoolHolidayActive ? 'text-teal-600' : 'text-teal-600'}`} />
-                          <span>{t.home.schoolHolidaysFilterLabel}</span>
-                          {isSchoolHolidayActive && (
-                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
-                          )}
-                        </label>
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <SelectDropdown
-                            variant="compact"
-                            value={schoolHolidayFilter}
-                            onChange={(v) => {
-                              setSchoolHolidayFilter(v as any);
-                              setCurrentPage(1);
-                            }}
-                            highlighted={isSchoolHolidayActive}
-                            options={[
-                              filterOption('schoolHoliday', 'all', t.home.filterAllDates, schoolHolidayFilter),
-                              filterOption('schoolHoliday', 'holidaysOnly', t.home.filterSchoolHolidaysOnly, schoolHolidayFilter),
-                            ]}
-                          />
-                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                        {/* School Calendar Filter */}
+                        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isSchoolHolidayActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                          <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSchoolHolidayActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                            <Award className={`w-3.5 h-3.5 ${isSchoolHolidayActive ? 'text-teal-600' : 'text-teal-600'}`} />
+                            <span>{t.home.schoolHolidaysFilterLabel}</span>
                             {isSchoolHolidayActive && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSchoolHolidayFilter('all');
-                                  setCurrentPage(1);
-                                }}
-                                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title={t.home.filterReset}
-                                aria-label={t.home.filterReset}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
                             )}
+                          </label>
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                            <SelectDropdown
+                              variant="compact"
+                              value={schoolHolidayFilter}
+                              onChange={(v) => {
+                                setSchoolHolidayFilter(v as any);
+                                setCurrentPage(1);
+                              }}
+                              highlighted={isSchoolHolidayActive}
+                              options={[
+                                filterOption('schoolHoliday', 'all', t.home.filterAllDates, schoolHolidayFilter),
+                                filterOption('schoolHoliday', 'holidaysOnly', t.home.filterSchoolHolidaysOnly, schoolHolidayFilter),
+                              ]}
+                            />
+                            <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                              {isSchoolHolidayActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSchoolHolidayFilter('all');
+                                    setCurrentPage(1);
+                                  }}
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  title={t.home.filterReset}
+                                  aria-label={t.home.filterReset}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Seasonal Information Filter (Quiet Travel Periods) */}
+                        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isSeasonalInfoActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                          <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSeasonalInfoActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                            <Users className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                            <span>{t.home.filterBySeasonalInfo}</span>
+                            {isSeasonalInfoActive && (
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
+                            )}
+                          </label>
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                            <SelectDropdown
+                              variant="compact"
+                              value={seasonalInfoFilter}
+                              onChange={(v) => {
+                                setSeasonalInfoFilter(v as 'ALL' | 'QUIET_ONLY');
+                                setCurrentPage(1);
+                                setTimeframeCurrentPage(1);
+                              }}
+                              highlighted={isSeasonalInfoActive}
+                              options={[
+                                filterOption('seasonalInfo', 'ALL', t.home.seasonalInfoAll, seasonalInfoFilter),
+                                filterOption('seasonalInfo', 'QUIET_ONLY', t.home.warningsFilterQuietOnly, seasonalInfoFilter),
+                              ]}
+                            />
+                            <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                              {isSeasonalInfoActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSeasonalInfoFilter('ALL');
+                                    setCurrentPage(1);
+                                    setTimeframeCurrentPage(1);
+                                  }}
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  title={t.home.filterReset}
+                                  aria-label={t.home.filterReset}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Seasonal Warnings Filter */}
+                        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isWarningActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                          <label className={`text-xs flex items-center gap-1.5 transition-colors ${isWarningActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                            <AlertCircle className={`w-3.5 h-3.5 ${isWarningActive ? 'text-amber-500' : 'text-amber-500'}`} />
+                            <span>{t.home.filterByWarnings}</span>
+                            {isWarningActive && (
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
+                            )}
+                          </label>
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto min-w-0">
+                            <SeasonalWarningFilterDropdown
+                              warningOptions={warningFilterStats.options}
+                              warningFilter={warningFilter}
+                              allowedWarnings={allowedWarnings}
+                              onChange={(nextFilter, nextAllowed) => {
+                                setWarningFilter(nextFilter);
+                                setAllowedWarnings(nextAllowed);
+                                setCurrentPage(1);
+                                setTimeframeCurrentPage(1);
+                              }}
+                              cleanCount={warningFilterStats.cleanCount}
+                              totalCount={warningFilterStats.totalCount}
+                              className="flex-1 sm:flex-none min-w-0"
+                            />
+                            <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                              {isWarningActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setWarningFilter('CLEAN_ONLY');
+                                    setAllowedWarnings([]);
+                                    setCurrentPage(1);
+                                    setTimeframeCurrentPage(1);
+                                  }}
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  title={t.home.filterReset}
+                                  aria-label={t.home.filterReset}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Extreme Summer Heat Filter */}
+                        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isHeatActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                          <label className={`text-xs flex items-center gap-1.5 transition-colors ${isHeatActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                            <Sun className={`w-3.5 h-3.5 ${isHeatActive ? 'text-amber-500' : 'text-amber-500'}`} />
+                            <span>{t.home.filterByHeat}</span>
+                            {isHeatActive && (
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
+                            )}
+                          </label>
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                            <SelectDropdown
+                              variant="compact"
+                              value={heatFilter}
+                              onChange={(v) => {
+                                setHeatFilter(v as any);
+                                setCurrentPage(1);
+                              }}
+                              highlighted={isHeatActive}
+                              options={[
+                                filterOption('heat', 'ALL', t.home.heatFilterAll, heatFilter),
+                                filterOption('heat', 'AVOID_EXTREME_HEAT', t.home.heatFilterAvoid, heatFilter),
+                              ]}
+                            />
+                            <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                              {isHeatActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setHeatFilter('ALL');
+                                    setCurrentPage(1);
+                                  }}
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  title={t.home.filterReset}
+                                  aria-label={t.home.filterReset}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Line 12: Max Cost Filter */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isMaxCostActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isMaxCostActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                          <Sparkles className={`w-3.5 h-3.5 ${isMaxCostActive ? 'text-amber-500' : 'text-amber-500'}`} />
-                          <span>{t.home.filterByCost}</span>
-                          {isMaxCostActive && (
-                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
-                          )}
-                        </label>
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <input
-                            type="number"
-                            placeholder="z. B. 3500 €"
-                            value={maxCostFilter || ''}
-                            onChange={(e) => {
-                              setMaxCostFilter(e.target.value ? Number(e.target.value) : undefined);
-                              setCurrentPage(1);
-                            }}
-                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
-                              isMaxCostActive
-                                ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
-                                : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
-                            }`}
-                          />
-                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                      {/* Group 3: Travel & Route */}
+                      <div className="space-y-1.5">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1">
+                          {t.home.filterGroupTravelRoute}
+                        </div>
+                        {/* Travel Vehicle Filter */}
+                        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isVehicleActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                          <label className={`text-xs flex items-center gap-1.5 transition-colors ${isVehicleActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                            <Car className={`w-3.5 h-3.5 ${isVehicleActive ? 'text-emerald-600' : 'text-emerald-600'}`} />
+                            <span>{t.home.filterByVehicle}</span>
+                            {isVehicleActive && (
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
+                            )}
+                          </label>
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                            <SelectDropdown
+                              variant="compact"
+                              value={vehicleFilter}
+                              onChange={(v) => {
+                                setVehicleFilter(v);
+                                setCurrentPage(1);
+                              }}
+                              highlighted={isVehicleActive}
+                              options={[
+                                filterOption('vehicle', 'ALL', t.home.vehicleAll, vehicleFilter),
+                                filterOption('vehicle', 'PLANE', t.home.vehiclePlane, vehicleFilter),
+                                filterOption('vehicle', 'CAR', t.home.vehicleCar, vehicleFilter),
+                                filterOption('vehicle', 'TRAIN', t.home.vehicleTrain, vehicleFilter),
+                                filterOption('vehicle', 'BUS', t.home.vehicleBus, vehicleFilter),
+                              ]}
+                            />
+                            <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                              {isVehicleActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setVehicleFilter('ALL');
+                                    setCurrentPage(1);
+                                  }}
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  title={t.home.filterReset}
+                                  aria-label={t.home.filterReset}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Flight Distance Filter */}
+                        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isDistanceActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                          <label className={`text-xs flex items-center gap-1.5 transition-colors ${isDistanceActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                            <Route className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>{t.home.filterByDistance}</span>
+                            {isDistanceActive && (
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
+                            )}
+                          </label>
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                            <SelectDropdown
+                              variant="compact"
+                              value={distanceFilter}
+                              onChange={(v) => {
+                                setDistanceFilter(v);
+                                setCurrentPage(1);
+                              }}
+                              highlighted={isDistanceActive}
+                              options={[
+                                filterOption('distance', 'ALL', t.home.allDistances, distanceFilter),
+                                filterOption('distance', 'SHORT', t.home.distShort, distanceFilter),
+                                filterOption('distance', 'MID', t.home.distMid, distanceFilter),
+                                filterOption('distance', 'EXTENDED', t.home.distExtended, distanceFilter),
+                                filterOption('distance', 'LONG', t.home.distLong, distanceFilter),
+                                filterOption('distance', 'INTERCONTINENTAL', t.home.distIntercontinental, distanceFilter),
+                              ]}
+                            />
+                            <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                              {isDistanceActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setDistanceFilter('ALL');
+                                    setCurrentPage(1);
+                                  }}
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  title={t.home.filterReset}
+                                  aria-label={t.home.filterReset}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Flight Transit & Stops Filter */}
+                        <div title={!flightStopsApplicable ? t.home.filterNoFlights : undefined} className={`${!flightStopsApplicable ? 'opacity-50 ' : ''}flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isFlightStopsActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                          <label className={`text-xs flex items-center gap-1.5 transition-colors ${isFlightStopsActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                            <Plane className={`w-3.5 h-3.5 ${isFlightStopsActive ? 'text-teal-600' : 'text-teal-600'}`} />
+                            <span>{t.home.filterByFlightStops}</span>
+                            {!flightStopsApplicable && (
+                              <span className="font-normal text-[10px] text-slate-500 dark:text-slate-400">({t.home.filterNoFlights})</span>
+                            )}
+                            {isFlightStopsActive && (
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
+                            )}
+                          </label>
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                            <SelectDropdown
+                              variant="compact"
+                              value={flightStopsFilter}
+                              onChange={(v) => {
+                                setFlightStopsFilter(v);
+                                setCurrentPage(1);
+                              }}
+                              disabled={!flightStopsApplicable}
+                              highlighted={isFlightStopsActive}
+                              options={[
+                                filterOption('flightStops', 'ALL', t.home.flightStopsAny, flightStopsFilter),
+                                filterOption('flightStops', 'DIRECT_ONLY', t.home.flightStopsDirectOnly, flightStopsFilter),
+                                filterOption('flightStops', 'MAX_1_STOP', t.home.flightStopsMax1, flightStopsFilter),
+                              ]}
+                            />
+                            <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                              {isFlightStopsActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setFlightStopsFilter('ALL');
+                                    setCurrentPage(1);
+                                  }}
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  title={t.home.filterReset}
+                                  aria-label={t.home.filterReset}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Max Overland Duration Filter */}
+                        <div title={!overlandDurationApplicable ? t.home.filterNoOverland : undefined} className={`${!overlandDurationApplicable ? 'opacity-50 ' : ''}flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isOverlandDurationActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                          <label className={`text-xs flex items-center gap-1.5 transition-colors ${isOverlandDurationActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                            <Car className={`w-3.5 h-3.5 ${isOverlandDurationActive ? 'text-teal-600' : 'text-teal-600'}`} />
+                            <span>{t.home.filterByOverlandDuration}</span>
+                            {!overlandDurationApplicable && (
+                              <span className="font-normal text-[10px] text-slate-500 dark:text-slate-400">({t.home.filterNoOverland})</span>
+                            )}
+                            {isOverlandDurationActive && (
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
+                            )}
+                          </label>
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                            <SelectDropdown
+                              variant="compact"
+                              value={overlandDurationFilter}
+                              onChange={(v) => {
+                                setOverlandDurationFilter(v);
+                                setCurrentPage(1);
+                              }}
+                              disabled={!overlandDurationApplicable}
+                              highlighted={isOverlandDurationActive}
+                              options={[
+                                filterOption('overlandDuration', 'ALL', t.home.overlandDurationAny, overlandDurationFilter),
+                                filterOption('overlandDuration', '360', t.home.overlandDuration6h, overlandDurationFilter),
+                                filterOption('overlandDuration', '600', t.home.overlandDuration10h, overlandDurationFilter),
+                                filterOption('overlandDuration', '840', t.home.overlandDuration14h, overlandDurationFilter),
+                              ]}
+                            />
+                            <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                              {isOverlandDurationActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOverlandDurationFilter('ALL');
+                                    setCurrentPage(1);
+                                  }}
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  title={t.home.filterReset}
+                                  aria-label={t.home.filterReset}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Group 4: Board, Budget & Sorting */}
+                      <div className="space-y-1.5">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1">
+                          {t.home.filterGroupBudgetSort}
+                        </div>
+                        {/* Board Type Filter */}
+                        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isBoardTypeActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                          <label className={`text-xs flex items-center gap-1.5 transition-colors ${isBoardTypeActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                            <Utensils className={`w-3.5 h-3.5 ${isBoardTypeActive ? 'text-violet-600' : 'text-violet-600'}`} />
+                            <span>{t.home.filterByBoardType}</span>
+                            {isBoardTypeActive && (
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
+                            )}
+                          </label>
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                            <SelectDropdown
+                              variant="compact"
+                              value={boardTypeFilter}
+                              onChange={(v) => {
+                                setBoardTypeFilter(v);
+                                setCurrentPage(1);
+                              }}
+                              highlighted={isBoardTypeActive}
+                              options={[
+                                filterOption('boardType', 'ALL', t.home.allBoardTypes, boardTypeFilter),
+                                filterOption('boardType', 'ALL_INCLUSIVE', t.home.boardTypeAllInclusive, boardTypeFilter),
+                                filterOption('boardType', 'HALF_BOARD', t.home.boardTypeHalfBoard, boardTypeFilter),
+                                filterOption('boardType', 'BREAKFAST', t.home.boardTypeBreakfast, boardTypeFilter),
+                                filterOption('boardType', 'ROOM_ONLY', t.home.boardTypeRoomOnly, boardTypeFilter),
+                              ]}
+                            />
+                            <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                              {isBoardTypeActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setBoardTypeFilter('ALL');
+                                    setCurrentPage(1);
+                                  }}
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  title={t.home.filterReset}
+                                  aria-label={t.home.filterReset}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Max Cost Filter */}
+                        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isMaxCostActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                          <label className={`text-xs flex items-center gap-1.5 transition-colors ${isMaxCostActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                            <Sparkles className={`w-3.5 h-3.5 ${isMaxCostActive ? 'text-amber-500' : 'text-amber-500'}`} />
+                            <span>{t.home.filterByCost}</span>
                             {isMaxCostActive && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setMaxCostFilter(undefined);
-                                  setCurrentPage(1);
-                                }}
-                                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title={t.home.filterReset}
-                                aria-label={t.home.filterReset}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
                             )}
+                          </label>
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                            <input
+                              type="number"
+                              placeholder="z. B. 3500 €"
+                              value={maxCostFilter || ''}
+                              onChange={(e) => {
+                                setMaxCostFilter(e.target.value ? Number(e.target.value) : undefined);
+                                setCurrentPage(1);
+                              }}
+                              className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
+                                isMaxCostActive
+                                  ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
+                                  : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
+                              }`}
+                            />
+                            <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                              {isMaxCostActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setMaxCostFilter(undefined);
+                                    setCurrentPage(1);
+                                  }}
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  title={t.home.filterReset}
+                                  aria-label={t.home.filterReset}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Line 13: Sort By */}
-                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all ${isSortActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : ''}`}>
-                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSortActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                          <ArrowUpDown className={`w-3.5 h-3.5 ${isSortActive ? 'text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400'}`} />
-                          <span>{t.home.sortBy}</span>
-                          {isSortActive && (
-                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
-                          )}
-                        </label>
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <SelectDropdown
-                            variant="compact"
-                            value={sortBy}
-                            onChange={(v) => setSortBy(v as any)}
-                            highlighted={isSortActive}
-                            options={[
-                              { value: 'score', label: t.home.sortScore },
-                              { value: 'date-asc', label: t.home.sortDateAsc },
-                              { value: 'date-desc', label: t.home.sortDateDesc },
-                              { value: 'price', label: t.home.sortPrice },
-                              { value: 'pto', label: t.home.sortPto },
-                              { value: 'duration', label: t.home.sortDuration },
-                            ]}
-                          />
-                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                        {/* Sort By */}
+                        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all ${isSortActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : ''}`}>
+                          <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSortActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                            <ArrowUpDown className={`w-3.5 h-3.5 ${isSortActive ? 'text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400'}`} />
+                            <span>{t.home.sortBy}</span>
                             {isSortActive && (
-                              <button
-                                type="button"
-                                onClick={() => setSortBy('score')}
-                                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title={t.home.filterReset}
-                                aria-label={t.home.filterReset}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
                             )}
+                          </label>
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                            <SelectDropdown
+                              variant="compact"
+                              value={sortBy}
+                              onChange={(v) => setSortBy(v as any)}
+                              highlighted={isSortActive}
+                              options={[
+                                { value: 'score', label: t.home.sortScore },
+                                { value: 'date-asc', label: t.home.sortDateAsc },
+                                { value: 'date-desc', label: t.home.sortDateDesc },
+                                { value: 'price', label: t.home.sortPrice },
+                                { value: 'pto', label: t.home.sortPto },
+                                { value: 'duration', label: t.home.sortDuration },
+                              ]}
+                            />
+                            <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                              {isSortActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSortBy('score')}
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  title={t.home.filterReset}
+                                  aria-label={t.home.filterReset}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -3545,7 +3580,7 @@ export default function HomePage() {
                                   return (
                                     <span
                                       key={meta.label}
-                                      className={`text-[10px] sm:text-[11px] font-bold px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1 shadow-2xs ${meta.color}`}
+                                      className={`text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-md border border-l-[3px] inline-flex items-center gap-1 shadow-2xs ${meta.color}`}
                                     >
                                       <StyleIcon className="w-3 h-3 flex-shrink-0" />
                                       <span>{meta.label}</span>
@@ -3559,9 +3594,9 @@ export default function HomePage() {
                                   return (
                                     <span
                                       key={vehicle}
-                                      className={`text-[10px] sm:text-[11px] font-bold px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1 shadow-2xs ${meta.color}`}
+                                      className={`text-[10px] sm:text-[11px] font-semibold px-2.5 py-0.5 rounded-lg border inline-flex items-center gap-1 shadow-2xs ${meta.color}`}
                                     >
-                                      {React.createElement(meta.icon, { className: 'w-3 h-3 flex-shrink-0' })}
+                                      {React.createElement(meta.icon, { className: `w-3 h-3 flex-shrink-0 ${meta.iconColor}` })}
                                       <span>{meta.label}</span>
                                       {isFeatured && group.featuredWindow.vehicleDetails?.distanceKm ? (
                                         <span className="opacity-75 font-normal">

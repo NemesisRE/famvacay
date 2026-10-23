@@ -112,6 +112,20 @@ describe('Vacations Share API - Persist & Hydrate', () => {
     upsert.mockRestore();
   });
 
+  it('delivers every window with its candidate id, also from the cache (voting needs it)', async () => {
+    const res = await POST(
+      new NextRequest('http://localhost:3000/api/vacations/share', {
+        method: 'POST',
+        body: JSON.stringify({ query: { earliestDate: '2032-01-01' }, formState: { y: 1 }, windows: mockWindows }),
+      })
+    );
+    const { shareId } = await res.json();
+    const read = await GET(new NextRequest(`http://localhost:3000/api/vacations/share?id=${shareId}`));
+    const body = await read.json();
+    expect(body.payload.windows[0].shareCandidateId).toBe(body.payload.candidateIds[0]);
+    expect(body.payload.windows[0].shareCandidateId).toBeTruthy();
+  });
+
   it('returns 404 for non-existent shareId', async () => {
     const getReq = new NextRequest('http://localhost:3000/api/vacations/share?id=non_existent_id_99999', {
       method: 'GET',

@@ -173,6 +173,7 @@ export interface TranslationDictionary {
     blackoutReasonPlaceholder: string;
     selectDateRange: string;
     prefilledFromProfile: string;
+    prefilledFromProfileShort: string;
     runOptimization: string;
     optimizing: string;
     resultsTitle: string;
@@ -222,6 +223,7 @@ export interface TranslationDictionary {
     allBoardTypes: string;
     boardTypeSavingsBadge: string;
     filterBySafety: string;
+    safetyFilterLevel1: string;
     safetyFilterSafeOnly: string;
     safetyFilterAll: string;
     filterByWarnings: string;
@@ -370,6 +372,10 @@ export interface TranslationDictionary {
     filterToggleHide: string;
     filterLabel: string;
     filterResetAll: string;
+    filterGroupDestination: string;
+    filterGroupDatesSeason: string;
+    filterGroupTravelRoute: string;
+    filterGroupBudgetSort: string;
     days: string;
     ptoConsumed: string;
     ptoSaved: string;

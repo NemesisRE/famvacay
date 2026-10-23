@@ -62,7 +62,11 @@ export async function POST(req: NextRequest) {
       query: query || null,
       formState: formState || null,
       count: windows.length,
-      windows,
+      // Same shape as a board read from the database: each window carries its candidate id (voting
+      // needs it) - the cached copy used to lack it, so shared links never showed the vote buttons
+      windows: persisted.candidateIds.length === windows.length
+        ? windows.map((win: any, i: number) => ({ ...win, shareCandidateId: persisted.candidateIds[i], votes: [] }))
+        : windows,
       candidateIds: persisted.candidateIds,
     };
 

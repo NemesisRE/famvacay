@@ -102,6 +102,16 @@ describe('Result filters', () => {
       applyResultFilters(all, state({ warning: 'CLEAN_ONLY', allowedWarnings: ['MONSOON', 'OVERCROWDED_PEAK:spring_break'] }))
     ).toEqual([plane, monsoon, springBreak]);
   });
+
+  it('filters destination safety by advisory level (LEVEL_1, SAFE_ONLY / Level 2, ALL)', () => {
+    const level1 = win({ destinationSafety: { level: 'SAFE', advisoryLevel: 1, isSafe: true } as any });
+    const level2 = win({ destinationSafety: { level: 'CAUTION', advisoryLevel: 2, isSafe: true, hasGermanPartialWarning: true } as any });
+    const level3 = win({ destinationSafety: { level: 'WARNING', advisoryLevel: 3, isSafe: false } as any });
+
+    expect(applyResultFilters([level1, level2, level3], state({ safety: 'LEVEL_1' }))).toEqual([level1]);
+    expect(applyResultFilters([level1, level2, level3], state({ safety: 'SAFE_ONLY' }))).toEqual([level1, level2]);
+    expect(applyResultFilters([level1, level2, level3], state({ safety: 'ALL' }))).toEqual([level1, level2, level3]);
+  });
 });
 
 describe('Explaining hidden results', () => {

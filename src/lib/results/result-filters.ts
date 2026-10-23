@@ -54,6 +54,17 @@ const isOverland = (w: CandidateWindow) => Boolean(w.travelVehicle && w.travelVe
 const tripDistanceKm = (w: CandidateWindow) =>
   isOverland(w) ? w.vehicleDetails?.distanceKm || 0 : w.flightDistanceKm || 0;
 
+function getWindowSafetyLevel(w: CandidateWindow): 1 | 2 | 3 | 4 {
+  const s = w.destinationSafety || w.safetyAssessment;
+  if (!s) return 1;
+  if (s.advisoryLevel) return s.advisoryLevel;
+  if (s.level === 'DANGER' || s.hasGermanWarning || s.usStateDeptLevel === 4) return 4;
+  if (s.level === 'WARNING' || s.usStateDeptLevel === 3) return 3;
+  if (s.level === 'CAUTION' || s.hasGermanPartialWarning || s.usStateDeptLevel === 2) return 2;
+  if (s.isSafe === false) return 3;
+  return 1;
+}
+
 type Tests = { [K in ResultFilterKey]: (w: CandidateWindow, value: ResultFilterState[K], state?: ResultFilterState) => boolean };
 
 const TESTS: Tests = {
@@ -87,9 +98,9 @@ const TESTS: Tests = {
   // of them (filtering "plane" must not keep car trips to a destination that also has an airport)
   vehicle: (w, vehicle) => vehicle === 'ALL' || (w.travelVehicle || 'PLANE') === vehicle,
   safety: (w, safety) => {
-    if (safety !== 'SAFE_ONLY') return true;
-    const s = w.destinationSafety || w.safetyAssessment;
-    return s ? s.isSafe : true;
+    if (safety === 'LEVEL_1') return getWindowSafetyLevel(w) <= 1;
+    if (safety === 'SAFE_ONLY' || safety === 'LEVEL_2') return getWindowSafetyLevel(w) <= 2;
+    return true;
   },
   warning: (w, warning, state) => {
     if (warning !== 'CLEAN_ONLY') return true;
