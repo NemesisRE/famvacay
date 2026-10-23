@@ -22,13 +22,6 @@
   },
   "packageRules": [
     {
-      "description": "Security advisories and patch alerts immediate PR generation",
-      "matchUpdateTypes": ["vulnerability"],
-      "schedule": ["at any time"],
-      "prHourlyLimit": 0,
-      "prConcurrentLimit": 0
-    },
-    {
       "description": "Group minor and patch dependencies to minimize pull request noise",
       "matchUpdateTypes": ["minor", "patch"],
       "matchPackagePatterns": ["*"],
@@ -47,7 +40,6 @@
         "@playwright/*",
         "typescript",
         "postcss",
-        "autoprefixer",
         "tailwindcss"
       ],
       "groupName": "development & quality toolchain",
@@ -58,6 +50,13 @@
       "matchUpdateTypes": ["major"],
       "schedule": ["before 5am on Monday"],
       "labels": ["dependencies", "major-update"]
+    },
+    {
+      "description": "TypeScript 7 and Prisma 7 are intentionally pinned below their latest major: see docs/dependencies.md#known-blocked-major-upgrades for the reproducible incompatibilities. Still proposed for visibility, just held back from auto-rebase noise.",
+      "matchPackageNames": ["typescript", "prisma", "@prisma/client"],
+      "matchUpdateTypes": ["major"],
+      "labels": ["dependencies", "major-update", "blocked-known-issue"],
+      "rebaseWhen": "never"
     },
     {
       "description": "Pin GitHub Actions to immutable full commit SHAs with comments",

@@ -15,10 +15,14 @@ To keep packages up to date and reduce manual maintenance overhead, FamVacay use
      - Group: `production minor and patch updates`
      - Group Slug: `prod-minor-patch`
    - Linters, type checkers, and test frameworks are grouped:
-     - Includes: `eslint*`, `@typescript-eslint/*`, `prettier*`, `vitest*`, `@playwright/*`, `typescript`, `tailwindcss`, `postcss`, `autoprefixer`.
+     - Includes: `eslint*`, `@typescript-eslint/*`, `prettier*`, `vitest*`, `@playwright/*`, `typescript`, `tailwindcss`, `postcss`.
      - Group: `development & quality toolchain`
      - Group Slug: `dev-toolchain`
    - Major updates are kept isolated for focused review.
+   - `typescript` and `prisma`/`@prisma/client` major-update PRs are labeled
+     `blocked-known-issue` and excluded from auto-rebase noise — see
+     [Known Blocked Major Upgrades](#known-blocked-major-upgrades) below
+     before merging one.
 
 2. **Security Vulnerability Handling**:
    - Vulnerability and CVE alerts trigger immediate pull requests without rate limits (`schedule: ["at any time"]`).
@@ -61,8 +65,45 @@ To ensure `renovate.json` syntax and schema remain valid:
 - Runs on every pull request touching Renovate configuration files.
 - Command:
   ```bash
-  npx --yes --package renovate renovate-config-validator --strict renovate.json
+  pnpm dlx --package renovate -- renovate-config-validator --strict renovate.json
   ```
+
+---
+
+## Known Blocked Major Upgrades
+
+Two majors are intentionally held back below Renovate's normal "latest major"
+target. Both were attempted and reverted during the pnpm/production-readiness
+migration after reproducing concrete breakage; re-attempt either only after
+confirming upstream has addressed the issue below.
+
+### TypeScript 7
+
+`typescript@7.0.2` reintroduces `TS7006` implicit-`any` errors on `.map()` /
+`.filter()` callbacks over Prisma relation-`include` query results, across 7
+API routes (`account/passkeys`, `account`, `account/unlink`,
+`auth/linked-accounts`, `auth/passkeys/register-options`,
+`vacations/share/[shortCode]/vote`, `vacations/share`). Confirmed to be TS7
+itself and not a stale generated client: regenerating `@prisma/client` with
+TS7 still installed does not clear the errors, and reverting to TypeScript
+5.x with nothing else changed does. This is a known rough edge in TS7's
+rewritten type-inference engine against Prisma's generated conditional
+types. Currently pinned to the latest 5.x release (`^5.9.3`).
+
+### Prisma 7
+
+`prisma@7` / `@prisma/client@7` remove the `datasource.url` field from
+`schema.prisma` entirely (`prisma validate` fails with error `P1012`);
+connection configuration moves to a new `prisma.config.ts` file and
+`PrismaClient` must be constructed with an explicit driver `adapter` (e.g.
+`@prisma/adapter-pg`) instead of reading `DATABASE_URL` implicitly. This is
+a real architectural change to how the app opens its database connection,
+touching `prisma/schema.prisma`, `src/lib/db/prisma.ts`, the Dockerfile's
+`migrator` stage, and env handling — and it cannot be verified end-to-end
+without a live Postgres connection to actually exercise `prisma migrate
+deploy` and real queries against the new adapter-based client. Currently
+pinned to the latest 6.x release (`^6.19.3`), which is already the last
+version where `datasource.url` works as this codebase expects.
 
 ---
 
