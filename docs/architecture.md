@@ -164,7 +164,6 @@ model FamilyMember {
   role            String        // "PARENT", "CHILD", "INFANT", "OTHER"
   birthDate       DateTime      @db.Date
   schoolRequired  Boolean       @default(false)
-  specialDiet     String?
 }
 
 model BlackoutPeriod {

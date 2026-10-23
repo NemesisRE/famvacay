@@ -226,7 +226,6 @@ export async function POST(req: NextRequest) {
                 ? m.schoolSubdivision.trim().toUpperCase()
                 : null,
             passportExpiry: m.passportExpiry ? new Date(m.passportExpiry) : null,
-            specialDiet: m.specialDiet || null,
           })),
         });
       }

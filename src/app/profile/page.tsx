@@ -51,7 +51,6 @@ interface FamilyMemberForm {
   schoolRequired: boolean;
   schoolSubdivision?: string;
   passportExpiry: string;
-  specialDiet: string;
 }
 
 interface BlackoutRangeForm {
@@ -117,8 +116,8 @@ export default function FamilyProfilePage() {
   };
 
   const [members, setMembers] = useState<FamilyMemberForm[]>([
-    { firstName: '', role: 'PARENT', birthDate: '', schoolRequired: false, passportExpiry: '', specialDiet: '' },
-    { firstName: '', role: 'PARENT', birthDate: '', schoolRequired: false, passportExpiry: '', specialDiet: '' },
+    { firstName: '', role: 'PARENT', birthDate: '', schoolRequired: false, passportExpiry: '' },
+    { firstName: '', role: 'PARENT', birthDate: '', schoolRequired: false, passportExpiry: '' },
   ]);
 
   // A place the user picked is never overwritten by the automatic detection
@@ -234,7 +233,6 @@ export default function FamilyProfilePage() {
                   schoolRequired: Boolean(m.schoolRequired),
                   schoolSubdivision: m.schoolSubdivision || undefined,
                   passportExpiry: m.passportExpiry ? m.passportExpiry.split('T')[0] : '',
-                  specialDiet: m.specialDiet || '',
                 }))
               );
             }
@@ -318,7 +316,6 @@ export default function FamilyProfilePage() {
         birthDate: '2020-01-01',
         schoolRequired: false,
         passportExpiry: '',
-        specialDiet: '',
       },
     ]);
   };
