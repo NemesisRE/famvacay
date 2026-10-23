@@ -25,6 +25,7 @@
     "prisma:migrate": "prisma migrate deploy",
     "db:up": "docker compose up -d postgres cache && prisma migrate deploy",
     "db:seed": "prisma db seed",
+    "generate:airports-db": "node scripts/generate-airports-db.js",
     "generate:city-names": "node scripts/generate-city-names.js",
     "generate:flight-routes": "node scripts/generate-flight-routes.js",
     "generate:airport-traffic": "node scripts/generate-airport-traffic.js",

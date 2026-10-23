@@ -1,0 +1,30 @@
+/**
+ * Node-runtime-only half of instrumentation.ts, split out per Next.js's
+ * documented pattern so the Edge Runtime bundle never has to statically
+ * analyze (and warn about) process.on/process.exit, which it doesn't support.
+ */
+let shuttingDown = false;
+
+async function shutdown(signal: string) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[shutdown] Received ${signal}, closing database and cache connections...`);
+
+  const [{ prisma }, { disconnectCache }] = await Promise.all([
+    import('@/lib/db/prisma'),
+    import('@/lib/cache/redis'),
+  ]);
+
+  const results = await Promise.allSettled([prisma.$disconnect(), disconnectCache()]);
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      console.error('[shutdown] Error while closing a connection:', result.reason);
+    }
+  }
+
+  console.log('[shutdown] Connections closed, exiting.');
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));

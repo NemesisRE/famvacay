@@ -143,3 +143,15 @@ export const redis = {
 export const valkey = redis;
 export const dragonfly = redis;
 export const cacheClient = redis;
+
+/** Closes the underlying ioredis connection cleanly on shutdown (SIGTERM/SIGINT). */
+export async function disconnectCache(): Promise<void> {
+  if (!redisInstance) return;
+  try {
+    await redisInstance.quit();
+  } catch {
+    redisInstance.disconnect();
+  } finally {
+    redisInstance = null;
+  }
+}

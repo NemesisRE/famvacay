@@ -1,0 +1,92 @@
+name: Scheduled Data Sync
+
+# The app's airport/city/flight-route/climate reference data (src/lib/airports/data/*.json)
+# is generated ahead of time from public upstream sources (OurAirports, OpenFlights,
+# Wikidata, NASA POWER) and committed into the repo rather than fetched at request time.
+# This workflow re-runs those generators on a schedule and opens a PR with whatever
+# changed, so the data stays current without ever pushing unreviewed changes to main.
+on:
+  schedule:
+    # 03:17 UTC every Monday — avoids the top-of-hour stampede on shared runners.
+    - cron: '17 3 * * 1'
+  workflow_dispatch: {}
+
+concurrency:
+  group: data-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate:
+    name: Regenerate reference data
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@d9184bf108216479bc5a137cc391f4d7b14c870b # v6.1.0
+
+      - name: Set up Node.js 26 (Active LTS)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Each generator is independent and idempotent (overwrites its own JSON file);
+      # a failure in one still lets the others run and still lets us open a PR with
+      # whichever files did update, rather than losing a week's worth of refresh
+      # because one upstream API had a bad day.
+      - name: Regenerate airports database
+        continue-on-error: true
+        run: pnpm run generate:airports-db
+
+      - name: Regenerate city names
+        continue-on-error: true
+        run: pnpm run generate:city-names
+
+      - name: Regenerate flight routes
+        continue-on-error: true
+        run: pnpm run generate:flight-routes
+
+      - name: Regenerate airport traffic
+        continue-on-error: true
+        run: pnpm run generate:airport-traffic
+
+      - name: Regenerate climate normals
+        continue-on-error: true
+        run: pnpm run generate:climate-normals
+
+      - name: Typecheck & unit test regenerated data
+        run: |
+          pnpm exec prisma generate
+          pnpm run typecheck
+          pnpm test
+
+      - name: Open pull request with any changes
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          commit-message: "chore(data): scheduled refresh of airport/flight/climate reference data"
+          title: "chore(data): scheduled reference data refresh"
+          body: |
+            Automated weekly refresh of the generated reference data under
+            `src/lib/airports/data/`, produced by the `generate:*` scripts in
+            `package.json` from their public upstream sources (OurAirports,
+            OpenFlights, Wikidata, NASA POWER).
+
+            Typecheck and the full test suite ran against the regenerated data
+            before this PR was opened. Review the diff for unexpected swings
+            (e.g. a source going temporarily empty) before merging — this PR
+            is never auto-merged.
+          branch: automated/data-sync
+          labels: automated-data-sync
+          delete-branch: true
