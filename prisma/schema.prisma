@@ -6,6 +6,11 @@ datasource db {
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x"]
+  // Pin the classic node_modules/.prisma/client output path explicitly: pnpm's
+  // isolated node_modules would otherwise make Prisma generate the client
+  // inside its own .pnpm store entry, which the Dockerfile's targeted
+  // `COPY node_modules/.prisma` into the runner stage would then miss.
+  output        = "../node_modules/.prisma/client"
 }
 
 // -------------------------------------------------------------

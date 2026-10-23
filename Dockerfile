@@ -1,30 +1,37 @@
 # ==============================================================================
 # Multi-Stage, Multi-Arch Dockerfile for FamVacay
 # Target architectures: linux/amd64, linux/arm64
-# Base: Node.js 22 Active LTS Alpine (Node 20 is end-of-life)
+# Base: Node.js 26 Active LTS Alpine (Node 22 is Maintenance LTS)
+# Package manager: pnpm, via Corepack (pinned by packageManager in package.json)
 # Stages: deps -> builder -> migrator -> runner
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
 # Stage 1: Dependencies
 # ------------------------------------------------------------------------------
-FROM node:22-alpine AS deps
+FROM node:26-alpine AS deps
 WORKDIR /app
 
 RUN apk add --no-cache libc6-compat openssl
+RUN npm install -g corepack && corepack enable
 
-COPY package.json package-lock.json ./
+# Fetch into the pnpm content-addressable store first (cached as long as the
+# lockfile is unchanged), then install by linking from the store offline.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN corepack install
+RUN pnpm fetch
+
 COPY prisma ./prisma/
-
-RUN npm ci
+RUN pnpm install --frozen-lockfile --offline
 
 # ------------------------------------------------------------------------------
 # Stage 2: Builder
 # ------------------------------------------------------------------------------
-FROM node:22-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 
 RUN apk add --no-cache openssl libc6-compat
+RUN npm install -g corepack && corepack enable
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -33,26 +40,35 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
 # Generate Prisma Client
-RUN npx prisma generate
+RUN pnpm exec prisma generate
 
 # Build Next.js in standalone mode
-RUN npm run build
+RUN pnpm run build
+
+# pnpm's node_modules uses symlinks into a content-addressable .pnpm store,
+# which the runner stage below cannot follow (it only copies two specific
+# subpaths, not the whole store). Dereference just those two into real files
+# so the targeted COPY --from in the runner stage has something to copy.
+RUN mkdir -p /app/.prisma-deploy/node_modules && \
+    cp -rL node_modules/.prisma /app/.prisma-deploy/node_modules/.prisma && \
+    cp -rL node_modules/@prisma /app/.prisma-deploy/node_modules/@prisma
 
 # ------------------------------------------------------------------------------
 # Stage 3: Migrator (Dedicated one-shot container for database migrations)
 # ------------------------------------------------------------------------------
-FROM node:22-alpine AS migrator
+FROM node:26-alpine AS migrator
 WORKDIR /app
 
 RUN apk add --no-cache openssl libc6-compat
+RUN npm install -g corepack && corepack enable
 
 # Non-root user nextjs (UID/GID 10001) matching runner and k8s securityContext
 RUN addgroup --system --gid 10001 nodejs && \
     adduser --system --uid 10001 nextjs
 
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts
-RUN npm install -g prisma@6.19.3
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN corepack install && pnpm install --frozen-lockfile --prod --ignore-scripts
+RUN pnpm add -g prisma@6.19.3
 
 COPY --chown=nextjs:nodejs prisma ./prisma/
 
@@ -63,7 +79,7 @@ CMD ["migrate", "deploy"]
 # ------------------------------------------------------------------------------
 # Stage 4: Runner (Target size < 150MB, read-only root compatible)
 # ------------------------------------------------------------------------------
-FROM node:22-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 
 # Only openssl required by Prisma client runtime
@@ -83,14 +99,16 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder --chown=nextjs:nodejs /app/.prisma-deploy/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/.prisma-deploy/node_modules/@prisma ./node_modules/@prisma
 
 USER nextjs
 EXPOSE 3000
 
-# Curl-free liveness healthcheck using Node.js built-in HTTP client
+# Curl-free readiness healthcheck using Node.js built-in HTTP client. Hits
+# /api/ready (checks Postgres + Valkey connectivity), not /api/health (pure
+# liveness, always 200), so this actually reports an outage.
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1));"
+  CMD node -e "require('http').get('http://localhost:3000/api/ready', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1));"
 
 CMD ["node", "server.js"]
