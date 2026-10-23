@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getCached, setCached } from '@/lib/cache/redis';
 import { prisma } from '@/lib/db/prisma';
+import {
+  buildShareableQuery,
+  buildShareableFormState,
+  buildShareableCandidateSnapshot,
+} from '@/lib/share/sanitize-shared-payload';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +36,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Strip to non-identifying, derived fields only: no address, GPS, exact birthdates, or
+    // free-text blackout reasons ever reach Postgres or the publicly-readable share cache.
+    const sanitizedQuery = buildShareableQuery(query);
+    const sanitizedFormState = buildShareableFormState(formState);
+    const sanitizedWindows = windows.map(buildShareableCandidateSnapshot);
+
     // Generate a deterministic, content-addressed short code (stable across identical re-shares)
     const seed = JSON.stringify({
       destinations: query?.targetDestinations || formState?.targetDestinations,
@@ -47,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     let persisted: { createdAt: Date; expiresAt: Date | null; candidateIds: string[] };
     try {
-      persisted = await persistBoard(shortCode, query, formState, windows, expiresAt);
+      persisted = await persistBoard(shortCode, sanitizedQuery, sanitizedFormState, sanitizedWindows, expiresAt);
     } catch (dbError) {
       // Database unreachable (e.g. not started locally): the link still works from the cache for the
       // board's lifetime - only voting needs the database (no candidate ids without it)
@@ -59,14 +70,14 @@ export async function POST(req: NextRequest) {
       shortCode,
       createdAt: persisted.createdAt.toISOString(),
       expiresAt: persisted.expiresAt ? persisted.expiresAt.toISOString() : null,
-      query: query || null,
-      formState: formState || null,
-      count: windows.length,
+      query: sanitizedQuery,
+      formState: sanitizedFormState,
+      count: sanitizedWindows.length,
       // Same shape as a board read from the database: each window carries its candidate id (voting
       // needs it) - the cached copy used to lack it, so shared links never showed the vote buttons
-      windows: persisted.candidateIds.length === windows.length
-        ? windows.map((win: any, i: number) => ({ ...win, shareCandidateId: persisted.candidateIds[i], votes: [] }))
-        : windows,
+      windows: persisted.candidateIds.length === sanitizedWindows.length
+        ? sanitizedWindows.map((win: any, i: number) => ({ ...win, shareCandidateId: persisted.candidateIds[i], votes: [] }))
+        : sanitizedWindows,
       candidateIds: persisted.candidateIds,
     };
 
