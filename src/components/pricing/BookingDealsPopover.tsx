@@ -376,10 +376,10 @@ export function BookingDealsPopover({
                           key={portal.id}
                           href={url}
                           target="_blank"
-                          rel="noopener noreferrer"
+                          rel="noopener noreferrer sponsored"
                           className={`text-center py-1.5 px-2 rounded-lg font-semibold text-[11px] shadow-2xs flex items-center justify-between transition-colors ${portal.colorClass}`}
                         >
-                          <span className="truncate">{portal.name}</span>
+                          <span className="truncate">{portal.name}*</span>
                           <div className="flex items-center gap-1 shrink-0 ml-1">
                             {(portal.badgeKey || portal.badge) && (
                               <span className="text-[8px] uppercase font-extrabold bg-white/20 px-1 py-0.2 rounded">
@@ -392,6 +392,9 @@ export function BookingDealsPopover({
                       );
                     })}
                   </div>
+                  <p className="text-[9px] text-slate-400 dark:text-slate-500 leading-snug">
+                    {t.home.affiliateDisclosureNotice}
+                  </p>
                 </div>
               </div>
             )}

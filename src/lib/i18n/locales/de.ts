@@ -266,6 +266,8 @@ export const de: TranslationDictionary = {
     holidayNotInTravelPeriod: 'Liegt nicht in deinem Reisezeitraum',
     dealsCompareProviders: 'Preise bei Anbietern vergleichen:',
     dealsEstimateNote: 'Preise geschätzt anhand saisonaler Vergleichswerte.',
+    affiliateDisclosureNotice:
+      '* Mit einem Sternchen markierte Links sind Partner-/Affiliate-Links. Eine Buchung darüber kann FamVacay eine kleine Provision zur Deckung der Serverkosten einbringen – ohne Mehrkosten für dich. Die Optimierungs-Scores und Rankings sind zu 100% mathematisch und vollständig unabhängig von jeglichen Partnerprovisionen.',
     dealsTotal: 'Gesamt: {amount}',
     dealsDone: 'Fertig',
     dealsPortalRegionHint: 'Wähle die Portale für deine Region (DACH, Ozeanien, Nordamerika, global):',

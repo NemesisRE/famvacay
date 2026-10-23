@@ -274,6 +274,7 @@ export interface TranslationDictionary {
     holidayNotInTravelPeriod: string;
     dealsCompareProviders: string;
     dealsEstimateNote: string;
+    affiliateDisclosureNotice: string;
     dealsTotal: string;
     dealsDone: string;
     dealsPortalRegionHint: string;
