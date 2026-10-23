@@ -45,12 +45,17 @@ RUN pnpm exec prisma generate
 # Build Next.js in standalone mode
 RUN pnpm run build
 
-# pnpm's node_modules uses symlinks into a content-addressable .pnpm store,
-# which the runner stage below cannot follow (it only copies two specific
-# subpaths, not the whole store). Dereference just those two into real files
-# so the targeted COPY --from in the runner stage has something to copy.
+# Under pnpm's isolated node_modules, Prisma generates the client (including
+# the query engine binary) directly inside @prisma/client's own package
+# directory rather than a separate node_modules/.prisma -- and node_modules/
+# @prisma is a symlink into the content-addressable .pnpm store, which the
+# runner stage below cannot follow (it only copies this one subpath, not the
+# whole store). Dereference it into real files so that targeted COPY --from
+# has something to copy. (Do not set the Prisma Client generator's `output`
+# field to force the classic node_modules/.prisma/client layout instead --
+# that breaks TypeScript's "bundler" module resolution for the generated
+# types under pnpm, intermittently, depending on install freshness.)
 RUN mkdir -p /app/.prisma-deploy/node_modules && \
-    cp -rL node_modules/.prisma /app/.prisma-deploy/node_modules/.prisma && \
     cp -rL node_modules/@prisma /app/.prisma-deploy/node_modules/@prisma
 
 # ------------------------------------------------------------------------------
@@ -99,7 +104,6 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/.prisma-deploy/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/.prisma-deploy/node_modules/@prisma ./node_modules/@prisma
 
 USER nextjs
