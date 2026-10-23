@@ -491,6 +491,7 @@ export interface TranslationDictionary {
     removeMember: string;
     familyNamePlaceholder: string;
     memberNamePlaceholder: string;
+    childNameHint: string;
     name: string;
     role: string;
     parent: string;

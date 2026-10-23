@@ -483,6 +483,7 @@ export const fr: TranslationDictionary = {
     removeMember: 'Retirer le voyageur',
     familyNamePlaceholder: 'p. ex. Famille Martin',
     memberNamePlaceholder: 'p. ex. Léa',
+    childNameHint: "Pour les enfants, un prénom, un surnom ou des initiales suffisent — c'est facultatif.",
     name: 'Prénom',
     role: 'Rôle',
     parent: 'Adulte / Responsable',

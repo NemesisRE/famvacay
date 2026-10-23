@@ -483,6 +483,7 @@ export const de: TranslationDictionary = {
     removeMember: 'Person entfernen',
     familyNamePlaceholder: 'z. B. Familie Müller',
     memberNamePlaceholder: 'z. B. Lena',
+    childNameHint: 'Bei Kindern reicht ein Vorname, Spitzname oder Initialen – freiwillig, nie erforderlich.',
     name: 'Vorname',
     role: 'Rolle',
     parent: 'Erwachsener / Elternteil',

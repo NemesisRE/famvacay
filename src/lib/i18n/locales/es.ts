@@ -483,6 +483,7 @@ export const es: TranslationDictionary = {
     removeMember: 'Quitar viajero',
     familyNamePlaceholder: 'p. ej. Familia García',
     memberNamePlaceholder: 'p. ej. Lucía',
+    childNameHint: 'Para los niños basta un nombre, apodo o iniciales — es opcional, nunca obligatorio.',
     name: 'Nombre',
     role: 'Rol',
     parent: 'Adulto / Responsable',

@@ -670,6 +670,9 @@ export default function FamilyProfilePage() {
                       onChange={(e) => updateMember(index, 'firstName', e.target.value)}
                       className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     />
+                    {(member.role === 'CHILD' || member.role === 'INFANT') && (
+                      <p className="mt-1 text-[10px] text-slate-400 dark:text-slate-500">{t.profile.childNameHint}</p>
+                    )}
                   </div>
 
                   <div className="order-3 col-span-2 sm:order-0 sm:col-span-2">

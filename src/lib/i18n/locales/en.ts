@@ -483,6 +483,7 @@ export const en: TranslationDictionary = {
     removeMember: 'Remove traveler',
     familyNamePlaceholder: 'e.g. The Miller Family',
     memberNamePlaceholder: 'e.g. Liam',
+    childNameHint: "For children, a first name, nickname or initials is enough — it's optional and never required.",
     name: 'Name',
     role: 'Role',
     parent: 'Adult / Parent',
