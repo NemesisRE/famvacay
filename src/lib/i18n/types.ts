@@ -247,6 +247,10 @@ export interface TranslationDictionary {
     overlandRouteTitle: string;
     overlandFromHome: string;
     overlandDoorToDoor: string;
+    mapDistance: string;
+    mapFlightTime: string;
+    mapDeparture: string;
+    mapTitle: string;
     overlandRoadDistance: string;
     overlandRailDistance: string;
     overlandRoundTripCost: string;

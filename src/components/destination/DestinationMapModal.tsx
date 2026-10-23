@@ -7,17 +7,12 @@ import {
   ExternalLink,
   Plane,
   Clock,
-  Compass,
   Navigation,
-  Sun,
-  Mountain,
-  Building2,
-  Trees,
-  Globe,
 } from 'lucide-react';
-import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/destination-points';
+import { getDestinationPoint } from '@/lib/geo/destination-points';
 import type { TravelVehicle } from '@/lib/optimizer/types';
-import { DestinationType } from '@/lib/optimizer/types';
+import type { DestinationType } from '@/lib/optimizer/types';
+import { CATEGORY_BADGE_CLASS, VEHICLE_BADGE_CLASS, getCategoryBadges, getVehicleBadge } from '@/components/ui/badge-styles';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
 export interface DestinationMapModalProps {
@@ -25,8 +20,6 @@ export interface DestinationMapModalProps {
   onClose: () => void;
   destinationCode: string;
   destinationName: string;
-  destinationCity?: string;
-  destinationCountry?: string;
   vacationTypes?: DestinationType[];
   flightDistanceKm?: number;
   flightDurationMinutes?: number;
@@ -43,8 +36,6 @@ export function DestinationMapModal({
   onClose,
   destinationCode,
   destinationName,
-  destinationCity,
-  destinationCountry,
   vacationTypes = [],
   flightDistanceKm,
   flightDurationMinutes,
@@ -110,50 +101,11 @@ export function DestinationMapModal({
     return `${h}h ${m > 0 ? `${m}m` : ''}`;
   };
 
-  const getStyleLabel = (style: DestinationType) => {
-    switch (style) {
-      case 'BEACH':
-        return t.home.vacationKindBeach;
-      case 'ALPINE':
-      case 'SKI':
-        return t.home.vacationKindAlpine;
-      case 'CITY':
-        return t.home.vacationKindCity;
-      case 'NATURE':
-        return t.home.vacationKindNature;
-      case 'LONGRANGE':
-        return t.home.vacationKindLongrange;
-      default:
-        return style;
-    }
-  };
+  const placeDetail = airport?.kind === 'AIRPORT' ? airport.name : airport?.surface?.region;
 
-  const renderStyleIcon = (style: DestinationType) => {
-    switch (style) {
-      case 'BEACH':
-        return <Sun className="w-3 h-3 text-amber-500" />;
-      case 'ALPINE':
-      case 'SKI':
-        return <Mountain className="w-3 h-3 text-sky-600" />;
-      case 'CITY':
-        return <Building2 className="w-3 h-3 text-indigo-600" />;
-      case 'NATURE':
-        return <Trees className="w-3 h-3 text-emerald-600" />;
-      case 'LONGRANGE':
-        return <Globe className="w-3 h-3 text-purple-600" />;
-      default:
-        return <Compass className="w-3 h-3 text-teal-600" />;
-    }
-  };
-
-  // Deduplicate styles (e.g. SKI and ALPINE map to the same category)
-  const uniqueStyles = Array.from(
-    new Set(
-      vacationTypes
-        .filter((s) => s !== 'ALL')
-        .map((s) => (s === 'SKI' ? 'ALPINE' : s))
-    )
-  );
+  // Same badges as the result cards (category colours, vehicle chassis)
+  const categoryBadges = getCategoryBadges(vacationTypes, t);
+  const vehicleBadge = travelVehicle ? getVehicleBadge(travelVehicle, t) : null;
 
   return (
     <div
@@ -186,25 +138,38 @@ export function DestinationMapModal({
                 <h3 id="map-modal-title" className="font-extrabold text-slate-900 dark:text-slate-100 text-base sm:text-xl">
                   {destinationName}
                 </h3>
-                {uniqueStyles.map((style) => (
-                  <span
-                    key={style}
-                    className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 flex items-center gap-1 shadow-2xs"
-                  >
-                    {renderStyleIcon(style)}
-                    <span>{getStyleLabel(style)}</span>
+                {categoryBadges.map((meta) => (
+                  <span key={meta.label} className={`text-[10px] ${CATEGORY_BADGE_CLASS} ${meta.color}`}>
+                    <meta.icon className="w-3 h-3 flex-shrink-0" />
+                    <span>{meta.label}</span>
                   </span>
                 ))}
+                {vehicleBadge && (
+                  <span className={`text-[10px] ${VEHICLE_BADGE_CLASS} ${vehicleBadge.color}`}>
+                    <vehicleBadge.icon className={`w-3 h-3 flex-shrink-0 ${vehicleBadge.iconColor}`} />
+                    <span>{vehicleBadge.label}</span>
+                  </span>
+                )}
               </div>
 
+              {/* The title already names the place: the subtitle adds the airport (or the region of a
+                  surface destination) and the coordinates */}
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex flex-wrap items-center gap-2">
-                <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
-                  <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
-                  {getLocalizedDestinationLabel(destinationCode, locale, { city: destinationCity, country: destinationCountry }).label}
-                </span>
-                <span>•</span>
+                {placeDetail && (
+                  <>
+                    <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
+                      {airport?.kind === 'AIRPORT' ? (
+                        <Plane className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                      ) : (
+                        <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                      )}
+                      {placeDetail}
+                    </span>
+                    <span>•</span>
+                  </>
+                )}
                 <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">
-                  {lat.toFixed(3)}°N, {lon.toFixed(3)}°E
+                  {Math.abs(lat).toFixed(3)}°{lat < 0 ? 'S' : 'N'}, {Math.abs(lon).toFixed(3)}°{lon < 0 ? 'W' : 'E'}
                 </span>
               </p>
             </div>
@@ -221,17 +186,17 @@ export function DestinationMapModal({
         </div>
 
         {/* Flight & Distance Quick Metrics Bar */}
-        <div className="bg-slate-50/80 dark:bg-slate-850/80 px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+        <div className="bg-slate-50/80 dark:bg-slate-800/60 px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
           <div className="flex items-center gap-2">
             <Navigation className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
             <div>
               <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">
-                {isOverland ? (travelVehicle === 'TRAIN' ? t.home.overlandRailDistance : t.home.overlandRoadDistance) : 'Distance'}
+                {isOverland ? (travelVehicle === 'TRAIN' ? t.home.overlandRailDistance : t.home.overlandRoadDistance) : t.home.mapDistance}
               </span>
               <span className="font-extrabold text-slate-800 dark:text-slate-200">
                 {isOverland
                   ? (overlandDistanceKm ? `~${overlandDistanceKm.toLocaleString()} km` : '-')
-                  : (flightDistanceKm ? `~${flightDistanceKm.toLocaleString()} km` : 'Geodesic corridor')}
+                  : (flightDistanceKm ? `~${flightDistanceKm.toLocaleString()} km` : '-')}
               </span>
             </div>
           </div>
@@ -240,12 +205,12 @@ export function DestinationMapModal({
             <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
             <div>
               <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">
-                {isOverland ? t.home.overlandDoorToDoor : 'Flight Time'}
+                {isOverland ? t.home.overlandDoorToDoor : t.home.mapFlightTime}
               </span>
               <span className="font-extrabold text-slate-800 dark:text-slate-200">
                 {isOverland
-                  ? (overlandDurationMinutes ? `~${formatFlightTime(overlandDurationMinutes)}` : 'Variable')
-                  : (flightDurationMinutes ? `~${formatFlightTime(flightDurationMinutes)} (non-stop)` : 'Variable')}
+                  ? (overlandDurationMinutes ? `~${formatFlightTime(overlandDurationMinutes)}` : '-')
+                  : (flightDurationMinutes ? `~${formatFlightTime(flightDurationMinutes)}` : '-')}
               </span>
             </div>
           </div>
@@ -257,9 +222,9 @@ export function DestinationMapModal({
               <Plane className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
             )}
             <div>
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">Departure Origin</span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">{t.home.mapDeparture}</span>
               <span className="font-extrabold text-slate-800 dark:text-slate-200 truncate max-w-[140px]">
-                {isOverland ? (departureLocation || t.home.overlandFromHome) : (originAirport || departureLocation || 'Home')}
+                {isOverland ? (departureLocation || t.home.overlandFromHome) : (originAirport || departureLocation || t.home.overlandFromHome)}
               </span>
             </div>
           </div>
@@ -268,9 +233,9 @@ export function DestinationMapModal({
         {/* Interactive Map Embed */}
         <div className="relative w-full flex-1 min-h-[320px] sm:min-h-[400px] bg-slate-100 dark:bg-slate-950">
           <iframe
-            title={`Map of ${destinationName}`}
+            title={t.home.mapTitle.replace('{destination}', destinationName)}
             src={activeEmbedUrl}
-            className="w-full h-full min-h-[320px] sm:min-h-[400px] border-0"
+            className="w-full h-full min-h-[320px] sm:min-h-[400px] border-0 dark:[filter:invert(0.9)_hue-rotate(180deg)_brightness(0.95)_contrast(0.9)]"
             loading="lazy"
           />
         </div>
