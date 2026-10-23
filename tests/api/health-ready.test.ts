@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { GET as healthGet } from '@/app/api/health/route';
 import { GET as readyGet } from '@/app/api/ready/route';
 import { prisma } from '@/lib/db/prisma';
+import * as cacheModule from '@/lib/cache/redis';
 
 describe('Operational Readiness & Health Probes', () => {
   it('GET /api/health returns 200 OK with runtime metadata and uptime', async () => {
@@ -37,6 +38,18 @@ describe('Operational Readiness & Health Probes', () => {
     const body = await res.json();
     expect(body.status).toBe('not_ready');
     expect(body.checks.database).toBe('unreachable');
+  });
+
+  it('GET /api/ready reports cache as unreachable without failing overall readiness', async () => {
+    vi.spyOn(prisma, '$queryRaw').mockResolvedValueOnce([{ '?column?': 1 }]);
+    vi.spyOn(cacheModule, 'checkCacheHealth').mockResolvedValueOnce('unreachable');
+
+    const res = await readyGet();
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.status).toBe('ready');
+    expect(body.checks.cache).toBe('unreachable');
   });
 });
 

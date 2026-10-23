@@ -144,6 +144,24 @@ export const valkey = redis;
 export const dragonfly = redis;
 export const cacheClient = redis;
 
+/**
+ * Unmasked connectivity check for the readiness probe. Unlike `redis.ping()`
+ * above (which deliberately swallows errors so feature code can fall back to
+ * the in-memory cache without crashing), this surfaces a real outage instead
+ * of reporting healthy, and actually attempts to connect even when the lazy
+ * ioredis client hasn't opened a connection yet (status 'wait').
+ */
+export async function checkCacheHealth(): Promise<'healthy' | 'unreachable'> {
+  const client = getRedisClient();
+  if (!client) return 'unreachable';
+  try {
+    const pong = await client.ping();
+    return pong === 'PONG' ? 'healthy' : 'unreachable';
+  } catch {
+    return 'unreachable';
+  }
+}
+
 /** Closes the underlying ioredis connection cleanly on shutdown (SIGTERM/SIGINT). */
 export async function disconnectCache(): Promise<void> {
   if (!redisInstance) return;

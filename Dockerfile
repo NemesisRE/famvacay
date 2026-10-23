@@ -42,21 +42,13 @@ ENV NODE_ENV=production
 # Generate Prisma Client
 RUN pnpm exec prisma generate
 
-# Build Next.js in standalone mode
+# Build Next.js in standalone mode. Next's output file tracing already
+# bundles @prisma/client -- symlink into .pnpm plus the real target,
+# including the native query engine binaries -- into .next/standalone/
+# node_modules on its own; no manual copy step needed (and don't add one:
+# an earlier version of this Dockerfile did, and it conflicted with the
+# symlink Next had already placed there, breaking the runner stage's COPY).
 RUN pnpm run build
-
-# Under pnpm's isolated node_modules, Prisma generates the client (including
-# the query engine binary) directly inside @prisma/client's own package
-# directory rather than a separate node_modules/.prisma -- and node_modules/
-# @prisma is a symlink into the content-addressable .pnpm store, which the
-# runner stage below cannot follow (it only copies this one subpath, not the
-# whole store). Dereference it into real files so that targeted COPY --from
-# has something to copy. (Do not set the Prisma Client generator's `output`
-# field to force the classic node_modules/.prisma/client layout instead --
-# that breaks TypeScript's "bundler" module resolution for the generated
-# types under pnpm, intermittently, depending on install freshness.)
-RUN mkdir -p /app/.prisma-deploy/node_modules && \
-    cp -rL node_modules/@prisma /app/.prisma-deploy/node_modules/@prisma
 
 # ------------------------------------------------------------------------------
 # Stage 3: Migrator (Dedicated one-shot container for database migrations)
@@ -73,7 +65,15 @@ RUN addgroup --system --gid 10001 nodejs && \
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN corepack install && pnpm install --frozen-lockfile --prod --ignore-scripts
-RUN pnpm add -g prisma@6.19.3
+
+# `pnpm add -g` refuses to run until its global bin dir is actually on PATH.
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PNPM_HOME/bin:$PATH"
+# Without --allow-build, pnpm skips prisma/@prisma/engines' postinstall (the
+# step that downloads the schema/query engine binaries) and prisma tries to
+# lazily fetch them on first run instead -- by then we've already dropped to
+# the non-root `nextjs` user, who can't write into this global store.
+RUN pnpm add -g prisma@6.19.3 --allow-build=prisma --allow-build=@prisma/engines
 
 COPY --chown=nextjs:nodejs prisma ./prisma/
 
@@ -104,7 +104,6 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/.prisma-deploy/node_modules/@prisma ./node_modules/@prisma
 
 USER nextjs
 EXPOSE 3000

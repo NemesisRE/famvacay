@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { redis } from '@/lib/cache/redis';
+import { checkCacheHealth } from '@/lib/cache/redis';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +13,6 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const timestamp = new Date().toISOString();
   let dbStatus = 'healthy';
-  let cacheStatus = 'healthy';
 
   // 1. Check Database connection
   try {
@@ -22,21 +21,13 @@ export async function GET() {
     dbStatus = 'unreachable';
   }
 
-  // 2. Check Cache connection
-  try {
-    if (redis && (redis.status === 'ready' || redis.status === 'connect')) {
-      const pong = await redis.ping();
-      if (pong !== 'PONG') {
-        cacheStatus = 'degraded';
-      }
-    } else {
-      cacheStatus = 'degraded';
-    }
-  } catch {
-    cacheStatus = 'unreachable';
-  }
+  // 2. Check Cache connection. A cache outage is reported accurately but
+  // doesn't flip overall readiness to 503: the app has a working in-memory
+  // fallback (see src/lib/cache/redis.ts) and can still serve traffic
+  // without Valkey, just without cross-instance/persistent caching.
+  const cacheStatus = await checkCacheHealth();
 
-  const isReady = dbStatus === 'healthy' && (cacheStatus === 'healthy' || cacheStatus === 'degraded');
+  const isReady = dbStatus === 'healthy';
 
   return NextResponse.json(
     {
