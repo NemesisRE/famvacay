@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   useFloating,
   autoUpdate,
@@ -12,8 +12,8 @@ import {
   useInteractions,
   FloatingPortal,
 } from '@floating-ui/react';
-import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop } from '@/components/ui/responsive-popover';
-import { Sun, CloudRain, Waves, Thermometer, Info, Sparkles, X, Snowflake } from 'lucide-react';
+import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop, viewportFit, POPOVER_DISMISS_OPTIONS } from '@/components/ui/responsive-popover';
+import { Sun, CloudRain, Waves, Thermometer, Sparkles, X, Snowflake } from 'lucide-react';
 import { WeatherAssessment } from '@/lib/optimizer/types';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
@@ -40,12 +40,13 @@ export function ClimateDetailsPopover({
       offset(6),
       flip({ fallbackAxisSideDirection: 'end', padding: 12 }),
       shift({ padding: 12 }),
+      viewportFit(),
     ],
     whileElementsMounted: autoUpdate,
     placement: 'top-start',
   });
 
-  const dismiss = useDismiss(context);
+  const dismiss = useDismiss(context, POPOVER_DISMISS_OPTIONS);
   const role = useRole(context);
 
   const { getReferenceProps, getFloatingProps } = useInteractions([
@@ -67,10 +68,16 @@ export function ClimateDetailsPopover({
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors flex items-center gap-1 cursor-pointer group shadow-2xs"
-        title="View climate insights & historical weather details"
+        title={t.home.climateShowDetails}
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
       >
         <Sun className="w-3 h-3 text-amber-500 group-hover:rotate-45 transition-transform flex-shrink-0" />
         <span>{weather.avgTempC}°C</span>
+        {/* Same "more info" cue as the safety badge */}
+        <span className="opacity-60 group-hover:opacity-100 text-[10px] font-normal transition-opacity ml-0.5" aria-hidden="true">
+          ℹ
+        </span>
       </button>
 
       {/* Popover Card anchored via Floating UI FloatingPortal */}

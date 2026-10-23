@@ -80,3 +80,30 @@ describe('Annual Moving Holidays & Special Dates', () => {
   });
 });
 
+
+describe('Year-independent holiday blackouts', () => {
+  it('resolves every occurrence inside the travel period', async () => {
+    const { resolveSpecialHolidayPeriods } = await import('./special-dates');
+    // Easter 2027: March 28, Easter 2028: April 16
+    const periods = resolveSpecialHolidayPeriods(['easter'], '2027-01-01', '2028-12-31', 'de');
+    expect(periods.map((p) => [p.startDate, p.endDate])).toEqual([
+      ['2027-03-26', '2027-03-29'],
+      ['2028-04-14', '2028-04-17'],
+    ]);
+    expect(periods[0].name).toBe('Ostern');
+  });
+
+  it('includes a Christmas break that started the year before and skips holidays outside the period', async () => {
+    const { resolveSpecialHolidayPeriods } = await import('./special-dates');
+    const periods = resolveSpecialHolidayPeriods(['christmas_new_year', 'pentecost'], '2027-01-01', '2027-03-31');
+    expect(periods.map((p) => p.id)).toEqual(['christmas_new_year']);
+    expect(periods[0].startDate).toBe('2026-12-24');
+    expect(resolveSpecialHolidayPeriods([], '2027-01-01', '2027-12-31')).toEqual([]);
+  });
+
+  it('names every holiday in the interface language', async () => {
+    const { getSpecialHolidayMeta } = await import('./special-dates');
+    expect(getSpecialHolidayMeta('pentecost', 'fr').name).toBe('Pentecôte');
+    expect(getSpecialHolidayMeta('corpus_christi', 'it').description).toBe('Ponte del Corpus Domini');
+  });
+});

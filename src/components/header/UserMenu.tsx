@@ -1,38 +1,24 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { SUPPORTED_LOCALES, SupportedLocale } from '@/lib/i18n/types';
 import { Settings, Sun, Moon, Globe, Check, Users, LogIn, LogOut } from 'lucide-react';
+import { useDarkTheme, useIsClient } from '@/lib/client-stores';
 
 export function UserMenu() {
   const { data: session, status } = useSession();
   const { locale, setLocale, t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [mounted, setMounted] = useState(false);
+  // Theme: the class the layout's inline script applied; client flag without an effect
+  const [isDark, setDark] = useDarkTheme();
+  const mounted = useIsClient();
   const containerRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const isOnProfile = pathname?.startsWith('/profile');
-
-  useEffect(() => {
-    setMounted(true);
-    try {
-      const saved = localStorage.getItem('famvac_theme');
-      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        setTheme('dark');
-        document.documentElement.classList.add('dark');
-      } else {
-        setTheme('light');
-        document.documentElement.classList.remove('dark');
-      }
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -58,20 +44,7 @@ export function UserMenu() {
     };
   }, [isOpen]);
 
-  const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    try {
-      localStorage.setItem('famvac_theme', nextTheme);
-      if (nextTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    } catch {
-      // Storage error
-    }
-  };
+  const toggleTheme = () => setDark(!isDark);
 
   const currentLocale = SUPPORTED_LOCALES.find((l) => l.code === locale) || SUPPORTED_LOCALES[0];
 
@@ -85,7 +58,7 @@ export function UserMenu() {
   }
 
   const headerButtonClass =
-    'h-8 px-1.5 sm:px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition shadow-2xs flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer';
+    'h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition shadow-2xs flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer';
 
   // Account action in front of the options menu: sign in -> family profile -> (on the profile
   // page itself) sign out.
@@ -113,12 +86,14 @@ export function UserMenu() {
           aria-label={t.nav.familyProfile}
         >
           <Users className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+          <span className="sm:hidden">{t.nav.profileShort}</span>
           <span className="hidden sm:inline">{t.nav.familyProfile}</span>
         </Link>
       )
     ) : (
       <Link href="/auth/signin" className={headerButtonClass} title={t.nav.signIn} aria-label={t.nav.signIn}>
         <LogIn className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+        <span className="sm:hidden">{t.nav.signInShort}</span>
         <span className="hidden sm:inline">{t.nav.signIn}</span>
       </Link>
     );
@@ -150,16 +125,19 @@ export function UserMenu() {
             </div>
             <button
               type="button"
-              onClick={toggleTheme}
+              onClick={() => {
+                toggleTheme();
+                setIsOpen(false);
+              }}
               className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer text-left text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60"
             >
               <span className="flex items-center gap-2">
-                {theme === 'dark' ? (
+                {isDark ? (
                   <Moon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                 ) : (
                   <Sun className="w-3.5 h-3.5 text-amber-500" />
                 )}
-                {theme === 'dark' ? t.nav.darkMode : t.nav.lightMode}
+                {isDark ? t.nav.darkMode : t.nav.lightMode}
               </span>
             </button>
 
@@ -178,7 +156,10 @@ export function UserMenu() {
                   type="button"
                   role="menuitemradio"
                   aria-checked={isSelected}
-                  onClick={() => setLocale(l.code as SupportedLocale)}
+                  onClick={() => {
+                    setLocale(l.code as SupportedLocale);
+                    setIsOpen(false);
+                  }}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg transition-colors cursor-pointer text-left ${
                     isSelected
                       ? 'bg-teal-50 dark:bg-teal-900/40 text-teal-800 dark:text-teal-200 font-bold'

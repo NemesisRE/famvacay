@@ -10,7 +10,6 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
 
     let email = session?.user?.email;
 

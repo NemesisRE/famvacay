@@ -28,6 +28,8 @@ export interface DestinationSafetyAssessment {
   hasGermanPartialWarning?: boolean;
   usStateDeptLevel?: 1 | 2 | 3 | 4;
   advisoryTitle?: string;
+  /** Active conflict / crisis zone (high-risk airport list) */
+  conflictZone?: boolean;
 }
 
 export interface TravelAdvisoryCacheEntry {
@@ -186,6 +188,7 @@ export function getDestinationSafetyAssessment(
       hasGermanPartialWarning: false,
       usStateDeptLevel: 4,
       advisoryTitle: 'Level 4: Do Not Travel (High-Risk Conflict Zone)',
+      conflictZone: true,
     };
   }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { Globe, ChevronDown, Check } from 'lucide-react';
 import type { DestinationType } from '@/lib/optimizer/types';
 

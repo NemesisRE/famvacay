@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, locations: [] });
     }
 
-    const locations = await geocodeLocation(query);
+    const locations = await geocodeLocation(query, searchParams.get('locale') || 'en');
     return NextResponse.json({
       success: true,
       count: locations.length,

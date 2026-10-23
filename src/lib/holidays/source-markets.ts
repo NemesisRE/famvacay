@@ -242,3 +242,5 @@ export function computeSourceMarketDemand(
 export const MAX_DEMAND_SURCHARGE = 0.18;
 /** Demand index from which a window counts as European high season. */
 export const HIGH_DEMAND_THRESHOLD = 0.45;
+/** Demand index up to which a window counts as a quiet travel period. */
+export const LOW_DEMAND_THRESHOLD = 0.1;

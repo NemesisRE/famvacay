@@ -130,6 +130,47 @@ describe('Optimizer with source-market demand', () => {
     expect(b.estimatedTotalCost).toBeGreaterThan(a.estimatedTotalCost);
     expect(b.pricingDetails!.demandAdjustmentEur).toBe(b.estimatedTotalCost - a.estimatedTotalCost);
   });
+
+  it('turns high European school-holiday demand into an OVERCROWDED_PEAK seasonal warning with penalty', async () => {
+    const { getLocalizedSeasonalWarning, getWindowSeasonalWarnings } = await import('../localized-warnings');
+    const { en } = await import('../../i18n/locales/en');
+    const input = baseInput({
+      earliestDate: '2027-07-28',
+      latestDate: '2027-08-10',
+      maxWindowsPerDestination: 0,
+      railAirSuggestions: false,
+    });
+    const calendars = typicalCalendars(2027);
+    const without = optimizeVacationWindows(input, {}, {}, undefined, {});
+    const withDemand = optimizeVacationWindows(input, {}, {}, undefined, { sourceMarketCalendars: calendars });
+
+    const pick = (list: CandidateWindow[]) => list.find((w) => w.startDate === '2027-07-31' && w.originAirport === 'FRA')!;
+    const a = pick(without);
+    const b = pick(withDemand);
+
+    expect(a.seasonalWarning).toBeFalsy();
+    expect(b.seasonalWarning).toBeDefined();
+    expect(b.seasonalWarning!.seasonType).toBe('OVERCROWDED_PEAK');
+    expect(b.seasonalWarning!.eventKey).toBe('school_holidays');
+    expect(b.seasonalWarning!.marketsOnHoliday).toEqual(expect.arrayContaining(['DE', 'GB', 'FR']));
+    expect(b.seasonalWarningPenalty).toBe(6);
+
+    const localized = getLocalizedSeasonalWarning(b.seasonalWarning!, en, 'en');
+    expect(localized.title).toContain(en.home.seasonWarningCrowdedPeakTitle);
+    expect(localized.title).toContain('Busy: holidays in');
+    expect(localized.description).toContain(en.home.seasonWarningCrowdedPeakDesc);
+    expect(localized.description).toContain(en.home.demandTitle);
+
+    // Also works when hydrated from cached/shared windows or alongside another warning (e.g. Spring Break)
+    const hydratedWarnings = getWindowSeasonalWarnings({
+      destinationAirport: 'PMI',
+      startDate: '2027-07-31',
+      seasonalWarning: null,
+      sourceMarketDemand: { index: 0.8, marketsOnHoliday: ['DE', 'GB'] },
+    });
+    expect(hydratedWarnings).toHaveLength(1);
+    expect(hydratedWarnings[0].eventKey).toBe('school_holidays');
+  });
 });
 
 describe('Flexible departure airport', () => {

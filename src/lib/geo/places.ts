@@ -166,8 +166,6 @@ export async function searchGlobalPlaces(
       item.display_name?.split(',')?.[0]?.trim();
 
     const cleanName = rawName || q;
-    const cleanLower = cleanName.toLowerCase();
-    const qLower = q.toLowerCase();
 
     let category: PlaceCategory = 'city';
     const placeType = (item.type || '').toLowerCase();

@@ -18,13 +18,14 @@ export interface GeocodedLocation {
  * using live runtime geocoding services (OpenStreetMap Nominatim & Photon Komoot)
  * backed by a 7-day Redis caching layer. Zero hardcoded city or postal code dictionaries.
  */
-export async function geocodeLocation(rawQuery: string): Promise<GeocodedLocation[]> {
+export async function geocodeLocation(rawQuery: string, language = 'en'): Promise<GeocodedLocation[]> {
   const query = rawQuery.trim();
   if (!query || query.length < 2) {
     return [];
   }
 
-  const cacheKey = `geo:geocode:${query.toLowerCase()}`;
+  const lang = (language || 'en').slice(0, 2).toLowerCase();
+  const cacheKey = `geo:geocode:v2:${lang}:${query.toLowerCase()}`;
   const cached = await getCached<GeocodedLocation[]>(cacheKey);
   if (cached && cached.length > 0) {
     return cached;
@@ -45,7 +46,8 @@ export async function geocodeLocation(rawQuery: string): Promise<GeocodedLocatio
       signal: controller.signal,
       headers: {
         'User-Agent': 'FamVacay/1.0 (self-hosted family vacation optimizer)',
-        'Accept-Language': 'en,de,fr,es,it',
+        // Place names in the interface language (München / Munich), the others as fallback
+        'Accept-Language': `${lang},en;q=0.8,de;q=0.6`,
       },
     });
 
@@ -196,4 +198,59 @@ export async function resolveLocationCoordinates(
     };
   }
   return null;
+}
+
+/**
+ * Reverse geocoding (coordinates -> town) for the browser's location: OpenStreetMap Nominatim at
+ * town level, names in the interface language. Coordinates are rounded to ~1 km for the cache key
+ * (and the request), which is plenty for a home town and keeps the exact position out of logs.
+ */
+export async function reverseGeocodeLocation(lat: number, lon: number, language = 'en'): Promise<GeocodedLocation | null> {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  const rLat = Math.round(lat * 100) / 100;
+  const rLon = Math.round(lon * 100) / 100;
+  const lang = (language || 'en').slice(0, 2).toLowerCase();
+  const cacheKey = `geo:reverse:v1:${rLat}:${rLon}:${lang}`;
+  const cached = await getCached<GeocodedLocation>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${rLat}&lon=${rLon}&format=jsonv2&zoom=12&addressdetails=1`,
+      {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'FamVacay/1.0 (self-hosted family vacation optimizer)',
+          'Accept-Language': lang,
+        },
+      }
+    );
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+    const item = await res.json();
+    if (!item || item.error) return null;
+
+    const address = item.address || {};
+    const townOrCity = address.city || address.town || address.village || address.municipality || address.suburb || item.name;
+    if (!townOrCity) return null;
+    const postcode = address.postcode;
+    const result: GeocodedLocation = {
+      name: postcode ? `${postcode} ${townOrCity}` : townOrCity,
+      displayName: item.display_name || townOrCity,
+      city: townOrCity,
+      postcode,
+      // The town's own coordinates, not the device's
+      lat: parseFloat(item.lat) || rLat,
+      lon: parseFloat(item.lon) || rLon,
+      countryCode: (address.country_code || '').toUpperCase(),
+      stateCode: address['ISO3166-2-lvl4'],
+      stateName: address.state,
+    };
+    await setCached(cacheKey, result, 60 * 60 * 24 * 30);
+    return result;
+  } catch {
+    return null;
+  }
 }

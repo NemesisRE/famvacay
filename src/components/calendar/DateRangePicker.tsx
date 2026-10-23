@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DayPicker, DateRange } from 'react-day-picker';
 import { de, enUS, es, fr, it } from 'react-day-picker/locale';
 import { Calendar } from 'lucide-react';

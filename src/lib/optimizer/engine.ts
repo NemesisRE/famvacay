@@ -919,7 +919,28 @@ export function optimizeVacationWindows(
 
         // Dynamic weather assessment
         const weather = getClimate(dest, monthIndex);
-        const seasonalWarning = getSeasonal(dest, monthIndex, travelYear, weather);
+        const baseSeasonalWarning = getSeasonal(dest, monthIndex, travelYear, weather);
+        const isHighSourceMarketDemand = Boolean(
+          sourceMarketDemand &&
+            sourceMarketDemand.index >= HIGH_DEMAND_THRESHOLD &&
+            sourceMarketDemand.marketsOnHoliday.length > 0
+        );
+        const seasonalWarning = isHighSourceMarketDemand
+          ? baseSeasonalWarning
+            ? {
+                ...baseSeasonalWarning,
+                marketsOnHoliday: sourceMarketDemand!.marketsOnHoliday,
+              }
+            : {
+                destinationCode: dest,
+                seasonType: 'OVERCROWDED_PEAK' as const,
+                monthRange: [monthIndex],
+                messageKey: 'seasonWarningCrowdedPeak',
+                fallbackMessage: `School holidays in ${sourceMarketDemand!.marketsOnHoliday.join(', ')}: High travel demand, crowded destinations, and elevated rates.`,
+                eventKey: 'school_holidays',
+                marketsOnHoliday: sourceMarketDemand!.marketsOnHoliday,
+              }
+          : baseSeasonalWarning;
 
         // Minimum beach temperature constraint
         if (input.minBeachTemp && input.minBeachTemp > 0) {

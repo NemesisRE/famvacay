@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { startRegistration } from '@simplewebauthn/browser';
 import {
-  Shield,
   Mail,
   KeyRound,
   Fingerprint,
@@ -55,27 +54,31 @@ export function AccountSettings() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
+  // Loading (no state) and applying are separate, so the initial load only sets state once the data
+  // arrived - not synchronously inside the effect
+  const loadAccountData = async () => {
+    const [accRes, passRes] = await Promise.all([fetch('/api/auth/linked-accounts'), fetch('/api/account/passkeys')]);
+    return {
+      account: accRes.ok ? await accRes.json() : null,
+      passkeys: passRes.ok ? (await passRes.json()).passkeys || [] : null,
+    };
+  };
+  const applyAccountData = (data: Awaited<ReturnType<typeof loadAccountData>>) => {
+    if (data.account) {
+      setAccountInfo({
+        hasPassword: data.account.hasPassword,
+        linkedProviders: data.account.linkedProviders || [],
+        passkeysCount: data.account.passkeysCount || 0,
+      });
+    }
+    if (data.passkeys) setPasskeys(data.passkeys);
+  };
+
+  // Reload after a change (link/unlink, passkey added, ...)
   const fetchAccountData = async () => {
     try {
       setLoading(true);
-      const [accRes, passRes] = await Promise.all([
-        fetch('/api/auth/linked-accounts'),
-        fetch('/api/account/passkeys'),
-      ]);
-
-      if (accRes.ok) {
-        const accData = await accRes.json();
-        setAccountInfo({
-          hasPassword: accData.hasPassword,
-          linkedProviders: accData.linkedProviders || [],
-          passkeysCount: accData.passkeysCount || 0,
-        });
-      }
-
-      if (passRes.ok) {
-        const passData = await passRes.json();
-        setPasskeys(passData.passkeys || []);
-      }
+      applyAccountData(await loadAccountData());
     } catch (err) {
       console.error('Error fetching account settings:', err);
     } finally {
@@ -83,12 +86,30 @@ export function AccountSettings() {
     }
   };
 
+  // The session's address pre-fills the e-mail form (adopted while rendering, not in an effect)
+  const sessionEmail = session?.user?.email || '';
+  const [syncedSessionEmail, setSyncedSessionEmail] = useState('');
+  if (sessionEmail && sessionEmail !== syncedSessionEmail) {
+    setSyncedSessionEmail(sessionEmail);
+    setEmail(sessionEmail);
+  }
+
+  // Initial load (loading already starts as true); reloads when the signed-in user changes
   useEffect(() => {
-    if (session?.user?.email) {
-      setEmail(session.user.email);
-    }
-    fetchAccountData();
-  }, [session?.user?.email]);
+    let active = true;
+    loadAccountData()
+      .then((data) => {
+        if (active) applyAccountData(data);
+      })
+      .catch((err) => console.error('Error fetching account settings:', err))
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the loaders only use stable state setters
+  }, [sessionEmail]);
 
   const handleUpdateEmail = async (e: React.FormEvent) => {
     e.preventDefault();

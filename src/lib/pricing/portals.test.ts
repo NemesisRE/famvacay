@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   TRAVEL_PORTALS,
   getDefaultPortalsForCountry,
-  getActivePortals,
 } from './portals';
 
 describe('Pluggable Travel Portal Provider Registry', () => {

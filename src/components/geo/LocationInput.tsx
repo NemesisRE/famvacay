@@ -1,20 +1,17 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Search, X, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { MapPin, X, CheckCircle2, AlertCircle, LocateFixed } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
+import {
+  detectUserLocation,
+  formatLocationLabel,
+  type BrowserLocationError,
+  type GeocodedLocation,
+} from '@/lib/geo/location-helpers';
 
-export interface GeocodedLocation {
-  name: string;
-  city?: string;
-  postcode?: string;
-  state?: string;
-  country?: string;
-  countryCode: string;
-  lat: number;
-  lon: number;
-  displayName: string;
-}
+// Same shape as the geocoding API (stateCode / stateName / countryCode)
+export type { GeocodedLocation };
 
 interface LocationInputProps {
   value: string;
@@ -31,9 +28,10 @@ export function LocationInput({
   label,
   className = '',
 }: LocationInputProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [query, setQuery] = useState(value);
-  const [results, setResults] = useState<GeocodedLocation[]>([]);
+  const [locating, setLocating] = useState(false);
+  const [rawResults, setResults] = useState<GeocodedLocation[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -41,28 +39,27 @@ export function LocationInput({
   const [isVerified, setIsVerified] = useState<boolean>(true);
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const results = query.trim().length >= 2 ? rawResults : [];
 
-  // Sync external value changes
-  useEffect(() => {
+  // Outside value changes (profile prefill, detected location, reset): adopted while rendering
+  const [syncedValue, setSyncedValue] = useState(value);
+  if (value !== syncedValue) {
+    setSyncedValue(value);
     setQuery(value);
     if (value && value.trim().length >= 2) {
       setIsVerified(true);
       setValidationWarning(null);
     }
-  }, [value]);
+  }
 
-  // Debounced geocoding search
+  // Debounced geocoding search (results of a too-short query are simply not shown, see below)
   useEffect(() => {
-    if (!query.trim() || query.trim().length < 2) {
-      setResults([]);
-      setLoading(false);
-      return;
-    }
+    if (query.trim().length < 2) return;
 
     const timer = setTimeout(async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/locations/geocode?q=${encodeURIComponent(query.trim())}`);
+        const res = await fetch(`/api/locations/geocode?q=${encodeURIComponent(query.trim())}&locale=${locale}`);
         if (res.ok) {
           const data = await res.json();
           const list = data.locations || [];
@@ -80,7 +77,7 @@ export function LocationInput({
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [query, isFocused]);
+  }, [query, isFocused, locale]);
 
   // Handle outside click or tap to close dropdown ONLY when dropdown is open
   useEffect(() => {
@@ -124,7 +121,7 @@ export function LocationInput({
     // Try verifying against API
     try {
       setLoading(true);
-      const res = await fetch(`/api/locations/geocode?q=${encodeURIComponent(q)}`);
+      const res = await fetch(`/api/locations/geocode?q=${encodeURIComponent(q)}&locale=${locale}`);
       if (res.ok) {
         const data = await res.json();
         if (data.locations && data.locations.length > 0) {
@@ -145,21 +142,7 @@ export function LocationInput({
   };
 
   const handleSelect = (loc: GeocodedLocation) => {
-    const cityName = loc.city || loc.name;
-    const parts: string[] = [];
-    if (loc.postcode && !loc.name.includes(loc.postcode)) {
-      parts.push(`${loc.postcode} ${cityName}`);
-    } else {
-      parts.push(cityName);
-    }
-
-    if (loc.state && loc.state !== cityName) {
-      parts.push(loc.state);
-    }
-    if (loc.country) {
-      parts.push(loc.country);
-    }
-    const formatted = parts.join(', ');
+    const formatted = formatLocationLabel(loc, locale);
 
     setQuery(formatted);
     setIsVerified(true);
@@ -167,6 +150,26 @@ export function LocationInput({
     setValidationWarning(null);
     onChange(formatted, { lat: loc.lat, lon: loc.lon }, loc);
     setShowDropdown(false);
+  };
+
+  // Browser location -> town (asks for permission; only possible over https / localhost)
+  const handleUseMyLocation = async () => {
+    setLocating(true);
+    setValidationWarning(null);
+    try {
+      handleSelect(await detectUserLocation(locale));
+    } catch (err) {
+      const code = (typeof err === 'string' ? err : 'unavailable') as BrowserLocationError;
+      setValidationWarning(
+        code === 'denied'
+          ? t.home.locationErrorDenied
+          : code === 'insecure'
+          ? t.home.locationErrorInsecure
+          : t.home.locationErrorUnavailable
+      );
+    } finally {
+      setLocating(false);
+    }
   };
 
   const handleManualChange = (val: string) => {
@@ -185,15 +188,26 @@ export function LocationInput({
             <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
             <span className="truncate">{label}</span>
           </span>
-          {isVerified && query.trim() ? (
-            <span
-              className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold flex-shrink-0 ml-1.5"
-              title={t.home.locationVerified}
+          <span className="flex items-center gap-2 flex-shrink-0 ml-1.5">
+            {isVerified && query.trim() ? (
+              <span title={t.home.locationVerified} aria-label={t.home.locationVerified}>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
+              </span>
+            ) : null}
+            <button
+              type="button"
+              onClick={handleUseMyLocation}
+              disabled={locating}
+              className="text-[11px] font-semibold text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-100 flex items-center gap-1 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
             >
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 flex-shrink-0" />
-              <span className="hidden sm:inline truncate max-w-[120px]">{t.home.locationVerified}</span>
-            </span>
-          ) : null}
+              {locating ? (
+                <span className="w-3 h-3 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <LocateFixed className="w-3.5 h-3.5" />
+              )}
+              <span>{locating ? t.home.locating : t.home.useMyLocation}</span>
+            </button>
+          </span>
         </div>
       )}
 
@@ -221,13 +235,12 @@ export function LocationInput({
             }
           }}
           placeholder={placeholder || t.home.departureLocationPlaceholder}
-          className={`w-full text-xs rounded-lg border pl-8 pr-8 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 shadow-sm ${
+          className={`w-full text-xs font-medium rounded-lg border pl-3 pr-8 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:font-normal focus:outline-none focus:ring-2 shadow-2xs ${
             validationWarning
               ? 'border-amber-400 focus:ring-amber-500 bg-amber-50/20 dark:bg-amber-950/20'
               : 'border-slate-300 dark:border-slate-700 focus:ring-teal-500'
           }`}
         />
-        <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-2.5 top-2.5" />
         {loading && (
           <span className="w-3.5 h-3.5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin absolute right-2.5 top-2.5" />
         )}
@@ -276,12 +289,11 @@ export function LocationInput({
                   <span className="font-semibold text-slate-800 dark:text-slate-100">
                     {loc.name}
                   </span>
-                  {loc.state && <span className="text-slate-500 dark:text-slate-400 ml-1">· {loc.state}</span>}
-                  {loc.country && <span className="text-slate-400 dark:text-slate-500 ml-1">({loc.country})</span>}
+                  {loc.stateName && <span className="text-slate-500 dark:text-slate-400 ml-1">· {loc.stateName}</span>}
                 </div>
               </div>
               <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded flex-shrink-0 ml-2">
-                {loc.countryCode ? loc.countryCode.toUpperCase() : 'DE'}
+                {(loc.countryCode || '').toUpperCase()}
               </span>
             </button>
           ))}

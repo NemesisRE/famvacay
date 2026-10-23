@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { Plane, ChevronDown, Check } from 'lucide-react';
 
 interface FlightStopsPopoverProps {

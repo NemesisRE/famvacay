@@ -188,7 +188,7 @@ export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCa
 
       // 1. Parse German Foreign Office (Auswärtiges Amt) warnings
       if (aaData) {
-        for (const [key, item] of Object.entries<any>(aaData)) {
+        for (const item of Object.values<any>(aaData)) {
           if (!item || !item.countryCode) continue;
           const iso = item.countryCode.toUpperCase();
           const hasWarning = Boolean(item.warning);
@@ -262,7 +262,7 @@ export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCa
       }
 
       // 3. Compute unified safety score and safe place rating
-      for (const [iso, entry] of Object.entries(entries)) {
+      for (const entry of Object.values(entries)) {
         if (entry.hasGermanWarning || entry.usStateDeptLevel === 4) {
           entry.isSafeForFamilies = false;
           entry.safetyScore = 20;

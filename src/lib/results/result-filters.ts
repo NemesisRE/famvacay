@@ -1,5 +1,7 @@
 import type { CandidateWindow } from '../optimizer/types';
 import { getDestinationVacationStyles } from '../optimizer/destination-styles';
+import { LOW_DEMAND_THRESHOLD } from '../holidays/source-markets';
+import { getSeasonalWarningTypeKey, getWindowFilterWarning } from '../optimizer/localized-warnings';
 
 /**
  * Result filters of the search page as pure functions, so the page can both filter the results
@@ -15,6 +17,10 @@ export interface ResultFilterState {
   vehicle: string;
   safety: string;
   warning: string;
+  /** Seasonal warning type keys explicitly allowed to be shown when `warning !== 'ALL'` */
+  allowedWarnings?: string[];
+  /** Seasonal travel demand information filter: 'ALL' or 'QUIET_ONLY' */
+  seasonalInfo?: string;
   heat: string;
   boardType: string;
   overlandDuration: string;
@@ -23,7 +29,7 @@ export interface ResultFilterState {
   maxCost?: number;
 }
 
-export type ResultFilterKey = keyof ResultFilterState;
+export type ResultFilterKey = Exclude<keyof ResultFilterState, 'allowedWarnings'>;
 
 /** The value each filter has when it does not filter anything */
 export const NEUTRAL_FILTER_VALUES: { [K in ResultFilterKey]: ResultFilterState[K] } = {
@@ -34,6 +40,7 @@ export const NEUTRAL_FILTER_VALUES: { [K in ResultFilterKey]: ResultFilterState[
   vehicle: 'ALL',
   safety: 'ALL',
   warning: 'ALL',
+  seasonalInfo: 'ALL',
   heat: 'ALL',
   boardType: 'ALL',
   overlandDuration: 'ALL',
@@ -47,7 +54,7 @@ const isOverland = (w: CandidateWindow) => Boolean(w.travelVehicle && w.travelVe
 const tripDistanceKm = (w: CandidateWindow) =>
   isOverland(w) ? w.vehicleDetails?.distanceKm || 0 : w.flightDistanceKm || 0;
 
-type Tests = { [K in ResultFilterKey]: (w: CandidateWindow, value: ResultFilterState[K]) => boolean };
+type Tests = { [K in ResultFilterKey]: (w: CandidateWindow, value: ResultFilterState[K], state?: ResultFilterState) => boolean };
 
 const TESTS: Tests = {
   destinations: (w, codes) => codes.length === 0 || codes.includes(w.destinationAirport),
@@ -84,8 +91,15 @@ const TESTS: Tests = {
     const s = w.destinationSafety || w.safetyAssessment;
     return s ? s.isSafe : true;
   },
-  warning: (w, warning) =>
-    warning !== 'CLEAN_ONLY' || !w.seasonalWarning || w.seasonalWarning.seasonType === 'EXTREME_HEAT',
+  warning: (w, warning, state) => {
+    if (warning !== 'CLEAN_ONLY') return true;
+    const filterWarning = getWindowFilterWarning(w);
+    if (!filterWarning) return true;
+    const allowed = state?.allowedWarnings || [];
+    return allowed.includes(getSeasonalWarningTypeKey(filterWarning));
+  },
+  seasonalInfo: (w, seasonalInfo) =>
+    seasonalInfo !== 'QUIET_ONLY' || Boolean(w.sourceMarketDemand && w.sourceMarketDemand.index <= LOW_DEMAND_THRESHOLD),
   heat: (w, heat) => heat !== 'AVOID_EXTREME_HEAT' || w.seasonalWarning?.seasonType !== 'EXTREME_HEAT',
   boardType: (w, boardType) => boardType === 'ALL' || w.boardType === boardType,
   overlandDuration: (w, maxMinutes) => {
@@ -107,9 +121,10 @@ const KEYS = Object.keys(TESTS) as ResultFilterKey[];
 export function matchesResultFilter<K extends ResultFilterKey>(
   w: CandidateWindow,
   key: K,
-  value: ResultFilterState[K]
+  value: ResultFilterState[K],
+  state?: ResultFilterState
 ): boolean {
-  return TESTS[key](w, value);
+  return TESTS[key](w, value, state);
 }
 
 /** Results passing every filter, optionally ignoring one (for that filter's option counts). */
@@ -119,7 +134,9 @@ export function applyResultFilters(
   except?: ResultFilterKey
 ): CandidateWindow[] {
   const keys = KEYS.filter((k) => k !== except);
-  return windows.filter((w) => keys.every((k) => (TESTS[k] as (w: CandidateWindow, v: unknown) => boolean)(w, state[k])));
+  return windows.filter((w) =>
+    keys.every((k) => (TESTS[k] as (w: CandidateWindow, v: unknown, s?: ResultFilterState) => boolean)(w, state[k], state))
+  );
 }
 
 /**
@@ -136,7 +153,9 @@ export function countResultFilterOptions(
     const base = applyResultFilters(windows, state, key);
     const counts: Record<string, number> = {};
     for (const value of options[key] || []) {
-      counts[value] = base.filter((w) => (TESTS[key] as (w: CandidateWindow, v: unknown) => boolean)(w, value)).length;
+      counts[value] = base.filter((w) =>
+        (TESTS[key] as (w: CandidateWindow, v: unknown, s?: ResultFilterState) => boolean)(w, value, state)
+      ).length;
     }
     out[key] = counts;
   }
@@ -154,4 +173,51 @@ export function isResultFilterApplicable(
 ): boolean {
   const base = applyResultFilters(windows, state, key);
   return key === 'flightStops' ? base.some((w) => !isOverland(w)) : base.some(isOverland);
+}
+
+export interface ResultFilterExclusion {
+  key: ResultFilterKey;
+  /** Specific seasonal warning type key when `key === 'warning'` */
+  warningKey?: string;
+  /** Results this filter hides in addition to the filters listed before it */
+  excluded: number;
+}
+
+/**
+ * Why fewer results are shown than were found: the filters are applied one after another (in a
+ * fixed order) and each reports how many of the remaining results it hides, so the rows add up
+ * exactly to "found - shown". Filters that hide nothing are left out.
+ * Seasonal warnings are broken down by individual warning type so each can be resolved separately.
+ */
+export function explainResultFilterExclusions(windows: CandidateWindow[], state: ResultFilterState): ResultFilterExclusion[] {
+  const rows: ResultFilterExclusion[] = [];
+  let remaining = windows;
+  for (const key of KEYS) {
+    if (key === 'warning') {
+      if (state.warning === 'CLEAN_ONLY') {
+        const allowed = state.allowedWarnings || [];
+        const byWarningKey = new Map<string, number>();
+        const kept: CandidateWindow[] = [];
+        for (const w of remaining) {
+          const fw = getWindowFilterWarning(w);
+          const wk = fw ? getSeasonalWarningTypeKey(fw) : null;
+          if (wk && !allowed.includes(wk)) {
+            byWarningKey.set(wk, (byWarningKey.get(wk) || 0) + 1);
+          } else {
+            kept.push(w);
+          }
+        }
+        for (const [warningKey, excluded] of byWarningKey.entries()) {
+          rows.push({ key: 'warning', warningKey, excluded });
+        }
+        remaining = kept;
+      }
+      continue;
+    }
+    const test = TESTS[key] as (w: CandidateWindow, v: unknown, s?: ResultFilterState) => boolean;
+    const next = remaining.filter((w) => test(w, state[key], state));
+    if (next.length < remaining.length) rows.push({ key, excluded: remaining.length - next.length });
+    remaining = next;
+  }
+  return rows;
 }

@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { Users, Plus, Trash2 } from 'lucide-react';
 import { differenceInYears } from 'date-fns';
 import { useI18n } from '@/lib/i18n/i18n-context';

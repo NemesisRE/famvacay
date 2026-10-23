@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   useFloating,
   autoUpdate,
@@ -12,7 +12,7 @@ import {
   useInteractions,
   FloatingPortal,
 } from '@floating-ui/react';
-import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop } from '@/components/ui/responsive-popover';
+import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop, viewportFit, POPOVER_DISMISS_OPTIONS } from '@/components/ui/responsive-popover';
 import {
   ExternalLink,
   Plane,
@@ -41,6 +41,14 @@ import {
   getActivePortals,
   saveActivePortalIds,
 } from '@/lib/pricing/portals';
+
+const PORTAL_BADGE_LABEL_KEYS = {
+  hotels: 'portalBadgeHotels',
+  package: 'portalBadgePackage',
+  comparison: 'portalBadgeComparison',
+  deals: 'portalBadgeDeals',
+  direct: 'portalBadgeDirect',
+} as const;
 
 interface BookingDealsPopoverProps {
   pricingDetails?: AggregatedTripPricing;
@@ -99,8 +107,14 @@ export function BookingDealsPopover({
   const { t, locale } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [showPortalSettings, setShowPortalSettings] = useState(false);
-  const [activePortalsList, setActivePortalsList] = useState<TravelPortal[]>([]);
-  const [selectedPortalIds, setSelectedPortalIds] = useState<string[]>([]);
+  // The country's default portals unless the user picked their own (for this country)
+  const [customPortals, setCustomPortals] = useState<{ country: string | undefined; ids: string[] } | null>(null);
+  const defaultPortals = useMemo(() => getActivePortals(countryCode), [countryCode]);
+  const hasCustomPortals = customPortals !== null && customPortals.country === countryCode;
+  const selectedPortalIds = hasCustomPortals ? customPortals.ids : defaultPortals.map((p) => p.id);
+  const activePortalsList: TravelPortal[] = hasCustomPortals
+    ? TRAVEL_PORTALS.filter((p) => customPortals.ids.includes(p.id))
+    : defaultPortals;
 
   const isSmallScreen = useIsSmallScreen();
 
@@ -111,24 +125,19 @@ export function BookingDealsPopover({
       offset(6),
       flip({ fallbackAxisSideDirection: 'end', padding: 12 }),
       shift({ padding: 12 }),
+      viewportFit(),
     ],
     whileElementsMounted: autoUpdate,
     placement: 'bottom-end',
   });
 
-  const dismiss = useDismiss(context);
+  const dismiss = useDismiss(context, POPOVER_DISMISS_OPTIONS);
   const role = useRole(context);
 
   const { getReferenceProps, getFloatingProps } = useInteractions([
     dismiss,
     role,
   ]);
-
-  useEffect(() => {
-    const portals = getActivePortals(countryCode);
-    setActivePortalsList(portals);
-    setSelectedPortalIds(portals.map((p) => p.id));
-  }, [countryCode]);
 
   const sDate = startDate || '';
   const eDate = endDate || '';
@@ -169,9 +178,8 @@ export function BookingDealsPopover({
     } else {
       nextIds = [...selectedPortalIds, portalId];
     }
-    setSelectedPortalIds(nextIds);
+    setCustomPortals({ country: countryCode, ids: nextIds });
     saveActivePortalIds(nextIds);
-    setActivePortalsList(TRAVEL_PORTALS.filter((p) => nextIds.includes(p.id)));
   };
 
   return (
@@ -182,12 +190,12 @@ export function BookingDealsPopover({
         {...getReferenceProps()}
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="h-7 text-xs font-semibold text-teal-700 dark:text-teal-300 hover:text-teal-800 dark:hover:text-teal-200 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 px-2.5 py-1 rounded-lg border border-teal-200 dark:border-teal-800 transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+        className="relative h-7 text-xs font-semibold text-teal-700 dark:text-teal-300 hover:text-teal-800 dark:hover:text-teal-200 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 pl-2.5 pr-7 py-1 rounded-lg border border-teal-200 dark:border-teal-800 transition-colors w-full inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
         title={t.home.viewPortalDeals || 'View booking portal deals & direct links'}
       >
         <Tag className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
         <span>{t.home.viewPortalDeals || 'View Deals'}</span>
-        <ChevronDown className={`w-3 h-3 text-teal-600 dark:text-teal-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-teal-600 dark:text-teal-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {/* Popover Card anchored via Floating UI FloatingPortal */}
@@ -216,7 +224,7 @@ export function BookingDealsPopover({
                   className={`p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer ${
                     showPortalSettings ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/40' : 'text-slate-400 dark:text-slate-500'
                   }`}
-                  title="Customize preferred booking portals"
+                  title={t.home.customizePortals}
                 >
                   <Settings2 className="w-3.5 h-3.5" />
                 </button>
@@ -246,13 +254,13 @@ export function BookingDealsPopover({
                     onClick={() => setShowPortalSettings(false)}
                     className="text-[10px] text-teal-600 dark:text-teal-400 font-bold hover:underline cursor-pointer"
                   >
-                    Done
+                    {t.home.dealsDone}
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                  Select your preferred portals based on your region (DACH, Oceania, North America, Global):
+                  {t.home.dealsPortalRegionHint}
                 </p>
-                <div className="grid grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-1">
+                <div className="grid grid-cols-2 gap-1.5 max-h-56 overflow-y-auto overscroll-contain pr-1">
                   {TRAVEL_PORTALS.map((portal) => {
                     const isChecked = selectedPortalIds.includes(portal.id);
                     return (
@@ -287,7 +295,7 @@ export function BookingDealsPopover({
                       {/* A car costs the same however many travel in it, so no per-person fare */}
                       {travelMode !== 'CAR' && (
                         <span className="text-[9px] font-normal text-slate-400 dark:text-slate-500 ml-1">
-                          (~{flight.baseAdultFare} € / pp)
+                          (~{flight.baseAdultFare} € / {t.home.perPersonShort})
                         </span>
                       )}
                     </div>
@@ -301,7 +309,7 @@ export function BookingDealsPopover({
                     <div className="font-extrabold text-slate-900 dark:text-slate-100 text-xs mt-0.5">
                       ~{lodging.totalLodgingCost} €
                       <span className="text-[9px] font-normal text-slate-400 dark:text-slate-500 ml-1">
-                        (~{lodging.nightlyRate} € / n)
+                        (~{lodging.nightlyRate} € / {t.home.perNightShort})
                       </span>
                     </div>
                   </div>
@@ -348,7 +356,7 @@ export function BookingDealsPopover({
                 {/* Direct Booking Portal Buttons */}
                 <div className="space-y-1.5">
                   <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                    {isOverland ? t.home.compareAccommodation : 'Compare Live Rates Across Providers:'}
+                    {isOverland ? t.home.compareAccommodation : t.home.dealsCompareProviders}
                   </span>
                   <div className="grid grid-cols-2 gap-2">
                     {visiblePortals.map((portal) => {
@@ -373,9 +381,9 @@ export function BookingDealsPopover({
                         >
                           <span className="truncate">{portal.name}</span>
                           <div className="flex items-center gap-1 flex-shrink-0 ml-1">
-                            {portal.badge && (
+                            {(portal.badgeKey || portal.badge) && (
                               <span className="text-[8px] uppercase font-extrabold bg-white/20 px-1 py-0.2 rounded">
-                                {portal.badge}
+                                {portal.badgeKey ? t.home[PORTAL_BADGE_LABEL_KEYS[portal.badgeKey]] : portal.badge}
                               </span>
                             )}
                             <ExternalLink className="w-3 h-3" />
@@ -390,7 +398,7 @@ export function BookingDealsPopover({
 
             {/* Footer Transparency Notice + .ics Export */}
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 gap-2">
-              <span className="truncate">Prices estimated from live seasonality benchmarks.</span>
+              <span className="truncate">{t.home.dealsEstimateNote}</span>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {candidate && (
                   <button
@@ -402,7 +410,7 @@ export function BookingDealsPopover({
                     <Download className="w-3.5 h-3.5" />
                   </button>
                 )}
-                <span className="font-bold text-slate-700 dark:text-slate-200">{estimatedTotalCost} € Total</span>
+                <span className="font-bold text-slate-700 dark:text-slate-200">{t.home.dealsTotal.replace('{amount}', `${estimatedTotalCost} €`)}</span>
               </div>
             </div>
           </div>

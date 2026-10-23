@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import {
@@ -15,7 +15,6 @@ import {
   Ban,
   Shield,
   Car,
-  Check,
   Utensils,
   BookUser,
   Info,
@@ -39,7 +38,11 @@ import { AirportSelector } from '@/components/airports/AirportSelector';
 import { LocationInput } from '@/components/geo/LocationInput';
 import { AccountSettings } from '@/components/account/AccountSettings';
 import { DateRangePicker } from '@/components/calendar/DateRangePicker';
-import { getAnnualSpecialTimes, SpecialHolidayPeriod } from '@/lib/holidays/special-dates';
+import type { SpecialHolidayId } from '@/lib/holidays/special-dates';
+import { HolidayBlackoutToggles } from '@/components/forms/HolidayBlackoutToggles';
+import { detectUserLocation, formatLocationLabel, resolveCountryAndRegion } from '@/lib/geo/location-helpers';
+import { detectBrowserLocale } from '@/lib/i18n/i18n-context';
+import { SelectDropdown } from '@/components/ui/select-dropdown';
 
 interface FamilyMemberForm {
   firstName: string;
@@ -62,7 +65,7 @@ interface BlackoutRangeForm {
 export default function FamilyProfilePage() {
   const { status } = useSession();
   const router = useRouter();
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -70,16 +73,18 @@ export default function FamilyProfilePage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [familyName, setFamilyName] = useState('');
-  const [homeLocation, setHomeLocation] = useState('Stuttgart, Germany');
+  // New profiles start like the search form: the browser's location, flexible airports, every
+  // vehicle, two adults and no children
+  const [homeLocation, setHomeLocation] = useState('');
   const [departureCoords, setDepartureCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [country, setCountry] = useState('DE');
   const [federalState, setFederalState] = useState('DE-BW');
-  const [originAirports, setOriginAirports] = useState<string[]>(['STR', 'FRA', 'BSL']);
+  const [originAirports, setOriginAirports] = useState<string[]>([]);
   const [preferredCabinClass, setPreferredCabinClass] = useState('ECONOMY');
   const [passportCheckRequired, setPassportCheckRequired] = useState(true);
-  const [travelModes, setTravelModes] = useState<string[]>(['PLANE', 'CAR']);
+  const [travelModes, setTravelModes] = useState<string[]>(['PLANE', 'CAR', 'TRAIN', 'BUS']);
   const [preferredBoardType, setPreferredBoardType] = useState<string>('ALL');
-  const [maxOverlandDurationHours, setMaxOverlandDurationHours] = useState<number | undefined>(8);
+  const [maxOverlandDurationHours, setMaxOverlandDurationHours] = useState<number | undefined>(undefined);
   const [preferredVacationStyles, setPreferredVacationStyles] = useState<DestinationType[]>(['ALL']);
   const [longRangeStyles, setLongRangeStyles] = useState<DestinationType[]>([]);
   const allStylesSelected = isAllStylesSelection(preferredVacationStyles);
@@ -93,26 +98,10 @@ export default function FamilyProfilePage() {
   const [blackoutRanges, setBlackoutRanges] = useState<BlackoutRangeForm[]>([]);
   const [airportRoadRouting, setAirportRoadRouting] = useState<Record<string, { drivingMinutes: number; drivingKm: number }>>({});
   const [isAddingBlackout, setIsAddingBlackout] = useState(false);
+  // Year-independent holiday blackouts, resolved for each search's travel period
+  const [recurringBlackouts, setRecurringBlackouts] = useState<SpecialHolidayId[]>([]);
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
-
-  // Same "quick add" common holiday periods as the search form, for the
-  // current and next year (profile has no active search date range to
-  // scope this to).
-  const annualSpecialTimes = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    const years = [currentYear, currentYear + 1];
-    const result: (SpecialHolidayPeriod & { displayName: string })[] = [];
-    for (const yr of years) {
-      const list = getAnnualSpecialTimes(yr, locale);
-      for (const item of list) {
-        if (item.endDate >= todayStr) {
-          result.push({ ...item, displayName: `${item.name} '${String(yr).slice(-2)}` });
-        }
-      }
-    }
-    return result.slice(0, 8);
-  }, [locale, todayStr]);
 
   const toggleTravelMode = (mode: string) => {
     if (travelModes.includes(mode)) {
@@ -128,39 +117,25 @@ export default function FamilyProfilePage() {
   };
 
   const [members, setMembers] = useState<FamilyMemberForm[]>([
-    {
-      firstName: 'Sarah',
-      role: 'PARENT',
-      birthDate: '1988-04-12',
-      schoolRequired: false,
-      passportExpiry: '2028-09-10',
-      specialDiet: '',
-    },
-    {
-      firstName: 'Michael',
-      role: 'PARENT',
-      birthDate: '1986-11-23',
-      schoolRequired: false,
-      passportExpiry: '2027-05-18',
-      specialDiet: '',
-    },
-    {
-      firstName: 'Liam',
-      role: 'CHILD',
-      birthDate: '2018-06-15',
-      schoolRequired: true,
-      passportExpiry: '2026-12-01',
-      specialDiet: 'Nut Allergy',
-    },
-    {
-      firstName: 'Emma',
-      role: 'CHILD',
-      birthDate: '2021-09-04',
-      schoolRequired: false,
-      passportExpiry: '2029-03-22',
-      specialDiet: '',
-    },
+    { firstName: '', role: 'PARENT', birthDate: '', schoolRequired: false, passportExpiry: '', specialDiet: '' },
+    { firstName: '', role: 'PARENT', birthDate: '', schoolRequired: false, passportExpiry: '', specialDiet: '' },
   ]);
+
+  // A place the user picked is never overwritten by the automatic detection
+  const locationTouchedRef = useRef(false);
+  const applyLocation = (
+    loc: string,
+    coords?: { lat: number; lon: number },
+    data?: Parameters<typeof resolveCountryAndRegion>[0]
+  ) => {
+    setHomeLocation(loc);
+    if (coords) setDepartureCoords(coords);
+    const resolved = data ? resolveCountryAndRegion(data) : null;
+    if (resolved) {
+      setCountry(resolved.country);
+      setFederalState(resolved.region);
+    }
+  };
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -190,7 +165,7 @@ export default function FamilyProfilePage() {
               setFederalState(p.federalState);
               setCountry(getCountryCodeFromSubdivision(p.federalState));
             }
-            setOriginAirports(p.originAirports || ['STR', 'FRA']);
+            setOriginAirports(p.originAirports || []);
             if (Array.isArray(p.preferredAirports)) {
               const routing: Record<string, { drivingMinutes: number; drivingKm: number }> = {};
               for (const link of p.preferredAirports) {
@@ -217,6 +192,9 @@ export default function FamilyProfilePage() {
               setPreferredVacationStyles(readStoredStyles(sw));
               if (Array.isArray(sw.longRangeStyles)) {
                 setLongRangeStyles(sw.longRangeStyles);
+              }
+              if (Array.isArray(sw.recurringBlackouts)) {
+                setRecurringBlackouts(sw.recurringBlackouts);
               }
               if ((p.maxTravelHours === null || p.maxTravelHours === undefined) && sw.maxOverlandTravelMinutes) {
                 setMaxOverlandDurationHours(Math.round(sw.maxOverlandTravelMinutes / 60));
@@ -260,6 +238,14 @@ export default function FamilyProfilePage() {
                 }))
               );
             }
+          } else {
+            const lang = detectBrowserLocale();
+            detectUserLocation(lang)
+              .then((loc) => {
+                if (locationTouchedRef.current) return;
+                applyLocation(formatLocationLabel(loc, lang), { lat: loc.lat, lon: loc.lon }, loc);
+              })
+              .catch(() => {});
           }
         })
         .finally(() => setLoading(false));
@@ -279,6 +265,11 @@ export default function FamilyProfilePage() {
       ...blackoutRanges,
       { startDate: '', endDate: '', reason: '' },
     ]);
+  };
+
+  const finishBlackoutEditing = () => {
+    setIsAddingBlackout(false);
+    setBlackoutRanges((prev) => prev.filter((b) => b.startDate && b.endDate));
   };
 
   const removeBlackout = (index: number) => {
@@ -318,35 +309,6 @@ export default function FamilyProfilePage() {
     setBlackoutRanges(updated);
   };
 
-  const toggleSpecialPeriod = (period: SpecialHolidayPeriod) => {
-    const existingIdx = blackoutRanges.findIndex(
-      (b) => b.startDate === period.startDate && b.endDate === period.endDate
-    );
-    if (existingIdx >= 0) {
-      const next = blackoutRanges.filter((_, i) => i !== existingIdx);
-      setBlackoutRanges(next);
-      if (next.length === 0) {
-        setIsAddingBlackout(false);
-      }
-    } else {
-      setIsAddingBlackout(true);
-      setBlackoutRanges((prev) => [
-        ...prev,
-        { startDate: period.startDate, endDate: period.endDate, reason: period.name },
-      ]);
-    }
-  };
-
-  const toggleAirport = (code: string) => {
-    if (originAirports.includes(code)) {
-      if (originAirports.length > 1) {
-        setOriginAirports(originAirports.filter((a) => a !== code));
-      }
-    } else {
-      setOriginAirports([...originAirports, code]);
-    }
-  };
-
   const addMember = () => {
     setMembers([
       ...members,
@@ -384,6 +346,7 @@ export default function FamilyProfilePage() {
         // Legacy single value kept for older clients reading the profile
         preferredVacationStyle: allStylesSelected ? 'ALL' : preferredVacationStyles[0],
         longRangeStyles: longRangeOnlySelected ? longRangeStyles : [],
+        recurringBlackouts,
         maxOverlandTravelMinutes: maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
         minBeachTemp,
         requireSnow,
@@ -513,7 +476,7 @@ export default function FamilyProfilePage() {
                   type="text"
                   value={familyName}
                   onChange={(e) => setFamilyName(e.target.value)}
-                  placeholder="The Miller Family"
+                  placeholder={t.profile.familyNamePlaceholder}
                   className={FORM_SELECT_CLASS}
                 />
               </div>
@@ -522,9 +485,9 @@ export default function FamilyProfilePage() {
                 <LocationInput
                   label={t.home.departureLocationLabel}
                   value={homeLocation}
-                  onChange={(loc, coords) => {
-                    setHomeLocation(loc);
-                    if (coords) setDepartureCoords(coords);
+                  onChange={(loc, coords, data) => {
+                    if (data) locationTouchedRef.current = true;
+                    applyLocation(loc, coords, data);
                   }}
                   placeholder={t.home.departureLocationPlaceholder}
                 />
@@ -628,15 +591,16 @@ export default function FamilyProfilePage() {
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   {t.profile.cabinClass}
                 </label>
-                <select
+                <SelectDropdown
+                  variant="form"
                   value={preferredCabinClass}
-                  onChange={(e) => setPreferredCabinClass(e.target.value)}
-                  className={FORM_SELECT_CLASS}
-                >
-                  <option value="ECONOMY">{t.profile.economy}</option>
-                  <option value="PREMIUM_ECONOMY">{t.profile.premiumEconomy}</option>
-                  <option value="BUSINESS">{t.profile.business}</option>
-                </select>
+                  onChange={(v) => setPreferredCabinClass(v)}
+                  options={[
+                    { value: 'ECONOMY', label: t.profile.economy },
+                    { value: 'PREMIUM_ECONOMY', label: t.profile.premiumEconomy },
+                    { value: 'BUSINESS', label: t.profile.business },
+                  ]}
+                />
               </div>
             </div>
 
@@ -672,14 +636,6 @@ export default function FamilyProfilePage() {
                 <Calendar className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                 {t.profile.sec3Title}
               </h2>
-              <button
-                type="button"
-                onClick={addMember}
-                className="text-xs font-semibold text-teal-600 hover:text-teal-800 flex items-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                {t.profile.addMember}
-              </button>
             </div>
 
             {/* Passport validity check belongs with the travelers' passport expiry dates */}
@@ -688,66 +644,68 @@ export default function FamilyProfilePage() {
                 <BookUser className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                 {t.profile.passportCheckLabel}
               </label>
-              <select
+              <SelectDropdown
                 id="passportCheck"
+                variant="form"
                 value={passportCheckRequired ? 'CHECK' : 'OFF'}
-                onChange={(e) => setPassportCheckRequired(e.target.value === 'CHECK')}
-                className={FORM_SELECT_CLASS}
-              >
-                <option value="CHECK">{t.profile.passportCheckOn}</option>
-                <option value="OFF">{t.profile.passportCheckOff}</option>
-              </select>
+                onChange={(v) => setPassportCheckRequired(v === 'CHECK')}
+                options={[
+                  { value: 'CHECK', label: t.profile.passportCheckOn },
+                  { value: 'OFF', label: t.profile.passportCheckOff },
+                ]}
+              />
             </div>
 
             <div className="space-y-3">
               {members.map((member, index) => (
                 <div
                   key={index}
-                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 grid grid-cols-1 sm:grid-cols-12 gap-3 items-center"
+                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-12 gap-3 items-center"
                 >
-                  <div className="sm:col-span-3">
+                  <div className="order-1 sm:order-none sm:col-span-3">
                     <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
                       {t.profile.name}
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Liam"
+                      placeholder={t.profile.memberNamePlaceholder}
                       value={member.firstName}
                       onChange={(e) => updateMember(index, 'firstName', e.target.value)}
                       className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     />
                   </div>
 
-                  <div className="sm:col-span-2">
+                  <div className="order-3 col-span-2 sm:order-none sm:col-span-2">
                     <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
                       {t.profile.role}
                     </label>
-                    <select
+                    <SelectDropdown
+                      variant="form"
                       value={member.role}
-                      onChange={(e) => updateMember(index, 'role', e.target.value)}
-                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-                    >
-                      <option value="PARENT">{t.profile.parent}</option>
-                      <option value="CHILD">{t.profile.child}</option>
-                      <option value="INFANT">{t.profile.infant}</option>
-                      <option value="OTHER">{t.profile.other}</option>
-                    </select>
+                      onChange={(v) => updateMember(index, 'role', v)}
+                      options={[
+                        { value: 'PARENT', label: t.profile.parent },
+                        { value: 'CHILD', label: t.profile.child },
+                        { value: 'INFANT', label: t.profile.infant },
+                        { value: 'OTHER', label: t.profile.other },
+                      ]}
+                    />
                   </div>
 
-                  <div className="sm:col-span-3">
+                  <div className="order-3 col-span-2 sm:order-none sm:col-span-3">
                     <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
                       {t.profile.birthDate}
                     </label>
                     <input
                       type="date"
-                      required
+                      required={member.role === 'CHILD' || member.role === 'INFANT'}
                       value={member.birthDate}
                       onChange={(e) => updateMember(index, 'birthDate', e.target.value)}
                       className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     />
                   </div>
 
-                  <div className="sm:col-span-3">
+                  <div className="order-3 col-span-2 sm:order-none sm:col-span-3">
                     <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
                       {t.profile.passportExpiry}
                     </label>
@@ -759,25 +717,27 @@ export default function FamilyProfilePage() {
                     />
                   </div>
 
-                  <div className="sm:col-span-1 flex justify-end">
+                  {/* Phones: next to the name field (it used to get a row of its own) */}
+                  <div className="order-2 self-end sm:self-auto sm:order-none sm:col-span-1 flex justify-end">
                     <button
                       type="button"
                       onClick={() => removeMember(index)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 transition"
-                      title="Remove member"
+                      className="p-1.5 text-slate-400 hover:text-red-600 transition cursor-pointer"
+                      title={t.profile.removeMember}
+                      aria-label={t.profile.removeMember}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
 
                   {(member.role === 'CHILD' || member.role === 'INFANT') && member.birthDate && (
-                    <div className="sm:col-span-12 flex flex-wrap items-center gap-1.5">
+                    <div className="order-3 col-span-2 sm:order-none sm:col-span-12 flex flex-wrap items-center gap-1.5">
                       <ChildAgeBadges age={Math.max(0, differenceInYears(new Date(), new Date(member.birthDate)))} />
                     </div>
                   )}
 
                   {(member.role === 'CHILD' || member.role === 'INFANT') && (
-                    <div className="sm:col-span-12">
+                    <div className="order-3 col-span-2 sm:order-none sm:col-span-12">
                       <SchoolRegionSelect
                         homeRegion={federalState}
                         value={member.schoolSubdivision}
@@ -788,6 +748,16 @@ export default function FamilyProfilePage() {
                   )}
                 </div>
               ))}
+
+              {/* Same full-width dashed button as "add child" on the search form */}
+              <button
+                type="button"
+                onClick={addMember}
+                className="w-full py-1.5 px-3 rounded-lg border border-dashed border-teal-300 dark:border-teal-700 bg-teal-50/60 dark:bg-teal-950/40 hover:bg-teal-100/70 dark:hover:bg-teal-900/60 text-teal-700 dark:text-teal-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {t.profile.addMember}
+              </button>
             </div>
           </div>
 
@@ -796,18 +766,21 @@ export default function FamilyProfilePage() {
             <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
               <Ban className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               {t.profile.blackoutDatesTitle}
-              {blackoutRanges.length > 0 && (
+              {blackoutRanges.length + recurringBlackouts.length > 0 && (
                 <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-900/50 px-2 py-0.5 rounded-full border border-amber-200/70 dark:border-amber-700/60">
-                  {blackoutRanges.length}
+                  {blackoutRanges.length + recurringBlackouts.length}
                 </span>
               )}
             </h2>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.profile.blackoutDatesDesc}</p>
 
             <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/20 rounded-xl border border-amber-200/90 dark:border-amber-800/60 space-y-3">
+              <HolidayBlackoutToggles selected={recurringBlackouts} onChange={setRecurringBlackouts} expanded={isAddingBlackout} />
               {blackoutRanges.length === 0 && !isAddingBlackout ? (
                 <div className="p-2.5 bg-amber-50/50 dark:bg-amber-950/10 rounded-xl border border-dashed border-amber-300 dark:border-amber-800/60 text-center">
-                  <p className="text-xs text-amber-800/80 dark:text-amber-300/80">{t.profile.noBlackouts}</p>
+                  {recurringBlackouts.length === 0 && (
+                    <p className="text-xs text-amber-800/80 dark:text-amber-300/80">{t.profile.noBlackouts}</p>
+                  )}
                   <button
                     type="button"
                     onClick={addBlackout}
@@ -818,43 +791,6 @@ export default function FamilyProfilePage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {/* Quick Add Special Moving Periods (Ostern, Pfingsten, Himmelfahrt, Fronleichnam, Silvester) */}
-                  {annualSpecialTimes.length > 0 && (
-                    <div className="space-y-1.5">
-                      <span className="block text-[10px] font-bold uppercase tracking-wider text-amber-900/75 dark:text-amber-300/75">
-                        {t.home.quickSpecialTimes}:
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {annualSpecialTimes.map((period) => {
-                          const isSelected = blackoutRanges.some(
-                            (b) => b.startDate === period.startDate && b.endDate === period.endDate
-                          );
-                          return (
-                            <button
-                              key={`${period.id}-${period.startDate}`}
-                              type="button"
-                              onClick={() => toggleSpecialPeriod(period)}
-                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
-                                isSelected
-                                  ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
-                                  : 'bg-white/80 dark:bg-slate-800/80 hover:bg-white dark:hover:bg-slate-800 text-amber-900 dark:text-amber-200 border-amber-200/90 dark:border-amber-800/60 hover:border-amber-300 dark:hover:border-amber-700 shadow-2xs'
-                              }`}
-                              title={`${period.name} (${period.startDate} - ${period.endDate}): ${period.description}`}
-                            >
-                              <span>{period.icon}</span>
-                              <span>{period.displayName}</span>
-                              {isSelected ? (
-                                <Check className="w-3 h-3 ml-0.5" />
-                              ) : (
-                                <Plus className="w-3 h-3 ml-0.5 text-amber-600 dark:text-amber-400" />
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
                   <div className="space-y-1.5">
                     {blackoutRanges.map((range, index) => (
                       <div
@@ -921,6 +857,15 @@ export default function FamilyProfilePage() {
                       <Plus className="w-3.5 h-3.5" />
                       {t.profile.addBlackout}
                     </button>
+                    {isAddingBlackout && (
+                      <button
+                        type="button"
+                        onClick={finishBlackoutEditing}
+                        className="w-full mt-2 py-1.5 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition-colors cursor-pointer"
+                      >
+                        {t.common.done}
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Plane, Search, X, ChevronDown, ChevronUp, Train, Check, Sparkles } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
@@ -40,8 +40,8 @@ export function AirportSelector({
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<AirportItem[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [rawSearchResults, setSearchResults] = useState<AirportItem[]>([]);
+  const [rawSearching, setSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
@@ -82,9 +82,21 @@ export function AirportSelector({
       .catch(() => {});
   }, [selectedAirports, locale]);
 
-  const destinationsKey = JSON.stringify(targetDestinations);
+  const destinationsKey = JSON.stringify(targetDestinations ?? []);
   const coordLat = coordinates?.lat;
   const coordLon = coordinates?.lon;
+
+  // An empty search box shows no results (derived - the search effect never resets state synchronously)
+  const hasSearchQuery = searchQuery.trim().length > 0;
+  const searchResults = hasSearchQuery ? rawSearchResults : [];
+  const searching = hasSearchQuery && rawSearching;
+
+  // The recommendations reload only when the location or destinations change, but must see the
+  // latest selection and callback when they arrive
+  const latestSelectionRef = useRef({ selectedAirports, onChange });
+  useEffect(() => {
+    latestSelectionRef.current = { selectedAirports, onChange };
+  });
 
   // Fetch recommended airports and prune stale airports when coordinates or destinations change
   useEffect(() => {
@@ -93,17 +105,18 @@ export function AirportSelector({
     async function fetchRecommended() {
       try {
         setLoadingSuggestions(true);
+        const destinations: string[] = JSON.parse(destinationsKey);
+        const { selectedAirports } = latestSelectionRef.current;
         const destParam =
-          targetDestinations && targetDestinations.length > 0
-            ? `&destinations=${encodeURIComponent(targetDestinations.join(','))}`
-            : '';
+          destinations.length > 0 ? `&destinations=${encodeURIComponent(destinations.join(','))}` : '';
         const selectedParam =
           selectedAirports && selectedAirports.length > 0
             ? `&selected=${encodeURIComponent(selectedAirports.join(','))}`
             : '';
-        const url = coordinates
-          ? `/api/airports/search?lat=${coordinates.lat}&lon=${coordinates.lon}&locale=${locale}${destParam}${selectedParam}`
-          : `/api/airports/search?locale=${locale}${destParam}${selectedParam}`;
+        const url =
+          coordLat !== undefined && coordLon !== undefined
+            ? `/api/airports/search?lat=${coordLat}&lon=${coordLon}&locale=${locale}${destParam}${selectedParam}`
+            : `/api/airports/search?locale=${locale}${destParam}${selectedParam}`;
 
         const res = await fetch(url);
         if (res.ok) {
@@ -126,11 +139,12 @@ export function AirportSelector({
 
             // Automatically synchronize pruned airports if selection became stale. An empty
             // selection is the flexible mode (the app picks the airport) and is never auto-filled.
-            if (Array.isArray(data.updatedSelection) && data.prunedCodes?.length > 0 && selectedAirports.length > 0) {
-              const currentStr = selectedAirports.slice().sort().join(',');
+            const latest = latestSelectionRef.current;
+            if (Array.isArray(data.updatedSelection) && data.prunedCodes?.length > 0 && latest.selectedAirports.length > 0) {
+              const currentStr = latest.selectedAirports.slice().sort().join(',');
               const newStr = data.updatedSelection.slice().sort().join(',');
               if (currentStr !== newStr) {
-                onChange(data.updatedSelection);
+                latest.onChange(data.updatedSelection);
               }
             }
           }
@@ -151,16 +165,12 @@ export function AirportSelector({
 
   // Debounced airport search
   useEffect(() => {
-    if (!searchQuery.trim() || searchQuery.trim().length < 1) {
-      setSearchResults([]);
-      setSearching(false);
-      return;
-    }
+    if (!searchQuery.trim()) return;
 
     const timer = setTimeout(async () => {
       try {
         setSearching(true);
-        const coordsParam = coordinates ? `&lat=${coordinates.lat}&lon=${coordinates.lon}` : '';
+        const coordsParam = coordLat !== undefined && coordLon !== undefined ? `&lat=${coordLat}&lon=${coordLon}` : '';
         const res = await fetch(
           `/api/airports/search?q=${encodeURIComponent(searchQuery.trim())}&locale=${locale}${coordsParam}`
         );

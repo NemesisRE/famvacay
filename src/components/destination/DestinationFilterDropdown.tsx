@@ -1,19 +1,20 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   useFloating,
   autoUpdate,
   offset,
   flip,
   shift,
+  size,
   useDismiss,
   useRole,
   useInteractions,
   FloatingPortal,
 } from '@floating-ui/react';
-import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop } from '@/components/ui/responsive-popover';
-import { MapPin, ChevronDown, Check, X, Search } from 'lucide-react';
+import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop, POPOVER_DISMISS_OPTIONS } from '@/components/ui/responsive-popover';
+import { ChevronDown, Check, X, Search } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
 export interface DestinationOption {
@@ -50,12 +51,19 @@ export function DestinationFilterDropdown({
       offset(6),
       flip({ fallbackAxisSideDirection: 'end', padding: 12 }),
       shift({ padding: 12 }),
+      // Height limited to the space available on screen
+      size({
+        padding: 12,
+        apply({ elements, availableHeight }) {
+          elements.floating.style.setProperty('--menu-available-height', `${Math.max(200, availableHeight)}px`);
+        },
+      }),
     ],
     whileElementsMounted: autoUpdate,
     placement: 'bottom-start',
   });
 
-  const dismiss = useDismiss(context);
+  const dismiss = useDismiss(context, POPOVER_DISMISS_OPTIONS);
   const role = useRole(context);
 
   const { getReferenceProps, getFloatingProps } = useInteractions([
@@ -117,10 +125,7 @@ export function DestinationFilterDropdown({
           }`}
           title={t.home.filterByDestination}
         >
-          <div className="flex items-center gap-2 truncate min-w-0">
-            <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
-            <span className="truncate">{getButtonLabel()}</span>
-          </div>
+          <span className="truncate">{getButtonLabel()}</span>
           <ChevronDown
             className={`w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform flex-shrink-0 ${
               isOpen ? 'rotate-180' : ''
@@ -136,13 +141,18 @@ export function DestinationFilterDropdown({
           <PopoverBackdrop show={isSmallScreen} zIndex={99998} />
           <div
             ref={refs.setFloating}
-            style={getResponsivePopoverStyle(isSmallScreen, floatingStyles, 99999)}
+            style={{
+              ...getResponsivePopoverStyle(isSmallScreen, floatingStyles, 99999),
+              // Only the destination list scrolls; header, search and "Done" stay in place
+              maxHeight: isSmallScreen ? '85vh' : 'min(var(--menu-available-height, 24rem), 24rem)',
+              overflowY: 'hidden',
+            }}
             {...getFloatingProps()}
-            className="w-72 max-h-84 overflow-y-auto bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-2.5 text-slate-800 dark:text-slate-100 transition-all duration-100 animate-in fade-in zoom-in-95"
+            className="w-72 flex flex-col bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-2.5 text-slate-800 dark:text-slate-100 transition-all duration-100 animate-in fade-in zoom-in-95"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header / Clear all */}
-            <div className="flex items-center justify-between pb-1.5 px-1 border-b border-slate-100 dark:border-slate-800 mb-1.5 text-[11px]">
+            <div className="flex-shrink-0 flex items-center justify-between pb-1.5 px-1 border-b border-slate-100 dark:border-slate-800 mb-1.5 text-[11px]">
               <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {t.home.filterByDestination}
               </span>
@@ -159,13 +169,13 @@ export function DestinationFilterDropdown({
 
             {/* Search Input when more than 5 destinations */}
             {destinations.length > 5 && (
-              <div className="relative mb-2 px-0.5">
+              <div className="relative mb-2 px-0.5 flex-shrink-0">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t.home.filterDestinationsPlaceholder || 'Search destination...'}
+                  placeholder={t.common.search}
                   className="w-full text-xs rounded-lg pl-7 pr-7 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-teal-500"
                 />
                 {searchQuery && (
@@ -180,6 +190,7 @@ export function DestinationFilterDropdown({
               </div>
             )}
 
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain -mx-1 px-1">
             {/* "All Destinations" Option */}
             <button
               type="button"
@@ -247,6 +258,20 @@ export function DestinationFilterDropdown({
                   </button>
                 );
               })}
+            </div>
+
+            </div>
+
+            {/* Clear way out: close the menu once the selection is done */}
+            <div className="flex-shrink-0 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="w-full py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition cursor-pointer"
+              >
+                {t.common.done}
+                {!isAllSelected && ` (${selectedDestinations.length})`}
+              </button>
             </div>
           </div>
         </FloatingPortal>

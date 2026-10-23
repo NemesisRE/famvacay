@@ -4,8 +4,13 @@
  * and seasonal periods that change every year.
  */
 
+export type SpecialHolidayId = 'easter' | 'pentecost' | 'ascension' | 'corpus_christi' | 'christmas_new_year';
+
+/** Recurring holiday blackouts, in calendar order */
+export const SPECIAL_HOLIDAY_IDS: SpecialHolidayId[] = ['easter', 'ascension', 'pentecost', 'corpus_christi', 'christmas_new_year'];
+
 export interface SpecialHolidayPeriod {
-  id: 'easter' | 'pentecost' | 'ascension' | 'corpus_christi' | 'christmas_new_year';
+  id: SpecialHolidayId;
   name: string;
   startDate: string;
   endDate: string;
@@ -80,7 +85,7 @@ export function getAnnualSpecialTimes(year: number, locale: string = 'de'): Spec
       startDate: formatDateIso(goodFriday),
       endDate: formatDateIso(easterMonday),
       icon: '🐣',
-      description: isDe ? 'Karfreitag bis Ostermontag' : 'Good Friday to Easter Monday',
+      description: isDe ? 'Karfreitag bis Ostermontag' : isFr ? 'Du Vendredi saint au lundi de Pâques' : isEs ? 'Del Viernes Santo al Lunes de Pascua' : isIt ? 'Dal Venerdì santo al Lunedì dell’Angelo' : 'Good Friday to Easter Monday',
     },
     {
       id: 'pentecost',
@@ -88,7 +93,7 @@ export function getAnnualSpecialTimes(year: number, locale: string = 'de'): Spec
       startDate: formatDateIso(pentecostSat),
       endDate: formatDateIso(whitMonday),
       icon: '🕊️',
-      description: isDe ? 'Pfingstsamstag bis Pfingstmontag' : 'Pentecost weekend & Whit Monday',
+      description: isDe ? 'Pfingstsamstag bis Pfingstmontag' : isFr ? 'Week-end de Pentecôte et lundi de Pentecôte' : isEs ? 'Fin de semana de Pentecostés y lunes' : isIt ? 'Weekend di Pentecoste e lunedì' : 'Pentecost weekend & Whit Monday',
     },
     {
       id: 'ascension',
@@ -96,7 +101,7 @@ export function getAnnualSpecialTimes(year: number, locale: string = 'de'): Spec
       startDate: formatDateIso(ascensionThu),
       endDate: formatDateIso(ascensionSun),
       icon: '✝️',
-      description: isDe ? 'Himmelfahrt + Brückentag-Wochenende' : 'Ascension long weekend',
+      description: isDe ? 'Himmelfahrt + Brückentag-Wochenende' : isFr ? 'Pont de l’Ascension' : isEs ? 'Puente de la Ascensión' : isIt ? 'Ponte dell’Ascensione' : 'Ascension long weekend',
     },
     {
       id: 'corpus_christi',
@@ -104,7 +109,7 @@ export function getAnnualSpecialTimes(year: number, locale: string = 'de'): Spec
       startDate: formatDateIso(corpusThu),
       endDate: formatDateIso(corpusSun),
       icon: '⛪',
-      description: isDe ? 'Fronleichnam + Brückentag' : 'Corpus Christi long weekend',
+      description: isDe ? 'Fronleichnam + Brückentag' : isFr ? 'Pont de la Fête-Dieu' : isEs ? 'Puente del Corpus Christi' : isIt ? 'Ponte del Corpus Domini' : 'Corpus Christi long weekend',
     },
     {
       id: 'christmas_new_year',
@@ -112,8 +117,37 @@ export function getAnnualSpecialTimes(year: number, locale: string = 'de'): Spec
       startDate: christmasStart,
       endDate: newYearEnd,
       icon: '🎄',
-      description: isDe ? 'Heiligabend bis Neujahr' : 'Christmas Eve to New Year',
+      description: isDe ? 'Heiligabend bis Neujahr' : isFr ? 'Du réveillon de Noël au Nouvel An' : isEs ? 'De Nochebuena a Año Nuevo' : isIt ? 'Dalla Vigilia di Natale a Capodanno' : 'Christmas Eve to New Year',
     },
   ];
 }
 
+/** Localized name and icon of a recurring holiday (year-independent) */
+export function getSpecialHolidayMeta(id: SpecialHolidayId, locale: string = 'de'): { name: string; icon: string; description: string } {
+  const period = getAnnualSpecialTimes(2026, locale).find((p) => p.id === id)!;
+  return { name: period.name, icon: period.icon, description: period.description };
+}
+
+/**
+ * Concrete date ranges of the chosen recurring holidays within [earliestDate, latestDate]: every
+ * year the travel period touches (Christmas of the year before can reach into January).
+ */
+export function resolveSpecialHolidayPeriods(
+  ids: SpecialHolidayId[],
+  earliestDate: string,
+  latestDate: string,
+  locale: string = 'de'
+): SpecialHolidayPeriod[] {
+  const firstYear = parseInt(earliestDate.slice(0, 4), 10);
+  const lastYear = parseInt(latestDate.slice(0, 4), 10);
+  if (ids.length === 0 || Number.isNaN(firstYear) || Number.isNaN(lastYear) || lastYear < firstYear) return [];
+  const result: SpecialHolidayPeriod[] = [];
+  for (let year = firstYear - 1; year <= lastYear; year++) {
+    for (const period of getAnnualSpecialTimes(year, locale)) {
+      if (ids.includes(period.id) && period.endDate >= earliestDate && period.startDate <= latestDate) {
+        result.push(period);
+      }
+    }
+  }
+  return result.sort((a, b) => a.startDate.localeCompare(b.startDate));
+}

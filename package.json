@@ -23,7 +23,8 @@
     "db:seed": "prisma db seed",
     "generate:city-names": "node scripts/generate-city-names.js",
     "generate:flight-routes": "node scripts/generate-flight-routes.js",
-    "generate:airport-traffic": "node scripts/generate-airport-traffic.js"
+    "generate:airport-traffic": "node scripts/generate-airport-traffic.js",
+    "generate:climate-normals": "node scripts/generate-climate-normals.js"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   useFloating,
   autoUpdate,
@@ -12,7 +12,7 @@ import {
   useInteractions,
   FloatingPortal,
 } from '@floating-ui/react';
-import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop } from '@/components/ui/responsive-popover';
+import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop, viewportFit, POPOVER_DISMISS_OPTIONS } from '@/components/ui/responsive-popover';
 import { Car, Train, Bus, Ship, MapPin, Clock, X, ChevronDown, ExternalLink, Leaf, Wallet, BedDouble, Fuel, Zap } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/destination-points';
@@ -71,11 +71,11 @@ export function OverlandTripDetailsPopover({
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
     onOpenChange: setIsOpen,
-    middleware: [offset(6), flip({ fallbackAxisSideDirection: 'end', padding: 12 }), shift({ padding: 12 })],
+    middleware: [offset(6), flip({ fallbackAxisSideDirection: 'end', padding: 12 }), shift({ padding: 12 }), viewportFit()],
     whileElementsMounted: autoUpdate,
     placement: 'bottom-start',
   });
-  const dismiss = useDismiss(context);
+  const dismiss = useDismiss(context, POPOVER_DISMISS_OPTIONS);
   const role = useRole(context);
   const { getReferenceProps, getFloatingProps } = useInteractions([dismiss, role]);
 
@@ -120,7 +120,7 @@ export function OverlandTripDetailsPopover({
         {...getReferenceProps()}
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="h-7 inline-flex items-center gap-1.5 font-semibold text-xs text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-slate-700/60 hover:text-teal-800 dark:hover:text-teal-300 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-teal-300 transition-colors cursor-pointer group shadow-2xs"
+        className="relative h-7 w-full inline-flex items-center justify-center gap-1.5 font-semibold text-xs text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-slate-700/60 hover:text-teal-800 dark:hover:text-teal-300 pl-2.5 pr-7 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-teal-300 transition-colors cursor-pointer group shadow-2xs"
         title={t.home.overlandRouteTitle}
       >
         <Icon className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform flex-shrink-0" />
@@ -131,7 +131,7 @@ export function OverlandTripDetailsPopover({
           </span>
         ) : null}
         {hasFerry && <Ship className="w-3 h-3 text-cyan-600 dark:text-cyan-400 flex-shrink-0" />}
-        <ChevronDown className={`w-3 h-3 text-slate-400 group-hover:text-teal-600 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 group-hover:text-teal-600 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
@@ -156,7 +156,8 @@ export function OverlandTripDetailsPopover({
                 type="button"
                 onClick={() => setIsOpen(false)}
                 className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 p-0.5 rounded cursor-pointer"
-                title="Close"
+                title={t.common.close}
+                aria-label={t.common.close}
               >
                 <X className="w-3.5 h-3.5" />
               </button>

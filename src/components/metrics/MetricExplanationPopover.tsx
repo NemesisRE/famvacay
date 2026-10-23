@@ -12,7 +12,7 @@ import {
   useInteractions,
   FloatingPortal,
 } from '@floating-ui/react';
-import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop } from '@/components/ui/responsive-popover';
+import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop, viewportFit, POPOVER_DISMISS_OPTIONS } from '@/components/ui/responsive-popover';
 import {
   Info,
   X,
@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { CandidateWindow } from '@/lib/optimizer/types';
 import { useI18n } from '@/lib/i18n/i18n-context';
+import { getSafetyTexts } from '@/components/destination/DestinationSafetyPopover';
 
 interface MetricExplanationPopoverProps {
   window: CandidateWindow;
@@ -55,12 +56,13 @@ export function MetricExplanationPopover({
       offset(8),
       flip({ fallbackAxisSideDirection: 'end', padding: 12 }),
       shift({ padding: 12 }),
+      viewportFit(),
     ],
     whileElementsMounted: autoUpdate,
     placement: 'top',
   });
 
-  const dismiss = useDismiss(context);
+  const dismiss = useDismiss(context, POPOVER_DISMISS_OPTIONS);
   const role = useRole(context);
 
   const { getReferenceProps, getFloatingProps } = useInteractions([
@@ -129,17 +131,14 @@ export function MetricExplanationPopover({
                     <Award className="w-4 h-4" />
                   )}
                 </div>
-                <div>
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 leading-tight">
-                    {trigger === 'ptoRatio' ? t.home.vacationFactorExplainTitle : t.home.scoreExplainTitle}
-                  </h4>
-                  {trigger === 'ptoRatio' && (
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {t.home.ptoRatio}
-                    </p>
-                  )}
-                </div>
+                <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 leading-tight">
+                  {trigger === 'ptoRatio' ? t.home.vacationFactorExplainTitle : t.home.scoreExplainTitle}
+                </h4>
               </div>
+              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                <span className="font-extrabold text-sm whitespace-nowrap text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-900/50">
+                  {trigger === 'ptoRatio' ? `${win.ptoEfficiencyRatio}x` : `${win.finalScore} / 100`}
+                </span>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
@@ -147,27 +146,19 @@ export function MetricExplanationPopover({
               >
                 <X className="w-4 h-4" />
               </button>
+              </div>
             </div>
 
             <div className="py-3.5 space-y-4 text-xs">
               {/* 1. Vacation Factor Explanation (shown for ptoRatio or generic button) */}
               {(trigger === 'ptoRatio' || trigger === 'button') && (
                 <div className="bg-slate-50 dark:bg-slate-800/80 rounded-xl p-3 border border-slate-100 dark:border-slate-700/80 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900 dark:text-slate-100 text-xs flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5 text-amber-500" />
-                      {t.home.ptoRatio}
-                    </span>
-                    <span className="font-extrabold text-sm text-indigo-700 dark:text-indigo-300 bg-white dark:bg-slate-700 px-2 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-900/50 shadow-xs">
-                      {win.ptoEfficiencyRatio}x
-                    </span>
-                  </div>
                   <div className="bg-white dark:bg-slate-900/70 rounded-lg p-2 border border-slate-200/70 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-mono text-[11px] text-center">
                     <span className="font-semibold text-slate-900 dark:text-slate-100">{win.durationDays} {t.home.days}</span>
                     {' ÷ '}
                     <span className="font-semibold text-indigo-600 dark:text-indigo-400">{win.ptoDaysConsumed} {t.home.ptoConsumed}</span>
                     {' = '}
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400">{win.ptoEfficiencyRatio}x Free Time</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">{win.ptoEfficiencyRatio}x</span>
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                     {t.home.vacationFactorExplainDesc}
@@ -189,15 +180,6 @@ export function MetricExplanationPopover({
               {/* 2. Overall Score Breakdown (shown for score or generic button) */}
               {(trigger === 'score' || trigger === 'button') && (
                 <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900 dark:text-slate-100 text-xs flex items-center gap-1.5">
-                      <Award className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                      {t.home.scoreExplainTitle}
-                    </span>
-                    <span className="font-extrabold text-indigo-900 dark:text-indigo-300 text-sm">
-                      {win.finalScore} / 100
-                    </span>
-                  </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                     {t.home.scoreExplainDesc}
                   </p>
@@ -223,7 +205,7 @@ export function MetricExplanationPopover({
                         <div className="text-[10px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1 font-medium">
                           <Utensils className="w-2.5 h-2.5" />
                           <span>
-                            {t.home.boardTypeSavingsBadge}: +€{win.mealPlanValue} credit
+                            {t.home.boardTypeSavingsBadge}: +{win.mealPlanValue} €
                           </span>
                         </div>
                       ) : null}
@@ -288,7 +270,7 @@ export function MetricExplanationPopover({
                           {t.home.seasonalPenaltyNotice}: {win.seasonalWarningImpact.reason}
                         </span>
                         <span className="font-extrabold text-rose-700 dark:text-rose-300 shrink-0 ml-1">
-                          -{win.seasonalWarningPenalty || win.seasonalWarningImpact.overallScorePenalty} pts
+                          -{win.seasonalWarningPenalty || win.seasonalWarningImpact.overallScorePenalty} {t.home.pointsShort}
                         </span>
                       </div>
                     )}
@@ -301,7 +283,7 @@ export function MetricExplanationPopover({
                           {t.home.layoverPenaltyNotice} ({win.flightStops === 1 ? t.home.oneStopFlight : t.home.multipleStopsFlight.replace('{stops}', String(win.flightStops))})
                         </span>
                         <span className="font-extrabold text-amber-800 dark:text-amber-300 shrink-0 ml-1">
-                          -{win.layoverPenalty || (win.flightStops === 1 ? 5 : 12)} pts
+                          -{win.layoverPenalty || (win.flightStops === 1 ? 5 : 12)} {t.home.pointsShort}
                         </span>
                       </div>
                     )}
@@ -314,7 +296,7 @@ export function MetricExplanationPopover({
                           {t.home.offPeakBonusBadge}: {t.home.offPeakBonusDesc}
                         </span>
                         <span className="font-extrabold text-teal-700 dark:text-teal-300 shrink-0 ml-1">
-                          +{win.offPeakBonus} pts
+                          +{win.offPeakBonus} {t.home.pointsShort}
                         </span>
                       </div>
                     )}
@@ -327,7 +309,7 @@ export function MetricExplanationPopover({
                           {t.home.valueForMoneyBadge}: {t.home.valueForMoneyDesc}
                         </span>
                         <span className="font-extrabold text-teal-700 dark:text-teal-300 shrink-0 ml-1">
-                          +{win.valueForMoneyBonus} pts
+                          +{win.valueForMoneyBonus} {t.home.pointsShort}
                         </span>
                       </div>
                     )}
@@ -351,10 +333,10 @@ export function MetricExplanationPopover({
                   )}
                   <div className="space-y-0.5">
                     <span className="font-bold block">
-                      {safety.advisoryTitle || safety.safetyLabel}
+                      {getSafetyTexts(safety, t).badgeLabel} · {t.home.safetyUsLevelChip.replace('{level}', String(safety.advisoryLevel || safety.usStateDeptLevel || 1))}: {getSafetyTexts(safety, t).usLevelText}
                     </span>
                     <span className="text-[10px] block opacity-80">
-                      {safety.source || 'Auswärtiges Amt & US State Dept'}
+                      {t.home.safetySourcesShort}
                     </span>
                   </div>
                 </div>

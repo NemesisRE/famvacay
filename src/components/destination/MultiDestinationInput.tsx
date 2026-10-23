@@ -37,24 +37,26 @@ export function MultiDestinationInput({
 
   const [inputVal, setInputVal] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [searchResults, setSearchResults] = useState<DisplayDestinationSuggestion[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  // Results of the last finished search and the query they belong to; "searching" is derived (the
+  // shown results are not for the current text yet), so the effect never sets state synchronously
+  const [searchState, setSearchState] = useState<{ key: string; results: DisplayDestinationSuggestion[] }>({ key: '', results: [] });
   const [destinationWarning, setDestinationWarning] = useState<string | null>(null);
   const [destinationNotice, setDestinationNotice] = useState<string | null>(null);
   const [highlightedParentTag, setHighlightedParentTag] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const trimmedInput = inputVal.trim();
+  const searchKey = `${locale}|${trimmedInput}`;
+  const searchResults = trimmedInput.length >= 2 ? searchState.results : [];
+  const isSearching = trimmedInput.length >= 2 && searchState.key !== searchKey;
+
   // Active debounced dynamic search for global places (no static presets!)
   useEffect(() => {
     const q = inputVal.trim();
-    if (q.length < 2) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
+    if (q.length < 2) return;
+    const key = `${locale}|${q}`;
 
-    setIsSearching(true);
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(
@@ -81,14 +83,14 @@ export function MultiDestinationInput({
               };
             }
           );
-          setSearchResults(suggestions);
+          setSearchState({ key, results: suggestions });
         } else {
-          setSearchResults([]);
+          setSearchState({ key, results: [] });
         }
       } catch (err) {
         console.error('Failed to query destination search API:', err);
-      } finally {
-        setIsSearching(false);
+        // keep the previous suggestions, stop the spinner
+        setSearchState((prev) => ({ key, results: prev.results }));
       }
     }, 250);
 
@@ -193,7 +195,6 @@ export function MultiDestinationInput({
 
   // Helper to resolve entity details for selected chips
   const getChipDetails = (tag: string) => {
-    const loc = (locale || 'de').slice(0, 2) as 'en' | 'de' | 'fr' | 'es' | 'it';
 
     // 1. Canonical entity
     const entity = getDestinationEntity(tag, locale);
@@ -293,7 +294,8 @@ export function MultiDestinationInput({
                   type="button"
                   onClick={() => removeDestination(dest)}
                   className="hover:bg-teal-700 p-0.5 rounded-full transition-colors text-teal-200 hover:text-white cursor-pointer ml-0.5"
-                  title="Remove destination"
+                  title={t.home.removeDestination}
+                  aria-label={t.home.removeDestination}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>

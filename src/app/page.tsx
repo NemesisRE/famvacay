@@ -33,15 +33,12 @@ import {
   List,
   ChevronDown,
   ChevronUp,
-  Layers,
-  Search,
   X,
   RotateCcw,
   Snowflake,
   ShieldCheck,
   Utensils,
   Share2,
-  Loader2,
   Wallet,
   Ship,
   ThumbsUp,
@@ -58,25 +55,38 @@ import {
 } from '@/lib/regions/subdivisions';
 import { AirportSelector } from '@/components/airports/AirportSelector';
 import { LocationInput, GeocodedLocation } from '@/components/geo/LocationInput';
+import { detectUserLocation, formatLocationLabel, resolveCountryAndRegion } from '@/lib/geo/location-helpers';
+import { detectBrowserLocale } from '@/lib/i18n/i18n-context';
 import { ChildrenSelector, ChildItem } from '@/components/family/ChildrenSelector';
 import { MultiDestinationInput } from '@/components/destination/MultiDestinationInput';
 import { ClimateDetailsPopover } from '@/components/climate/ClimateDetailsPopover';
 import { BookingDealsPopover } from '@/components/pricing/BookingDealsPopover';
 import { FlightDetailsPopover } from '@/components/airports/FlightDetailsPopover';
-import { getLocalizedSeasonalWarning } from '@/lib/optimizer/localized-warnings';
+import {
+  getLocalizedSeasonalWarning,
+  getLocalizedSeasonalWarningTypeLabel,
+  getSeasonalWarningTypeKey,
+  getWindowFilterWarning,
+  getWindowSeasonalWarnings,
+} from '@/lib/optimizer/localized-warnings';
+import { SeasonalWarningFilterDropdown, type SeasonalWarningOption } from '@/components/results/SeasonalWarningFilterDropdown';
 import { DestinationMapModal } from '@/components/destination/DestinationMapModal';
 import { DestinationSafetyPopover } from '@/components/destination/DestinationSafetyPopover';
-import { DestinationFilterDropdown, DestinationOption } from '@/components/destination/DestinationFilterDropdown';
+import { DestinationFilterDropdown } from '@/components/destination/DestinationFilterDropdown';
 import { getDestinationVacationStyles } from '@/lib/optimizer/destination-styles';
 import { shareOrCopyLink } from '@/lib/share/share-link';
 import {
   applyResultFilters,
   countResultFilterOptions,
+  explainResultFilterExclusions,
   isResultFilterApplicable,
   type ResultFilterKey,
   type ResultFilterState,
 } from '@/lib/results/result-filters';
-import { getAnnualSpecialTimes, SpecialHolidayPeriod } from '@/lib/holidays/special-dates';
+import { resolveSpecialHolidayPeriods, type SpecialHolidayId } from '@/lib/holidays/special-dates';
+import { HolidayBlackoutToggles } from '@/components/forms/HolidayBlackoutToggles';
+import { ResultsCountPopover } from '@/components/results/ResultsCountPopover';
+import { SelectDropdown, type SelectDropdownOption } from '@/components/ui/select-dropdown';
 import { OverlandTripDetailsPopover } from '@/components/travel/OverlandTripDetailsPopover';
 import { CountrySelect, SubdivisionSelect } from '@/components/forms/RegionSelectors';
 import { BoardTypeSelect, OverlandDurationSelect } from '@/components/forms/PreferenceSelects';
@@ -84,19 +94,6 @@ import { isAllStylesSelection, toggleStyleSelection, readStoredStyles, getClimat
 import { VacationStyleTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
 import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/destination-points';
 import { DateRangePicker } from '@/components/calendar/DateRangePicker';
-
-/** "Germany, Netherlands, France +2" in the interface language */
-function formatMarketList(countries: string[], locale: string): string {
-  let names: Intl.DisplayNames | undefined;
-  try {
-    names = new Intl.DisplayNames([locale], { type: 'region' });
-  } catch {
-    names = undefined;
-  }
-  const label = (c: string) => names?.of(c) || c;
-  const shown = countries.slice(0, 3).map(label).join(', ');
-  return countries.length > 3 ? `${shown} +${countries.length - 3}` : shown;
-}
 
 export default function HomePage() {
   const { status } = useSession();
@@ -113,11 +110,10 @@ export default function HomePage() {
   );
 
   // 1. Departure & School District State
-  const [departureLocation, setDepartureLocation] = useState('Karlsruhe, Germany');
-  const [departureCoords, setDepartureCoords] = useState<{ lat: number; lon: number } | null>({
-    lat: 49.0069,
-    lon: 8.4037,
-  });
+  // Defaults for new users and "reset": the browser's location (detected on the first visit),
+  // flexible destinations/styles/airports, 2 adults, no children, 10-14 days, every vehicle
+  const [departureLocation, setDepartureLocation] = useState('');
+  const [departureCoords, setDepartureCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [country, setCountry] = useState('DE');
   const [federalState, setFederalState] = useState('DE-BW');
 
@@ -143,18 +139,18 @@ export default function HomePage() {
   const getStyleMeta = (type: DestinationType) => {
     switch (type) {
       case 'BEACH':
-        return { label: t.home.vacationKindBeach, icon: Sun, color: 'bg-amber-50 text-amber-700 border-amber-200' };
+        return { label: t.home.vacationKindBeach, icon: Sun, color: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800' };
       case 'ALPINE':
       case 'SKI':
-        return { label: t.home.vacationKindAlpine, icon: Mountain, color: 'bg-sky-50 text-sky-700 border-sky-200' };
+        return { label: t.home.vacationKindAlpine, icon: Mountain, color: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800' };
       case 'CITY':
-        return { label: t.home.vacationKindCity, icon: Building2, color: 'bg-purple-50 text-purple-700 border-purple-200' };
+        return { label: t.home.vacationKindCity, icon: Building2, color: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800' };
       case 'NATURE':
-        return { label: t.home.vacationKindNature, icon: Trees, color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+        return { label: t.home.vacationKindNature, icon: Trees, color: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' };
       case 'LONGRANGE':
-        return { label: t.home.vacationKindLongrange, icon: Globe, color: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
+        return { label: t.home.vacationKindLongrange, icon: Globe, color: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800' };
       default:
-        return { label: type, icon: Compass, color: 'bg-teal-50 text-teal-700 border-teal-200' };
+        return { label: type, icon: Compass, color: 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800' };
     }
   };
 
@@ -177,26 +173,26 @@ export default function HomePage() {
         return {
           label: t.home.vehicleCar,
           icon: Car,
-          color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+          color: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
         };
       case 'TRAIN':
         return {
           label: t.home.vehicleTrain,
           icon: Train,
-          color: 'bg-teal-50 text-teal-700 border-teal-200',
+          color: 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800',
         };
       case 'BUS':
         return {
           label: t.home.vehicleBus,
           icon: Bus,
-          color: 'bg-amber-50 text-amber-700 border-amber-200',
+          color: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800',
         };
       case 'PLANE':
       default:
         return {
           label: t.home.vehiclePlane,
           icon: Plane,
-          color: 'bg-sky-50 text-sky-700 border-sky-200',
+          color: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800',
         };
     }
   };
@@ -210,7 +206,7 @@ export default function HomePage() {
   );
 
   // 3. Flight / Origin Airports State
-  const [originAirports, setOriginAirports] = useState<string[]>(['FKB', 'STR', 'FRA']);
+  const [originAirports, setOriginAirports] = useState<string[]>([]);
 
   // 4. Travelers Party Composition (Adults & Children)
   const [adultsCount, setAdultsCount] = useState<number>(2);
@@ -224,7 +220,7 @@ export default function HomePage() {
   const [earliestDate, setEarliestDate] = useState(defaultEarliest);
   const [latestDate, setLatestDate] = useState(defaultLatest);
   const [maxBudget, setMaxBudget] = useState<number | undefined>(undefined);
-  const [selectedVehicles, setSelectedVehicles] = useState<TravelVehicle[]>(['PLANE']);
+  const [selectedVehicles, setSelectedVehicles] = useState<TravelVehicle[]>(['PLANE', 'CAR', 'TRAIN', 'BUS']);
 
   const toggleVehicle = (vehicle: TravelVehicle) => {
     setSelectedVehicles((prev) => {
@@ -246,6 +242,8 @@ export default function HomePage() {
   const [carFuelType, setCarFuelType] = useState<CarFuelType | undefined>(undefined);
 
   // 7. Blackout Dates (Starts empty by default, loaded from profile if configured)
+  // Year-independent holiday blackouts (Easter, Pentecost...): dates are calculated for the travel period
+  const [recurringBlackouts, setRecurringBlackouts] = useState<SpecialHolidayId[]>([]);
   const [searchBlackouts, setSearchBlackouts] = useState<
     { startDate: string; endDate: string; reason?: string }[]
   >([]);
@@ -282,26 +280,18 @@ export default function HomePage() {
   const [timeframeCurrentPage, setTimeframeCurrentPage] = useState<number>(1);
   // View a "show all in the list" jump came from (destination or period group), for the way back
   const [listReturnView, setListReturnView] = useState<'destination' | 'timeframe' | null>(null);
-  const [destinationSearchFilter, setDestinationSearchFilter] = useState<string>('');
-  const [selectedCountryFilters, setSelectedCountryFilters] = useState<string[]>([]);
-  const toggleCountryFilter = (countryName: string) => {
-    setSelectedCountryFilters((prev) =>
-      prev.includes(countryName)
-        ? prev.filter((c) => c !== countryName)
-        : [...prev, countryName]
-    );
-  };
   const [resultStyleFilter, setResultStyleFilter] = useState<DestinationType>('ALL');
   const [distanceFilter, setDistanceFilter] = useState<string>('ALL');
   const [vehicleFilter, setVehicleFilter] = useState<string>('ALL');
   const [safetyFilter, setSafetyFilter] = useState<'SAFE_ONLY' | 'ALL'>('SAFE_ONLY');
   const [warningFilter, setWarningFilter] = useState<'CLEAN_ONLY' | 'ALL'>('CLEAN_ONLY');
+  const [allowedWarnings, setAllowedWarnings] = useState<string[]>([]);
+  const [seasonalInfoFilter, setSeasonalInfoFilter] = useState<'ALL' | 'QUIET_ONLY'>('ALL');
   const [heatFilter, setHeatFilter] = useState<'ALL' | 'AVOID_EXTREME_HEAT'>('ALL');
   const [boardTypeFilter, setBoardTypeFilter] = useState<string>('ALL');
   const [overlandDurationFilter, setOverlandDurationFilter] = useState<string>('ALL');
   const [flightStopsFilter, setFlightStopsFilter] = useState<string>('ALL'); // 'ALL' | 'DIRECT_ONLY' | 'MAX_1_STOP'
   const [showResultFilters, setShowResultFilters] = useState<boolean>(false);
-  const [isDestinationSearchOpen, setIsDestinationSearchOpen] = useState<boolean>(false);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -311,7 +301,8 @@ export default function HomePage() {
     if (distanceFilter !== 'ALL') count++;
     if (vehicleFilter !== 'ALL') count++;
     if (safetyFilter !== 'SAFE_ONLY') count++;
-    if (warningFilter !== 'CLEAN_ONLY') count++;
+    if (warningFilter !== 'CLEAN_ONLY' || allowedWarnings.length > 0) count++;
+    if (seasonalInfoFilter !== 'ALL') count++;
     if (heatFilter !== 'ALL') count++;
     if (boardTypeFilter !== 'ALL') count++;
     if (overlandDurationFilter !== 'ALL') count++;
@@ -328,6 +319,8 @@ export default function HomePage() {
     vehicleFilter,
     safetyFilter,
     warningFilter,
+    allowedWarnings,
+    seasonalInfoFilter,
     heatFilter,
     boardTypeFilter,
     overlandDurationFilter,
@@ -345,6 +338,8 @@ export default function HomePage() {
     setVehicleFilter('ALL');
     setSafetyFilter('SAFE_ONLY');
     setWarningFilter('CLEAN_ONLY');
+    setAllowedWarnings([]);
+    setSeasonalInfoFilter('ALL');
     setHeatFilter('ALL');
     setBoardTypeFilter('ALL');
     setOverlandDurationFilter('ALL');
@@ -372,9 +367,50 @@ export default function HomePage() {
   } | null>(null);
 
 
+  // Set once the user picks a place or the profile provides one, so a late-arriving browser
+  // location never overwrites it
+  const locationTouchedRef = useRef(false);
+
+  // Default location: the browser's (asks for permission). Silent when unavailable/denied - the
+  // "My location" button explains why.
+  const autoDetectLocation = useCallback(() => {
+    // On the first visit this runs before the language provider applied the browser's language
+    const lang = detectBrowserLocale();
+    detectUserLocation(lang)
+      .then((loc) => {
+        if (locationTouchedRef.current) return;
+        setDepartureLocation(formatLocationLabel(loc, lang));
+        setDepartureCoords({ lat: loc.lat, lon: loc.lon });
+        const resolved = resolveCountryAndRegion(loc);
+        if (resolved) {
+          setCountry(resolved.country);
+          setFederalState(resolved.region);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const [hasRestoredFromStorage, setHasRestoredFromStorage] = useState(false);
 
-  // Restore form and filter state, plus recent search results from localStorage
+  // First visit (nothing saved, not a shared link): start from the browser's location
+  const firstVisitCheckedRef = useRef(false);
+  useEffect(() => {
+    if (firstVisitCheckedRef.current) return;
+    firstVisitCheckedRef.current = true;
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem('famvac_form_state');
+    } catch {
+      // storage blocked: treat as a first visit
+    }
+    if (!saved && !new URLSearchParams(window.location.search).has('s')) autoDetectLocation();
+  }, [autoDetectLocation]);
+
+  // Restore form and filter state, plus recent search results from localStorage. This has to run
+  // after hydration: the server renders the defaults, so reading the saved values during the first
+  // render would make server and client HTML differ. Keeping ~30 separate form fields, one restore
+  // pass after mount is the intended exception to "no setState in effects".
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     try {
       const savedForm = localStorage.getItem('famvac_form_state');
@@ -402,6 +438,7 @@ export default function HomePage() {
         if (typeof parsed.minBeachTemp === 'number') setMinBeachTemp(parsed.minBeachTemp);
         if (typeof parsed.requireSnow === 'boolean') setRequireSnow(parsed.requireSnow);
         if (Array.isArray(parsed.longRangeStyles)) setLongRangeStyles(parsed.longRangeStyles);
+        if (Array.isArray(parsed.recurringBlackouts)) setRecurringBlackouts(parsed.recurringBlackouts);
         if (parsed.preferredBoardType) setPreferredBoardType(parsed.preferredBoardType);
         if (typeof parsed.maxOverlandDurationHours === 'number') setMaxOverlandDurationHours(parsed.maxOverlandDurationHours);
         if (typeof parsed.maxFlightStops === 'number') setMaxFlightStops(parsed.maxFlightStops);
@@ -420,17 +457,20 @@ export default function HomePage() {
         if (parsed.schoolHolidayFilter) setSchoolHolidayFilter(parsed.schoolHolidayFilter);
         if (parsed.sortBy) setSortBy(parsed.sortBy);
         if (parsed.pageSize) setPageSize(parsed.pageSize);
-        if (parsed.destinationSearchFilter !== undefined) setDestinationSearchFilter(parsed.destinationSearchFilter);
-        if (parsed.selectedCountryFilters && Array.isArray(parsed.selectedCountryFilters)) {
-          setSelectedCountryFilters(parsed.selectedCountryFilters);
-        } else if (parsed.destinationCountryFilter && parsed.destinationCountryFilter !== 'ALL') {
-          setSelectedCountryFilters([parsed.destinationCountryFilter]);
-        }
         if (parsed.resultStyleFilter) setResultStyleFilter(parsed.resultStyleFilter);
         if (parsed.distanceFilter) setDistanceFilter(parsed.distanceFilter);
         if (parsed.vehicleFilter) setVehicleFilter(parsed.vehicleFilter);
         if (parsed.safetyFilter) setSafetyFilter(parsed.safetyFilter);
-        if (parsed.warningFilter) setWarningFilter(parsed.warningFilter);
+        if (parsed.warningFilter === 'CLEAN_ONLY' || parsed.warningFilter === 'ALL') {
+          setWarningFilter(parsed.warningFilter);
+        } else if (parsed.warningFilter === 'QUIET_ONLY') {
+          setWarningFilter('CLEAN_ONLY');
+          setSeasonalInfoFilter('QUIET_ONLY');
+        }
+        if (Array.isArray(parsed.allowedWarnings)) setAllowedWarnings(parsed.allowedWarnings);
+        if (parsed.seasonalInfoFilter === 'ALL' || parsed.seasonalInfoFilter === 'QUIET_ONLY') {
+          setSeasonalInfoFilter(parsed.seasonalInfoFilter);
+        }
         if (parsed.boardTypeFilter) setBoardTypeFilter(parsed.boardTypeFilter);
         if (parsed.overlandDurationFilter) setOverlandDurationFilter(parsed.overlandDurationFilter);
         if (parsed.flightStopsFilter) setFlightStopsFilter(parsed.flightStopsFilter);
@@ -465,6 +505,14 @@ export default function HomePage() {
       if (urlSafety === 'SAFE_ONLY' || urlSafety === 'ALL') setSafetyFilter(urlSafety);
       const urlWarning = urlParams.get('warning');
       if (urlWarning === 'CLEAN_ONLY' || urlWarning === 'ALL') setWarningFilter(urlWarning);
+      else if (urlWarning === 'QUIET_ONLY') {
+        setWarningFilter('CLEAN_ONLY');
+        setSeasonalInfoFilter('QUIET_ONLY');
+      }
+      const urlAllowedWarnings = urlParams.get('warnings');
+      if (urlAllowedWarnings) setAllowedWarnings(urlAllowedWarnings.split(',').filter(Boolean));
+      const urlSeasonalInfo = urlParams.get('seasonal');
+      if (urlSeasonalInfo === 'ALL' || urlSeasonalInfo === 'QUIET_ONLY') setSeasonalInfoFilter(urlSeasonalInfo);
       const urlHeat = urlParams.get('heat');
       if (urlHeat === 'ALL' || urlHeat === 'AVOID_EXTREME_HEAT') setHeatFilter(urlHeat);
       const urlBoard = urlParams.get('board');
@@ -507,6 +555,7 @@ export default function HomePage() {
                   if (typeof formState.minBeachTemp === 'number') setMinBeachTemp(formState.minBeachTemp);
                   if (typeof formState.requireSnow === 'boolean') setRequireSnow(formState.requireSnow);
                   if (Array.isArray(formState.longRangeStyles)) setLongRangeStyles(formState.longRangeStyles);
+                  if (Array.isArray(formState.recurringBlackouts)) setRecurringBlackouts(formState.recurringBlackouts);
                   if (typeof formState.maxFlightStops === 'number') setMaxFlightStops(formState.maxFlightStops);
                   if (['PETROL', 'DIESEL', 'ELECTRIC'].includes(formState.carFuelType)) setCarFuelType(formState.carFuelType);
                   if (typeof formState.maxOverlandDurationHours === 'number') setMaxOverlandDurationHours(formState.maxOverlandDurationHours);
@@ -532,16 +581,7 @@ export default function HomePage() {
       setHasRestoredFromStorage(true);
     }
   }, []);
-
-  // Restore the remembered voter display name used for shared-board voting
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('famvac_voter_name');
-      if (saved) setVoterName(saved);
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Save form state to localStorage on changes
   useEffect(() => {
@@ -567,6 +607,7 @@ export default function HomePage() {
         minBeachTemp,
         requireSnow,
         longRangeStyles,
+        recurringBlackouts,
         preferredBoardType,
         maxOverlandDurationHours,
         maxFlightStops,
@@ -598,6 +639,7 @@ export default function HomePage() {
     minBeachTemp,
     requireSnow,
     longRangeStyles,
+    recurringBlackouts,
     preferredBoardType,
     maxOverlandDurationHours,
     maxFlightStops,
@@ -618,13 +660,13 @@ export default function HomePage() {
         schoolHolidayFilter,
         sortBy,
         pageSize,
-        destinationSearchFilter,
-        selectedCountryFilters,
         resultStyleFilter,
         distanceFilter,
         vehicleFilter,
         safetyFilter,
         warningFilter,
+        allowedWarnings,
+        seasonalInfoFilter,
         boardTypeFilter,
         overlandDurationFilter,
         flightStopsFilter,
@@ -642,13 +684,13 @@ export default function HomePage() {
     schoolHolidayFilter,
     sortBy,
     pageSize,
-    destinationSearchFilter,
-    selectedCountryFilters,
     resultStyleFilter,
     distanceFilter,
     vehicleFilter,
     safetyFilter,
     warningFilter,
+    allowedWarnings,
+    seasonalInfoFilter,
     boardTypeFilter,
     overlandDurationFilter,
     flightStopsFilter,
@@ -685,6 +727,12 @@ export default function HomePage() {
       if (warningFilter !== 'CLEAN_ONLY') params.set('warning', warningFilter);
       else params.delete('warning');
 
+      if (allowedWarnings.length > 0 && warningFilter !== 'ALL') params.set('warnings', allowedWarnings.join(','));
+      else params.delete('warnings');
+
+      if (seasonalInfoFilter !== 'ALL') params.set('seasonal', seasonalInfoFilter);
+      else params.delete('seasonal');
+
       if (heatFilter !== 'ALL') params.set('heat', heatFilter);
       else params.delete('heat');
 
@@ -718,6 +766,8 @@ export default function HomePage() {
     vehicleFilter,
     safetyFilter,
     warningFilter,
+    allowedWarnings,
+    seasonalInfoFilter,
     heatFilter,
     boardTypeFilter,
     flightStopsFilter,
@@ -732,13 +782,12 @@ export default function HomePage() {
       localStorage.removeItem('famvac_filter_settings');
       localStorage.removeItem('famvac_cached_results');
     } catch {}
-    setDepartureLocation('Karlsruhe, Germany');
-    setDepartureCoords({ lat: 49.0069, lon: 8.4037 });
-    setCountry('DE');
-    setFederalState('DE-BW');
+    setDepartureLocation('');
+    setDepartureCoords(null);
     setSelectedStyles(['ALL']);
+    setLongRangeStyles([]);
     setTargetDestinations([]);
-    setOriginAirports(['FKB', 'STR', 'FRA']);
+    setOriginAirports([]);
     setAdultsCount(2);
     setChildrenList([]);
     setDurationDaysMin(10);
@@ -746,7 +795,8 @@ export default function HomePage() {
     setEarliestDate(defaultEarliest);
     setLatestDate(defaultLatest);
     setMaxBudget(undefined);
-    setSelectedVehicles(['PLANE']);
+    setSelectedVehicles(['PLANE', 'CAR', 'TRAIN', 'BUS']);
+    setCarFuelType(undefined);
     setMinBeachTemp(undefined);
     setRequireSnow(false);
     setPreferredBoardType(undefined);
@@ -754,7 +804,12 @@ export default function HomePage() {
     setMaxFlightStops(undefined);
     setPreferredCabinClass(undefined);
     setSearchBlackouts([]);
+    setRecurringBlackouts([]);
+    setIsAddingBlackout(false);
     setResults(null);
+    resetAllFilters();
+    locationTouchedRef.current = false;
+    autoDetectLocation();
   };
 
   // Auto-prefill if family profile exists
@@ -771,24 +826,14 @@ export default function HomePage() {
           if (p.homeLocation) {
             try {
               const geoRes = await fetch(
-                `/api/locations/geocode?q=${encodeURIComponent(p.homeLocation)}`
+                `/api/locations/geocode?q=${encodeURIComponent(p.homeLocation)}&locale=${locale}`
               );
               if (geoRes.ok) {
                 const geoData = await geoRes.json();
                 if (geoData.locations && geoData.locations.length > 0) {
                   const loc0 = geoData.locations[0];
-                  const cityName = loc0.city || loc0.name;
-                  const parts: string[] = [];
-                  if (loc0.postcode && !loc0.name.includes(loc0.postcode)) {
-                    parts.push(`${loc0.postcode} ${cityName}`);
-                  } else {
-                    parts.push(cityName);
-                  }
-                  if (loc0.state && loc0.state !== cityName) parts.push(loc0.state);
-                  if (loc0.country) parts.push(loc0.country);
-                  const formatted = parts.join(', ');
-
-                  setDepartureLocation(formatted);
+                  locationTouchedRef.current = true;
+                  setDepartureLocation(formatLocationLabel(loc0, locale));
                   setDepartureCoords({
                     lat: loc0.lat,
                     lon: loc0.lon,
@@ -878,6 +923,9 @@ export default function HomePage() {
             if (Array.isArray(sw.longRangeStyles)) {
               setLongRangeStyles(sw.longRangeStyles);
             }
+            if (Array.isArray(sw.recurringBlackouts)) {
+              setRecurringBlackouts(sw.recurringBlackouts);
+            }
             if ((p.maxTravelHours === null || p.maxTravelHours === undefined) && sw.maxOverlandTravelMinutes) {
               setMaxOverlandDurationHours(Math.round(sw.maxOverlandTravelMinutes / 60));
             }
@@ -899,6 +947,9 @@ export default function HomePage() {
         }
       })
       .catch(() => {});
+    // locale only formats the profile's location label; re-applying the profile on a language switch
+    // would overwrite the form
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
   const handleCountryChange = (newCountry: string) => {
@@ -922,31 +973,13 @@ export default function HomePage() {
     if (coords) {
       setDepartureCoords(coords);
     }
-    if (locationData && locationData.countryCode) {
-      const cCode = locationData.countryCode.toUpperCase();
-      const countryData = COUNTRIES[cCode];
-      setCountry(cCode);
-
-      if (countryData && countryData.subdivisions.length > 0) {
-        let matchedSub = '';
-        if (locationData.state) {
-          const normState = locationData.state.toLowerCase().trim();
-          const found = countryData.subdivisions.find(
-            (s) =>
-              s.name.toLowerCase().trim() === normState ||
-              normState.includes(s.name.toLowerCase().trim()) ||
-              s.name.toLowerCase().trim().includes(normState)
-          );
-          if (found) {
-            matchedSub = found.code;
-          }
-        }
-        if (!matchedSub) {
-          matchedSub = countryData.subdivisions[0].code;
-        }
-        setFederalState(matchedSub);
-      } else {
-        setFederalState(cCode);
+    if (locationData) {
+      // A place the user picked: never overwritten by the automatic location detection
+      locationTouchedRef.current = true;
+      const resolved = resolveCountryAndRegion(locationData);
+      if (resolved) {
+        setCountry(resolved.country);
+        setFederalState(resolved.region);
       }
     }
   };
@@ -954,6 +987,11 @@ export default function HomePage() {
   const addBlackout = () => {
     setIsAddingBlackout(true);
     setSearchBlackouts([...searchBlackouts, { startDate: '', endDate: '', reason: '' }]);
+  };
+
+  const finishBlackoutEditing = () => {
+    setIsAddingBlackout(false);
+    setSearchBlackouts((prev) => prev.filter((b) => b.startDate && b.endDate));
   };
 
   const removeBlackout = (index: number) => {
@@ -976,54 +1014,6 @@ export default function HomePage() {
     setSearchBlackouts(updated);
   };
 
-  // Moving annual special holiday periods (Easter, Pentecost, Ascension, Corpus Christi, Christmas/Silvester)
-  const annualSpecialTimes = useMemo(() => {
-    const startYear = earliestDate ? new Date(earliestDate).getFullYear() : new Date().getFullYear();
-    const endYear = latestDate ? new Date(latestDate).getFullYear() : startYear;
-    const yearSet = new Set<number>([startYear, endYear]);
-    if (endYear === startYear) {
-      yearSet.add(startYear + 1);
-    }
-    const years = Array.from(yearSet).filter((y) => !isNaN(y) && y >= 2024 && y <= 2040);
-
-    const result: (SpecialHolidayPeriod & { displayName: string })[] = [];
-    for (const yr of years) {
-      const list = getAnnualSpecialTimes(yr, locale);
-      for (const item of list) {
-        if (item.endDate >= todayStr) {
-          result.push({
-            ...item,
-            displayName: years.length > 1 ? `${item.name} '${String(yr).slice(-2)}` : item.name,
-          });
-        }
-      }
-    }
-    return result.slice(0, 8);
-  }, [earliestDate, latestDate, locale, todayStr]);
-
-  const toggleSpecialPeriod = (period: SpecialHolidayPeriod) => {
-    const existingIdx = searchBlackouts.findIndex(
-      (b) => b.startDate === period.startDate && b.endDate === period.endDate
-    );
-    if (existingIdx >= 0) {
-      const next = searchBlackouts.filter((_, i) => i !== existingIdx);
-      setSearchBlackouts(next);
-      if (next.length === 0) {
-        setIsAddingBlackout(false);
-      }
-    } else {
-      setIsAddingBlackout(true);
-      setSearchBlackouts((prev) => [
-        ...prev,
-        {
-          startDate: period.startDate,
-          endDate: period.endDate,
-          reason: period.name,
-        },
-      ]);
-    }
-  };
-
   const handleOptimize = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -1032,6 +1022,11 @@ export default function HomePage() {
 
     try {
       const validBlackouts = searchBlackouts.filter((b) => b.startDate && b.endDate);
+      const holidayBlackouts = resolveSpecialHolidayPeriods(recurringBlackouts, earliestDate, latestDate, locale).map((h) => ({
+        startDate: h.startDate,
+        endDate: h.endDate,
+        reason: h.name,
+      }));
       const minDur = Number(durationDaysMin) || 7;
       const maxDur = Math.max(minDur, Number(durationDaysMax) || minDur);
 
@@ -1070,7 +1065,7 @@ export default function HomePage() {
         strictSchoolHolidays: false,
         travelVehicle: selectedVehicles[0] || 'PLANE',
         travelVehicles: selectedVehicles,
-        searchBlackouts: validBlackouts,
+        searchBlackouts: [...validBlackouts, ...holidayBlackouts],
         userProfile: {
           homeLocation: departureLocation,
           departureLat: departureCoords?.lat,
@@ -1138,6 +1133,7 @@ export default function HomePage() {
             minBeachTemp,
             requireSnow,
             longRangeStyles,
+            recurringBlackouts,
             maxFlightStops,
             carFuelType,
             maxOverlandDurationHours,
@@ -1191,6 +1187,7 @@ export default function HomePage() {
               minBeachTemp,
               requireSnow,
               longRangeStyles,
+              recurringBlackouts,
               maxFlightStops,
               carFuelType,
               maxOverlandDurationHours,
@@ -1239,6 +1236,8 @@ export default function HomePage() {
       vehicle: vehicleFilter,
       safety: safetyFilter,
       warning: warningFilter,
+      allowedWarnings,
+      seasonalInfo: seasonalInfoFilter,
       heat: heatFilter,
       boardType: boardTypeFilter,
       overlandDuration: overlandDurationFilter,
@@ -1254,6 +1253,8 @@ export default function HomePage() {
       vehicleFilter,
       safetyFilter,
       warningFilter,
+      allowedWarnings,
+      seasonalInfoFilter,
       heatFilter,
       boardTypeFilter,
       overlandDurationFilter,
@@ -1315,7 +1316,7 @@ export default function HomePage() {
       }
     }
     return options.sort((a, b) => a.name.localeCompare(b.name, locale));
-  }, [results, locale]);
+  }, [results, locale, getFormattedLocalizedDestination]);
 
   const totalPages = Math.max(1, Math.ceil(filteredResults.length / pageSize));
   const displayedResults = useMemo(() => {
@@ -1336,7 +1337,15 @@ export default function HomePage() {
     const candidateId = win.shareCandidateId;
     if (!candidateId || !activeShareId) return;
 
+    // This visit's name, else the remembered one, else ask
     let name = voterName;
+    if (!name) {
+      try {
+        name = localStorage.getItem('famvac_voter_name') || '';
+      } catch {
+        // storage blocked
+      }
+    }
     if (!name) {
       name = (window.prompt(t.home.enterVoterNamePrompt) || '').trim();
       if (!name) return;
@@ -1535,6 +1544,7 @@ export default function HomePage() {
             vehicle: ['ALL', 'PLANE', 'CAR', 'TRAIN', 'BUS'],
             safety: ['SAFE_ONLY', 'ALL'],
             warning: ['CLEAN_ONLY', 'ALL'],
+            seasonalInfo: ['ALL', 'QUIET_ONLY'],
             heat: ['ALL', 'AVOID_EXTREME_HEAT'],
             boardType: ['ALL', 'ALL_INCLUSIVE', 'HALF_BOARD', 'BREAKFAST', 'ROOM_ONLY'],
             overlandDuration: ['ALL', '360', '600', '840'],
@@ -1552,13 +1562,131 @@ export default function HomePage() {
     () => !results || overlandDurationFilter !== 'ALL' || isResultFilterApplicable(results, resultFilterState, 'overlandDuration'),
     [results, resultFilterState, overlandDurationFilter]
   );
-  const renderFilterOption = (key: ResultFilterKey, value: string, label: string, current: string) => {
+  const warningFilterStats = useMemo(() => {
+    if (!results) {
+      return {
+        options: [] as SeasonalWarningOption[],
+        labelByKey: new Map<string, string>(),
+        cleanCount: 0,
+        totalCount: 0,
+      };
+    }
+    const base = applyResultFilters(results, resultFilterState, 'warning');
+    const allMeta = new Map<string, string>();
+    const countsByKey = new Map<string, number>();
+
+    for (const w of results) {
+      const fw = getWindowFilterWarning(w);
+      if (fw) {
+        const key = getSeasonalWarningTypeKey(fw);
+        if (!allMeta.has(key)) {
+          allMeta.set(key, getLocalizedSeasonalWarningTypeLabel(fw, t, locale));
+        }
+      }
+    }
+
+    let cleanCount = 0;
+    for (const w of base) {
+      const fw = getWindowFilterWarning(w);
+      if (fw) {
+        const key = getSeasonalWarningTypeKey(fw);
+        countsByKey.set(key, (countsByKey.get(key) || 0) + 1);
+      } else {
+        cleanCount++;
+      }
+    }
+
+    const options: SeasonalWarningOption[] = Array.from(allMeta.entries())
+      .map(([key, label]) => ({
+        key,
+        label,
+        count: countsByKey.get(key) || 0,
+      }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, locale));
+
+    return {
+      options,
+      labelByKey: allMeta,
+      cleanCount,
+      totalCount: base.length,
+    };
+  }, [results, resultFilterState, t, locale]);
+
+  // Why fewer windows are shown than found: per filter, with a way to include them again
+  const filterLabels: Record<ResultFilterKey, string> = {
+    destinations: t.home.filterByDestination,
+    month: t.home.filterByMonth,
+    style: t.home.filterByVacationStyle,
+    distance: t.home.filterByDistance,
+    vehicle: t.home.filterByVehicle,
+    safety: t.home.filterBySafety,
+    warning: t.home.filterByWarnings,
+    seasonalInfo: t.home.filterBySeasonalInfo,
+    heat: t.home.filterByHeat,
+    boardType: t.home.filterByBoardType,
+    overlandDuration: t.home.filterByOverlandDuration,
+    flightStops: t.home.filterByFlightStops,
+    schoolHoliday: t.home.schoolHolidaysFilterLabel,
+    maxCost: t.home.filterByCost,
+  };
+  const exclusionRows = useMemo(
+    () =>
+      results
+        ? explainResultFilterExclusions(results, resultFilterState).map((r) => {
+            if (r.key === 'warning' && r.warningKey) {
+              return {
+                ...r,
+                label: warningFilterStats.labelByKey.get(r.warningKey) || filterLabels.warning,
+              };
+            }
+            return { ...r, label: filterLabels[r.key] };
+          })
+        : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- labels only change with the language
+    [results, resultFilterState, warningFilterStats, locale]
+  );
+  const includeFilter = (key: ResultFilterKey, warningKey?: string) => {
+    if (key === 'warning' && warningKey) {
+      setAllowedWarnings((prev) => {
+        const next = Array.from(new Set([...prev, warningKey]));
+        const allKeys = warningFilterStats.options.map((o) => o.key);
+        if (allKeys.length > 0 && allKeys.every((k) => next.includes(k))) {
+          setWarningFilter('ALL');
+        }
+        return next;
+      });
+      setCurrentPage(1);
+      setTimeframeCurrentPage(1);
+      return;
+    }
+    const neutral: Record<ResultFilterKey, () => void> = {
+      destinations: () => setSelectedDestinationsList([]),
+      month: () => setSelectedMonth('ALL'),
+      style: () => setResultStyleFilter('ALL'),
+      distance: () => setDistanceFilter('ALL'),
+      vehicle: () => setVehicleFilter('ALL'),
+      safety: () => setSafetyFilter('ALL'),
+      warning: () => {
+        setWarningFilter('ALL');
+        setAllowedWarnings(warningFilterStats.options.map((o) => o.key));
+      },
+      seasonalInfo: () => setSeasonalInfoFilter('ALL'),
+      heat: () => setHeatFilter('ALL'),
+      boardType: () => setBoardTypeFilter('ALL'),
+      overlandDuration: () => setOverlandDurationFilter('ALL'),
+      flightStops: () => setFlightStopsFilter('ALL'),
+      schoolHoliday: () => setSchoolHolidayFilter('all'),
+      maxCost: () => setMaxCostFilter(undefined),
+    };
+    neutral[key]();
+    setCurrentPage(1);
+    setTimeframeCurrentPage(1);
+  };
+
+  // Dropdown option with its result count; options without results are greyed out
+  const filterOption = (key: ResultFilterKey, value: string, label: string, current: string): SelectDropdownOption => {
     const count = filterOptionCounts[key]?.[value];
-    return (
-      <option key={value} value={value} disabled={count === 0 && value !== current}>
-        {count !== undefined ? `${label} (${count})` : label}
-      </option>
-    );
+    return { value, label, hint: count, disabled: count === 0 && value !== current };
   };
 
   const formatLocalizedDate = (dateStr: string, withWeekday: boolean = false) => {
@@ -1699,19 +1827,13 @@ export default function HomePage() {
                   {t.home.autoOriginBadge} · {win.originAirport}
                 </span>
               )}
-              {win.sourceMarketDemand && (win.sourceMarketDemand.index >= 0.45 || win.sourceMarketDemand.index <= 0.1) && (
+              {win.sourceMarketDemand && win.sourceMarketDemand.index <= 0.1 && (
                 <span
-                  className={`text-[11px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
-                    win.sourceMarketDemand.index >= 0.45
-                      ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                      : 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800'
-                  }`}
+                  className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 flex items-center gap-1"
                   title={t.home.demandTitle}
                 >
-                  <Users className="w-3 h-3" />
-                  {win.sourceMarketDemand.index >= 0.45
-                    ? t.home.demandHighBadge.replace('{markets}', formatMarketList(win.sourceMarketDemand.marketsOnHoliday, locale))
-                    : t.home.demandLowBadge}
+                  <Users className="w-3 h-3 text-sky-600 dark:text-sky-400" />
+                  {t.home.demandLowBadge}
                 </span>
               )}
               {win.pricingDetails?.flight?.isMidweekSaving && (
@@ -1836,10 +1958,13 @@ export default function HomePage() {
         )}
 
         {/* Localized Seasonal Warning Banner */}
-        {win.seasonalWarning && (() => {
-          const localized = getLocalizedSeasonalWarning(win.seasonalWarning, t);
+        {getWindowSeasonalWarnings(win).map((warning, wIdx) => {
+          const localized = getLocalizedSeasonalWarning(warning, t, locale);
           return (
-            <div className="mt-3 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/60 flex items-start gap-2 text-xs text-amber-900 dark:text-amber-200">
+            <div
+              key={`${warning.seasonType}-${warning.eventKey || warning.phenomenonType || wIdx}`}
+              className="mt-3 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/60 flex items-start gap-2 text-xs text-amber-900 dark:text-amber-200"
+            >
               <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold block">
@@ -1851,12 +1976,13 @@ export default function HomePage() {
               </div>
             </div>
           );
-        })()}
+        })}
 
         {/* Bottom Bar: Action Buttons above Metrics */}
         <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
-          {/* Action Buttons: Flight Details & Deals Popover */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Action Buttons: travel details and deals - stacked full width on phones, two equal
+              columns on larger screens, content centered */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {win.travelVehicle && win.travelVehicle !== 'PLANE' ? (
               <OverlandTripDetailsPopover
                 vehicle={win.travelVehicle}
@@ -1869,6 +1995,7 @@ export default function HomePage() {
                 overlandAccess={win.overlandAccess}
                 ferryTransitMinutes={win.ferryTransitMinutes}
                 ferrySurchargeEur={win.ferrySurchargeEur}
+                className="w-full"
               />
             ) : (
             <FlightDetailsPopover
@@ -1901,6 +2028,7 @@ export default function HomePage() {
               directFlightPremiumMultiplier={win.directFlightPremium}
               connectingSavingsDiscount={win.pricingDetails?.flight?.connectingSavingsDiscount}
               railFeeder={win.railFeeder}
+              className="w-full"
             />
             )}
             <BookingDealsPopover
@@ -1913,7 +2041,7 @@ export default function HomePage() {
               startDate={win.startDate}
               endDate={win.endDate}
               adults={adultsCount}
-              className="w-full sm:w-auto"
+              className="w-full"
               candidate={win}
             />
           </div>
@@ -2003,9 +2131,9 @@ export default function HomePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Form Container */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
-          <div className="border-b border-slate-100 dark:border-slate-800 pb-3 space-y-2">
+        {/* Form column: heading above the card, like "Optimal vacation windows" */}
+        <div className="lg:col-span-5 space-y-4">
+          <div className="border-b border-slate-200 dark:border-slate-800 pb-2.5 space-y-2">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" />
@@ -2016,10 +2144,10 @@ export default function HomePage() {
                   type="button"
                   onClick={handleResetForm}
                   className="text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1 px-2 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition border border-transparent hover:border-slate-200 dark:hover:border-slate-700 cursor-pointer"
-                  title="Reset form and cached settings"
+                  title={t.home.formResetTitle}
                 >
                   <RotateCcw className="w-3 h-3" />
-                  <span>Reset</span>
+                  <span>{t.home.formReset}</span>
                 </button>
                 {profileLoaded && (
                   <span
@@ -2043,438 +2171,424 @@ export default function HomePage() {
             )}
           </div>
 
-          <form onSubmit={handleOptimize} className="space-y-6">
-            {/* Step 1: Departure Location & School District */}
-            <div className="space-y-3">
-              <LocationInput
-                label={t.home.departureLocationLabel}
-                value={departureLocation}
-                onChange={handleLocationChange}
-                placeholder={t.home.departureLocationPlaceholder}
-              />
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
 
-              <CountrySelect
-                id="home-country"
-                label={t.home.countryLabel}
-                value={country}
-                onChange={handleCountryChange}
-              />
+            <form onSubmit={handleOptimize} className="space-y-6">
+              {/* Step 1: Departure Location & School District */}
+              <div className="space-y-3">
+                <LocationInput
+                  label={t.home.departureLocationLabel}
+                  value={departureLocation}
+                  onChange={handleLocationChange}
+                  placeholder={t.home.departureLocationPlaceholder}
+                />
 
-              <SubdivisionSelect
-                id="home-region"
-                label={t.home.homeStateLabel}
-                countryCode={country}
-                value={federalState}
-                onChange={setFederalState}
-              />
+                <CountrySelect
+                  id="home-country"
+                  label={t.home.countryLabel}
+                  value={country}
+                  onChange={handleCountryChange}
+                />
 
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 pt-0.5">
-                <Info className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
-                <span>{t.home.holidayScopeNotice}</span>
-              </p>
-            </div>
+                <SubdivisionSelect
+                  id="home-region"
+                  label={t.home.homeStateLabel}
+                  countryCode={country}
+                  value={federalState}
+                  onChange={setFederalState}
+                />
 
-            {/* Step 2: Travel Destinations & Vacation Style */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-3">
-              {/* Multi-Entry Destination Input */}
-              <MultiDestinationInput
-                selectedDestinations={targetDestinations}
-                onChange={setTargetDestinations}
-              />
-
-              {/* Kind of Vacation (Vacation Style) selector - Only visible when no destinations are defined */}
-              {targetDestinations.length === 0 && (
-                <div>
-                  <div className="mb-2.5 space-y-0.5">
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                      <Compass className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                      <span>{t.home.vacationKindLabel}</span>
-                    </label>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                      {t.home.vacationKindHint}
-                    </p>
-                  </div>
-                  <VacationStyleTiles
-                    selectedStyles={selectedStyles}
-                    onToggle={toggleVacationStyle}
-                    longRangeStyles={longRangeStyles}
-                    onLongRangeStylesChange={setLongRangeStyles}
-                  />
-
-                  <ClimatePreferencesPanel
-                    showBeach={isBeachClimateRelevant}
-                    showAlpine={isAlpineClimateRelevant}
-                    minBeachTemp={minBeachTemp}
-                    onMinBeachTempChange={setMinBeachTemp}
-                    requireSnow={requireSnow}
-                    onRequireSnowChange={setRequireSnow}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Travel Vehicle Selection */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-              <div className="mb-2.5 space-y-0.5">
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Car className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                  <span>{t.home.travelVehicleLabel}</span>
-                </label>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                  {t.home.travelVehicleHint}
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 pt-0.5">
+                  <Info className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                  <span>{t.home.holidayScopeNotice}</span>
                 </p>
               </div>
-              <TravelModeTiles
-                selectedVehicles={selectedVehicles}
-                onToggle={toggleVehicle}
-                maxFlightStops={maxFlightStops}
-                onMaxFlightStopsChange={setMaxFlightStops}
-                carFuelType={carFuelType}
-                onCarFuelTypeChange={setCarFuelType}
-              />
-            </div>
 
-            {/* Preferred Board Type & Max Overland Travel Time */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <Utensils className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                  <span>{t.home.filterByBoardType}</span>
-                </label>
-                <BoardTypeSelect value={preferredBoardType} onChange={setPreferredBoardType} />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <Car className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                  <span>{t.home.filterByOverlandDuration}</span>
-                </label>
-                <OverlandDurationSelect value={maxOverlandDurationHours} onChange={setMaxOverlandDurationHours} />
-              </div>
-            </div>
-
-            {/* Travel Comfort Preferences synced with Traveler Profile: cabin class, budget */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 min-h-[2.2em]">
-                  {t.profile.cabinClass}
-                </label>
-                <select
-                  value={preferredCabinClass || 'ECONOMY'}
-                  onChange={(e) => setPreferredCabinClass(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100"
-                >
-                  <option value="ECONOMY">{t.profile.economy}</option>
-                  <option value="PREMIUM_ECONOMY">{t.profile.premiumEconomy}</option>
-                  <option value="BUSINESS">{t.profile.business}</option>
-                </select>
-              </div>
-
-              <div>
-                <label
-                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-start gap-1.5 min-h-[2.2em]"
-                  title={t.home.maxBudgetLabel}
-                >
-                  <Wallet className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                  <span>{t.home.maxBudgetLabel}</span>
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="50"
-                  value={maxBudget ?? ''}
-                  onChange={(e) => setMaxBudget(e.target.value ? Number(e.target.value) : undefined)}
-                  placeholder={t.home.maxBudgetPlaceholder}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100 placeholder:font-normal placeholder:text-slate-400"
+              {/* Step 2: Travel Destinations & Vacation Style */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                {/* Multi-Entry Destination Input */}
+                <MultiDestinationInput
+                  selectedDestinations={targetDestinations}
+                  onChange={setTargetDestinations}
                 />
-              </div>
-            </div>
 
-            {/* Step 3: Departure Airports (for Plane) or Overland Transit Note (for Car/Train/Bus) */}
-            {selectedVehicles.includes('PLANE') ? (
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <AirportSelector
-                  selectedAirports={originAirports}
-                  onChange={setOriginAirports}
-                  coordinates={departureCoords}
-                  targetDestinations={targetDestinations}
-                />
-              </div>
-            ) : (
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div className="p-3 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-950 dark:text-emerald-200 flex items-start gap-2.5">
-                  <Info className="w-4 h-4 text-emerald-700 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
-                  <div className="space-y-0.5">
-                    <span className="font-semibold block text-slate-800 dark:text-slate-100">
-                      {selectedVehicles.map((v) => getVehicleMeta(v).label).join(' / ')}
-                    </span>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Reisedistanz, Transitzeit und Fahrtkosten werden direkt von deinen Startkoordinaten über Land berechnet. Es werden nur erreichbare Destinationen ohne Flugstrecke vorgeschlagen.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 4: Travelers (Adults & Children) */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                  {t.home.partyTitle}
-                </label>
-                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                  {adultsCount + childrenList.length} {adultsCount + childrenList.length === 1 ? 'Traveler' : 'Travelers'}
-                </span>
-              </div>
-
-              {/* Adults Selector */}
-              <div className="p-3 bg-slate-50/80 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
-                <div>
-                  <span className="block text-xs font-semibold text-slate-800 dark:text-slate-100">
-                    {t.home.adultsLabel}
-                  </span>
-                  <span className="block text-[10px] text-slate-500 dark:text-slate-400">
-                    {t.home.adultsHint}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setAdultsCount((prev) => Math.max(1, prev - 1))}
-                    disabled={adultsCount <= 1}
-                    className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-xs text-xs cursor-pointer"
-                    aria-label="Decrease adults"
-                  >
-                    -
-                  </button>
-                  <span className="w-6 text-center text-xs font-bold text-slate-900 dark:text-slate-100">
-                    {adultsCount}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setAdultsCount((prev) => Math.min(10, prev + 1))}
-                    disabled={adultsCount >= 10}
-                    className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-xs text-xs cursor-pointer"
-                    aria-label="Increase adults"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              {/* Participating Children */}
-              <ChildrenSelector
-                childrenList={childrenList}
-                onChange={setChildrenList}
-                travelDate={earliestDate}
-                homeRegion={federalState}
-              />
-            </div>
-
-            {/* Step 5: Flexible Vacation Duration */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                <span>{t.home.durationLabel}</span>
-              </label>
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-3">
-                <div>
-                  <span className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                    {t.home.durationMinLabel}
-                  </span>
-                  <input
-                    type="number"
-                    min="3"
-                    max="30"
-                    value={durationDaysMin}
-                    onChange={(e) => setDurationDaysMin(Number(e.target.value))}
-                    className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 shadow-sm"
-                  />
-                </div>
-                <div>
-                  <span className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                    {t.home.durationMaxLabel}
-                  </span>
-                  <input
-                    type="number"
-                    min="3"
-                    max="30"
-                    value={durationDaysMax}
-                    onChange={(e) => setDurationDaysMax(Number(e.target.value))}
-                    className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 shadow-sm"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Step 6: Search Date Range (Strictly Future Dates) */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                <span>{locale.startsWith('de') ? 'Reisezeitraum' : 'Travel Dates'} ({t.home.earliestDateLabel} &amp; {t.home.latestDateLabel})</span>
-              </label>
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-3">
-                <div>
-                  <span className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                    {t.home.earliestDateLabel}
-                  </span>
-                  <input
-                    type="date"
-                    min={todayStr}
-                    value={earliestDate}
-                    onChange={(e) => setEarliestDate(e.target.value)}
-                    className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 shadow-sm"
-                  />
-                </div>
-                <div>
-                  <span className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                    {t.home.latestDateLabel}
-                  </span>
-                  <input
-                    type="date"
-                    min={earliestDate || todayStr}
-                    value={latestDate}
-                    onChange={(e) => setLatestDate(e.target.value)}
-                    className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 shadow-sm"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Step 7: Blackout Periods (Sperrzeiten) */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-              <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/20 rounded-xl border border-amber-200/90 dark:border-amber-800/60 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
-                    {t.home.blackoutFilterTitle}
-                  </span>
-                  {searchBlackouts.length > 0 && (
-                    <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-900/50 px-2 py-0.5 rounded-full border border-amber-200/70 dark:border-amber-700/60">
-                      {searchBlackouts.length}
-                    </span>
-                  )}
-                </div>
-
-                {/* Blackout List & Presets: Only show holiday buttons when user is adding or has blackout periods */}
-                {searchBlackouts.length === 0 && !isAddingBlackout ? (
-                  <div className="p-2.5 bg-amber-50/50 dark:bg-amber-950/10 rounded-xl border border-dashed border-amber-300 dark:border-amber-800/60 text-center">
-                    <p className="text-xs text-amber-800/80 dark:text-amber-300/80">{t.home.noBlackouts}</p>
-                    <button
-                      type="button"
-                      onClick={addBlackout}
-                      className="mt-1 text-xs font-semibold text-amber-800 dark:text-amber-300 hover:underline cursor-pointer"
-                    >
-                      + {t.home.addBlackout}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {/* Quick Add Special Moving Periods (Ostern, Pfingsten, Himmelfahrt, Fronleichnam, Silvester) */}
-                    {annualSpecialTimes.length > 0 && (
-                      <div className="space-y-1.5">
-                        <span className="block text-[10px] font-bold uppercase tracking-wider text-amber-900/75 dark:text-amber-300/75">
-                          {t.home.quickSpecialTimes}:
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {annualSpecialTimes.map((period) => {
-                            const isSelected = searchBlackouts.some(
-                              (b) => b.startDate === period.startDate && b.endDate === period.endDate
-                            );
-                            return (
-                              <button
-                                key={`${period.id}-${period.startDate}`}
-                                type="button"
-                                onClick={() => toggleSpecialPeriod(period)}
-                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
-                                  isSelected
-                                    ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
-                                    : 'bg-white/80 dark:bg-slate-800/80 hover:bg-white dark:hover:bg-slate-800 text-amber-900 dark:text-amber-200 border-amber-200/90 dark:border-amber-800/60 hover:border-amber-300 dark:hover:border-amber-700 shadow-2xs'
-                                }`}
-                                title={`${period.name} (${period.startDate} - ${period.endDate}): ${period.description}`}
-                              >
-                                <span>{period.icon}</span>
-                                <span>{period.displayName}</span>
-                                {isSelected ? (
-                                  <Check className="w-3 h-3 ml-0.5" />
-                                ) : (
-                                  <Plus className="w-3 h-3 ml-0.5 text-amber-600 dark:text-amber-400" />
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="space-y-1.5">
-                      {searchBlackouts.map((b, idx) => (
-                        <div
-                          key={idx}
-                          className="px-2.5 py-1.5 bg-white/95 dark:bg-slate-800/80 rounded-lg border border-amber-200/90 dark:border-amber-800/60 flex items-center gap-1.5 text-xs transition-all hover:bg-white dark:hover:bg-slate-800 hover:border-amber-300 dark:hover:border-amber-700 shadow-xs"
-                        >
-                          <span className="text-[11px] font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 dark:bg-amber-900/40 border border-amber-300/80 dark:border-amber-700/60 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0">
-                            {idx + 1}
-                          </span>
-                          <DateRangePicker
-                            startDate={b.startDate}
-                            endDate={b.endDate}
-                            onChange={(start, end) => updateBlackoutRange(idx, start, end)}
-                            minDate={todayStr}
-                            className="w-[108px] shrink-0"
-                          />
-                          <input
-                            type="text"
-                            placeholder={t.home.blackoutReasonPlaceholder}
-                            value={b.reason || ''}
-                            onChange={(e) => updateBlackout(idx, 'reason', e.target.value)}
-                            className="flex-1 min-w-0 text-xs rounded border border-slate-300 dark:border-slate-700 px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeBlackout(idx)}
-                            className="p-1 text-slate-400 hover:text-red-600 transition cursor-pointer flex-shrink-0"
-                            title={t.home.removeBlackout}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-
-                      <button
-                        type="button"
-                        onClick={addBlackout}
-                        className="w-full mt-2 py-1.5 px-3 rounded-lg border border-dashed border-amber-300 bg-amber-50/60 hover:bg-amber-100/70 text-amber-900 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        {t.home.addBlackout}
-                      </button>
+                {/* Kind of Vacation (Vacation Style) selector - Only visible when no destinations are defined */}
+                {targetDestinations.length === 0 && (
+                  <div>
+                    <div className="mb-2.5 space-y-0.5">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <Compass className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                        <span>{t.home.vacationKindLabel}</span>
+                      </label>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                        {t.home.vacationKindHint}
+                      </p>
                     </div>
+                    <VacationStyleTiles
+                      selectedStyles={selectedStyles}
+                      onToggle={toggleVacationStyle}
+                      longRangeStyles={longRangeStyles}
+                      onLongRangeStylesChange={setLongRangeStyles}
+                    />
+
+                    <ClimatePreferencesPanel
+                      showBeach={isBeachClimateRelevant}
+                      showAlpine={isAlpineClimateRelevant}
+                      minBeachTemp={minBeachTemp}
+                      onMinBeachTempChange={setMinBeachTemp}
+                      requireSnow={requireSnow}
+                      onRequireSnowChange={setRequireSnow}
+                    />
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Submit Optimization Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 px-4 rounded-xl font-bold text-sm bg-teal-600 hover:bg-teal-700 text-white shadow transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
-            >
-              {loading ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  {t.home.optimizing}
-                </>
+              {/* Travel Vehicle Selection */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="mb-2.5 space-y-0.5">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Car className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                    <span>{t.home.travelVehicleLabel}</span>
+                  </label>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                    {t.home.travelVehicleHint}
+                  </p>
+                </div>
+                <TravelModeTiles
+                  selectedVehicles={selectedVehicles}
+                  onToggle={toggleVehicle}
+                  maxFlightStops={maxFlightStops}
+                  onMaxFlightStopsChange={setMaxFlightStops}
+                  carFuelType={carFuelType}
+                  onCarFuelTypeChange={setCarFuelType}
+                />
+              </div>
+
+              {/* Preferred Board Type & Max Overland Travel Time */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Utensils className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>{t.home.filterByBoardType}</span>
+                  </label>
+                  <BoardTypeSelect value={preferredBoardType} onChange={setPreferredBoardType} />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Car className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                    <span>{t.home.filterByOverlandDuration}</span>
+                  </label>
+                  <OverlandDurationSelect value={maxOverlandDurationHours} onChange={setMaxOverlandDurationHours} />
+                </div>
+              </div>
+
+              {/* Travel Comfort Preferences synced with Traveler Profile: cabin class, budget */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 min-h-[2.2em]">
+                    {t.profile.cabinClass}
+                  </label>
+                  <SelectDropdown
+                    variant="form"
+                    value={preferredCabinClass || 'ECONOMY'}
+                    onChange={(v) => setPreferredCabinClass(v)}
+                    options={[
+                      { value: 'ECONOMY', label: t.profile.economy },
+                      { value: 'PREMIUM_ECONOMY', label: t.profile.premiumEconomy },
+                      { value: 'BUSINESS', label: t.profile.business },
+                    ]}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-start gap-1.5 min-h-[2.2em]"
+                    title={t.home.maxBudgetLabel}
+                  >
+                    <Wallet className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                    <span>{t.home.maxBudgetLabel}</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50"
+                    value={maxBudget ?? ''}
+                    onChange={(e) => setMaxBudget(e.target.value ? Number(e.target.value) : undefined)}
+                    placeholder={t.home.maxBudgetPlaceholder}
+                    className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100 placeholder:font-normal placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              {/* Step 3: Departure Airports (for Plane) or Overland Transit Note (for Car/Train/Bus) */}
+              {selectedVehicles.includes('PLANE') ? (
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <AirportSelector
+                    selectedAirports={originAirports}
+                    onChange={setOriginAirports}
+                    coordinates={departureCoords}
+                    targetDestinations={targetDestinations}
+                  />
+                </div>
               ) : (
-                <>
-                  <Sparkles className="w-4 h-4 text-yellow-300" />
-                  {t.home.runOptimization}
-                </>
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div className="p-3 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-950 dark:text-emerald-200 flex items-start gap-2.5">
+                    <Info className="w-4 h-4 text-emerald-700 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <span className="font-semibold block text-slate-800 dark:text-slate-100">
+                        {selectedVehicles.map((v) => getVehicleMeta(v).label).join(' / ')}
+                      </span>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                        {t.home.overlandOnlyHint}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               )}
-            </button>
-          </form>
+
+              {/* Step 4: Travelers (Adults & Children) */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                    {t.home.partyTitle}
+                  </label>
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                    {(adultsCount + childrenList.length === 1 ? t.home.travelerCountOne : t.home.travelerCountOther).replace('{count}', String(adultsCount + childrenList.length))}
+                  </span>
+                </div>
+
+                {/* Adults Selector */}
+                <div className="p-3 bg-slate-50/80 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
+                  <div>
+                    <span className="block text-xs font-semibold text-slate-800 dark:text-slate-100">
+                      {t.home.adultsLabel}
+                    </span>
+                    <span className="block text-[10px] text-slate-500 dark:text-slate-400">
+                      {t.home.adultsHint}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAdultsCount((prev) => Math.max(1, prev - 1))}
+                      disabled={adultsCount <= 1}
+                      className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-xs text-xs cursor-pointer"
+                      aria-label={t.home.decreaseAdults}
+                    >
+                      -
+                    </button>
+                    <span className="w-6 text-center text-xs font-bold text-slate-900 dark:text-slate-100">
+                      {adultsCount}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setAdultsCount((prev) => Math.min(10, prev + 1))}
+                      disabled={adultsCount >= 10}
+                      className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-xs text-xs cursor-pointer"
+                      aria-label={t.home.increaseAdults}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* Participating Children */}
+                <ChildrenSelector
+                  childrenList={childrenList}
+                  onChange={setChildrenList}
+                  travelDate={earliestDate}
+                  homeRegion={federalState}
+                />
+              </div>
+
+              {/* Step 5: Flexible Vacation Duration */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <span>{t.home.durationLabel}</span>
+                </label>
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-3">
+                  <div>
+                    <span className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                      {t.home.durationMinLabel}
+                    </span>
+                    <input
+                      type="number"
+                      min="3"
+                      max="30"
+                      value={durationDaysMin}
+                      onChange={(e) => setDurationDaysMin(Number(e.target.value))}
+                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 shadow-sm"
+                    />
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                      {t.home.durationMaxLabel}
+                    </span>
+                    <input
+                      type="number"
+                      min="3"
+                      max="30"
+                      value={durationDaysMax}
+                      onChange={(e) => setDurationDaysMax(Number(e.target.value))}
+                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 shadow-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 6: Search Date Range (Strictly Future Dates) */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <span>{locale.startsWith('de') ? 'Reisezeitraum' : 'Travel Dates'} ({t.home.earliestDateLabel} &amp; {t.home.latestDateLabel})</span>
+                </label>
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-3">
+                  <div>
+                    <span className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                      {t.home.earliestDateLabel}
+                    </span>
+                    <input
+                      type="date"
+                      min={todayStr}
+                      value={earliestDate}
+                      onChange={(e) => setEarliestDate(e.target.value)}
+                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 shadow-sm"
+                    />
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                      {t.home.latestDateLabel}
+                    </span>
+                    <input
+                      type="date"
+                      min={earliestDate || todayStr}
+                      value={latestDate}
+                      onChange={(e) => setLatestDate(e.target.value)}
+                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 shadow-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 7: Blackout Periods (Sperrzeiten) */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/20 rounded-xl border border-amber-200/90 dark:border-amber-800/60 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+                      {t.home.blackoutFilterTitle}
+                    </span>
+                    {searchBlackouts.length + recurringBlackouts.length > 0 && (
+                      <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-900/50 px-2 py-0.5 rounded-full border border-amber-200/70 dark:border-amber-700/60">
+                        {searchBlackouts.length + recurringBlackouts.length}
+                      </span>
+                    )}
+                  </div>
+
+                  <HolidayBlackoutToggles
+                    selected={recurringBlackouts}
+                    onChange={setRecurringBlackouts}
+                    earliestDate={earliestDate}
+                    latestDate={latestDate}
+                    expanded={isAddingBlackout}
+                  />
+
+                  {/* Manual blackout ranges (the holiday toggles above cover Easter, Pentecost etc.) */}
+                  {searchBlackouts.length === 0 && !isAddingBlackout ? (
+                    <div className="p-2.5 bg-amber-50/50 dark:bg-amber-950/10 rounded-xl border border-dashed border-amber-300 dark:border-amber-800/60 text-center">
+                      {recurringBlackouts.length === 0 && (
+                        <p className="text-xs text-amber-800/80 dark:text-amber-300/80">{t.home.noBlackouts}</p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={addBlackout}
+                        className="mt-1 text-xs font-semibold text-amber-800 dark:text-amber-300 hover:underline cursor-pointer"
+                      >
+                        + {t.home.addBlackout}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        {searchBlackouts.map((b, idx) => (
+                          <div
+                            key={idx}
+                            className="px-2.5 py-1.5 bg-white/95 dark:bg-slate-800/80 rounded-lg border border-amber-200/90 dark:border-amber-800/60 flex items-center gap-1.5 text-xs transition-all hover:bg-white dark:hover:bg-slate-800 hover:border-amber-300 dark:hover:border-amber-700 shadow-xs"
+                          >
+                            <span className="text-[11px] font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 dark:bg-amber-900/40 border border-amber-300/80 dark:border-amber-700/60 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0">
+                              {idx + 1}
+                            </span>
+                            <DateRangePicker
+                              startDate={b.startDate}
+                              endDate={b.endDate}
+                              onChange={(start, end) => updateBlackoutRange(idx, start, end)}
+                              minDate={todayStr}
+                              className="w-[108px] shrink-0"
+                            />
+                            <input
+                              type="text"
+                              placeholder={t.home.blackoutReasonPlaceholder}
+                              value={b.reason || ''}
+                              onChange={(e) => updateBlackout(idx, 'reason', e.target.value)}
+                              className="flex-1 min-w-0 text-xs rounded border border-slate-300 dark:border-slate-700 px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeBlackout(idx)}
+                              className="p-1 text-slate-400 hover:text-red-600 transition cursor-pointer flex-shrink-0"
+                              title={t.home.removeBlackout}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+
+                        <button
+                          type="button"
+                          onClick={addBlackout}
+                          className="w-full mt-2 py-1.5 px-3 rounded-lg border border-dashed border-amber-300 bg-amber-50/60 hover:bg-amber-100/70 text-amber-900 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          {t.home.addBlackout}
+                        </button>
+                        {isAddingBlackout && (
+                          <button
+                            type="button"
+                            onClick={finishBlackoutEditing}
+                            className="w-full mt-2 py-1.5 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition-colors cursor-pointer"
+                          >
+                            {t.common.done}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Submit Optimization Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 px-4 rounded-xl font-bold text-sm bg-teal-600 hover:bg-teal-700 text-white shadow transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    {t.home.optimizing}
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 text-yellow-300" />
+                    {t.home.runOptimization}
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
         </div>
 
         {/* Results Stream */}
@@ -2486,9 +2600,13 @@ export default function HomePage() {
             </h2>
             {results && (
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border border-slate-200 dark:border-slate-700 text-[11px]">
-                  {filteredResults.length} / {results.length} {t.home.windowsFound}
-                </span>
+                <ResultsCountPopover
+                  shown={filteredResults.length}
+                  total={results.length}
+                  rows={exclusionRows}
+                  onInclude={includeFilter}
+                  onIncludeAll={() => exclusionRows.forEach((r) => includeFilter(r.key))}
+                />
               </p>
             )}
           </div>
@@ -2675,7 +2793,8 @@ export default function HomePage() {
                   const isDistanceActive = distanceFilter !== 'ALL';
                   const isVehicleActive = vehicleFilter !== 'ALL';
                   const isSafetyActive = safetyFilter !== 'SAFE_ONLY';
-                  const isWarningActive = warningFilter !== 'CLEAN_ONLY';
+                  const isWarningActive = warningFilter !== 'CLEAN_ONLY' || allowedWarnings.length > 0;
+                  const isSeasonalInfoActive = seasonalInfoFilter !== 'ALL';
                   const isHeatActive = heatFilter !== 'ALL';
                   const isBoardTypeActive = boardTypeFilter !== 'ALL';
                   const isOverlandDurationActive = overlandDurationFilter !== 'ALL';
@@ -2720,7 +2839,8 @@ export default function HomePage() {
                                     setTimeframeCurrentPage(1);
                                   }}
                                   className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                  title="Zurücksetzen"
+                                  title={t.home.filterReset}
+                                aria-label={t.home.filterReset}
                                 >
                                   <X className="w-3.5 h-3.5" />
                                 </button>
@@ -2740,31 +2860,24 @@ export default function HomePage() {
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <select
-                            value={
-                              selectedMonth.length === 2
+                          <SelectDropdown
+                            variant="compact"
+                            value={selectedMonth.length === 2
                                 ? availableMonths.find((ym) => ym.endsWith('-' + selectedMonth)) ?? 'ALL'
-                                : selectedMonth
-                            }
-                            onChange={(e) => {
-                              setSelectedMonth(e.target.value);
+                                : selectedMonth}
+                            onChange={(v) => {
+                              setSelectedMonth(v);
                               setCurrentPage(1);
                             }}
-                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
-                              isMonthActive
-                                ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
-                                : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
-                            }`}
-                          >
-                            {renderFilterOption('month', 'ALL', t.home.allMonths, selectedMonth)}
-                            {availableMonths.map((ym) => {
-                              const [y, m] = ym.split('-').map((n) => parseInt(n, 10));
-                              const monthName = formatDate(new Date(y, m - 1, 1), { month: 'long', year: 'numeric' });
-                              return (
-                                renderFilterOption('month', ym, monthName, selectedMonth)
-                              );
-                            })}
-                          </select>
+                            highlighted={isMonthActive}
+                            options={[
+                              filterOption('month', 'ALL', t.home.allMonths, selectedMonth),
+                              ...availableMonths.map((ym) => {
+                                const [y, m] = ym.split('-').map((n) => parseInt(n, 10));
+                                return filterOption('month', ym, formatDate(new Date(y, m - 1, 1), { month: 'long', year: 'numeric' }), selectedMonth);
+                              }),
+                            ]}
+                          />
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isMonthActive && (
                               <button
@@ -2774,7 +2887,8 @@ export default function HomePage() {
                                   setCurrentPage(1);
                                 }}
                                 className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title="Zurücksetzen"
+                                title={t.home.filterReset}
+                                aria-label={t.home.filterReset}
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -2793,25 +2907,23 @@ export default function HomePage() {
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <select
+                          <SelectDropdown
+                            variant="compact"
                             value={resultStyleFilter}
-                            onChange={(e) => {
-                              setResultStyleFilter(e.target.value as DestinationType);
+                            onChange={(v) => {
+                              setResultStyleFilter(v as DestinationType);
                               setCurrentPage(1);
                             }}
-                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
-                              isStyleActive
-                                ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
-                                : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
-                            }`}
-                          >
-                            {renderFilterOption('style', 'ALL', t.home.vacationKindAll, resultStyleFilter)}
-                            {renderFilterOption('style', 'BEACH', t.home.vacationKindBeach, resultStyleFilter)}
-                            {renderFilterOption('style', 'ALPINE', t.home.vacationKindAlpine, resultStyleFilter)}
-                            {renderFilterOption('style', 'CITY', t.home.vacationKindCity, resultStyleFilter)}
-                            {renderFilterOption('style', 'NATURE', t.home.vacationKindNature, resultStyleFilter)}
-                            {renderFilterOption('style', 'LONGRANGE', t.home.vacationKindLongrange, resultStyleFilter)}
-                          </select>
+                            highlighted={isStyleActive}
+                            options={[
+                              filterOption('style', 'ALL', t.home.vacationKindAll, resultStyleFilter),
+                              filterOption('style', 'BEACH', t.home.vacationKindBeach, resultStyleFilter),
+                              filterOption('style', 'ALPINE', t.home.vacationKindAlpine, resultStyleFilter),
+                              filterOption('style', 'CITY', t.home.vacationKindCity, resultStyleFilter),
+                              filterOption('style', 'NATURE', t.home.vacationKindNature, resultStyleFilter),
+                              filterOption('style', 'LONGRANGE', t.home.vacationKindLongrange, resultStyleFilter),
+                            ]}
+                          />
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isStyleActive && (
                               <button
@@ -2821,7 +2933,8 @@ export default function HomePage() {
                                   setCurrentPage(1);
                                 }}
                                 className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title="Zurücksetzen"
+                                title={t.home.filterReset}
+                                aria-label={t.home.filterReset}
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -2840,25 +2953,23 @@ export default function HomePage() {
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <select
+                          <SelectDropdown
+                            variant="compact"
                             value={distanceFilter}
-                            onChange={(e) => {
-                              setDistanceFilter(e.target.value);
+                            onChange={(v) => {
+                              setDistanceFilter(v);
                               setCurrentPage(1);
                             }}
-                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
-                              isDistanceActive
-                                ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
-                                : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
-                            }`}
-                          >
-                            {renderFilterOption('distance', 'ALL', t.home.allDistances, distanceFilter)}
-                            {renderFilterOption('distance', 'SHORT', t.home.distShort, distanceFilter)}
-                            {renderFilterOption('distance', 'MID', t.home.distMid, distanceFilter)}
-                            {renderFilterOption('distance', 'EXTENDED', t.home.distExtended, distanceFilter)}
-                            {renderFilterOption('distance', 'LONG', t.home.distLong, distanceFilter)}
-                            {renderFilterOption('distance', 'INTERCONTINENTAL', t.home.distIntercontinental, distanceFilter)}
-                          </select>
+                            highlighted={isDistanceActive}
+                            options={[
+                              filterOption('distance', 'ALL', t.home.allDistances, distanceFilter),
+                              filterOption('distance', 'SHORT', t.home.distShort, distanceFilter),
+                              filterOption('distance', 'MID', t.home.distMid, distanceFilter),
+                              filterOption('distance', 'EXTENDED', t.home.distExtended, distanceFilter),
+                              filterOption('distance', 'LONG', t.home.distLong, distanceFilter),
+                              filterOption('distance', 'INTERCONTINENTAL', t.home.distIntercontinental, distanceFilter),
+                            ]}
+                          />
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isDistanceActive && (
                               <button
@@ -2868,7 +2979,8 @@ export default function HomePage() {
                                   setCurrentPage(1);
                                 }}
                                 className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title="Zurücksetzen"
+                                title={t.home.filterReset}
+                                aria-label={t.home.filterReset}
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -2887,24 +2999,22 @@ export default function HomePage() {
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <select
+                          <SelectDropdown
+                            variant="compact"
                             value={vehicleFilter}
-                            onChange={(e) => {
-                              setVehicleFilter(e.target.value);
+                            onChange={(v) => {
+                              setVehicleFilter(v);
                               setCurrentPage(1);
                             }}
-                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
-                              isVehicleActive
-                                ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
-                                : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
-                            }`}
-                          >
-                            {renderFilterOption('vehicle', 'ALL', t.home.vehicleAll, vehicleFilter)}
-                            {renderFilterOption('vehicle', 'PLANE', t.home.vehiclePlane, vehicleFilter)}
-                            {renderFilterOption('vehicle', 'CAR', t.home.vehicleCar, vehicleFilter)}
-                            {renderFilterOption('vehicle', 'TRAIN', t.home.vehicleTrain, vehicleFilter)}
-                            {renderFilterOption('vehicle', 'BUS', t.home.vehicleBus, vehicleFilter)}
-                          </select>
+                            highlighted={isVehicleActive}
+                            options={[
+                              filterOption('vehicle', 'ALL', t.home.vehicleAll, vehicleFilter),
+                              filterOption('vehicle', 'PLANE', t.home.vehiclePlane, vehicleFilter),
+                              filterOption('vehicle', 'CAR', t.home.vehicleCar, vehicleFilter),
+                              filterOption('vehicle', 'TRAIN', t.home.vehicleTrain, vehicleFilter),
+                              filterOption('vehicle', 'BUS', t.home.vehicleBus, vehicleFilter),
+                            ]}
+                          />
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isVehicleActive && (
                               <button
@@ -2914,7 +3024,8 @@ export default function HomePage() {
                                   setCurrentPage(1);
                                 }}
                                 className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title="Zurücksetzen"
+                                title={t.home.filterReset}
+                                aria-label={t.home.filterReset}
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -2933,21 +3044,19 @@ export default function HomePage() {
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <select
+                          <SelectDropdown
+                            variant="compact"
                             value={safetyFilter}
-                            onChange={(e) => {
-                              setSafetyFilter(e.target.value as any);
+                            onChange={(v) => {
+                              setSafetyFilter(v as any);
                               setCurrentPage(1);
                             }}
-                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
-                              isSafetyActive
-                                ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
-                                : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
-                            }`}
-                          >
-                            {renderFilterOption('safety', 'SAFE_ONLY', t.home.safetyFilterSafeOnly, safetyFilter)}
-                            {renderFilterOption('safety', 'ALL', t.home.safetyFilterAll, safetyFilter)}
-                          </select>
+                            highlighted={isSafetyActive}
+                            options={[
+                              filterOption('safety', 'SAFE_ONLY', t.home.safetyFilterSafeOnly, safetyFilter),
+                              filterOption('safety', 'ALL', t.home.safetyFilterAll, safetyFilter),
+                            ]}
+                          />
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isSafetyActive && (
                               <button
@@ -2957,7 +3066,8 @@ export default function HomePage() {
                                   setCurrentPage(1);
                                 }}
                                 className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title="Zurücksetzen"
+                                title={t.home.filterReset}
+                                aria-label={t.home.filterReset}
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -2975,32 +3085,78 @@ export default function HomePage() {
                             <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
                           )}
                         </label>
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <select
-                            value={warningFilter}
-                            onChange={(e) => {
-                              setWarningFilter(e.target.value as any);
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto min-w-0">
+                          <SeasonalWarningFilterDropdown
+                            warningOptions={warningFilterStats.options}
+                            warningFilter={warningFilter}
+                            allowedWarnings={allowedWarnings}
+                            onChange={(nextFilter, nextAllowed) => {
+                              setWarningFilter(nextFilter);
+                              setAllowedWarnings(nextAllowed);
                               setCurrentPage(1);
+                              setTimeframeCurrentPage(1);
                             }}
-                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
-                              isWarningActive
-                                ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
-                                : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
-                            }`}
-                          >
-                            {renderFilterOption('warning', 'CLEAN_ONLY', t.home.warningsFilterCleanOnly, warningFilter)}
-                            {renderFilterOption('warning', 'ALL', t.home.warningsFilterAll, warningFilter)}
-                          </select>
+                            cleanCount={warningFilterStats.cleanCount}
+                            totalCount={warningFilterStats.totalCount}
+                            className="flex-1 sm:flex-none min-w-0"
+                          />
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isWarningActive && (
                               <button
                                 type="button"
                                 onClick={() => {
                                   setWarningFilter('CLEAN_ONLY');
+                                  setAllowedWarnings([]);
                                   setCurrentPage(1);
+                                  setTimeframeCurrentPage(1);
                                 }}
                                 className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title="Zurücksetzen"
+                                title={t.home.filterReset}
+                                aria-label={t.home.filterReset}
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Line 6b: Seasonal Information Filter (Quiet Travel Periods) */}
+                      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isSeasonalInfoActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
+                        <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSeasonalInfoActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                          <Users className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                          <span>{t.home.filterBySeasonalInfo}</span>
+                          {isSeasonalInfoActive && (
+                            <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse flex-shrink-0" title="Aktiv" />
+                          )}
+                        </label>
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                          <SelectDropdown
+                            variant="compact"
+                            value={seasonalInfoFilter}
+                            onChange={(v) => {
+                              setSeasonalInfoFilter(v as 'ALL' | 'QUIET_ONLY');
+                              setCurrentPage(1);
+                              setTimeframeCurrentPage(1);
+                            }}
+                            highlighted={isSeasonalInfoActive}
+                            options={[
+                              filterOption('seasonalInfo', 'ALL', t.home.seasonalInfoAll, seasonalInfoFilter),
+                              filterOption('seasonalInfo', 'QUIET_ONLY', t.home.warningsFilterQuietOnly, seasonalInfoFilter),
+                            ]}
+                          />
+                          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                            {isSeasonalInfoActive && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSeasonalInfoFilter('ALL');
+                                  setCurrentPage(1);
+                                  setTimeframeCurrentPage(1);
+                                }}
+                                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                title={t.home.filterReset}
+                                aria-label={t.home.filterReset}
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -3019,21 +3175,19 @@ export default function HomePage() {
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <select
+                          <SelectDropdown
+                            variant="compact"
                             value={heatFilter}
-                            onChange={(e) => {
-                              setHeatFilter(e.target.value as any);
+                            onChange={(v) => {
+                              setHeatFilter(v as any);
                               setCurrentPage(1);
                             }}
-                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
-                              isHeatActive
-                                ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
-                                : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
-                            }`}
-                          >
-                            {renderFilterOption('heat', 'ALL', t.home.heatFilterAll, heatFilter)}
-                            {renderFilterOption('heat', 'AVOID_EXTREME_HEAT', t.home.heatFilterAvoid, heatFilter)}
-                          </select>
+                            highlighted={isHeatActive}
+                            options={[
+                              filterOption('heat', 'ALL', t.home.heatFilterAll, heatFilter),
+                              filterOption('heat', 'AVOID_EXTREME_HEAT', t.home.heatFilterAvoid, heatFilter),
+                            ]}
+                          />
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isHeatActive && (
                               <button
@@ -3043,7 +3197,8 @@ export default function HomePage() {
                                   setCurrentPage(1);
                                 }}
                                 className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title="Zurücksetzen"
+                                title={t.home.filterReset}
+                                aria-label={t.home.filterReset}
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -3062,24 +3217,22 @@ export default function HomePage() {
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <select
+                          <SelectDropdown
+                            variant="compact"
                             value={boardTypeFilter}
-                            onChange={(e) => {
-                              setBoardTypeFilter(e.target.value);
+                            onChange={(v) => {
+                              setBoardTypeFilter(v);
                               setCurrentPage(1);
                             }}
-                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
-                              isBoardTypeActive
-                                ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
-                                : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
-                            }`}
-                          >
-                            {renderFilterOption('boardType', 'ALL', t.home.allBoardTypes, boardTypeFilter)}
-                            {renderFilterOption('boardType', 'ALL_INCLUSIVE', t.home.boardTypeAllInclusive, boardTypeFilter)}
-                            {renderFilterOption('boardType', 'HALF_BOARD', t.home.boardTypeHalfBoard, boardTypeFilter)}
-                            {renderFilterOption('boardType', 'BREAKFAST', t.home.boardTypeBreakfast, boardTypeFilter)}
-                            {renderFilterOption('boardType', 'ROOM_ONLY', t.home.boardTypeRoomOnly, boardTypeFilter)}
-                          </select>
+                            highlighted={isBoardTypeActive}
+                            options={[
+                              filterOption('boardType', 'ALL', t.home.allBoardTypes, boardTypeFilter),
+                              filterOption('boardType', 'ALL_INCLUSIVE', t.home.boardTypeAllInclusive, boardTypeFilter),
+                              filterOption('boardType', 'HALF_BOARD', t.home.boardTypeHalfBoard, boardTypeFilter),
+                              filterOption('boardType', 'BREAKFAST', t.home.boardTypeBreakfast, boardTypeFilter),
+                              filterOption('boardType', 'ROOM_ONLY', t.home.boardTypeRoomOnly, boardTypeFilter),
+                            ]}
+                          />
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isBoardTypeActive && (
                               <button
@@ -3089,7 +3242,8 @@ export default function HomePage() {
                                   setCurrentPage(1);
                                 }}
                                 className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title="Zurücksetzen"
+                                title={t.home.filterReset}
+                                aria-label={t.home.filterReset}
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -3111,24 +3265,22 @@ export default function HomePage() {
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <select
+                          <SelectDropdown
+                            variant="compact"
                             value={overlandDurationFilter}
-                            disabled={!overlandDurationApplicable}
-                            onChange={(e) => {
-                              setOverlandDurationFilter(e.target.value);
+                            onChange={(v) => {
+                              setOverlandDurationFilter(v);
                               setCurrentPage(1);
                             }}
-                            className={`disabled:cursor-not-allowed w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
-                              isOverlandDurationActive
-                                ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
-                                : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
-                            }`}
-                          >
-                            {renderFilterOption('overlandDuration', 'ALL', t.home.overlandDurationAny, overlandDurationFilter)}
-                            {renderFilterOption('overlandDuration', '360', t.home.overlandDuration6h, overlandDurationFilter)}
-                            {renderFilterOption('overlandDuration', '600', t.home.overlandDuration10h, overlandDurationFilter)}
-                            {renderFilterOption('overlandDuration', '840', t.home.overlandDuration14h, overlandDurationFilter)}
-                          </select>
+                            disabled={!overlandDurationApplicable}
+                            highlighted={isOverlandDurationActive}
+                            options={[
+                              filterOption('overlandDuration', 'ALL', t.home.overlandDurationAny, overlandDurationFilter),
+                              filterOption('overlandDuration', '360', t.home.overlandDuration6h, overlandDurationFilter),
+                              filterOption('overlandDuration', '600', t.home.overlandDuration10h, overlandDurationFilter),
+                              filterOption('overlandDuration', '840', t.home.overlandDuration14h, overlandDurationFilter),
+                            ]}
+                          />
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isOverlandDurationActive && (
                               <button
@@ -3138,7 +3290,8 @@ export default function HomePage() {
                                   setCurrentPage(1);
                                 }}
                                 className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title="Zurücksetzen"
+                                title={t.home.filterReset}
+                                aria-label={t.home.filterReset}
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -3160,23 +3313,21 @@ export default function HomePage() {
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <select
+                          <SelectDropdown
+                            variant="compact"
                             value={flightStopsFilter}
-                            disabled={!flightStopsApplicable}
-                            onChange={(e) => {
-                              setFlightStopsFilter(e.target.value);
+                            onChange={(v) => {
+                              setFlightStopsFilter(v);
                               setCurrentPage(1);
                             }}
-                            className={`disabled:cursor-not-allowed w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
-                              isFlightStopsActive
-                                ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
-                                : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
-                            }`}
-                          >
-                            {renderFilterOption('flightStops', 'ALL', t.home.flightStopsAny, flightStopsFilter)}
-                            {renderFilterOption('flightStops', 'DIRECT_ONLY', t.home.flightStopsDirectOnly, flightStopsFilter)}
-                            {renderFilterOption('flightStops', 'MAX_1_STOP', t.home.flightStopsMax1, flightStopsFilter)}
-                          </select>
+                            disabled={!flightStopsApplicable}
+                            highlighted={isFlightStopsActive}
+                            options={[
+                              filterOption('flightStops', 'ALL', t.home.flightStopsAny, flightStopsFilter),
+                              filterOption('flightStops', 'DIRECT_ONLY', t.home.flightStopsDirectOnly, flightStopsFilter),
+                              filterOption('flightStops', 'MAX_1_STOP', t.home.flightStopsMax1, flightStopsFilter),
+                            ]}
+                          />
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isFlightStopsActive && (
                               <button
@@ -3186,7 +3337,8 @@ export default function HomePage() {
                                   setCurrentPage(1);
                                 }}
                                 className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title="Zurücksetzen"
+                                title={t.home.filterReset}
+                                aria-label={t.home.filterReset}
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -3205,21 +3357,19 @@ export default function HomePage() {
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <select
+                          <SelectDropdown
+                            variant="compact"
                             value={schoolHolidayFilter}
-                            onChange={(e) => {
-                              setSchoolHolidayFilter(e.target.value as any);
+                            onChange={(v) => {
+                              setSchoolHolidayFilter(v as any);
                               setCurrentPage(1);
                             }}
-                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
-                              isSchoolHolidayActive
-                                ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
-                                : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
-                            }`}
-                          >
-                            {renderFilterOption('schoolHoliday', 'all', t.home.filterAllDates, schoolHolidayFilter)}
-                            {renderFilterOption('schoolHoliday', 'holidaysOnly', t.home.filterSchoolHolidaysOnly, schoolHolidayFilter)}
-                          </select>
+                            highlighted={isSchoolHolidayActive}
+                            options={[
+                              filterOption('schoolHoliday', 'all', t.home.filterAllDates, schoolHolidayFilter),
+                              filterOption('schoolHoliday', 'holidaysOnly', t.home.filterSchoolHolidaysOnly, schoolHolidayFilter),
+                            ]}
+                          />
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isSchoolHolidayActive && (
                               <button
@@ -3229,7 +3379,8 @@ export default function HomePage() {
                                   setCurrentPage(1);
                                 }}
                                 className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title="Zurücksetzen"
+                                title={t.home.filterReset}
+                                aria-label={t.home.filterReset}
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -3271,7 +3422,8 @@ export default function HomePage() {
                                   setCurrentPage(1);
                                 }}
                                 className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title="Zurücksetzen"
+                                title={t.home.filterReset}
+                                aria-label={t.home.filterReset}
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -3290,29 +3442,28 @@ export default function HomePage() {
                           )}
                         </label>
                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <select
+                          <SelectDropdown
+                            variant="compact"
                             value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value as any)}
-                            className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-none transition font-medium ${
-                              isSortActive
-                                ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
-                                : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
-                            }`}
-                          >
-                            <option value="score">{t.home.sortScore}</option>
-                            <option value="date-asc">{t.home.sortDateAsc}</option>
-                            <option value="date-desc">{t.home.sortDateDesc}</option>
-                            <option value="price">{t.home.sortPrice}</option>
-                            <option value="pto">{t.home.sortPto}</option>
-                            <option value="duration">{t.home.sortDuration}</option>
-                          </select>
+                            onChange={(v) => setSortBy(v as any)}
+                            highlighted={isSortActive}
+                            options={[
+                              { value: 'score', label: t.home.sortScore },
+                              { value: 'date-asc', label: t.home.sortDateAsc },
+                              { value: 'date-desc', label: t.home.sortDateDesc },
+                              { value: 'price', label: t.home.sortPrice },
+                              { value: 'pto', label: t.home.sortPto },
+                              { value: 'duration', label: t.home.sortDuration },
+                            ]}
+                          />
                           <div className="w-7 h-7 flex items-center justify-center shrink-0">
                             {isSortActive && (
                               <button
                                 type="button"
                                 onClick={() => setSortBy('score')}
                                 className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
-                                title="Zurücksetzen"
+                                title={t.home.filterReset}
+                                aria-label={t.home.filterReset}
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -3328,7 +3479,7 @@ export default function HomePage() {
               <div id="results-top" className="scroll-mt-24" aria-hidden="true" />
               {filteredResults.length === 0 ? (
                 <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 p-8 text-center text-slate-500 dark:text-slate-400 text-xs">
-                  No vacation windows match the active filters.
+                  {t.home.noFilteredResults}
                 </div>
               ) : viewMode === 'destination' ? (
                 /* Group by Destination View */
@@ -3384,8 +3535,9 @@ export default function HomePage() {
                                   title={t.home.showOnMap}
                                 >
                                   <h3 className="font-extrabold text-slate-900 dark:text-slate-100 group-hover/loc:text-teal-600 dark:group-hover/loc:text-teal-400 group-hover/loc:underline text-base sm:text-lg transition-colors flex items-center gap-1.5">
-                                    <span>{group.destinationName}</span>
+                                    {/* Pin in front of the name, as in the period and list views */}
                                     <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 opacity-60 group-hover/loc:opacity-100 group-hover/loc:scale-110 transition-all flex-shrink-0" />
+                                    <span>{group.destinationName}</span>
                                   </h3>
                                 </button>
                                 {getDedupedStyleMetas(group.vacationStyles).map((meta) => {
@@ -3549,19 +3701,21 @@ export default function HomePage() {
                     <div className="bg-white dark:bg-slate-900/90 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
                       <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                         <span>{t.home.resultsPerPage}:</span>
-                        <select
-                          value={timeframePageSize}
-                          onChange={(e) => {
-                            setTimeframePageSize(Number(e.target.value));
+                        <SelectDropdown
+                          variant="form-sm"
+                          value={String(timeframePageSize)}
+                          onChange={(v) => {
+                            setTimeframePageSize(Number(v));
                             setTimeframeCurrentPage(1);
                           }}
-                          className="rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs bg-white dark:bg-slate-800 dark:text-slate-200 outline-none cursor-pointer"
-                        >
-                          <option value={2}>2</option>
-                          <option value={4}>4</option>
-                          <option value={6}>6</option>
-                          <option value={12}>12</option>
-                        </select>
+                          className="w-16"
+                          options={[
+                            { value: '2', label: '2' },
+                            { value: '4', label: '4' },
+                            { value: '6', label: '6' },
+                            { value: '12', label: '12' },
+                          ]}
+                        />
                         <span className="text-slate-400 dark:text-slate-500 ml-2">
                           {t.home.page} {timeframeCurrentPage} {t.home.of} {timeframeTotalPages}
                         </span>
@@ -3678,18 +3832,20 @@ export default function HomePage() {
                   <div className="bg-white dark:bg-slate-900/90 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                       <span>{t.home.resultsPerPage}:</span>
-                      <select
-                        value={pageSize}
-                        onChange={(e) => {
-                          setPageSize(Number(e.target.value));
+                      <SelectDropdown
+                        variant="form-sm"
+                        value={String(pageSize)}
+                        onChange={(v) => {
+                          setPageSize(Number(v));
                           setCurrentPage(1);
                         }}
-                        className="rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs bg-white dark:bg-slate-800 dark:text-slate-200 outline-none cursor-pointer"
-                      >
-                        <option value={5}>5</option>
-                        <option value={10}>10</option>
-                        <option value={20}>20</option>
-                      </select>
+                        className="w-16"
+                        options={[
+                          { value: '5', label: '5' },
+                          { value: '10', label: '10' },
+                          { value: '20', label: '20' },
+                        ]}
+                      />
                       <span className="text-slate-400 dark:text-slate-500 ml-2">
                         {t.home.page} {currentPage} {t.home.of} {totalPages}
                       </span>

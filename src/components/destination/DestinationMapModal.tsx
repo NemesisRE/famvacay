@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import {
   X,
   MapPin,
@@ -214,7 +214,7 @@ export function DestinationMapModal({
             type="button"
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center justify-center transition cursor-pointer flex-shrink-0"
-            aria-label="Close map"
+            aria-label={t.common.close}
           >
             <X className="w-4 h-4" />
           </button>

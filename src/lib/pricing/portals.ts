@@ -12,11 +12,16 @@ export type PortalMarket = 'DACH' | 'OCEANIA' | 'NORTH_AMERICA' | 'GLOBAL';
 
 export type PortalCategory = 'flight' | 'package' | 'lodging' | 'metasearch';
 
+export type PortalBadgeKey = 'hotels' | 'package' | 'comparison' | 'deals' | 'direct';
+
 export interface TravelPortal {
   id: string;
   name: string;
   markets: PortalMarket[];
   category: PortalCategory;
+  /** Translated tag shown on the portal button */
+  badgeKey?: PortalBadgeKey;
+  /** Untranslated tag: the portal's own product name (e.g. "Express Deals") */
   badge?: string;
   colorClass: string;
   buildUrl: (params: {
@@ -69,7 +74,7 @@ export const TRAVEL_PORTALS: TravelPortal[] = [
     name: 'Booking.com',
     markets: ['GLOBAL', 'DACH', 'OCEANIA', 'NORTH_AMERICA'],
     category: 'lodging',
-    badge: 'Hotels',
+    badgeKey: 'hotels',
     colorClass: 'bg-indigo-700 hover:bg-indigo-800 text-white',
     buildUrl: ({ destinationAirport, startDate, endDate, adults = 2 }) =>
       `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(destinationAirport)}&checkin=${startDate}&checkout=${endDate}&group_adults=${adults}`,
@@ -94,7 +99,7 @@ export const TRAVEL_PORTALS: TravelPortal[] = [
     name: 'HolidayCheck',
     markets: ['DACH'],
     category: 'package',
-    badge: 'Pauschal',
+    badgeKey: 'package',
     colorClass: 'bg-emerald-600 hover:bg-emerald-700 text-white',
     // Real, confirmed-working endpoint: /ah without `destinations` shows a
     // general (continent-level) hotel/package listing filtered by departure
@@ -121,7 +126,7 @@ export const TRAVEL_PORTALS: TravelPortal[] = [
     name: 'CHECK24',
     markets: ['DACH'],
     category: 'package',
-    badge: 'Vergleich',
+    badgeKey: 'comparison',
     colorClass: 'bg-amber-600 hover:bg-amber-700 text-white',
     // Real, confirmed-working endpoint: a region-level results browse (no
     // destination areaId/UUID needed, since we have no mapping from our
@@ -152,7 +157,7 @@ export const TRAVEL_PORTALS: TravelPortal[] = [
     name: 'ab-in-den-urlaub',
     markets: ['DACH'],
     category: 'package',
-    badge: 'Deals',
+    badgeKey: 'deals',
     colorClass: 'bg-yellow-600 hover:bg-yellow-700 text-white',
     // Real results endpoint is /find/hotels (confirmed working), driven by
     // dateMin/dateMax/durationMin/durationMax/adults/travelType/sortBy.
@@ -186,7 +191,7 @@ export const TRAVEL_PORTALS: TravelPortal[] = [
     name: 'Wotif',
     markets: ['OCEANIA'],
     category: 'package',
-    badge: 'Packages',
+    badgeKey: 'package',
     colorClass: 'bg-teal-600 hover:bg-teal-700 text-white',
     buildUrl: ({ originAirport, destinationAirport, startDate, endDate, adults = 2 }) =>
       `https://www.wotif.com/Flights-Search?trip=roundtrip&leg1=from:${originAirport},to:${destinationAirport},departure:${startDate}TANYT&leg2=from:${destinationAirport},to:${originAirport},departure:${endDate}TANYT&passengers=adults:${adults}`,
@@ -198,7 +203,7 @@ export const TRAVEL_PORTALS: TravelPortal[] = [
     name: 'Expedia',
     markets: ['NORTH_AMERICA', 'GLOBAL'],
     category: 'package',
-    badge: 'Direct',
+    badgeKey: 'direct',
     colorClass: 'bg-yellow-500 hover:bg-yellow-600 text-slate-900',
     buildUrl: ({ originAirport, destinationAirport, startDate, endDate, adults = 2 }) =>
       `https://www.expedia.com/Flights-Search?flight-type=on&mode=search&trip=roundtrip&leg1=from:${originAirport},to:${destinationAirport},departure:${startDate}TANYT&leg2=from:${destinationAirport},to:${originAirport},departure:${endDate}TANYT&passengers=adults:${adults}`,

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { Fuel, Zap, ChevronDown, Check } from 'lucide-react';
 import type { CarFuelType } from '@/lib/optimizer/types';
 

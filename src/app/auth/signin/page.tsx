@@ -197,7 +197,7 @@ export default function SignInPage() {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Jane Doe"
+                placeholder={t.auth.fullNamePlaceholder}
                 className="w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2.5 focus:ring-2 focus:ring-teal-500 outline-none"
               />
             </div>

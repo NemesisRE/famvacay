@@ -61,4 +61,81 @@ describe('Result filters', () => {
     expect(applyResultFilters([connecting, car], state({ flightStops: 'DIRECT_ONLY' }))).toEqual([car]);
     expect(applyResultFilters([plane, car], state({ overlandDuration: '360' }))).toEqual([plane]);
   });
+
+  it('filters for quiet travel periods and hides school-holiday peak warnings under CLEAN_ONLY', () => {
+    const quiet = win({ sourceMarketDemand: { index: 0.05, marketsOnHoliday: [] } });
+    const moderate = win({ sourceMarketDemand: { index: 0.25, marketsOnHoliday: ['NL'] } });
+    const busy = win({
+      sourceMarketDemand: { index: 0.75, marketsOnHoliday: ['DE', 'GB', 'FR'] },
+      seasonalWarning: {
+        destinationCode: 'PMI',
+        seasonType: 'OVERCROWDED_PEAK',
+        monthRange: [7],
+        messageKey: 'seasonWarningCrowdedPeak',
+        fallbackMessage: 'Busy',
+        eventKey: 'school_holidays',
+        marketsOnHoliday: ['DE', 'GB', 'FR'],
+      },
+    });
+    expect(applyResultFilters([quiet, moderate, busy], state({ warning: 'CLEAN_ONLY' }))).toEqual([quiet, moderate]);
+    expect(applyResultFilters([quiet, moderate, busy], state({ seasonalInfo: 'QUIET_ONLY' }))).toEqual([quiet]);
+    expect(applyResultFilters([quiet, moderate, busy], state({ warning: 'ALL', seasonalInfo: 'ALL' }))).toEqual([quiet, moderate, busy]);
+  });
+
+  it('selectively shows allowed warning types under CLEAN_ONLY', () => {
+    const monsoon = win({
+      seasonalWarning: { destinationCode: 'CUN', seasonType: 'MONSOON', monthRange: [6], messageKey: 'seasonWarningMonsoon', fallbackMessage: 'Monsoon' },
+    });
+    const springBreak = win({
+      seasonalWarning: { destinationCode: 'CUN', seasonType: 'OVERCROWDED_PEAK', monthRange: [3], messageKey: 'seasonWarningCrowdedPeak', fallbackMessage: 'Crowded', eventKey: 'spring_break' },
+    });
+    const schoolHolidays = win({
+      seasonalWarning: { destinationCode: 'PMI', seasonType: 'OVERCROWDED_PEAK', monthRange: [7], messageKey: 'seasonWarningCrowdedPeak', fallbackMessage: 'Busy', eventKey: 'school_holidays' },
+    });
+    const all = [plane, monsoon, springBreak, schoolHolidays];
+
+    expect(
+      applyResultFilters(all, state({ warning: 'CLEAN_ONLY', allowedWarnings: ['OVERCROWDED_PEAK:school_holidays'] }))
+    ).toEqual([plane, schoolHolidays]);
+
+    expect(
+      applyResultFilters(all, state({ warning: 'CLEAN_ONLY', allowedWarnings: ['MONSOON', 'OVERCROWDED_PEAK:spring_break'] }))
+    ).toEqual([plane, monsoon, springBreak]);
+  });
+});
+
+describe('Explaining hidden results', () => {
+  it('lists each active filter with the results it hides, adding up to found - shown', async () => {
+    const { explainResultFilterExclusions } = await import('./result-filters');
+    const warned = win({ travelVehicle: 'PLANE', seasonalWarning: { seasonType: 'ALGAE' } as any });
+    const all = [plane, car, train, warned];
+    const s = state({ vehicle: 'PLANE', warning: 'CLEAN_ONLY' });
+    const rows = explainResultFilterExclusions(all, s);
+    expect(rows).toEqual([
+      { key: 'vehicle', excluded: 2 },
+      { key: 'warning', warningKey: 'ALGAE', excluded: 1 },
+    ]);
+    expect(rows.reduce((n, r) => n + r.excluded, 0)).toBe(all.length - applyResultFilters(all, s).length);
+  });
+
+  it('breaks down hidden seasonal warnings by individual warning type', async () => {
+    const { explainResultFilterExclusions } = await import('./result-filters');
+    const algae = win({ travelVehicle: 'PLANE', seasonalWarning: { seasonType: 'ALGAE' } as any });
+    const schoolHolidays = win({
+      travelVehicle: 'PLANE',
+      seasonalWarning: { seasonType: 'OVERCROWDED_PEAK', eventKey: 'school_holidays' } as any,
+    });
+    const springBreak = win({
+      travelVehicle: 'PLANE',
+      seasonalWarning: { seasonType: 'OVERCROWDED_PEAK', eventKey: 'spring_break' } as any,
+    });
+    const all = [plane, algae, schoolHolidays, springBreak];
+    const s = state({ warning: 'CLEAN_ONLY', allowedWarnings: ['ALGAE'] });
+    const rows = explainResultFilterExclusions(all, s);
+    expect(rows).toEqual([
+      { key: 'warning', warningKey: 'OVERCROWDED_PEAK:school_holidays', excluded: 1 },
+      { key: 'warning', warningKey: 'OVERCROWDED_PEAK:spring_break', excluded: 1 },
+    ]);
+    expect(rows.reduce((n, r) => n + r.excluded, 0)).toBe(all.length - applyResultFilters(all, s).length);
+  });
 });

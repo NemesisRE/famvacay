@@ -4,6 +4,7 @@ import { AuthProvider } from '@/components/auth-provider';
 import { I18nProvider } from '@/lib/i18n/i18n-context';
 import { UserMenu } from '@/components/header/UserMenu';
 import Link from 'next/link';
+import { SiteFooter } from '@/components/layout/SiteFooter';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.APP_URL || 'https://famvacay.us'),
@@ -54,20 +55,7 @@ export default function RootLayout({
             <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
               {children}
             </main>
-            <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-6 text-center text-xs text-slate-500 dark:text-slate-400 transition-colors">
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
-                <span>FamVacay — Vacation Planning &amp; Travel Optimization</span>
-                <span className="hidden sm:inline">•</span>
-                <a
-                  href="https://github.com/NemesisRE/famvacay"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
-                >
-                  Source code (AGPL-3.0)
-                </a>
-              </div>
-            </footer>
+            <SiteFooter />
           </I18nProvider>
         </AuthProvider>
       </body>

@@ -12,7 +12,7 @@ import { calculatePtoDaysConsumed } from './pto-calculator';
 import { getChildAgeTier, parseChildrenAges, calculatePassengerCostMultiplier } from './child-tiers';
 import { isArbitrageAirport, calculateDistanceKm } from './arbitrage';
 import { getEstimatedClimate, getDestinationSeasonalWarning } from './weather';
-import { TripPlanInput, SchoolHoliday, PublicHoliday, CandidateWindow } from './types';
+import { TripPlanInput, SchoolHoliday, PublicHoliday } from './types';
 import { getDestinationVacationStyles } from './destinations';
 
 const mockSchoolHolidaysBW: SchoolHoliday[] = [
@@ -129,9 +129,11 @@ describe('CSP Optimizer - Edge Cases & Core Engine', () => {
     const winterBeach = getEstimatedClimate('PMI', 0);
     expect(winterBeach.isSuitable).toBe(false);
 
-    // Spring city (BCN in April, month 3)
-    const springCity = getEstimatedClimate('BCN', 3);
+    // Spring city (Vienna in May, month 4); with measured normals Barcelona (a beach destination)
+    // is too cool for the beach in April
+    const springCity = getEstimatedClimate('VIE', 4);
     expect(springCity.isSuitable).toBe(true);
+    expect(getEstimatedClimate('BCN', 3).isSuitable).toBe(false);
 
     // Unknown destination fallback
     const unknownDest = getEstimatedClimate('XYZ', 6);
@@ -778,9 +780,13 @@ describe('Arbitrage Airport Info & Localized Seasonal Warnings', () => {
     expect(topDestinations).toContain('MBJ'); // Jamaica
     expect(topDestinations).toContain('CUN'); // Cancun
 
-    // European destinations like Innsbruck (INN) or Tenerife (TFS) must NOT be ahead of close Caribbean hubs
+    // European destinations must not be ahead of the close Caribbean hubs. (Tenerife may appear further
+    // down: with measured climate data it is dry and warm in November, the Caribbean's late rainy season.)
     expect(topDestinations).not.toContain('INN');
-    expect(topDestinations).not.toContain('TFS');
+    const rank = (code: string) => { const i = topDestinations.indexOf(code); return i < 0 ? Infinity : i; };
+    for (const caribbean of ['NAS', 'PUJ', 'CUN']) {
+      expect(rank(caribbean)).toBeLessThan(rank('TFS'));
+    }
 
     // Friction score for top Caribbean results must be high (>= 90)
     const nasWindow = results.find((r) => r.destinationAirport === 'NAS');

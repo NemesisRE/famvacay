@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useMemo, useSyncExternalStore } from 'react';
+import React, { useMemo } from 'react';
+import { useIsClient } from '@/lib/client-stores';
 import { useI18n } from '@/lib/i18n/i18n-context';
+import { SelectDropdown } from '@/components/ui/select-dropdown';
 import {
   COUNTRIES,
   getAllCountries,
@@ -16,14 +18,6 @@ import {
 export const FORM_SELECT_CLASS =
   'w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs';
 
-const noopSubscribe = () => () => {};
-
-/**
- * False during SSR and hydration, true afterwards - without a setState-in-effect re-render.
- */
-function useIsClient(): boolean {
-  return useSyncExternalStore(noopSubscribe, () => true, () => false);
-}
 
 /**
  * Country list localized to the active UI language. Server render and hydration use the
@@ -56,9 +50,10 @@ interface CountrySelectProps {
   label?: React.ReactNode;
   className?: string;
   id?: string;
+  compact?: boolean;
 }
 
-export function CountrySelect({ value, onChange, label, className = '', id }: CountrySelectProps) {
+export function CountrySelect({ value, onChange, label, className = '', id, compact = false }: CountrySelectProps) {
   const countries = useLocalizedCountries();
   return (
     <div className={className}>
@@ -67,19 +62,13 @@ export function CountrySelect({ value, onChange, label, className = '', id }: Co
           {label}
         </label>
       )}
-      <select
+      <SelectDropdown
         id={id}
-        suppressHydrationWarning
+        variant={compact ? 'form-sm' : 'form'}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={FORM_SELECT_CLASS}
-      >
-        {countries.map((c) => (
-          <option key={c.code} value={c.code} suppressHydrationWarning>
-            {c.name}
-          </option>
-        ))}
-      </select>
+        onChange={onChange}
+        options={countries.map((c) => ({ value: c.code, label: c.name }))}
+      />
     </div>
   );
 }
@@ -118,26 +107,18 @@ export function SubdivisionSelect({
           {label}
         </label>
       )}
-      <select
+      <SelectDropdown
         id={id}
-        suppressHydrationWarning
+        variant={compact ? 'form-sm' : 'form'}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={compact ? `${FORM_SELECT_CLASS} !py-1 !px-2` : FORM_SELECT_CLASS}
-      >
-        {inheritOptionLabel !== undefined && <option value="">{inheritOptionLabel}</option>}
-        {subdivisions.length > 0 ? (
-          subdivisions.map((sub) => (
-            <option key={sub.code} value={sub.code} suppressHydrationWarning>
-              {sub.name} ({sub.code})
-            </option>
-          ))
-        ) : (
-          <option value={countryCode} suppressHydrationWarning>
-            {countryName}
-          </option>
-        )}
-      </select>
+        onChange={onChange}
+        options={[
+          ...(inheritOptionLabel !== undefined ? [{ value: '', label: inheritOptionLabel }] : []),
+          ...(subdivisions.length > 0
+            ? subdivisions.map((sub) => ({ value: sub.code, label: `${sub.name} (${sub.code})` }))
+            : [{ value: countryCode, label: countryName }]),
+        ]}
+      />
     </div>
   );
 }
@@ -178,7 +159,8 @@ export function SchoolRegionSelect({ homeRegion, value, onChange, className = ''
             onChange(resolveRegionForCountry(c));
           }
         }}
-        className="flex-1 sm:flex-none sm:w-[42%] min-w-0 [&_select]:!py-1 [&_select]:!px-2"
+        compact
+        className="flex-1 sm:flex-none sm:w-[42%] min-w-0"
       />
       <SubdivisionSelect
         countryCode={country}

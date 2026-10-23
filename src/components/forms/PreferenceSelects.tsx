@@ -1,9 +1,8 @@
 'use client';
 
-import React from 'react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import type { BoardType } from '@/lib/optimizer/types';
-import { FORM_SELECT_CLASS } from './RegionSelectors';
+import { SelectDropdown } from '@/components/ui/select-dropdown';
 
 /**
  * Minimum beach/daytime temperature presets, shared by the search form's beach tile popover
@@ -29,21 +28,19 @@ export function MinTemperatureSelect({ value, onChange, className = '', id }: Mi
   const { t } = useI18n();
   const isCustom = value !== undefined && !(MIN_BEACH_TEMP_PRESETS as readonly number[]).includes(value);
   return (
-    <select
+    <SelectDropdown
       id={id}
+      variant="form"
       value={value === undefined ? 'ANY' : String(value)}
-      onChange={(e) => onChange(e.target.value === 'ANY' ? undefined : Number(e.target.value))}
-      className={`${FORM_SELECT_CLASS} ${className}`}
-    >
-      <option value="ANY">{t.home.minBeachTempAny}</option>
-      {MIN_BEACH_TEMP_PRESETS.map((temp) => (
-        <option key={temp} value={String(temp)}>
-          ≥ {temp}°C
-        </option>
-      ))}
-      {/* Keep a previously saved non-preset value selectable instead of silently dropping it */}
-      {isCustom && <option value={String(value)}>≥ {value}°C</option>}
-    </select>
+      onChange={(v) => onChange(v === 'ANY' ? undefined : Number(v))}
+      className={className}
+      options={[
+        { value: 'ANY', label: t.home.minBeachTempAny },
+        ...MIN_BEACH_TEMP_PRESETS.map((temp) => ({ value: String(temp), label: `≥ ${temp}°C` })),
+        // Keep a previously saved non-preset value selectable instead of silently dropping it
+        ...(isCustom ? [{ value: String(value), label: `≥ ${value}°C` }] : []),
+      ]}
+    />
   );
 }
 
@@ -58,24 +55,21 @@ export function OverlandDurationSelect({ value, onChange, className = '', id }: 
   const { t } = useI18n();
   const isCustom = value !== undefined && value > 0 && !(OVERLAND_DURATION_PRESETS as readonly number[]).includes(value);
   return (
-    <select
+    <SelectDropdown
       id={id}
+      variant="form"
       value={value ? String(value) : 'ALL'}
-      onChange={(e) => onChange(e.target.value === 'ALL' ? undefined : Number(e.target.value))}
-      className={`${FORM_SELECT_CLASS} ${className}`}
-    >
-      <option value="ALL">{t.home.overlandDurationAny}</option>
-      {OVERLAND_DURATION_PRESETS.map((hours) => (
-        <option key={hours} value={String(hours)}>
-          {t.home.overlandDurationUpTo.replace('{hours}', String(hours))}
-        </option>
-      ))}
-      {isCustom && (
-        <option value={String(value)}>
-          {t.home.overlandDurationCustom} ({value}h)
-        </option>
-      )}
-    </select>
+      onChange={(v) => onChange(v === 'ALL' ? undefined : Number(v))}
+      className={className}
+      options={[
+        { value: 'ALL', label: t.home.overlandDurationAny },
+        ...OVERLAND_DURATION_PRESETS.map((hours) => ({
+          value: String(hours),
+          label: t.home.overlandDurationUpTo.replace('{hours}', String(hours)),
+        })),
+        ...(isCustom ? [{ value: String(value), label: `${t.home.overlandDurationCustom} (${value}h)` }] : []),
+      ]}
+    />
   );
 }
 
@@ -95,19 +89,17 @@ export function BoardTypeSelect({ value, onChange, className = '', id }: BoardTy
     ROOM_ONLY: t.home.boardTypeRoomOnly,
   };
   return (
-    <select
+    <SelectDropdown
       id={id}
+      variant="form"
       value={value || 'ALL'}
-      onChange={(e) => onChange(e.target.value === 'ALL' ? undefined : (e.target.value as BoardType))}
-      className={`${FORM_SELECT_CLASS} ${className}`}
-    >
-      <option value="ALL">{t.home.allBoardTypes}</option>
-      {BOARD_TYPE_OPTIONS.map((type) => (
-        <option key={type} value={type}>
-          {labels[type]}
-        </option>
-      ))}
-    </select>
+      onChange={(v) => onChange(v === 'ALL' ? undefined : (v as BoardType))}
+      className={className}
+      options={[
+        { value: 'ALL', label: t.home.allBoardTypes },
+        ...BOARD_TYPE_OPTIONS.map((type) => ({ value: type, label: labels[type] })),
+      ]}
+    />
   );
 }
 
@@ -125,15 +117,17 @@ interface SnowGuaranteeSelectProps {
 export function SnowGuaranteeSelect({ value, onChange, className = '', id }: SnowGuaranteeSelectProps) {
   const { t } = useI18n();
   return (
-    <select
+    <SelectDropdown
       id={id}
+      variant="form"
       value={value ? 'REQUIRED' : 'ANY'}
-      onChange={(e) => onChange(e.target.value === 'REQUIRED')}
+      onChange={(v) => onChange(v === 'REQUIRED')}
       title={t.home.winterSportsDesc}
-      className={`${FORM_SELECT_CLASS} ${className}`}
-    >
-      <option value="ANY">{t.home.noSnowGuaranteeBadge}</option>
-      <option value="REQUIRED">{t.home.snowGuaranteeBadge}</option>
-    </select>
+      className={className}
+      options={[
+        { value: 'ANY', label: t.home.noSnowGuaranteeBadge },
+        { value: 'REQUIRED', label: t.home.snowGuaranteeBadge },
+      ]}
+    />
   );
 }

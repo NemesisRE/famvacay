@@ -1,5 +1,5 @@
-import iso from 'iso-3166-2';
 import { getCalendarHolidays, type CachedCalendarHoliday } from '../holidays/date-holidays-cache';
+import climateNormals from './data/climate-normals.json';
 import { DestinationType, WeatherAssessment } from './types';
 import { getAirportByIata } from '../airports/airport-service';
 import { getDestinationPoint } from '../geo/destination-points';
@@ -173,6 +173,7 @@ export interface SeasonalConstraintWarning {
   eventName?: string;
   eventKey?: string;
   phenomenonType?: NaturalPhenomenonType;
+  marketsOnHoliday?: string[];
 }
 
 export interface SeasonalWarningImpact {
@@ -211,6 +212,14 @@ export function getSeasonalWarningPenalty(
       // Treat extreme summer heat as an allowed user-configurable constraint/filter preference
       // rather than applying an unconditional global scoring penalty.
       if (options && !options.avoidExtremeHeat) {
+        if (warning.marketsOnHoliday && warning.marketsOnHoliday.length > 0) {
+          return {
+            weatherPenalty: 8,
+            overallScorePenalty: 6,
+            severity: 'moderate',
+            reason: 'Extreme crowd density and travel congestion degrade relaxation.',
+          };
+        }
         return null;
       }
       return {
@@ -316,6 +325,20 @@ export function getEasterDate(year: number): { month: number; day: number } {
  * dynamically for any location on Earth based on physical latitude, solar declination, and seasonal insolation.
  * Completely eliminates arbitrary latitude bounding boxes and static city lookup tables.
  */
+/**
+ * Measured monthly climate normals (NASA POWER, see scripts/generate-climate-normals.js):
+ * [12 x mean °C, 12 x mean daily range °C, 12 x precipitation mm/day] per destination code.
+ */
+const CLIMATE_NORMALS = climateNormals as Record<string, number[]>;
+
+export function getClimateNormals(destinationCode: string, monthIndex: number):
+  | { avgTempC: number; dailyRangeC: number; precipMmPerDay: number }
+  | null {
+  const row = CLIMATE_NORMALS[(destinationCode || '').toUpperCase()] || CLIMATE_NORMALS[destinationCode];
+  if (!row || row.length < 36) return null;
+  return { avgTempC: row[monthIndex], dailyRangeC: row[12 + monthIndex], precipMmPerDay: row[24 + monthIndex] };
+}
+
 export function getEstimatedClimate(
   destinationCode: string,
   monthIndex: number, // 0-11
@@ -424,9 +447,24 @@ export function getEstimatedClimate(
 
 
 
-  const rainyDays = Math.max(1, Math.round((precipRisk / 100) * 22));
-  const maxTempC = Math.round(tempBase + (isSubtropicalDryBelt ? 5.5 : 3.5));
-  const minTempC = Math.round(tempBase - (isSubtropicalDryBelt ? 6.5 : 4.5));
+  // Measured normals (when the destination has them) replace the formula: it was off by up to
+  // 15 °C (Tenerife in April came out at 36 °C instead of ~19 °C)
+  const normals = overrideCoords ? null : getClimateNormals(destinationCode, monthIndex);
+  let rainyDaysFromNormals: number | null = null;
+  if (normals) {
+    tempBase = normals.avgTempC;
+    // ~2.2 rain days per mm of mean daily precipitation (e.g. Antalya January: 5.9 mm/day -> 13 days)
+    rainyDaysFromNormals = Math.max(1, Math.min(24, Math.round(normals.precipMmPerDay * 2.2)));
+    precipRisk = Math.min(95, Math.round((rainyDaysFromNormals / 22) * 100));
+  }
+
+  const rainyDays = rainyDaysFromNormals ?? Math.max(1, Math.round((precipRisk / 100) * 22));
+  const maxTempC = normals
+    ? Math.round(tempBase + normals.dailyRangeC / 2)
+    : Math.round(tempBase + (isSubtropicalDryBelt ? 5.5 : 3.5));
+  const minTempC = normals
+    ? Math.round(tempBase - normals.dailyRangeC / 2)
+    : Math.round(tempBase - (isSubtropicalDryBelt ? 6.5 : 4.5));
 
   // Sunshine hours: astronomical daylength scaled by clear sky factor
   const tanLat = Math.tan((lat * Math.PI) / 180);
@@ -492,7 +530,6 @@ export function getDestinationSeasonalWarning(
 
   const lat = airport.lat;
   const lon = airport.lon;
-  const country = (airport.country || '').toUpperCase();
   const cityLower = (airport.city || '').toLowerCase();
   const nameLower = (airport.name || '').toLowerCase();
   const code = airport.code.toUpperCase();

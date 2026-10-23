@@ -1,7 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { SupportedLocale, TranslationDictionary, DEFAULT_LOCALE, SUPPORTED_LOCALES } from './types';
+import React, { createContext, useContext, useEffect, useSyncExternalStore } from 'react';
+import { SupportedLocale, TranslationDictionary, DEFAULT_LOCALE } from './types';
 import { en } from './locales/en';
 import { de } from './locales/de';
 import { fr } from './locales/fr';
@@ -27,7 +27,11 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-function detectBrowserLocale(): SupportedLocale {
+/**
+ * The language the app starts in: the saved choice, otherwise the browser's language. Exported for
+ * code that runs before the provider has applied it (child effects run before the provider's).
+ */
+export function detectBrowserLocale(): SupportedLocale {
   if (typeof window === 'undefined') return DEFAULT_LOCALE;
 
   try {
@@ -54,30 +58,33 @@ function detectBrowserLocale(): SupportedLocale {
   return DEFAULT_LOCALE;
 }
 
-export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<SupportedLocale>(DEFAULT_LOCALE);
+// The active language as an external store: server render / hydration use the default, the client
+// the saved choice or browser language. A choice made in this visit also works when storage is blocked.
+let chosenLocale: SupportedLocale | null = null;
+const localeListeners = new Set<() => void>();
+function subscribeToLocale(listener: () => void) {
+  localeListeners.add(listener);
+  return () => localeListeners.delete(listener);
+}
+const getClientLocale = (): SupportedLocale => chosenLocale ?? detectBrowserLocale();
+const getServerLocale = (): SupportedLocale => DEFAULT_LOCALE;
 
+export function I18nProvider({ children }: { children: React.ReactNode }) {
+  const locale = useSyncExternalStore(subscribeToLocale, getClientLocale, getServerLocale);
+
+  // Keep <html lang> in sync (screen readers, hyphenation) - a DOM update, no React state
   useEffect(() => {
-    try {
-      const detected = detectBrowserLocale();
-      setLocaleState(detected);
-    } catch {
-      // Keep default locale
-    }
-  }, []);
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   const setLocale = (newLocale: SupportedLocale) => {
-    setLocaleState(newLocale);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('famvacay_locale', newLocale);
-      } catch {
-        // Ignore localStorage quota or access restrictions
-      }
-      try {
-        document.documentElement.lang = newLocale;
-      } catch {}
+    chosenLocale = newLocale;
+    try {
+      localStorage.setItem('famvacay_locale', newLocale);
+    } catch {
+      // Ignore localStorage quota or access restrictions
     }
+    localeListeners.forEach((listener) => listener());
   };
 
   const t = dictionaries[locale] || dictionaries.en;
@@ -93,7 +100,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   const formatNumber = (value: number, options?: Intl.NumberFormatOptions) => {
     try {
-      return new Intl.DateTimeFormat(locale, options).format(value as any);
+      return new Intl.NumberFormat(locale, options).format(value);
     } catch {
       return value.toLocaleString(locale);
     }

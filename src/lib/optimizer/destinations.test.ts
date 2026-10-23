@@ -1,11 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   validateDestinationInput,
-  getDestinationEntity,
   checkRegionalContainment,
   fuzzyMatchDestinationEntity,
   resolveDestinationCodes,
-  discoverDestinationsDynamically,
   getDestinationVacationStyles,
   getWorldRegion,
 } from './destinations';
@@ -13,7 +11,6 @@ import {
   isCommercialPassengerAirport,
   getAirportByIata,
   getRecommendedAirportsForCoordinates,
-  calculateGeodesicDistanceKm,
 } from '../airports/airport-service';
 import { getEstimatedClimate } from './weather';
 import {
@@ -353,12 +350,6 @@ describe('Dynamic Vacation Destination Discovery Engine', () => {
       originAirports: ['FKB', 'STR', 'FRA'],
     });
 
-    const allAp = getAirportByIata('TFS');
-    const allCandidates = discoverDestinationsDynamically(['ALL'], {
-      departureLat: 49.0069,
-      departureLon: 8.4037,
-      originAirports: ['FKB', 'STR', 'FRA'],
-    });
     expect(karlsruheResults.length).toBeGreaterThanOrEqual(15);
 
     // 1. Canary Islands (Tenerife, Gran Canaria, Lanzarote, Fuerteventura ~3,100-3,300 km) must be included

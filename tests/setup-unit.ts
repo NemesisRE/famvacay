@@ -4,7 +4,6 @@
  * Mocks live exclusively in test infrastructure, never in application source code.
  */
 
-import { beforeAll, afterAll } from 'vitest';
 
 const originalFetch = global.fetch;
 
