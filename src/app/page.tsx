@@ -2072,7 +2072,7 @@ export default function HomePage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Form column: heading above the card, like "Optimal vacation windows" */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="border-b border-slate-200 dark:border-slate-800 pb-2.5 space-y-2">
+          <div className="border-b border-slate-200 dark:border-slate-800 pb-2.5">
             <div className="flex items-center justify-between min-h-9">
               <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" />
@@ -2103,7 +2103,7 @@ export default function HomePage() {
             </div>
             {profileLoaded && (
               <span
-                className="block sm:hidden text-[10px] font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/50 px-2.5 py-0.5 rounded-full border border-teal-200 dark:border-teal-800 w-fit items-center gap-1.5"
+                className="mt-2 block sm:hidden text-[10px] font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/50 px-2.5 py-0.5 rounded-full border border-teal-200 dark:border-teal-800 w-fit items-center gap-1.5"
                 title={t.home.prefilledFromProfile}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-teal-600 dark:bg-teal-400 animate-pulse inline-block mr-1.5"></span>
