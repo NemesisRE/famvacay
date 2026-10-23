@@ -26,6 +26,31 @@ const envSchema = z
     OPEN_HOLIDAYS_API_URL: z.string().url().default('https://openholidaysapi.org'),
     NAGER_DATE_API_URL: z.string().url().default('https://date.nager.at/api/v3'),
     OPEN_METEO_ARCHIVE_URL: z.string().url().default('https://archive-api.open-meteo.com/v1/archive'),
+
+    // Impressum / Datenschutz (§5 DDG, Art. 13/14 GDPR) - all have safe placeholder fallbacks so
+    // the build never fails without real operator details configured.
+    LEGAL_OPERATION_MODE: z.enum(['private', 'commercial']).default('private'),
+    LEGAL_OPERATOR_NAME: z.string().default('[Operator name not yet configured - set LEGAL_OPERATOR_NAME]'),
+    LEGAL_OPERATOR_STREET: z.string().default('[Street and house number not yet configured]'),
+    LEGAL_OPERATOR_POSTAL_CITY: z.string().default('[Postal code and city not yet configured]'),
+    LEGAL_OPERATOR_COUNTRY: z.string().default('Deutschland / Germany'),
+    LEGAL_CONTACT_EMAIL: z.string().default('contact@example.invalid'),
+    LEGAL_CONTACT_PHONE: z.string().optional(),
+    LEGAL_VAT_ID: z.string().optional(),
+    LEGAL_HOSTING_PROVIDER_NAME: z.string().default('[Hosting provider not yet configured]'),
+    LEGAL_HOSTING_PROVIDER_ADDRESS: z.string().default('[Hosting provider address not yet configured]'),
+    LEGAL_DPA_CONCLUDED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
+
+    // Cookie/privacy banner + self-hosted Umami analytics (§25 TDDDG)
+    NEXT_PUBLIC_COOKIE_BANNER_MODE: z
+      .enum(['TRANSPARENCY_AND_CHOICE', 'STRICT_OPT_IN', 'NONE'])
+      .default('TRANSPARENCY_AND_CHOICE'),
+    NEXT_PUBLIC_UMAMI_SCRIPT_URL: z.string().optional(),
+    NEXT_PUBLIC_UMAMI_WEBSITE_ID: z.string().optional(),
+    UMAMI_INTERNAL_URL: z.string().url().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV !== 'production' || isBuildPhase()) return;

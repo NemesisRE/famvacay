@@ -559,4 +559,59 @@ export const de: TranslationDictionary = {
     loading: 'Wird geladen...',
     error: 'Ein Fehler ist aufgetreten.',
   },
+  legal: {
+    footerImprintLink: 'Impressum',
+    footerPrivacyLink: 'Datenschutz',
+    footerPrivacySettingsLink: 'Datenschutz- & Cookie-Einstellungen',
+    imprintTitle: 'Impressum',
+    privacyTitle: 'Datenschutzerklärung',
+    privateModeNotice:
+      'FamVacay wird derzeit privat und unentgeltlich als nicht-kommerzielles Community-Projekt betrieben.',
+    operatorSectionTitle: 'Anbieter (§ 5 DDG)',
+    contactSectionTitle: 'Kontakt',
+    hostingSectionTitle: 'Hosting',
+    disputeResolutionTitle: 'Streitbeilegung',
+    disputeResolutionNotice:
+      'Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle im Sinne des Verbraucherstreitbeilegungsgesetzes (VSBG) teilzunehmen.',
+    liabilityTitle: 'Haftung für ausgehende Links',
+    liabilityNotice:
+      'Diese Seite verlinkt auf externe Buchungsportale. Auf deren Inhalte haben wir keinen Einfluss und übernehmen hierfür keine Haftung; für die Inhalte der verlinkten Seiten ist stets der jeweilige Anbieter verantwortlich.',
+    controllerSectionTitle: 'Verantwortlicher',
+    hostingDpaSectionTitle: 'Hosting & Auftragsverarbeitung',
+    hostingDpaNotice:
+      'Diese Anwendung wird auf Servern mit Standort in Deutschland betrieben. Mit unserem Hosting-Anbieter besteht ein Auftragsverarbeitungsvertrag (AVV, Art. 28 DSGVO). Server-Zugriffsprotokolle werden nur so lange gespeichert, wie es für Sicherheits- und Betriebszwecke erforderlich ist, und danach automatisch gelöscht.',
+    accountDataSectionTitle: 'Konto- & Familienprofildaten',
+    accountDataNotice:
+      'Ihr Konto und die von Ihnen eingegebenen Familienprofildaten (Heimatregion, Reisepräferenzen, Alter der Familienmitglieder) werden zur Erbringung des von Ihnen gewünschten Reiseplanungsdienstes verarbeitet (Art. 6 Abs. 1 lit. b DSGVO).',
+    passkeysSectionTitle: 'Passkeys (WebAuthn)',
+    passkeysNotice:
+      'Beim Registrieren eines Passkeys werden auf unserem Server ausschließlich ein öffentlicher Schlüssel und ein Signaturzähler gespeichert — niemals biometrische Daten. Ihr Fingerabdruck, Ihr Gesicht oder Ihre Geräte-PIN verlassen niemals Ihr Gerät.',
+    oauthSectionTitle: 'Anmeldung über Dritte (Google / Apple)',
+    oauthNotice:
+      'Wenn Sie sich über Google oder Apple anmelden, werden grundlegende Profilinformationen von deren Servern übertragen, die sich außerhalb der EU/des EWR befinden können. Diese Übertragung stützt sich, soweit zutreffend, auf das EU-US Data Privacy Framework oder gleichwertige Garantien.',
+    proxyingSectionTitle: 'Serverseitiges Request-Proxying',
+    proxyingNotice:
+      'Geokodierungs-, Klima-, Feiertags- und Reisesicherheitsabfragen erfolgen stets über unseren eigenen deutschen Server, niemals direkt aus Ihrem Browser — externe Anbieter (z. B. OpenStreetMap, Open-Meteo) sehen niemals Ihre IP-Adresse.',
+    analyticsSectionTitle: 'Selbst gehostete Analyse (Umami)',
+    analyticsNotice:
+      'Wir nutzen Umami, ein selbst gehostetes, cookieloses Analysetool auf unserer eigenen deutschen Infrastruktur (Art. 6 Abs. 1 lit. f DSGVO, § 25 Abs. 2 Nr. 2 TDDDG). Es werden keine websiteübergreifenden Tracking-Kennungen verwendet, und Ihre Daten verlassen niemals unsere Server.',
+    analyticsOptOutLabel: 'Status der anonymen Analyse:',
+    analyticsStatusEnabled: 'Aktiviert',
+    analyticsStatusDisabled: 'Deaktiviert',
+    analyticsOptOutButton: 'Analyse deaktivieren',
+    analyticsOptInButton: 'Analyse aktivieren',
+    userRightsSectionTitle: 'Ihre Rechte (Art. 15–21 DSGVO)',
+    userRightsNotice:
+      'Sie können jederzeit Auskunft, Berichtigung, Löschung oder eine portable Exportdatei Ihrer Daten verlangen.',
+    exportDataLink: 'Meine Daten exportieren',
+    accountSettingsLink: 'Zu den Kontoeinstellungen',
+    vatIdLabel: 'USt-IdNr.',
+    contactEmailLabel: 'E-Mail',
+    contactPhoneLabel: 'Telefon',
+    cookieBannerMessage:
+      'Wir respektieren Ihre Privatsphäre: FamVacay verwendet ausschließlich technisch notwendige Cookies (Login & Sprache) sowie anonyme, cookielose Analysen auf unseren eigenen Servern in Deutschland.',
+    cookieBannerAcceptAllLabel: 'Verstanden (Notwendig + anonyme Statistik)',
+    cookieBannerEssentialOnlyLabel: 'Nur Notwendiges (Statistik deaktivieren)',
+    cookieBannerAcceptAnalyticsLabel: 'Analyse akzeptieren',
+  },
 };

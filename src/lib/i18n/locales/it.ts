@@ -559,4 +559,59 @@ export const it: TranslationDictionary = {
     loading: 'Caricamento in corso...',
     error: 'Si è verificato un errore.',
   },
+  legal: {
+    footerImprintLink: 'Note legali',
+    footerPrivacyLink: 'Privacy',
+    footerPrivacySettingsLink: 'Impostazioni privacy e cookie',
+    imprintTitle: 'Note legali',
+    privacyTitle: 'Informativa sulla privacy',
+    privateModeNotice:
+      'FamVacay è attualmente gestito privatamente e gratuitamente, come progetto comunitario non commerciale.',
+    operatorSectionTitle: 'Gestore',
+    contactSectionTitle: 'Contatto',
+    hostingSectionTitle: 'Hosting',
+    disputeResolutionTitle: 'Risoluzione delle controversie',
+    disputeResolutionNotice:
+      'Non siamo obbligati né disponibili a partecipare a procedimenti di risoluzione delle controversie dinanzi a un organismo di conciliazione dei consumatori.',
+    liabilityTitle: 'Responsabilità per i link in uscita',
+    liabilityNotice:
+      "Questo sito rimanda a portali di prenotazione di terze parti. Non abbiamo alcuna influenza sui loro contenuti e non ne assumiamo alcuna responsabilità; il relativo fornitore è l'unico responsabile.",
+    controllerSectionTitle: 'Titolare del trattamento',
+    hostingDpaSectionTitle: 'Hosting e accordo di trattamento dati',
+    hostingDpaNotice:
+      'Questa applicazione è ospitata su server situati in Germania. Con il nostro fornitore di hosting è in vigore un accordo di trattamento dati (art. 28 GDPR). I log di accesso al server vengono conservati solo per il tempo necessario e poi eliminati automaticamente.',
+    accountDataSectionTitle: "Dati dell'account e del profilo familiare",
+    accountDataNotice:
+      'Il tuo account e i dati del profilo familiare che inserisci vengono trattati per fornire il servizio di pianificazione delle vacanze richiesto (art. 6(1)(b) GDPR).',
+    passkeysSectionTitle: 'Passkey (WebAuthn)',
+    passkeysNotice:
+      'Quando registri una passkey, sul nostro server vengono memorizzati solo una chiave pubblica e un contatore di firme — mai dati biometrici.',
+    oauthSectionTitle: 'Accesso tramite terze parti (Google / Apple)',
+    oauthNotice:
+      "Se accedi con Google o Apple, vengono trasferite informazioni di profilo di base dai loro server, che potrebbero trovarsi fuori dall'UE/SEE, sulla base del Data Privacy Framework UE-USA o garanzie equivalenti.",
+    proxyingSectionTitle: 'Proxy delle richieste lato server',
+    proxyingNotice:
+      'Le richieste di geocodifica, clima, festività e sicurezza dei viaggi passano sempre dal nostro server tedesco, mai direttamente dal tuo browser.',
+    analyticsSectionTitle: 'Analisi self-hosted (Umami)',
+    analyticsNotice:
+      'Utilizziamo Umami, uno strumento di analisi self-hosted e senza cookie, sulla nostra infrastruttura tedesca (art. 6(1)(f) GDPR, § 25(2) n. 2 TDDDG).',
+    analyticsOptOutLabel: 'Stato delle statistiche anonime:',
+    analyticsStatusEnabled: 'Attivate',
+    analyticsStatusDisabled: 'Disattivate',
+    analyticsOptOutButton: 'Disattiva statistiche',
+    analyticsOptInButton: 'Attiva statistiche',
+    userRightsSectionTitle: 'I tuoi diritti (art. 15-21 GDPR)',
+    userRightsNotice:
+      "Puoi richiedere in qualsiasi momento accesso, rettifica, cancellazione o un'esportazione portabile dei tuoi dati.",
+    exportDataLink: 'Esporta i miei dati',
+    accountSettingsLink: 'Vai alle impostazioni account',
+    vatIdLabel: 'P.IVA',
+    contactEmailLabel: 'Email',
+    contactPhoneLabel: 'Telefono',
+    cookieBannerMessage:
+      'Rispettiamo la tua privacy: FamVacay utilizza solo cookie strettamente necessari (login e lingua) e statistiche anonime senza cookie ospitate sui nostri server in Germania.',
+    cookieBannerAcceptAllLabel: 'Capito (Essenziali + statistiche anonime)',
+    cookieBannerEssentialOnlyLabel: 'Solo essenziali (disattiva statistiche)',
+    cookieBannerAcceptAnalyticsLabel: 'Accetta statistiche',
+  },
 };

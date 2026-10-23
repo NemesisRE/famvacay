@@ -559,4 +559,59 @@ export const fr: TranslationDictionary = {
     loading: 'Chargement en cours...',
     error: 'Une erreur est survenue.',
   },
+  legal: {
+    footerImprintLink: 'Mentions légales',
+    footerPrivacyLink: 'Confidentialité',
+    footerPrivacySettingsLink: 'Paramètres de confidentialité et cookies',
+    imprintTitle: 'Mentions légales',
+    privacyTitle: 'Politique de confidentialité',
+    privateModeNotice:
+      'FamVacay est actuellement exploité à titre privé et gratuit, en tant que projet communautaire non commercial.',
+    operatorSectionTitle: 'Exploitant',
+    contactSectionTitle: 'Contact',
+    hostingSectionTitle: 'Hébergement',
+    disputeResolutionTitle: 'Règlement des litiges',
+    disputeResolutionNotice:
+      'Nous ne sommes ni tenus ni disposés à participer à une procédure de résolution des litiges devant un organisme de médiation de la consommation.',
+    liabilityTitle: 'Responsabilité pour les liens sortants',
+    liabilityNotice:
+      "Ce site renvoie vers des portails de réservation tiers. Nous n'avons aucune influence sur leur contenu et n'en assumons aucune responsabilité ; seul l'exploitant respectif en est responsable.",
+    controllerSectionTitle: 'Responsable du traitement',
+    hostingDpaSectionTitle: 'Hébergement et contrat de sous-traitance',
+    hostingDpaNotice:
+      "Cette application est hébergée sur des serveurs situés en Allemagne. Un contrat de sous-traitance (art. 28 RGPD) est en place avec notre hébergeur. Les journaux d'accès serveur ne sont conservés que le temps nécessaire, puis supprimés automatiquement.",
+    accountDataSectionTitle: 'Données de compte et de profil familial',
+    accountDataNotice:
+      'Votre compte et les données de profil familial que vous saisissez sont traités pour fournir le service de planification de voyage demandé (art. 6(1)(b) RGPD).',
+    passkeysSectionTitle: "Clés d'accès (WebAuthn)",
+    passkeysNotice:
+      "Lors de l'enregistrement d'une clé d'accès, seule une clé publique et un compteur de signature sont stockés sur notre serveur — jamais de données biométriques.",
+    oauthSectionTitle: 'Connexion via des tiers (Google / Apple)',
+    oauthNotice:
+      "Si vous vous connectez via Google ou Apple, des informations de profil de base sont transférées depuis leurs serveurs, pouvant se trouver hors UE/EEE, sur la base du cadre de protection des données UE-États-Unis ou de garanties équivalentes.",
+    proxyingSectionTitle: 'Proxy des requêtes côté serveur',
+    proxyingNotice:
+      'Les requêtes de géocodage, climat, jours fériés et sécurité des voyages passent toujours par notre propre serveur allemand, jamais directement depuis votre navigateur.',
+    analyticsSectionTitle: 'Analyse auto-hébergée (Umami)',
+    analyticsNotice:
+      "Nous utilisons Umami, un outil d'analyse auto-hébergé et sans cookies, fonctionnant sur notre propre infrastructure allemande (art. 6(1)(f) RGPD, § 25(2) n° 2 TDDDG).",
+    analyticsOptOutLabel: 'Statut des statistiques anonymes :',
+    analyticsStatusEnabled: 'Activé',
+    analyticsStatusDisabled: 'Désactivé',
+    analyticsOptOutButton: 'Désactiver les statistiques',
+    analyticsOptInButton: 'Activer les statistiques',
+    userRightsSectionTitle: 'Vos droits (art. 15 à 21 RGPD)',
+    userRightsNotice:
+      "Vous pouvez demander l'accès, la rectification, la suppression ou un export portable de vos données à tout moment.",
+    exportDataLink: 'Exporter mes données',
+    accountSettingsLink: 'Accéder aux paramètres du compte',
+    vatIdLabel: 'N° de TVA',
+    contactEmailLabel: 'E-mail',
+    contactPhoneLabel: 'Téléphone',
+    cookieBannerMessage:
+      "Nous respectons votre vie privée : FamVacay utilise uniquement des cookies strictement nécessaires (connexion et langue) et des statistiques anonymes sans cookies hébergées sur nos propres serveurs en Allemagne.",
+    cookieBannerAcceptAllLabel: 'Compris (Essentiel + statistiques anonymes)',
+    cookieBannerEssentialOnlyLabel: 'Essentiel uniquement (désactiver les statistiques)',
+    cookieBannerAcceptAnalyticsLabel: 'Accepter les statistiques',
+  },
 };

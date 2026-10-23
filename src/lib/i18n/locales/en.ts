@@ -559,4 +559,58 @@ export const en: TranslationDictionary = {
     loading: 'Loading...',
     error: 'An error occurred.',
   },
+  legal: {
+    footerImprintLink: 'Imprint',
+    footerPrivacyLink: 'Privacy',
+    footerPrivacySettingsLink: 'Privacy & Cookie Settings',
+    imprintTitle: 'Imprint',
+    privacyTitle: 'Privacy Policy',
+    privateModeNotice:
+      'FamVacay is currently operated privately and free of charge, as a non-commercial community project.',
+    operatorSectionTitle: 'Operator (§ 5 DDG)',
+    contactSectionTitle: 'Contact',
+    hostingSectionTitle: 'Hosting',
+    disputeResolutionTitle: 'Dispute Resolution',
+    disputeResolutionNotice:
+      'We are neither obligated nor willing to participate in dispute resolution proceedings before a consumer arbitration board (Verbraucherschlichtungsstelle) under the German Consumer Dispute Resolution Act (VSBG).',
+    liabilityTitle: 'Liability for Outbound Links',
+    liabilityNotice:
+      'This site links to third-party booking portals. We have no influence over and assume no liability for the content of these external, outbound-linked pages; the respective provider or operator is solely responsible for them.',
+    controllerSectionTitle: 'Controller',
+    hostingDpaSectionTitle: 'Hosting & Data Processing Agreement',
+    hostingDpaNotice:
+      'This application is hosted on servers located in Germany. A Data Processing Agreement (Auftragsverarbeitungsvertrag, Art. 28 GDPR) is in place with our hosting provider. Server access logs are retained only as long as necessary for security and operational purposes, then automatically deleted.',
+    accountDataSectionTitle: 'Account & Family Profile Data',
+    accountDataNotice:
+      "Your account and the family profile data you enter (home region, travel preferences, family members' ages) are processed to provide the vacation-planning service you requested (Art. 6(1)(b) GDPR).",
+    passkeysSectionTitle: 'Passkeys (WebAuthn)',
+    passkeysNotice:
+      'If you register a passkey, only a public key and a signature counter are stored on our server — never any biometric data. Your fingerprint, face, or device PIN never leaves your device.',
+    oauthSectionTitle: 'Third-Party Sign-In (Google / Apple)',
+    oauthNotice:
+      'If you choose to sign in with Google or Apple, basic profile information is transferred from their servers, which may be located outside the EU/EEA. Where applicable, this transfer relies on the EU-US Data Privacy Framework or equivalent safeguards.',
+    proxyingSectionTitle: 'Server-Side Request Proxying',
+    proxyingNotice:
+      'Geocoding, climate, holiday, and travel-safety lookups are always performed by our own German server, never directly from your browser — third-party providers (e.g. OpenStreetMap, Open-Meteo) never see your IP address.',
+    analyticsSectionTitle: 'Self-Hosted Analytics (Umami)',
+    analyticsNotice:
+      'We use Umami, a self-hosted, cookieless analytics tool running on our own German infrastructure (Art. 6(1)(f) GDPR, § 25(2) No. 2 TDDDG). No cross-site tracking identifiers are used, and your data never leaves our servers.',
+    analyticsOptOutLabel: 'Anonymous analytics status:',
+    analyticsStatusEnabled: 'Enabled',
+    analyticsStatusDisabled: 'Disabled',
+    analyticsOptOutButton: 'Disable analytics',
+    analyticsOptInButton: 'Enable analytics',
+    userRightsSectionTitle: 'Your Rights (Art. 15-21 GDPR)',
+    userRightsNotice: 'You may request access, rectification, erasure, or a portable export of your data at any time.',
+    exportDataLink: 'Export my data',
+    accountSettingsLink: 'Go to Account Settings',
+    vatIdLabel: 'VAT ID',
+    contactEmailLabel: 'Email',
+    contactPhoneLabel: 'Phone',
+    cookieBannerMessage:
+      'We respect your privacy: FamVacay only uses strictly necessary cookies (login & language) and anonymous, cookieless analytics hosted on our own servers in Germany.',
+    cookieBannerAcceptAllLabel: 'Got it (Essential + Anonymous Stats)',
+    cookieBannerEssentialOnlyLabel: 'Essential Only (Disable Stats)',
+    cookieBannerAcceptAnalyticsLabel: 'Accept Analytics',
+  },
 };
