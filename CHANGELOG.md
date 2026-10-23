@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Scheduled `data-sync` GitHub Actions workflow that re-runs the `generate:*` reference-data scripts weekly (plus manual dispatch) and opens a reviewable PR with whatever changed, replacing the previous all-manual process.
+- `src/instrumentation.ts` / `src/instrumentation-node.ts`: graceful shutdown on `SIGTERM`/`SIGINT`, draining Prisma and the Valkey/Redis connection before exit.
+- `generate:airports-db` npm script (the generator script existed but had no way to invoke it besides calling `node` directly).
 - Generated canonical commercial passenger airports database (`src/lib/airports/data/airports.json`) containing 4,008 active commercial airports worldwide derived from the OurAirports open aviation dataset and scheduled passenger service validation, featuring official IATA/ICAO codes, municipality, country, ISO 3166-2 subdivisions, physical elevation, and mainline high-speed rail passenger terminal connectivity.
 - Build-time aviation database generator script (`scripts/generate-airports-db.js`) maintaining the canonical scheduled passenger airports database.
 - Integrated `iso-3166-2`, `i18n-iso-countries`, and `date-holidays` packages for universal administrative subdivisions, multilingual country name resolution (en, de, fr, es, it), and real-time public holiday schedules for any nation or territory on Earth.
@@ -52,4 +55,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced static `POPULAR_DESTINATIONS`, `DESTINATION_SEASONAL_CONSTRAINTS`, and `FALLBACK_SCHOOL_HOLIDAYS` with dynamic data providers and honest coverage alerts.
 - Upgraded container base images to Node 22 Active LTS.
 - Removed deprecated `nginx.ingress.kubernetes.io` annotations from Kubernetes ingress configurations.
+- Migrated the package manager from `npm` to `pnpm` (Dockerfile, CI, and scripts); pinned via `packageManager` in `package.json` and installed through Corepack.
+- Upgraded container base images and GitHub Actions runners to Node 26 Active LTS; bumped all GitHub Actions to their latest major version, SHA-pinned.
+- Upgraded ESLint 9 -> 10, ioredis 5 -> 6, Zod 3 -> 4, the Vitest ecosystem 2 -> 5, and Tailwind CSS 3 -> 4 (via the official `@tailwindcss/upgrade` codemod: CSS-first `@theme` config, `@tailwindcss/postcss`, deprecated utility renames across 26 files).
+- Docker/Compose `web` healthcheck now probes `/api/ready` (checks Postgres + Valkey) instead of the liveness-only `/api/health`, so an outage is actually reflected in container health status.
+- `prisma/schema.prisma` pins the Prisma Client generator's `output` path explicitly, since pnpm's isolated `node_modules` otherwise generates the client inside the pnpm store rather than at `node_modules/.prisma/client`, which the Dockerfile's runner stage depends on.
+- `src/lib/env.ts`: `DATABASE_URL` is now part of the validated schema (previously injected but unvalidated), and production startup now rejects a missing/short/placeholder `NEXTAUTH_SECRET` instead of silently accepting one.
+- `docker-compose.yml`: removed host port publishing for `postgres` and `cache` (previously bound to `127.0.0.1`, now internal-only), marked `backend-internal` as `internal: true`, and fixed an inconsistent `POSTGRES_PASSWORD` fallback between the `migrate` and `web` services.
+
+### Deferred
+- TypeScript 7 and Prisma 7: both attempted and reverted after reproducing concrete breakage (see `docs/dependencies.md#known-blocked-major-upgrades`). Currently pinned to the latest release in their prior major (`typescript@^5.9.3`, `prisma@^6.19.3` / `@prisma/client@^6.19.3`).
 

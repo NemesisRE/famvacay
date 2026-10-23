@@ -6,8 +6,8 @@ This guide covers prerequisites, local development, production deployment via Do
 
 ## 1. Prerequisites
 
-- **Node.js:** Node 22 (Active LTS) or higher.
-- **Package Manager:** `npm` (bundled with Node).
+- **Node.js:** Node 26 (Active LTS) or higher.
+- **Package Manager:** `pnpm` (enable via `corepack enable`; the pinned version is read from the `packageManager` field in `package.json`).
 - **PostgreSQL:** Version 15 or 16.
 - **Cache Engine:** Valkey 8 or Redis 7.
 - **Reverse Proxy:** An external TLS-terminating reverse proxy (Traefik, Nginx, Nginx Proxy Manager, Caddy, or Kubernetes Gateway).
@@ -24,8 +24,8 @@ This guide covers prerequisites, local development, production deployment via Do
 | `TRUST_PROXY` | Boolean | `false` | Set to `true` when running behind a trusted reverse proxy. Enables parsing of `X-Forwarded-*` and RFC 7239 `Forwarded` headers. |
 | `TRUSTED_PROXY_HOPS` | Number | `1` | Number of trusted reverse proxy hops between client and application. Used to extract client IP safely from the right-most untrusted entry. |
 | `DATABASE_URL` | String | (Required) | PostgreSQL connection string (e.g. `postgresql://user:pass@localhost:5432/famvacay_db?schema=public`). |
-| `REDIS_URL` | String | `redis://localhost:6379` | Valkey / Redis connection URL. |
-| `NEXTAUTH_SECRET` | String | (Required in prod) | Cryptographic secret for signing sessions and JWTs (`openssl rand -base64 32`). |
+| `VALKEY_URL` / `DRAGONFLY_URL` / `REDIS_URL` | String | `redis://localhost:6379` | Valkey / Dragonfly / Redis connection URL. Checked in that order; set whichever matches your cache engine (only one is required). |
+| `NEXTAUTH_SECRET` | String | (Required in prod) | Cryptographic secret for signing sessions and JWTs (`openssl rand -base64 32`). In production, startup fails fast unless this is set, at least 32 characters, and not the literal placeholder from `.env.example`. |
 | `NEXTAUTH_URL` | URL | `${APP_URL}` | Canonical NextAuth URL. |
 | `ALLOWED_ORIGINS` | String | (Optional) | Comma-separated list of additional allowed Server Action origins (e.g. `famvacay.us,localhost:3000`). |
 | `PHOTON_API_URL` | URL | `https://photon.komoot.io/api` | Geocoding autocomplete endpoint (default public Komoot or self-hosted Photon). |
@@ -139,18 +139,19 @@ famvacay.us {
 git clone https://github.com/NemesisRE/famvacay.git
 cd famvacay
 
-# 2. Install dependencies
-npm ci
+# 2. Install dependencies (enable Corepack once per machine if needed)
+corepack enable
+pnpm install --frozen-lockfile
 
 # 3. Configure environment
 cp .env.example .env
 
 # 4. Generate Prisma client & apply database schema
-npx prisma generate
-npx prisma migrate dev
+pnpm exec prisma generate
+pnpm exec prisma migrate dev
 
 # 5. Start development server
-npm run dev
+pnpm dev
 ```
 
 Visit [http://localhost:3000](http://localhost:3000).

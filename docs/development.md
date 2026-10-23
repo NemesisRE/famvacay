@@ -6,8 +6,8 @@ This guide details local environment prerequisites, installation steps, and inst
 
 ## Prerequisites
 
-- **Node.js**: `v22.x` or higher (Active LTS recommended)
-- **Package Manager**: `npm` (v10+)
+- **Node.js**: `v26.x` or higher (Active LTS recommended)
+- **Package Manager**: `pnpm` (enable via `corepack enable`; version is pinned by `packageManager` in `package.json`)
 - **Database & Cache**:
   - PostgreSQL 16+
   - Valkey 8+ / Redis 7+
@@ -41,14 +41,15 @@ NEXTAUTH_URL=http://localhost:3000
 
 ### 3. Install Dependencies
 ```bash
-npm install
+corepack enable
+pnpm install --frozen-lockfile
 ```
 
 ### 4. Database Initialization & Migrations
 Generate the Prisma Client and run the database migrations:
 ```bash
-npm run prisma:generate
-npm run prisma:migrate
+pnpm run prisma:generate
+pnpm run prisma:migrate
 ```
 
 ---
@@ -58,15 +59,15 @@ npm run prisma:migrate
 ### Development Mode
 Start the Next.js development server with hot reloading:
 ```bash
-npm run dev
+pnpm dev
 ```
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Production Standalone Build
 To test the standalone production build locally:
 ```bash
-npm run build
-npm run start
+pnpm run build
+pnpm run start
 ```
 
 ---
@@ -74,19 +75,20 @@ npm run start
 ## Running Tests & Quality Checks
 
 ```bash
-# Run linting (ESLint 9 flat config)
-npm run lint
+# Run linting (ESLint 10 flat config)
+pnpm run lint
 
 # Perform TypeScript type checking
-npm run typecheck
+pnpm run typecheck
 
 # Execute unit and algorithm tests (Vitest)
-npm test
+pnpm test
 
-# Run tests with strict coverage verification (>80% required)
-npm run test:coverage
+# Run tests with strict coverage verification (>80% required, scoped to
+# src/lib/optimizer and src/lib/proxy — see vitest.config.mts)
+pnpm run test:coverage
 
 # Run end-to-end journey tests (Playwright)
-npm run test:e2e
+pnpm run test:e2e
 ```
 
