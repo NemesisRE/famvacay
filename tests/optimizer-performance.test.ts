@@ -27,16 +27,23 @@ const wideSearch: TripPlanInput = {
 
 describe('Optimizer performance & payload bounds', () => {
   // Before memoization/pruning this exact search took ~186 s and produced 46k windows (~256 MB JSON).
-  it('a 3.5-month, 5-duration, 3-airport search stays fast and bounded', () => {
-    const t0 = performance.now();
-    const windows = optimizeVacationWindows(wideSearch, {}, {});
-    const elapsedMs = performance.now() - t0;
+  it(
+    'a 3.5-month, 5-duration, 3-airport search stays fast and bounded',
+    () => {
+      const t0 = performance.now();
+      const windows = optimizeVacationWindows(wideSearch, {}, {});
+      const elapsedMs = performance.now() - t0;
 
-    expect(elapsedMs).toBeLessThan(20000); // generous for slow CI runners; ~1.5 s locally
-    expect(windows.length).toBeLessThanOrEqual(DEFAULT_MAX_TOTAL_WINDOWS);
-    expect(JSON.stringify(windows).length).toBeLessThan(15 * 1024 * 1024);
-    expect(new Set(windows.map((w) => w.destinationAirport)).size).toBeGreaterThanOrEqual(20);
-  });
+      expect(elapsedMs).toBeLessThan(20000); // generous for slow CI runners; ~1.5 s locally
+      expect(windows.length).toBeLessThanOrEqual(DEFAULT_MAX_TOTAL_WINDOWS);
+      expect(JSON.stringify(windows).length).toBeLessThan(15 * 1024 * 1024);
+      expect(new Set(windows.map((w) => w.destinationAirport)).size).toBeGreaterThanOrEqual(20);
+    },
+    // Vitest's default 5s per-test timeout is tighter than the 20s SLA this test is actually
+    // asserting above; raise it to match so v8 coverage instrumentation overhead alone
+    // doesn't fail the test before that assertion ever runs.
+    20000,
+  );
 
   it('representative selection keeps every month x duration bucket and the curation anchors', () => {
     const all = optimizeVacationWindows({ ...wideSearch, maxWindowsPerDestination: 0 }, {}, {});
