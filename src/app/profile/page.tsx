@@ -657,7 +657,7 @@ export default function FamilyProfilePage() {
               {members.map((member, index) => (
                 <div
                   key={index}
-                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-12 gap-3 items-center"
+                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-12 gap-3 items-start"
                 >
                   <div className="order-1 sm:order-0 sm:col-span-3">
                     <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
