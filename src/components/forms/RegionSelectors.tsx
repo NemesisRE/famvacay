@@ -159,7 +159,7 @@ export function SchoolRegionSelect({ homeRegion, value, onChange, className = ''
             onChange(resolveRegionForCountry(c));
           }
         }}
-        compact
+        compact={compact}
         className="flex-1 sm:flex-none sm:w-[42%] min-w-0"
       />
       <SubdivisionSelect

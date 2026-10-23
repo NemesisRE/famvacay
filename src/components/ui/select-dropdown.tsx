@@ -105,13 +105,28 @@ export function SelectDropdown({
     return q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options;
   }, [options, query]);
 
-  // Focus the selected option when opening (keyboard users continue with the arrow keys)
+  // Focus the selected option when opening (keyboard users continue with the arrow keys).
+  // preventScroll: true - the floating menu hasn't been positioned by floating-ui yet on this
+  // first frame, so a native focus-triggered scroll-into-view would jump to wherever the
+  // unpositioned element happens to sit (observed as the whole page jumping to scrollY 0).
   useEffect(() => {
     if (!isOpen || showSearch) return;
     const frame = requestAnimationFrame(() => {
       const el = listRef.current?.querySelector<HTMLButtonElement>('[aria-selected="true"]') ||
         listRef.current?.querySelector<HTMLButtonElement>('button:not([disabled])');
-      el?.focus();
+      el?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [isOpen, showSearch]);
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Same preventScroll reasoning as above, for the searchable-menu case (native autoFocus does
+  // not support preventScroll, so this focuses manually once the menu has mounted).
+  useEffect(() => {
+    if (!isOpen || !showSearch) return;
+    const frame = requestAnimationFrame(() => {
+      searchInputRef.current?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(frame);
   }, [isOpen, showSearch]);
@@ -197,9 +212,9 @@ export function SelectDropdown({
               <div className="relative mb-2 px-0.5 shrink-0">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={query}
-                  autoFocus
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {

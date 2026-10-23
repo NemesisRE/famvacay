@@ -668,11 +668,8 @@ export default function FamilyProfilePage() {
                       placeholder={t.profile.memberNamePlaceholder}
                       value={member.firstName}
                       onChange={(e) => updateMember(index, 'firstName', e.target.value)}
-                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     />
-                    {(member.role === 'CHILD' || member.role === 'INFANT') && (
-                      <p className="mt-1 text-[10px] text-slate-400 dark:text-slate-500">{t.profile.childNameHint}</p>
-                    )}
                   </div>
 
                   <div className="order-3 col-span-2 sm:order-0 sm:col-span-2">
@@ -701,7 +698,7 @@ export default function FamilyProfilePage() {
                       required={member.role === 'CHILD' || member.role === 'INFANT'}
                       value={member.birthDate}
                       onChange={(e) => updateMember(index, 'birthDate', e.target.value)}
-                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     />
                   </div>
 
@@ -713,12 +710,12 @@ export default function FamilyProfilePage() {
                       type="date"
                       value={member.passportExpiry}
                       onChange={(e) => updateMember(index, 'passportExpiry', e.target.value)}
-                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     />
                   </div>
 
                   {/* Phones: next to the name field (it used to get a row of its own) */}
-                  <div className="order-2 self-end sm:self-auto sm:order-0 sm:col-span-1 flex justify-end">
+                  <div className="order-2 self-end sm:self-auto sm:order-0 sm:col-span-1 flex justify-end sm:mt-[15px]">
                     <button
                       type="button"
                       onClick={() => removeMember(index)}
@@ -729,6 +726,14 @@ export default function FamilyProfilePage() {
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
+
+                  {/* Own full-width row so a wrapped hint never inflates the row above and
+                      leaves dead space under role/birth date/passport expiry. */}
+                  {(member.role === 'CHILD' || member.role === 'INFANT') && (
+                    <div className="order-1 sm:order-0 sm:col-span-12 -mt-2">
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500">{t.profile.childNameHint}</p>
+                    </div>
+                  )}
 
                   {(member.role === 'CHILD' || member.role === 'INFANT') && member.birthDate && (
                     <div className="order-3 col-span-2 sm:order-0 sm:col-span-12 flex flex-wrap items-center gap-1.5">
@@ -743,6 +748,7 @@ export default function FamilyProfilePage() {
                         value={member.schoolSubdivision}
                         onChange={(region) => updateMember(index, 'schoolSubdivision', region)}
                         label={t.home.schoolRegionLabel}
+                        compact={false}
                       />
                     </div>
                   )}
