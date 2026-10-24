@@ -79,10 +79,6 @@ export const en: TranslationDictionary = {
     savedPtoDay: 'saved PTO day',
     shortFerryBadge: 'Short Ferry',
     longFerryBadge: 'Long Ferry',
-    enterVoterNamePrompt: 'Enter your name to vote on this trip:',
-    voteUpvoteTooltip: 'Upvote this option',
-    voteFavoriteTooltip: 'Mark as favorite',
-    voteVetoTooltip: 'Veto this option',
     noDestinationsFound: 'No matching destinations found.',
     airportsLabel: 'Departure Airports',
     airportsHint: 'Automatically recommended based on your location and flight corridors to selected destinations.',
@@ -615,15 +611,15 @@ export const en: TranslationDictionary = {
       'We do not use automated decision-making, including profiling, within the meaning of Art. 22 GDPR. Ranking vacation windows is a calculation you request; it has no legal or similarly significant effect on you.',
     hostingNoDpaNotice:
       'This application is hosted on servers located in Germany. Server access logs are retained only as long as necessary for security and operational purposes, then automatically deleted.',
-    sharedLinksSectionTitle: 'Shared Links & Voting',
+    sharedLinksSectionTitle: 'Shared Links',
     sharedLinksNotice:
-      "When you share search results, a link is created that anyone who has it can open without logging in (Art. 6(1)(b) GDPR, at your request). It contains only what is needed to show the results - derived values such as children's ages, home region and departure airports, but no names, addresses, coordinates or dates of birth. People voting on a shared link may enter a name and a comment voluntarily; both are visible to everyone with the link. Shared links, including all votes, are deleted 30 days after they were created.",
+      "When you share search results, a link is created that anyone who has it can open without logging in (Art. 6(1)(b) GDPR, at your request). It contains only what is needed to show the results - derived values such as children's ages, home region and departure airports, but no names, addresses, coordinates or dates of birth. Shared links are deleted 30 days after they were created.",
     storageSectionTitle: 'Cookies & Browser Storage',
     storageNotice:
-      'FamVacay only stores what is strictly necessary on your device (§ 25(2) No. 2 TDDDG): the login cookies set by our authentication (session, CSRF protection, return address), and in your browser\'s local storage your language and theme, your last search form and results (so a reload does not lose them), result filters, preferred booking portals, the name you used for voting and - where analytics are offered - your privacy choice. Local storage stays on your device; you can delete it at any time in your browser settings.',
+      'FamVacay only stores what is strictly necessary on your device (§ 25(2) No. 2 TDDDG): the login cookies set by our authentication (session, CSRF protection, return address), and in your browser\'s local storage your language and theme, your last search form and results (so a reload does not lose them), result filters, preferred booking portals and - where analytics are offered - your privacy choice. Local storage stays on your device; you can delete it at any time in your browser settings.',
     retentionSectionTitle: 'Storage Periods',
     retentionNotice:
-      'Account and family profile data are stored until you delete your account, which deletes all associated data. Login sessions expire after 30 days. Shared links and their votes are deleted 30 days after creation. Search, place and holiday lookups are cached on our server for 10 minutes to 30 days without reference to your person. Server access logs are deleted after a short period.',
+      'Account and family profile data are stored until you delete your account, which deletes all associated data. Login sessions expire after 30 days. Shared links are deleted 30 days after creation. Search, place and holiday lookups are cached on our server for 10 minutes to 30 days without reference to your person. Server access logs are deleted after a short period.',
     exportDataLink: 'Export my data',
     accountSettingsLink: 'Go to Account Settings',
     vatIdLabel: 'VAT ID',

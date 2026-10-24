@@ -1,8 +1,8 @@
 import { vi } from 'vitest';
 
 /**
- * Minimal in-memory fake of the Prisma methods used by the trip-sharing & voting routes
- * (SharedTripBoard / SharedCandidate / CandidateVote), so these routes can be unit-tested
+ * Minimal in-memory fake of the Prisma methods used by the trip-sharing route
+ * (SharedTripBoard / SharedCandidate), so it can be unit-tested
  * without a live Postgres connection.
  */
 export interface FakeBoard {
@@ -23,22 +23,13 @@ export interface FakeCandidate {
   snapshotData: any;
 }
 
-export interface FakeVote {
-  id: string;
-  candidateId: string;
-  voterName: string;
-  vote: number;
-  comment: string | null;
-}
-
 export function createFakeSharedBoardPrisma() {
   const boards = new Map<string, FakeBoard>();
   const candidates = new Map<string, FakeCandidate>();
-  const votes = new Map<string, FakeVote>();
   let seq = 0;
 
   return {
-    __state: { boards, candidates, votes },
+    __state: { boards, candidates },
     sharedTripBoard: {
       upsert: vi.fn(async ({ where, create, update }: any) => {
         const existing = boards.get(where.shortCode);
@@ -62,14 +53,7 @@ export function createFakeSharedBoardPrisma() {
         const board = boards.get(where.shortCode);
         if (!board) return null;
         if (!include?.candidates) return board;
-        const boardCandidates = Array.from(candidates.values()).filter((c) => c.boardId === board.id);
-        return {
-          ...board,
-          candidates: boardCandidates.map((c) => ({
-            ...c,
-            votes: Array.from(votes.values()).filter((v) => v.candidateId === c.id),
-          })),
-        };
+        return { ...board, candidates: Array.from(candidates.values()).filter((c) => c.boardId === board.id) };
       }),
     },
     sharedCandidate: {
@@ -87,23 +71,6 @@ export function createFakeSharedBoardPrisma() {
         const record: FakeCandidate = { id: `cand-${++seq}`, ...data };
         candidates.set(record.id, record);
         return record;
-      }),
-      findFirst: vi.fn(async ({ where }: any) => {
-        return Array.from(candidates.values()).find((c) => c.id === where.id && c.boardId === where.boardId) || null;
-      }),
-    },
-    candidateVote: {
-      upsert: vi.fn(async ({ where, create, update }: any) => {
-        const key = `${where.candidateId_voterName.candidateId}|${where.candidateId_voterName.voterName}`;
-        const existing = votes.get(key);
-        const record: FakeVote = existing
-          ? { ...existing, ...update }
-          : { id: `vote-${++seq}`, ...create };
-        votes.set(key, record);
-        return record;
-      }),
-      findMany: vi.fn(async ({ where }: any) => {
-        return Array.from(votes.values()).filter((v) => v.candidateId === where.candidateId);
       }),
     },
     $transaction: vi.fn(async (ops: Promise<any>[]) => Promise.all(ops)),

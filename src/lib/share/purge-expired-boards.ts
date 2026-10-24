@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db/prisma';
 
 /**
  * Deletes shared boards past their expiry date (30 days after the last share), together with
- * their candidates and votes (cascading foreign keys). Expired boards were already hidden from
+ * their candidates (cascading foreign key). Expired boards were already hidden from
  * readers; this keeps the retention promise in the privacy policy. Runs hourly in every server
  * process - deleting is idempotent, so concurrent replicas don't need a lease.
  */

@@ -259,7 +259,7 @@ model TripSearch {
 }
 
 // -------------------------------------------------------------
-// Persistent Trip Sharing, Voting & Stateless .ics Export
+// Persistent Trip Sharing & Stateless .ics Export
 // -------------------------------------------------------------
 
 model SharedTripBoard {
@@ -282,22 +282,8 @@ model SharedCandidate {
   startDate       DateTime        @db.Date
   endDate         DateTime        @db.Date
   snapshotData    Json
-  votes           CandidateVote[]
 
   @@index([boardId])
-}
-
-model CandidateVote {
-  id          String          @id @default(uuid())
-  candidateId String
-  candidate   SharedCandidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  voterName   String
-  vote        Int             // -1 = Veto, 1 = Upvote, 2 = Favorite
-  comment     String?
-  createdAt   DateTime        @default(now())
-
-  @@unique([candidateId, voterName])
-  @@index([candidateId])
 }
 
 /// Reference datasets (airports, routes, traffic, city names, climate normals) refreshed in the

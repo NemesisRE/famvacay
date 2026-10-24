@@ -88,10 +88,6 @@ export interface TranslationDictionary {
     savedPtoDay: string;
     shortFerryBadge: string;
     longFerryBadge: string;
-    enterVoterNamePrompt: string;
-    voteUpvoteTooltip: string;
-    voteFavoriteTooltip: string;
-    voteVetoTooltip: string;
     noDestinationsFound: string;
     airportsLabel: string;
     airportsHint: string;

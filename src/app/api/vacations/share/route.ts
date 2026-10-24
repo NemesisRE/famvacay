@@ -22,7 +22,6 @@ interface SharedBoardPayload {
   formState: any;
   count: number;
   windows: any[];
-  candidateIds: string[]; // SharedCandidate.id, aligned 1:1 with `windows`
 }
 
 export async function POST(req: NextRequest) {
@@ -59,14 +58,14 @@ export async function POST(req: NextRequest) {
 
     const expiresAt = new Date(Date.now() + BOARD_TTL_SECONDS * 1000);
 
-    let persisted: { createdAt: Date; expiresAt: Date | null; candidateIds: string[] };
+    let persisted: { createdAt: Date; expiresAt: Date | null; stored: boolean };
     try {
-      persisted = await persistBoard(shortCode, sanitizedQuery, sanitizedFormState, sanitizedWindows, expiresAt);
+      persisted = { ...(await persistBoard(shortCode, sanitizedQuery, sanitizedFormState, sanitizedWindows, expiresAt)), stored: true };
     } catch (dbError) {
       // Database unreachable (e.g. not started locally): the link still works from the cache for the
-      // board's lifetime - only voting needs the database (no candidate ids without it)
+      // board's lifetime
       console.warn('[API /api/vacations/share] Database unavailable, sharing from cache only:', (dbError as Error)?.message);
-      persisted = { createdAt: new Date(), expiresAt, candidateIds: [] };
+      persisted = { createdAt: new Date(), expiresAt, stored: false };
     }
 
     const payload: SharedBoardPayload = {
@@ -76,19 +75,14 @@ export async function POST(req: NextRequest) {
       query: sanitizedQuery,
       formState: sanitizedFormState,
       count: sanitizedWindows.length,
-      // Same shape as a board read from the database: each window carries its candidate id (voting
-      // needs it) - the cached copy used to lack it, so shared links never showed the vote buttons
-      windows: persisted.candidateIds.length === sanitizedWindows.length
-        ? sanitizedWindows.map((win: any, i: number) => ({ ...win, shareCandidateId: persisted.candidateIds[i], votes: [] }))
-        : sanitizedWindows,
-      candidateIds: persisted.candidateIds,
+      windows: sanitizedWindows,
     };
 
     // Cache-only boards (no database) are kept for the board's full lifetime instead of 1h
     await setCached(
       `famvac:share:${shortCode}`,
       payload,
-      persisted.candidateIds.length > 0 ? CACHE_TTL_SECONDS : BOARD_TTL_SECONDS
+      persisted.stored ? CACHE_TTL_SECONDS : BOARD_TTL_SECONDS
     ).catch(() => {});
 
     return NextResponse.json({
@@ -96,7 +90,6 @@ export async function POST(req: NextRequest) {
       shareId: shortCode,
       shareUrl: `/?s=${shortCode}`,
       count: windows.length,
-      votingEnabled: persisted.candidateIds.length > 0,
     });
   } catch (error: any) {
     console.error('[API /api/vacations/share POST Error]:', error);
@@ -125,7 +118,7 @@ async function persistBoard(shortCode: string, query: any, formState: any, windo
   // Replace candidates on every (re-)share so the board always reflects the latest search
   await prisma.sharedCandidate.deleteMany({ where: { boardId: board.id } });
 
-  const created = await prisma.$transaction(
+  await prisma.$transaction(
     windows.map((win: any) =>
       prisma.sharedCandidate.create({
         data: {
@@ -142,7 +135,6 @@ async function persistBoard(shortCode: string, query: any, formState: any, windo
   return {
     createdAt: board.createdAt,
     expiresAt: board.expiresAt,
-    candidateIds: created.map((c) => c.id),
   };
 }
 
@@ -172,7 +164,7 @@ export async function GET(req: NextRequest) {
 
     const board = await prisma.sharedTripBoard.findUnique({
       where: { shortCode },
-      include: { candidates: { include: { votes: true } } },
+      include: { candidates: true },
     });
 
     if (!board || (board.expiresAt && board.expiresAt < new Date())) {
@@ -190,12 +182,7 @@ export async function GET(req: NextRequest) {
       query: searchParamsJson.query ?? null,
       formState: searchParamsJson.formState ?? null,
       count: board.candidates.length,
-      windows: board.candidates.map((c) => ({
-        ...(c.snapshotData as any),
-        shareCandidateId: c.id,
-        votes: c.votes.map((v) => ({ voterName: v.voterName, vote: v.vote, comment: v.comment })),
-      })),
-      candidateIds: board.candidates.map((c) => c.id),
+      windows: board.candidates.map((c) => c.snapshotData as any),
     };
 
     await setCached(cacheKey, payload, CACHE_TTL_SECONDS).catch(() => {});

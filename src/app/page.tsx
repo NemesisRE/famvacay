@@ -36,9 +36,6 @@ import {
   Share2,
   Wallet,
   Ship,
-  ThumbsUp,
-  ThumbsDown,
-  Star,
 } from 'lucide-react';
 import { differenceInYears, addDays } from 'date-fns';
 import { CandidateWindow, DestinationType, TravelVehicle, BoardType, CarFuelType } from '@/lib/optimizer/types';
@@ -204,8 +201,6 @@ export default function HomePage() {
   // Shown when the link could not be shared or copied automatically (manual copy), or creating it failed
   const [shareFallbackUrl, setShareFallbackUrl] = useState<string | null>(null);
   const [shareError, setShareError] = useState(false);
-  const [voterName, setVoterName] = useState<string>('');
-  const [voteTallies, setVoteTallies] = useState<Record<string, { upvotes: number; favorites: number; vetoes: number }>>({});
 
   const [viewMode, setViewMode] = useState<'list' | 'destination' | 'timeframe'>('destination');
   const [selectedDestinationsList, setSelectedDestinationsList] = useState<string[]>([]);
@@ -1263,54 +1258,6 @@ export default function HomePage() {
     return filteredResults.slice(startIdx, startIdx + pageSize);
   }, [filteredResults, currentPage, pageSize]);
 
-  const getInitialVoteTally = (win: CandidateWindow) => {
-    const votes = win.votes || [];
-    return {
-      upvotes: votes.filter((v) => v.vote === 1).length,
-      favorites: votes.filter((v) => v.vote === 2).length,
-      vetoes: votes.filter((v) => v.vote === -1).length,
-    };
-  };
-
-  const submitSharedBoardVote = async (win: CandidateWindow, vote: -1 | 1 | 2) => {
-    const candidateId = win.shareCandidateId;
-    if (!candidateId || !activeShareId) return;
-
-    // This visit's name, else the remembered one, else ask
-    let name = voterName;
-    if (!name) {
-      try {
-        name = localStorage.getItem('famvac_voter_name') || '';
-      } catch {
-        // storage blocked
-      }
-    }
-    if (!name) {
-      name = (window.prompt(t.home.enterVoterNamePrompt) || '').trim();
-      if (!name) return;
-      try {
-        localStorage.setItem('famvac_voter_name', name);
-      } catch {
-        // Ignore localStorage errors
-      }
-      setVoterName(name);
-    }
-
-    try {
-      const res = await fetch(`/api/vacations/share/${encodeURIComponent(activeShareId)}/vote`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidateId, voterName: name, vote }),
-      });
-      const data = await res.json();
-      if (data?.success && data.tally) {
-        setVoteTallies((prev) => ({ ...prev, [candidateId]: data.tally }));
-      }
-    } catch (err) {
-      console.warn('[Shared Board Vote Failed]', err);
-    }
-  };
-
   // "Show all periods" of a destination group: the list view filtered to that destination
   const jumpToList = (returnView: 'destination' | 'timeframe') => {
     setListReturnView(returnView);
@@ -1839,39 +1786,6 @@ export default function HomePage() {
                 <span>{t.home.boardTypeSavingsBadge}: ~€{win.mealPlanValue}</span>
               </div>
             ) : null}
-
-            {/* Shared Trip Board Voting */}
-            {activeShareId && win.shareCandidateId && (() => {
-              const tally = voteTallies[win.shareCandidateId] || getInitialVoteTally(win);
-              return (
-                <div className="flex items-center gap-1.5 mt-1.5 sm:justify-end">
-                  <button
-                    type="button"
-                    onClick={() => submitSharedBoardVote(win, 1)}
-                    title={t.home.voteUpvoteTooltip}
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors cursor-pointer"
-                  >
-                    <ThumbsUp className="w-3 h-3" /> {tally.upvotes}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => submitSharedBoardVote(win, 2)}
-                    title={t.home.voteFavoriteTooltip}
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-700 dark:hover:text-amber-300 hover:border-amber-300 dark:hover:border-amber-700 transition-colors cursor-pointer"
-                  >
-                    <Star className="w-3 h-3" /> {tally.favorites}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => submitSharedBoardVote(win, -1)}
-                    title={t.home.voteVetoTooltip}
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-rose-300 hover:border-rose-300 dark:hover:border-rose-700 transition-colors cursor-pointer"
-                  >
-                    <ThumbsDown className="w-3 h-3" /> {tally.vetoes}
-                  </button>
-                </div>
-              );
-            })()}
           </div>
         </div>
 

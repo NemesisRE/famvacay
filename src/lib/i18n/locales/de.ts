@@ -79,10 +79,6 @@ export const de: TranslationDictionary = {
     savedPtoDay: 'eingesparter Urlaubstag',
     shortFerryBadge: 'Kurze Fähre',
     longFerryBadge: 'Lange Fähre',
-    enterVoterNamePrompt: 'Gib deinen Namen ein, um für diese Reise abzustimmen:',
-    voteUpvoteTooltip: 'Für diese Option stimmen',
-    voteFavoriteTooltip: 'Als Favorit markieren',
-    voteVetoTooltip: 'Diese Option ablehnen',
     noDestinationsFound: 'Keine passenden Reiseziele gefunden.',
     airportsLabel: 'Abflughäfen',
     airportsHint: 'Automatisch nach Wohnort und Flugkorridoren zu deinen gewählten Reisezielen vorgeschlagen.',
@@ -615,15 +611,15 @@ export const de: TranslationDictionary = {
       'Eine automatisierte Entscheidungsfindung einschließlich Profiling im Sinne von Art. 22 DSGVO findet nicht statt. Die Bewertung von Urlaubszeiträumen ist eine von Ihnen angeforderte Berechnung ohne rechtliche oder ähnlich erhebliche Wirkung.',
     hostingNoDpaNotice:
       'Diese Anwendung wird auf Servern mit Standort in Deutschland betrieben. Server-Zugriffsprotokolle werden nur so lange gespeichert, wie es für Sicherheits- und Betriebszwecke erforderlich ist, und danach automatisch gelöscht.',
-    sharedLinksSectionTitle: 'Geteilte Links & Abstimmungen',
+    sharedLinksSectionTitle: 'Geteilte Links',
     sharedLinksNotice:
-      'Wenn Sie Suchergebnisse teilen, entsteht ein Link, den jede Person mit diesem Link ohne Anmeldung öffnen kann (Art. 6 Abs. 1 lit. b DSGVO, auf Ihren Wunsch). Er enthält nur, was zur Anzeige der Ergebnisse nötig ist - abgeleitete Werte wie das Alter der Kinder, Heimatregion und Abflughäfen, aber keine Namen, Adressen, Koordinaten oder Geburtsdaten. Wer über einen geteilten Link abstimmt, kann freiwillig einen Namen und einen Kommentar angeben; beides ist für alle mit dem Link sichtbar. Geteilte Links werden samt aller Abstimmungen 30 Tage nach ihrer Erstellung gelöscht.',
+      'Wenn Sie Suchergebnisse teilen, entsteht ein Link, den jede Person mit diesem Link ohne Anmeldung öffnen kann (Art. 6 Abs. 1 lit. b DSGVO, auf Ihren Wunsch). Er enthält nur, was zur Anzeige der Ergebnisse nötig ist - abgeleitete Werte wie das Alter der Kinder, Heimatregion und Abflughäfen, aber keine Namen, Adressen, Koordinaten oder Geburtsdaten. Geteilte Links werden 30 Tage nach ihrer Erstellung gelöscht.',
     storageSectionTitle: 'Cookies & Speicher im Browser',
     storageNotice:
-      'FamVacay speichert auf Ihrem Gerät nur, was technisch unbedingt erforderlich ist (§ 25 Abs. 2 Nr. 2 TDDDG): die Login-Cookies unserer Anmeldung (Sitzung, CSRF-Schutz, Rücksprungadresse) sowie im lokalen Speicher Ihres Browsers Sprache und Farbschema, Ihr letztes Suchformular samt Ergebnissen (damit ein Neuladen nichts verliert), Ergebnisfilter, bevorzugte Buchungsportale, den beim Abstimmen verwendeten Namen und - sofern Statistik angeboten wird - Ihre Datenschutz-Auswahl. Der lokale Speicher verbleibt auf Ihrem Gerät; Sie können ihn jederzeit in den Browsereinstellungen löschen.',
+      'FamVacay speichert auf Ihrem Gerät nur, was technisch unbedingt erforderlich ist (§ 25 Abs. 2 Nr. 2 TDDDG): die Login-Cookies unserer Anmeldung (Sitzung, CSRF-Schutz, Rücksprungadresse) sowie im lokalen Speicher Ihres Browsers Sprache und Farbschema, Ihr letztes Suchformular samt Ergebnissen (damit ein Neuladen nichts verliert), Ergebnisfilter, bevorzugte Buchungsportale und - sofern Statistik angeboten wird - Ihre Datenschutz-Auswahl. Der lokale Speicher verbleibt auf Ihrem Gerät; Sie können ihn jederzeit in den Browsereinstellungen löschen.',
     retentionSectionTitle: 'Speicherdauer',
     retentionNotice:
-      'Konto- und Familienprofildaten werden gespeichert, bis Sie Ihr Konto löschen; dabei werden alle zugehörigen Daten gelöscht. Login-Sitzungen laufen nach 30 Tagen ab. Geteilte Links und ihre Abstimmungen werden 30 Tage nach Erstellung gelöscht. Such-, Orts- und Feiertagsabfragen werden auf unserem Server für 10 Minuten bis 30 Tage ohne Personenbezug zwischengespeichert. Server-Zugriffsprotokolle werden nach kurzer Zeit gelöscht.',
+      'Konto- und Familienprofildaten werden gespeichert, bis Sie Ihr Konto löschen; dabei werden alle zugehörigen Daten gelöscht. Login-Sitzungen laufen nach 30 Tagen ab. Geteilte Links werden 30 Tage nach Erstellung gelöscht. Such-, Orts- und Feiertagsabfragen werden auf unserem Server für 10 Minuten bis 30 Tage ohne Personenbezug zwischengespeichert. Server-Zugriffsprotokolle werden nach kurzer Zeit gelöscht.',
     exportDataLink: 'Meine Daten exportieren',
     accountSettingsLink: 'Zu den Kontoeinstellungen',
     vatIdLabel: 'USt-IdNr.',

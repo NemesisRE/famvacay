@@ -79,10 +79,6 @@ export const es: TranslationDictionary = {
     savedPtoDay: 'día de vacaciones ahorrado',
     shortFerryBadge: 'Ferry corto',
     longFerryBadge: 'Ferry largo',
-    enterVoterNamePrompt: 'Introduce tu nombre para votar por este viaje:',
-    voteUpvoteTooltip: 'Votar a favor de esta opción',
-    voteFavoriteTooltip: 'Marcar como favorito',
-    voteVetoTooltip: 'Vetar esta opción',
     noDestinationsFound: 'No se encontraron destinos.',
     airportsLabel: 'Aeropuertos de salida',
     airportsHint: 'Recomendados automáticamente según tu ubicación y los corredores de vuelo a tus destinos.',
@@ -615,15 +611,15 @@ export const es: TranslationDictionary = {
       'No utilizamos decisiones automatizadas, incluida la elaboración de perfiles, en el sentido del art. 22 RGPD. La clasificación de periodos de vacaciones es un cálculo que usted solicita, sin efectos jurídicos ni efectos significativos similares.',
     hostingNoDpaNotice:
       'Esta aplicación se aloja en servidores ubicados en Alemania. Los registros de acceso al servidor se conservan solo el tiempo necesario por motivos de seguridad y funcionamiento y luego se eliminan automáticamente.',
-    sharedLinksSectionTitle: 'Enlaces compartidos y votaciones',
+    sharedLinksSectionTitle: 'Enlaces compartidos',
     sharedLinksNotice:
-      'Cuando comparte resultados, se crea un enlace que cualquier persona que lo tenga puede abrir sin iniciar sesión (art. 6.1.b RGPD, a petición suya). Solo contiene lo necesario para mostrar los resultados: valores derivados como la edad de los niños, la región de origen y los aeropuertos de salida, pero ningún nombre, dirección, coordenada ni fecha de nacimiento. Quien vote en un enlace compartido puede indicar voluntariamente un nombre y un comentario, visibles para todos los que tengan el enlace. Los enlaces compartidos, con todas sus votaciones, se eliminan 30 días después de su creación.',
+      'Cuando comparte resultados, se crea un enlace que cualquier persona que lo tenga puede abrir sin iniciar sesión (art. 6.1.b RGPD, a petición suya). Solo contiene lo necesario para mostrar los resultados: valores derivados como la edad de los niños, la región de origen y los aeropuertos de salida, pero ningún nombre, dirección, coordenada ni fecha de nacimiento. Los enlaces compartidos se eliminan 30 días después de su creación.',
     storageSectionTitle: 'Cookies y almacenamiento del navegador',
     storageNotice:
-      'FamVacay solo guarda en su dispositivo lo estrictamente necesario (§ 25.2 n.º 2 TDDDG): las cookies de inicio de sesión (sesión, protección CSRF, dirección de retorno) y, en el almacenamiento local del navegador, el idioma y el tema, su último formulario de búsqueda y resultados, los filtros, los portales de reserva preferidos, el nombre usado al votar y, si se ofrecen estadísticas, su elección de privacidad. El almacenamiento local permanece en su dispositivo; puede borrarlo en cualquier momento en la configuración del navegador.',
+      'FamVacay solo guarda en su dispositivo lo estrictamente necesario (§ 25.2 n.º 2 TDDDG): las cookies de inicio de sesión (sesión, protección CSRF, dirección de retorno) y, en el almacenamiento local del navegador, el idioma y el tema, su último formulario de búsqueda y resultados, los filtros, los portales de reserva preferidos y, si se ofrecen estadísticas, su elección de privacidad. El almacenamiento local permanece en su dispositivo; puede borrarlo en cualquier momento en la configuración del navegador.',
     retentionSectionTitle: 'Plazos de conservación',
     retentionNotice:
-      'Los datos de la cuenta y del perfil familiar se conservan hasta que elimine su cuenta, lo que borra todos los datos asociados. Las sesiones de inicio de sesión caducan a los 30 días. Los enlaces compartidos y sus votaciones se eliminan 30 días después de su creación. Las consultas de búsqueda, lugares y festivos se guardan en caché en nuestro servidor de 10 minutos a 30 días sin referencia a su persona. Los registros de acceso al servidor se eliminan tras un breve periodo.',
+      'Los datos de la cuenta y del perfil familiar se conservan hasta que elimine su cuenta, lo que borra todos los datos asociados. Las sesiones de inicio de sesión caducan a los 30 días. Los enlaces compartidos se eliminan 30 días después de su creación. Las consultas de búsqueda, lugares y festivos se guardan en caché en nuestro servidor de 10 minutos a 30 días sin referencia a su persona. Los registros de acceso al servidor se eliminan tras un breve periodo.',
     exportDataLink: 'Exportar mis datos',
     accountSettingsLink: 'Ir a la configuración de la cuenta',
     vatIdLabel: 'NIF/IVA',

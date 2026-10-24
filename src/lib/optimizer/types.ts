@@ -218,10 +218,6 @@ export interface CandidateWindow {
   /** Departure airport picked automatically (flexible airport search: no airport selected) */
   autoSelectedOrigin?: boolean;
 
-  // Shared trip board & voting metadata (only present when hydrated from a shared board link)
-  shareCandidateId?: string;
-  votes?: { voterName: string; vote: number; comment?: string | null }[];
-
   // Travel Safety & Security Assessment (baseline destination-level attribute)
   destinationSafety?: import('../safety/safety-service').DestinationSafetyAssessment;
   safetyAssessment?: import('../safety/safety-service').DestinationSafetyAssessment;

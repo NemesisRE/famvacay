@@ -3,7 +3,7 @@ import { incrementCounter } from '@/lib/cache/redis';
 import { resolveProxyHeaders } from '@/lib/proxy/headers';
 
 /**
- * Fixed-window rate limits for public endpoints (login, registration, sharing, voting, search).
+ * Fixed-window rate limits for public endpoints (login, registration, sharing, search).
  * Counters live in Valkey/Redis so limits hold across replicas; without the cache each process
  * counts on its own.
  */
@@ -19,7 +19,6 @@ export const RATE_LIMITS = {
   loginPerEmail: { bucket: 'login-email', limit: 10, windowSeconds: 15 * 60 },
   register: { bucket: 'register', limit: 5, windowSeconds: 60 * 60 },
   share: { bucket: 'share', limit: 30, windowSeconds: 10 * 60 },
-  vote: { bucket: 'vote', limit: 60, windowSeconds: 10 * 60 },
   optimize: { bucket: 'optimize', limit: 60, windowSeconds: 10 * 60 },
 } satisfies Record<string, RateLimitRule>;
 

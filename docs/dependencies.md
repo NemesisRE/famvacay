@@ -80,10 +80,10 @@ confirming upstream has addressed the issue below.
 ### TypeScript 7
 
 `typescript@7.0.2` reintroduces `TS7006` implicit-`any` errors on `.map()` /
-`.filter()` callbacks over Prisma relation-`include` query results, across 7
+`.filter()` callbacks over Prisma relation-`include` query results, across 6
 API routes (`account/passkeys`, `account`, `account/unlink`,
 `auth/linked-accounts`, `auth/passkeys/register-options`,
-`vacations/share/[shortCode]/vote`, `vacations/share`). Confirmed to be TS7
+`vacations/share`). Confirmed to be TS7
 itself and not a stale generated client: regenerating `@prisma/client` with
 TS7 still installed does not clear the errors, and reverting to TypeScript
 5.x with nothing else changed does. This is a known rough edge in TS7's

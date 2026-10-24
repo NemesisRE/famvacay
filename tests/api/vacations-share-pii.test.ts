@@ -55,7 +55,6 @@ describe('Vacations Share API - PII sanitization', () => {
   beforeEach(() => {
     fakePrisma.__state.boards.clear();
     fakePrisma.__state.candidates.clear();
-    fakePrisma.__state.votes.clear();
   });
 
   it('never stores or serves exact home address, GPS, birthdates, or blackout reasons', async () => {
