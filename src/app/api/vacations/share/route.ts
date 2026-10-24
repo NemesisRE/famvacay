@@ -7,6 +7,7 @@ import {
   buildShareableFormState,
   buildShareableCandidateSnapshot,
 } from '@/lib/share/sanitize-shared-payload';
+import { RATE_LIMITS, rateLimitByClient } from '@/lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,8 @@ interface SharedBoardPayload {
 }
 
 export async function POST(req: NextRequest) {
+  const limited = await rateLimitByClient(req, RATE_LIMITS.share);
+  if (limited) return limited;
   try {
     const body = await req.json();
     const { query, formState, windows } = body;

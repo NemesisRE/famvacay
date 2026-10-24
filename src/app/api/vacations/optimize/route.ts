@@ -8,6 +8,7 @@ import { resolveFlexOriginAirports } from '@/lib/airports/flight-routes';
 import { loadSourceMarketCalendars } from '@/lib/holidays/source-market-loader';
 import { getCached, setCached } from '@/lib/cache/redis';
 import { ensureTravelAdvisoriesLoaded } from '@/lib/safety/safety-service';
+import { RATE_LIMITS, rateLimitByClient } from '@/lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -142,6 +143,8 @@ async function runOptimization(body: TripPlanInput): Promise<OptimizeResponsePay
 }
 
 export async function POST(req: NextRequest) {
+  const limited = await rateLimitByClient(req, RATE_LIMITS.optimize);
+  if (limited) return limited;
   try {
     const body: TripPlanInput = await req.json();
 

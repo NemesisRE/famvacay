@@ -97,6 +97,35 @@ export async function setCached<T>(key: string, value: T, ttlSeconds: number): P
   });
 }
 
+const counterMemory = new Map<string, { count: number; expiry: number }>();
+
+/**
+ * Atomic counter with expiry (rate limiting). Shared across replicas via Valkey/Redis; falls back
+ * to this process's memory when the cache is unavailable.
+ */
+export async function incrementCounter(key: string, ttlSeconds: number): Promise<number> {
+  const client = getRedisClient();
+  if (client && client.status === 'ready') {
+    try {
+      const results = await client.multi().incr(key).expire(key, ttlSeconds).exec();
+      const count = Number(results?.[0]?.[1]);
+      if (Number.isFinite(count)) return count;
+    } catch {
+      // Fall through to the memory counter
+    }
+  }
+  const now = Date.now();
+  if (counterMemory.size > 10_000) {
+    for (const [k, v] of counterMemory) if (v.expiry <= now) counterMemory.delete(k);
+  }
+  const entry = counterMemory.get(key);
+  if (!entry || entry.expiry <= now) {
+    counterMemory.set(key, { count: 1, expiry: now + ttlSeconds * 1000 });
+    return 1;
+  }
+  return ++entry.count;
+}
+
 export const redis = {
   get status() {
     const client = getRedisClient();

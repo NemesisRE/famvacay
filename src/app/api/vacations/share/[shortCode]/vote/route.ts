@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { setCached } from '@/lib/cache/redis';
+import { RATE_LIMITS, rateLimitByClient } from '@/lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ shortCode: string }> }
 ) {
+  const limited = await rateLimitByClient(req, RATE_LIMITS.vote);
+  if (limited) return limited;
   try {
     const { shortCode: rawShortCode } = await params;
     const shortCode = rawShortCode.startsWith('s_') ? rawShortCode : `s_${rawShortCode}`;

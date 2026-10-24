@@ -5,6 +5,7 @@ import GoogleProvider from 'next-auth/providers/google';
 import AppleProvider from 'next-auth/providers/apple';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db/prisma';
+import { checkRateLimit, clientIdentifierFromHeaders, RATE_LIMITS, rateLimitingEnabled } from '@/lib/security/rate-limit';
 import { getAppleCredentials, getGoogleCredentials } from './oauth-config';
 
 const googleCredentials = getGoogleCredentials();
@@ -24,13 +25,24 @@ export const authOptions: AuthOptions = {
         email: { label: 'Email', type: 'email', placeholder: 'parent@example.com' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error('Please enter an email and password.');
         }
 
+        const email = credentials.email.toLowerCase().trim();
+        if (rateLimitingEnabled()) {
+          const [perIp, perEmail] = await Promise.all([
+            checkRateLimit(RATE_LIMITS.loginPerIp, clientIdentifierFromHeaders(req?.headers)),
+            checkRateLimit(RATE_LIMITS.loginPerEmail, email),
+          ]);
+          if (!perIp.allowed || !perEmail.allowed) {
+            throw new Error('Too many login attempts. Please try again later.');
+          }
+        }
+
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email.toLowerCase().trim() },
+          where: { email },
         });
 
         if (!user || !user.passwordHash) {
