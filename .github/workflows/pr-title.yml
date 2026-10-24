@@ -1,0 +1,44 @@
+name: PR Title
+
+# Pull requests are squash-merged with their title as the commit message, and the title's
+# conventional-commit type decides the release labels (see .github/release-drafter.yml).
+# This check keeps titles in that format; it is a required status check for main.
+on:
+  # pull_request_target so pull requests from forks are checked too. Safe here: the job only
+  # reads the title through the API and never checks out code from the pull request.
+  pull_request_target:
+    types: [ opened, reopened, edited, synchronize ]
+
+permissions:
+  contents: read
+
+jobs:
+  conventional-title:
+    name: Conventional PR Title
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Check Title Format
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            ci
+            build
+            chore
+            style
+            revert
+          requireScope: false
+          # Subject starts lowercase: "feat(share): remove voting", not "feat: Remove voting"
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The subject "{subject}" in "{title}" should start with a lowercase letter,
+            for example "fix(share): keep votes when a link is shared again".

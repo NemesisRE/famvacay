@@ -118,3 +118,13 @@ To release, open the draft under **Releases**, check the notes and the version, 
 `ghcr.io/nemesisre/famvacay` as `X.Y.Z`, `X.Y`, `X` and `latest`.
 
 Labels themselves are defined in `.github/labels.yml` and synced by the *Sync Labels* workflow.
+
+## Repository Settings
+
+Settings that cannot live in files (description, squash-only merging, secret scanning, Actions
+permissions) and the rulesets in `.github/rulesets/` are applied by
+`scripts/github/configure-repository.sh`. It needs a token with admin rights on the repository
+and can be run again after changing a ruleset. The `main` ruleset requires pull requests with
+passing checks and squash merges; repository admins can still merge a pull request without
+waiting for checks, but cannot push to `main` directly. Release tags (`v*`) cannot be moved
+or deleted.

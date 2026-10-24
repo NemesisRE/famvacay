@@ -4,10 +4,10 @@
 
 Only the latest release of FamVacay receives security updates.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.x     | :white_check_mark: |
-| < 1.0   | :x:                |
+| Version        | Supported          |
+| -------------- | ------------------ |
+| Latest release | :white_check_mark: |
+| Older releases | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -17,7 +17,7 @@ We take the security of FamVacay very seriously. If you discover a security vuln
 
 Please **do not** report security vulnerabilities via public GitHub issues. Instead:
 
-1. Send an email to `security@famvacay.local` (or file a private GitHub Security Advisory).
+1. Open a [private security advisory](https://github.com/NemesisRE/famvacay/security/advisories/new) on GitHub. Only the maintainers can see it.
 2. Include a detailed description of the vulnerability, steps to reproduce, proof-of-concept payload if applicable, and the impacted environment/version.
 3. Allow up to 48 hours for an acknowledgment from the maintainers.
 

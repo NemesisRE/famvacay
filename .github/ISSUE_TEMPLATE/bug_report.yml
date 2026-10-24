@@ -1,0 +1,61 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please don't include personal data (addresses, birth dates,
+        e-mail addresses) in screenshots or logs. Security issues go through the
+        [private security advisory](https://github.com/NemesisRE/famvacay/security/advisories/new) instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, and what went wrong?
+      placeholder: "I searched for 2 adults, 1 child from Stuttgart in August and ..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: A share link (`/?s=...`) of the search is the quickest way to reproduce result issues.
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where does it happen?
+      options:
+        - Public instance
+        - Self-hosted (Docker Compose)
+        - Self-hosted (Kubernetes)
+        - Local development
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release or image tag, or the commit for local development.
+      placeholder: "v1.2.0"
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: "Firefox 140 on Windows, Safari on iPhone 16"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Browser console errors or server logs, if any.
+      render: shell
