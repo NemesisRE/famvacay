@@ -80,6 +80,35 @@ describe('1. Seasonal & Environmental Impact on Scoring', () => {
     });
     expect(midgeImpact?.weatherPenalty).toBe(16);
     expect(midgeImpact?.overallScorePenalty).toBe(8);
+
+    // Overcrowded Hyper-Peak (festivals, Golden Week, school-holiday surges): weighted heavily
+    // enough to meaningfully outrank warning-free alternatives, not just nudge them.
+    const crowdedPeakImpact = getSeasonalWarningPenalty({
+      destinationCode: 'HND',
+      seasonType: 'OVERCROWDED_PEAK',
+      monthRange: [3],
+      messageKey: 'seasonWarningCrowdedPeak',
+      fallbackMessage: 'Golden Week hyper-peak',
+    });
+    expect(crowdedPeakImpact?.weatherPenalty).toBe(14);
+    expect(crowdedPeakImpact?.overallScorePenalty).toBe(12);
+    expect(crowdedPeakImpact?.severity).toBe('high');
+
+    // Extreme heat during a window several source markets are on school holiday is really a
+    // crowding penalty in disguise - same weight as OVERCROWDED_PEAK.
+    const heatCrowdImpact = getSeasonalWarningPenalty(
+      {
+        destinationCode: 'PMI',
+        seasonType: 'EXTREME_HEAT',
+        monthRange: [7],
+        messageKey: 'extremeHeatWarning',
+        fallbackMessage: 'Extreme heat',
+        marketsOnHoliday: ['DE', 'GB', 'FR'],
+      },
+      { avoidExtremeHeat: false }
+    );
+    expect(heatCrowdImpact?.weatherPenalty).toBe(14);
+    expect(heatCrowdImpact?.overallScorePenalty).toBe(12);
   });
 
   it('applies seasonal quality penalty directly to destination window scores during optimization', async () => {
@@ -186,9 +215,9 @@ describe('2. Non-Direct Flight Visibility & Route Resolution', () => {
 describe('3. Layover-Weighted Scoring', () => {
   it('penalizes flight convenience / friction proportionally to stops and layover duration', () => {
     const dist = 3000;
-    const directScore = calculateFlightFrictionScore(dist, false, 0, 0);
-    const oneStopScore = calculateFlightFrictionScore(dist, false, 1, 90);
-    const twoStopsScore = calculateFlightFrictionScore(dist, false, 2, 210);
+    const directScore = calculateFlightFrictionScore(dist, 0, 0);
+    const oneStopScore = calculateFlightFrictionScore(dist, 1, 90);
+    const twoStopsScore = calculateFlightFrictionScore(dist, 2, 210);
 
     // 1 stop has ~16-20 point drop
     expect(directScore - oneStopScore).toBeGreaterThanOrEqual(16);

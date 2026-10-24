@@ -214,9 +214,9 @@ export function getSeasonalWarningPenalty(
       if (options && !options.avoidExtremeHeat) {
         if (warning.marketsOnHoliday && warning.marketsOnHoliday.length > 0) {
           return {
-            weatherPenalty: 8,
-            overallScorePenalty: 6,
-            severity: 'moderate',
+            weatherPenalty: 14,
+            overallScorePenalty: 12,
+            severity: 'high',
             reason: 'Extreme crowd density and travel congestion degrade relaxation.',
           };
         }
@@ -282,9 +282,9 @@ export function getSeasonalWarningPenalty(
       }
     case 'OVERCROWDED_PEAK':
       return {
-        weatherPenalty: 8,
-        overallScorePenalty: 6,
-        severity: 'moderate',
+        weatherPenalty: 14,
+        overallScorePenalty: 12,
+        severity: 'high',
         reason: 'Extreme crowd density and travel congestion degrade relaxation.',
       };
     default:

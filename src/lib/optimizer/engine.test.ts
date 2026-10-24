@@ -747,11 +747,14 @@ describe('Arbitrage Airport Info & Localized Seasonal Warnings', () => {
     // Regional mid-haul (Miami -> Punta Cana, ~1460 km): friction score ~90
     expect(calculateFlightFrictionScore(1460)).toBeGreaterThanOrEqual(88);
 
-    // Transatlantic long-haul (Miami -> Innsbruck, ~8000 km): friction score is low without LONGRANGE
-    expect(calculateFlightFrictionScore(8000, false)).toBeLessThanOrEqual(50);
+    // Long-haul (Miami -> Innsbruck, ~8000 km): scored fairly on distance alone, regardless of
+    // which vacation-style filter the user selected - a flight this long used to only get a fair
+    // score when the user had explicitly picked "Long-range" as their style (the bug: the exact
+    // same flight scored a punishing floor of 35 under the default "All styles" search).
+    expect(calculateFlightFrictionScore(8000)).toBeGreaterThanOrEqual(65);
 
-    // Transatlantic with LONGRANGE opt-in: friction penalty is mitigated
-    expect(calculateFlightFrictionScore(8000, true)).toBeGreaterThanOrEqual(65);
+    // A layover still adds real friction on top of the distance-based score
+    expect(calculateFlightFrictionScore(8000, 1, 120)).toBeLessThan(calculateFlightFrictionScore(8000));
   });
 
   it('eliminates European bias for American departures (Miami yields Bahamas and Dominican Republic at top)', () => {

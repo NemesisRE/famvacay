@@ -217,7 +217,6 @@ export function normalizeScore(
  */
 export function calculateFlightFrictionScore(
   flightDistKm?: number,
-  isLongRangeSelected: boolean = false,
   stops: number = 0,
   layoverMinutes: number = 0
 ): number {
@@ -235,11 +234,14 @@ export function calculateFlightFrictionScore(
   } else if (flightDistKm <= 6000) {
     // Transcontinental: 74 - 58
     score = Math.max(58, Math.round(74 - ((flightDistKm - 3800) / 2200) * 16));
-  } else if (isLongRangeSelected) {
-    // Long-haul > 6000 km:
-    score = Math.max(65, Math.round(80 - ((flightDistKm - 6000) / 4000) * 15));
   } else {
-    score = Math.max(35, Math.round(58 - ((flightDistKm - 6000) / 4000) * 23));
+    // Long-haul > 6000 km: a destination that genuinely requires this distance (Sydney, Bali,
+    // Mauritius, Buenos Aires, ...) is scored on its own curve regardless of which vacation-style
+    // filter the user happened to pick - it used to only get this fair curve when the user had
+    // explicitly selected "Long-range", so under the default "All styles" search every long-haul
+    // destination was scored as if it were an accidental detour and buried at the bottom of the
+    // (score-sorted, paginated) results.
+    score = Math.max(65, Math.round(80 - ((flightDistKm - 6000) / 4000) * 15));
   }
 
   // Layover-weighted convenience friction penalty (more transfers = proportionally lower score)
@@ -544,7 +546,6 @@ export function optimizeVacationWindows(
     state: homeState,
   };
   const maxToleratedStops = input.maxFlightStops ?? userProfile.maxFlightStops;
-  const isLongRangeSelected = selectedTypes.includes('LONGRANGE');
 
   // ---------------------------------------------------------------------------------------
   // Date-independent precomputation. Everything below depends only on the origin airport and
@@ -685,7 +686,6 @@ export function optimizeVacationWindows(
         if (directDist < 180) continue;
         const flightFrictionScore = calculateFlightFrictionScore(
           flightRoute.flightDistanceKm,
-          isLongRangeSelected,
           flightRoute.stops,
           flightRoute.totalLayoverMinutes
         );
@@ -721,7 +721,6 @@ export function optimizeVacationWindows(
           if (key[0] > bestKey[0] || (key[0] === bestKey[0] && key[1] >= bestKey[1])) continue;
           const flightFrictionScore = calculateFlightFrictionScore(
             directDist,
-            isLongRangeSelected,
             flightRoute.stops,
             flightRoute.totalLayoverMinutes
           );

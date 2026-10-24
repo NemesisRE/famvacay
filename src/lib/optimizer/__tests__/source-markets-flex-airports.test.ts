@@ -153,7 +153,7 @@ describe('Optimizer with source-market demand', () => {
     expect(b.seasonalWarning!.seasonType).toBe('OVERCROWDED_PEAK');
     expect(b.seasonalWarning!.eventKey).toBe('school_holidays');
     expect(b.seasonalWarning!.marketsOnHoliday).toEqual(expect.arrayContaining(['DE', 'GB', 'FR']));
-    expect(b.seasonalWarningPenalty).toBe(6);
+    expect(b.seasonalWarningPenalty).toBe(12);
 
     const localized = getLocalizedSeasonalWarning(b.seasonalWarning!, en, 'en');
     expect(localized.title).toContain(en.home.seasonWarningCrowdedPeakTitle);
