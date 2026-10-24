@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useCallback, useContext, useState, useSyncExternalStore } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore } from 'react';
+import type { PublicRuntimeConfig } from '@/lib/config/public-runtime';
 
 /**
  * Single source of truth for the self-hosted Umami opt-out + the cookie banner's "has the
@@ -78,16 +79,29 @@ interface ConsentUiContextValue {
   forceOpen: boolean;
   requestOpen: () => void;
   dismiss: () => void;
+  /** Runtime settings from /api/public-config; null until loaded (or if it failed). */
+  config: PublicRuntimeConfig | null;
 }
 
 const ConsentUiContext = createContext<ConsentUiContextValue | null>(null);
 
 export function ConsentUiProvider({ children }: { children: React.ReactNode }) {
   const [forceOpen, setForceOpen] = useState(false);
+  const [config, setConfig] = useState<PublicRuntimeConfig | null>(null);
   const requestOpen = useCallback(() => setForceOpen(true), []);
   const dismiss = useCallback(() => setForceOpen(false), []);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/public-config')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((value) => !cancelled && value && setConfig(value))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   return (
-    <ConsentUiContext.Provider value={{ forceOpen, requestOpen, dismiss }}>{children}</ConsentUiContext.Provider>
+    <ConsentUiContext.Provider value={{ forceOpen, requestOpen, dismiss, config }}>{children}</ConsentUiContext.Provider>
   );
 }
 
@@ -97,21 +111,20 @@ export function useConsentUi(): ConsentUiContextValue {
   return ctx;
 }
 
-export type CookieBannerMode = 'TRANSPARENCY_AND_CHOICE' | 'STRICT_OPT_IN' | 'NONE';
-
-export function getCookieBannerMode(): CookieBannerMode {
-  const mode = process.env.NEXT_PUBLIC_COOKIE_BANNER_MODE;
-  return mode === 'STRICT_OPT_IN' || mode === 'NONE' ? mode : 'TRANSPARENCY_AND_CHOICE';
+/** Analytics only exist on deployments with an Umami website id. */
+export function useAnalyticsEnabled(): boolean {
+  return Boolean(useConsentUi().config?.umamiWebsiteId);
 }
 
 /**
  * Whether the fixed-position cookie banner is currently on screen - shared by the banner itself
  * and by the page layout, which needs to reserve bottom space so the banner never permanently
- * covers page content.
+ * covers page content. Without analytics there is nothing to choose (only strictly necessary
+ * storage, which § 25(2) Nr. 2 TDDDG exempts), so no banner is shown at all.
  */
 export function useCookieBannerVisible(): boolean {
   const choiceMade = useBannerChoiceMade();
-  const { forceOpen } = useConsentUi();
-  const mode = getCookieBannerMode();
-  return mode !== 'NONE' && (forceOpen || !choiceMade);
+  const { forceOpen, config } = useConsentUi();
+  if (!config?.umamiWebsiteId || config.cookieBannerMode === 'NONE') return false;
+  return forceOpen || !choiceMade;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useI18n } from '@/lib/i18n/i18n-context';
-import { useConsentUi, useCookieBannerVisible, getCookieBannerMode, setBannerChoice } from '@/lib/consent/cookie-consent-context';
+import { useConsentUi, useCookieBannerVisible, setBannerChoice } from '@/lib/consent/cookie-consent-context';
 
 /**
  * § 25(2) Nr. 2 TDDDG does not require a consent wall for strictly-necessary cookies +
@@ -10,9 +10,9 @@ import { useConsentUi, useCookieBannerVisible, getCookieBannerMode, setBannerCho
  */
 export function CookiePrivacyBanner() {
   const { t } = useI18n();
-  const mode = getCookieBannerMode();
   const visible = useCookieBannerVisible();
-  const { dismiss } = useConsentUi();
+  const { dismiss, config } = useConsentUi();
+  const mode = config?.cookieBannerMode;
 
   if (!visible) return null;
 
