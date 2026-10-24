@@ -82,43 +82,31 @@ test.describe('Search State Sharing, Destination Filtering, and Dark Mode', () =
     // Verify results are loaded and visible immediately
     await expect(page.locator('text=Palma de Mallorca').first()).toBeVisible();
 
-    // 3. Switch to List View
-    const listViewBtn = page.locator('button').filter({ hasText: /List View|Listenansicht/i }).first();
-    if (await listViewBtn.isVisible()) {
-      await listViewBtn.click();
-    }
+    // 3. Switch to the list view and open the filter panel, where the destination filter lives
+    await page.getByRole('button', { name: /^(List|Liste)$/ }).click();
+    await page.getByRole('button', { name: /Show Filters|Filter einblenden/i }).click();
 
-    // Verify uniform DestinationFilterDropdown is present (since we have PMI and HER)
-    const destDropdownBtn = page.locator('button[data-testid="destination-filter-trigger"]').first();
+    const destDropdownBtn = page.getByTestId('destination-filter-trigger').first();
     await expect(destDropdownBtn).toBeVisible();
 
-    // Open dropdown and select Mallorca only
+    // Pick Mallorca only; the options open in a floating dialog outside the results
     await destDropdownBtn.click();
-    const pmiOption = page.locator('button').filter({ hasText: '(PMI)' }).first();
-    await expect(pmiOption).toBeVisible();
-    await pmiOption.click();
+    const destDialog = page.locator('[data-floating-ui-portal]').getByRole('dialog');
+    await destDialog.getByRole('button', { name: /Palma de Mallorca/ }).click();
+    await destDialog.getByRole('button', { name: /^(Done|Fertig)/ }).click();
 
-    // Close dropdown
-    await destDropdownBtn.click();
+    await expect(destDropdownBtn).toContainText('Palma de Mallorca');
+    await expect(page.getByText('FRA ➔ PMI').first()).toBeVisible();
+    await expect(page.getByText('FRA ➔ HER')).toHaveCount(0);
 
-    await expect(page.locator('text=Palma de Mallorca').first()).toBeVisible();
-    await expect(page.locator('button[title="Show on Map"]').filter({ hasText: /Heraklion/i })).not.toBeVisible();
+    // The period view keeps the same destination filter
+    await page.getByRole('button', { name: /^(Period|Zeitraum)$/ }).click();
+    await expect(page.getByTestId('destination-filter-trigger').first()).toBeVisible();
 
-    // Switch to Timeline / Period View
-    const timeframeViewBtn = page.locator('button').filter({ hasText: /By Timeframe|Nach Zeitraum/i }).first();
-    if (await timeframeViewBtn.isVisible()) {
-      await timeframeViewBtn.click();
-      // Verify Destination dropdown is also visible in Timeline view
-      const timeframeDestBtn = page.locator('button[data-testid="destination-filter-trigger"]').first();
-      await expect(timeframeDestBtn).toBeVisible();
-    }
-
-    // 4. Verify Dark Mode toggle
-    const themeBtn = page.locator('button[aria-label="Toggle color theme"]');
-    if (await themeBtn.isVisible()) {
-      await themeBtn.click();
-      const isDark = await page.evaluate(() => document.documentElement.classList.contains('dark'));
-      expect(isDark).toBeTruthy();
-    }
+    // 4. Dark mode toggle in the settings menu
+    await page.getByRole('button', { name: /^(Settings|Einstellungen)$/ }).click();
+    await page.getByRole('menu').getByRole('button', { name: /light mode|dark mode|heller modus|dunkler modus/i }).click();
+    const isDark = await page.evaluate(() => document.documentElement.classList.contains('dark'));
+    expect(isDark).toBeTruthy();
   });
 });

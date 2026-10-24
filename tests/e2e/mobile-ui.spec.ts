@@ -24,101 +24,69 @@ test.describe('Mobile Viewport & UI Responsiveness', () => {
     });
     await page.goto('/');
 
-    // 1. Verify language dropdown displays ONLY short code when closed
-    const langBtn = page.locator('button[aria-label="Select language"]');
-    await expect(langBtn).toBeVisible();
-    const closedText = (await langBtn.innerText()).trim();
-    expect(closedText).toMatch(/^[A-Z]{2}$/); // e.g. "DE" or "EN"
+    // 1. Language switch lives in the settings menu
+    const settingsBtn = page.getByRole('button', { name: /^(Settings|Einstellungen)$/ });
+    await expect(settingsBtn).toBeVisible();
+    await settingsBtn.tap();
+    const menu = page.getByRole('menu');
+    await expect(menu.getByRole('menuitemradio', { name: 'Deutsch' })).toBeVisible();
+    await menu.getByRole('menuitemradio', { name: 'English' }).tap();
+    await expect(menu).not.toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 
-    // 2. Open dropdown and verify full language names are displayed
-    await langBtn.tap();
-    const dropdown = page.locator('div[role="listbox"]');
-    await expect(dropdown).toBeVisible();
-
-    const deOption = dropdown.locator('button:has-text("Deutsch")');
-    const enOption = dropdown.locator('button:has-text("English")');
-    await expect(deOption).toBeVisible();
-    await expect(enOption).toBeVisible();
-
-    // 3. Switch to English
-    await enOption.tap();
-    await expect(dropdown).not.toBeVisible();
-    await expect(langBtn).toHaveText('EN');
-
-    // 4. Verify Annual Moving Holidays appear ONLY when Add Blackout Period is pressed
-    const easterHolidayBtn = page.locator('button:has-text("Easter")');
+    // 2. Moving holidays appear only once a blackout period is being added
+    const easterHolidayBtn = page.getByRole('button', { name: 'Easter', exact: true });
     await expect(easterHolidayBtn).not.toBeVisible();
-
-    const addBlackoutBtn = page.locator('button:has-text("+ Add Blackout Period")');
-    await expect(addBlackoutBtn).toBeVisible();
-    await addBlackoutBtn.tap();
+    await page.getByRole('button', { name: '+ Add Blackout Period' }).tap();
     await expect(easterHolidayBtn).toBeVisible();
 
-    // 5. Test vacation style selection & options (Beach and Alpine)
-    // Both styles are selected initially under "Flexible / All"
-    // Beach Min Temp button
-    const tempBtn = page.locator('button:has-text("Any")').first();
-    await expect(tempBtn).toBeVisible();
-    await tempBtn.tap();
-
-    const tempPopover = page.locator('div[role="dialog"]');
-    await expect(tempPopover).toBeVisible();
-    const box = await tempPopover.boundingBox();
+    // 3. Beach temperature picker stays inside the mobile viewport
+    const tempSelect = page.getByRole('combobox', { name: 'Minimum Temperature (Beach)' });
+    await tempSelect.tap();
+    const tempList = page.getByRole('listbox');
+    await expect(tempList).toBeVisible();
+    const box = await tempList.boundingBox();
     if (box) {
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(385);
     }
+    await tempList.getByRole('option', { name: '≥ 24°C' }).tap();
+    await expect(tempList).not.toBeVisible();
+    await expect(tempSelect).toHaveText(/≥ 24°C/);
 
-    // Select 24°C
-    const temp24 = tempPopover.locator('button:has-text("24°C")');
-    await temp24.tap();
-    await expect(tempPopover).not.toBeVisible();
-    await expect(page.locator('button:has-text("≥ 24°C")')).toBeVisible();
+    // 4. Snow guarantee
+    const snowSelect = page.getByRole('combobox', { name: 'Snow & Winter Sports' });
+    await snowSelect.tap();
+    await page.getByRole('listbox').getByRole('option').filter({ hasNotText: 'No Guarantee' }).first().tap();
+    await expect(snowSelect).not.toHaveText(/No Guarantee/);
 
-    // Snow Guarantee toggle inside Alpine card
-    const snowBtn = page.locator('button:has-text("No Guarantee")').first();
-    await expect(snowBtn).toBeVisible();
-    await snowBtn.tap();
-    await expect(page.locator('button:has-text("Snow Guarantee")')).toBeVisible();
-
-    // 6. Test Travel Vehicle buttons & FlightStopsPopover
-    // Airplane is selected by default; open flight transit preference popover
-    const flightStopsBtn = page.locator('button[aria-haspopup="dialog"]').filter({ hasText: /Any|Beliebig|Non-Stop|Direkt/ }).first();
-    await expect(flightStopsBtn).toBeVisible();
+    // 5. Flight stops popover stays inside the viewport and updates the plane card
+    const flightStopsBtn = page.getByRole('button', { name: 'Any (Direct or Connecting)', exact: true });
     await flightStopsBtn.tap();
-
-    // Verify popover dialog is visible and stays strictly within mobile viewport boundaries
-    const flightStopsPopover = page.locator('div[role="dialog"]').last();
+    const flightStopsPopover = page.getByRole('dialog', { name: 'Flight Transit Tolerance' });
     await expect(flightStopsPopover).toBeVisible();
     const flightBox = await flightStopsPopover.boundingBox();
     if (flightBox) {
       expect(flightBox.x).toBeGreaterThanOrEqual(0);
       expect(flightBox.x + flightBox.width).toBeLessThanOrEqual(385);
     }
-
-    // Select "Direct Flights Only (0 Stops)"
-    const directOnlyBtn = flightStopsPopover.locator('button:has-text("Direct Flights Only"), button:has-text("Direktflüge")').first();
-    await expect(directOnlyBtn).toBeVisible();
-    await directOnlyBtn.tap();
+    await flightStopsPopover.getByRole('button', { name: 'Direct Flights Only (0 Stops)' }).tap();
     await expect(flightStopsPopover).not.toBeVisible();
+    await expect(page.getByRole('button', { name: /^Plane .*Non-Stop/ })).toBeVisible();
 
-    // Verify button label updated
-    await expect(page.locator('button:has-text("Non-Stop")').first()).toBeVisible();
+    // 6. Car / Camper toggles off
+    const carCard = page.getByRole('button', { name: /^Car \/ Camper/ });
+    await expect(carCard).toHaveAttribute('aria-pressed', 'true');
+    await carCard.tap();
+    await expect(carCard).toHaveAttribute('aria-pressed', 'false');
 
-    // Toggle Car / Camper
-    const carBtn = page.locator('div:has-text("Car / Camper"), div:has-text("Auto / Camper")').last();
-    await expect(carBtn).toBeVisible();
-    await carBtn.tap();
-
-    // 7. Test Add Child button
-    const addChildBtn = page.locator('button:has-text("+ Add Child"), button:has-text("+ Kind hinzufügen")');
-    await expect(addChildBtn).toBeVisible();
-    await addChildBtn.tap();
+    // 7. Add a child: a birth date field and the "Add Child" button for the next one
+    await page.getByRole('button', { name: '+ Add Child' }).tap();
     await expect(page.locator('input[type="date"]').first()).toBeVisible();
-    await expect(page.locator('button:has-text("Add Child"), button:has-text("Kind hinzufügen")').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add Child', exact: true })).toBeVisible();
 
-    // 8. Test Location Input search on mobile
-    const locationInput = page.locator('input[placeholder*="Karlsruhe"], input[placeholder*="Munich"]').first();
+    // 8. Location search input on mobile
+    const locationInput = page.getByRole('textbox', { name: /Karlsruhe/ });
     await expect(locationInput).toBeVisible();
     await locationInput.fill('Berlin');
     await page.waitForTimeout(400);

@@ -40,6 +40,9 @@ jobs:
         run: pnpm exec prisma generate
 
       - name: Validate Prisma Schema
+        # The schema reads DATABASE_URL; validation never connects, so any well-formed URL works
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: pnpm exec prisma validate
 
       - name: Lint Codebase (ESLint)
@@ -86,6 +89,38 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    # The tests run the production build, which refuses to start without a database URL and an
+    # auth secret, so the job gets its own Postgres and Valkey like a real deployment
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: famvacay_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d famvacay_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      cache:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/famvacay_ci?schema=public
+      REDIS_URL: redis://localhost:6379
+      APP_URL: http://127.0.0.1:3000
+      NEXTAUTH_URL: http://127.0.0.1:3000
+      # No background refresh of reference data against upstream APIs during tests
+      DATASET_AUTO_REFRESH: 'false'
     steps:
       - name: Checkout Repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -103,12 +138,20 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Browsers
-        run: pnpm exec playwright install --with-deps chromium
+        # chromium and mobile-safari projects in playwright.config.ts
+        run: pnpm exec playwright install --with-deps chromium webkit
 
       - name: Generate Prisma Client & Build
         run: |
           pnpm exec prisma generate
           pnpm run build
+
+      - name: Apply Database Migrations
+        run: pnpm exec prisma migrate deploy
+
+      - name: Generate Auth Secret
+        # A fresh random secret per run; the production build rejects a missing or short one
+        run: echo "NEXTAUTH_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
 
       - name: Run Playwright E2E Tests
         run: pnpm run test:e2e
