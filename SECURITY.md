@@ -17,7 +17,7 @@ We take the security of FamVacay very seriously. If you discover a security vuln
 
 Please **do not** report security vulnerabilities via public GitHub issues. Instead:
 
-1. Open a [private security advisory](https://github.com/NemesisRE/famvacay/security/advisories/new) on GitHub. Only the maintainers can see it.
+1. Open a [private security advisory](https://github.com/NemesisRE/famvacay/security/advisories/new) on GitHub (only the maintainers can see it), or send an email to `security@famvacay.us`.
 2. Include a detailed description of the vulnerability, steps to reproduce, proof-of-concept payload if applicable, and the impacted environment/version.
 3. Allow up to 48 hours for an acknowledgment from the maintainers.
 
