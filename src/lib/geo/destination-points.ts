@@ -1,5 +1,6 @@
 import { getAirportByIata, getLocalizedAirportDetails, type DynamicAirport } from '../airports/airport-service';
 import { getSurfaceDestination, type SurfaceDestination } from './surface-destinations';
+import { datasetScopedCache } from '@/lib/datasets/store';
 
 export type DestinationPointKind = 'AIRPORT' | 'SURFACE';
 
@@ -57,15 +58,17 @@ export function getDestinationPoint(code: string, locale?: string): DestinationP
   if (!airport) return undefined;
   if (locale) return { ...getLocalizedAirportDetails(airport, locale), kind: 'AIRPORT' };
 
-  let point = airportPointCache.get(airport.code);
+  const cache = airportPointCache();
+  let point = cache.get(airport.code);
   if (!point) {
     point = { ...airport, kind: 'AIRPORT' };
-    airportPointCache.set(airport.code, point);
+    cache.set(airport.code, point);
   }
   return point;
 }
 
-const airportPointCache = new Map<string, DestinationPoint>();
+// Copies of airport records: emptied whenever a refreshed airport dataset lands
+const airportPointCache = datasetScopedCache<string, DestinationPoint>();
 
 function localizeSurfacePoint(point: DestinationPoint, s: SurfaceDestination, locale: string): DestinationPoint {
   const loc = (locale || 'en').slice(0, 2).toLowerCase() as 'en' | 'de' | 'fr' | 'es' | 'it';

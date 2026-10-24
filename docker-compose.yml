@@ -69,6 +69,11 @@ services:
       - NEXT_PUBLIC_UMAMI_SCRIPT_URL=${NEXT_PUBLIC_UMAMI_SCRIPT_URL:-/stats/script.js}
       - NEXT_PUBLIC_UMAMI_WEBSITE_ID=${NEXT_PUBLIC_UMAMI_WEBSITE_ID:-}
       - UMAMI_INTERNAL_URL=http://umami:3000
+      # Reference data (airports, routes, climate) refreshes itself in the background and is
+      # stored in Postgres; set to false to stay on the data bundled in the image.
+      - DATASET_AUTO_REFRESH=${DATASET_AUTO_REFRESH:-true}
+      # Paid Open-Meteo plan (needed for rain-duration data with LEGAL_OPERATION_MODE=commercial)
+      - OPEN_METEO_API_KEY=${OPEN_METEO_API_KEY:-}
     depends_on:
       migrate:
         condition: service_completed_successfully

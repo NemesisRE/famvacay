@@ -28,3 +28,10 @@ async function shutdown(signal: string) {
 
 process.on('SIGTERM', () => void shutdown('SIGTERM'));
 process.on('SIGINT', () => void shutdown('SIGINT'));
+
+// Reference data (airports, routes, climate...) refreshes itself in the background; the JSON
+// bundled in the repo is only the seed until the first refresh lands. Never awaited: register()
+// must finish before the server accepts requests.
+void import('@/lib/datasets/scheduler')
+  .then(({ startDatasetRefreshScheduler }) => startDatasetRefreshScheduler())
+  .catch((err) => console.warn('[datasets] could not start background refresh:', err?.message || err));

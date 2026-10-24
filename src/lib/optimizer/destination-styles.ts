@@ -8,6 +8,7 @@ import iso from 'iso-3166-2';
 import { DestinationType } from './types';
 import { getDestinationPoint } from '../geo/destination-points';
 import { getEstimatedClimate } from './weather';
+import { datasetScopedCache } from '@/lib/datasets/store';
 
 export const ISLAND_OR_COASTAL_COUNTRIES = new Set([
   'Bahamas', 'Dominican Republic', 'Jamaica', 'Cuba', 'Maldives', 'Seychelles', 'Mauritius',
@@ -59,14 +60,16 @@ export function getDestinationVacationStyles(
   // so bucket it: results list filtering calls this for every rendered window.
   const dist = distanceKm || 0;
   const cacheKey = `${airportCode}|${dist >= 3500 ? 'L' : dist === 0 ? '0' : 'S'}`;
-  const cached = stylesCache.get(cacheKey);
+  const cache = stylesCache();
+  const cached = cache.get(cacheKey);
   if (cached) return cached;
   const computed = computeDestinationVacationStyles(airportCode, dist);
-  stylesCache.set(cacheKey, computed);
+  cache.set(cacheKey, computed);
   return computed;
 }
 
-const stylesCache = new Map<string, DestinationType[]>();
+// Styles derive from airport and climate data: emptied whenever either is refreshed
+const stylesCache = datasetScopedCache<string, DestinationType[]>();
 
 function computeDestinationVacationStyles(airportCode: string, dist: number): DestinationType[] {
   const ap = getDestinationPoint(airportCode);

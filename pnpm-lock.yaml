@@ -181,6 +181,9 @@ importers:
       '@simplewebauthn/server':
         specifier: ^9.0.3
         version: 9.0.3
+      airport-data:
+        specifier: ^1.0.1
+        version: 1.0.1
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -257,9 +260,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^5.0.5
         version: 5.0.5(vitest@5.0.5)
-      airport-data:
-        specifier: ^1.0.1
-        version: 1.0.1
       dotenv:
         specifier: ^18.0.8
         version: 18.0.8

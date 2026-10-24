@@ -23,6 +23,8 @@ data:
   NEXT_PUBLIC_UMAMI_SCRIPT_URL: "/stats/script.js"
   NEXT_PUBLIC_UMAMI_WEBSITE_ID: ""
   UMAMI_INTERNAL_URL: "http://famvacay-umami:3000"
+  # Reference data refreshes itself in the background (stored in Postgres, one replica at a time)
+  DATASET_AUTO_REFRESH: "true"
   # LEGAL_OPERATOR_NAME / _STREET / _POSTAL_CITY / LEGAL_CONTACT_EMAIL / LEGAL_HOSTING_PROVIDER_*
   # are intentionally left unset here - src/lib/env.ts falls back to visible bracketed
   # placeholders so the build never fails; set real values via a Kustomize overlay patch.

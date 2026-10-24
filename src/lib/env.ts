@@ -26,6 +26,12 @@ const envSchema = z
     OPEN_HOLIDAYS_API_URL: z.string().url().default('https://openholidaysapi.org'),
     NAGER_DATE_API_URL: z.string().url().default('https://date.nager.at/api/v3'),
     OPEN_METEO_ARCHIVE_URL: z.string().url().default('https://archive-api.open-meteo.com/v1/archive'),
+    // Paid Open-Meteo plan: required to fetch rain-duration data in commercial operation mode
+    // (the free API is non-commercial only), see src/lib/integrations/open-meteo-access.ts
+    OPEN_METEO_API_KEY: z.string().optional(),
+    OPEN_METEO_CUSTOMER_ARCHIVE_URL: z.string().url().optional(),
+    // In-app background refresh of the reference datasets (default: on in production)
+    DATASET_AUTO_REFRESH: z.enum(['true', 'false']).optional(),
 
     // Impressum / Datenschutz (§5 DDG, Art. 13/14 GDPR) - all have safe placeholder fallbacks so
     // the build never fails without real operator details configured.

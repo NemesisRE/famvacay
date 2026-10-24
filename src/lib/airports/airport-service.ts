@@ -1,6 +1,7 @@
 import airportsData from './data/airports.json';
 import airportTrafficData from './data/airport-traffic.json';
 import { getLocalizedCityName } from './localized-city-names';
+import { derived, getDataset } from '@/lib/datasets/store';
 
 export interface DynamicAirport {
   code: string;       // 3-letter IATA code
@@ -95,30 +96,30 @@ export function getLocalizedAirportDetails(airport: DynamicAirport, locale: stri
 export const EXCLUDED_NON_COMMERCIAL_AIRPORTS = new Set<string>();
 export const NON_COMMERCIAL_KEYWORDS: string[] = [];
 
-// Index active commercial passenger airports worldwide
-const indexedAirports: DynamicAirport[] = (airportsData as DynamicAirport[]).map((a) => {
-  const meta = LOCALIZED_AIRPORT_METADATA[a.code];
-  return {
-    code: a.code,
-    icao: a.icao || '',
-    name: meta?.name?.en || a.name || '',
-    city: meta?.city?.en || a.city || '',
-    country: a.country || '',
-    lat: Number(a.lat),
-    lon: Number(a.lon),
-    altitude: Number(a.altitude) || 0,
-    type: a.type || undefined,
-    state: meta?.state || a.state || undefined,
-    isMajorHub: meta?.isMajorHub ?? Boolean(a.isMajorHub),
-    isHighSpeedRailConnected: Boolean(a.isHighSpeedRailConnected),
-    keywords: (a as any).keywords || undefined,
-  };
+// Index active commercial passenger airports worldwide (rebuilt when a refreshed dataset lands)
+const airportIndex = derived(() => {
+  const list: DynamicAirport[] = getDataset('airports', airportsData as DynamicAirport[]).map((a) => {
+    const meta = LOCALIZED_AIRPORT_METADATA[a.code];
+    return {
+      code: a.code,
+      icao: a.icao || '',
+      name: meta?.name?.en || a.name || '',
+      city: meta?.city?.en || a.city || '',
+      country: a.country || '',
+      lat: Number(a.lat),
+      lon: Number(a.lon),
+      altitude: Number(a.altitude) || 0,
+      type: a.type || undefined,
+      state: meta?.state || a.state || undefined,
+      isMajorHub: meta?.isMajorHub ?? Boolean(a.isMajorHub),
+      isHighSpeedRailConnected: Boolean(a.isHighSpeedRailConnected),
+      keywords: (a as any).keywords || undefined,
+    };
+  });
+  const byIata = new Map<string, DynamicAirport>();
+  for (const a of list) byIata.set(a.code, a);
+  return { list, byIata };
 });
-
-const airportByIataMap = new Map<string, DynamicAirport>();
-for (const a of indexedAirports) {
-  airportByIataMap.set(a.code, a);
-}
 
 export function isCommercialPassengerAirport(airport: {
   iata?: string;
@@ -131,7 +132,7 @@ export function isCommercialPassengerAirport(airport: {
   if (!code || code.length !== 3 || code === '\\N') {
     return false;
   }
-  return airportByIataMap.has(code);
+  return airportIndex().byIata.has(code);
 }
 
 /**
@@ -139,7 +140,7 @@ export function isCommercialPassengerAirport(airport: {
  */
 export function getAirportByIata(code: string, locale?: string): DynamicAirport | undefined {
   if (!code) return undefined;
-  const ap = airportByIataMap.get(code.toUpperCase());
+  const ap = airportIndex().byIata.get(code.toUpperCase());
   if (!ap) return undefined;
   return locale ? getLocalizedAirportDetails(ap, locale) : ap;
 }
@@ -148,7 +149,7 @@ export function getAirportByIata(code: string, locale?: string): DynamicAirport 
  * Returns all indexed commercial passenger airports
  */
 export function getAllCommercialAirports(): DynamicAirport[] {
-  return indexedAirports;
+  return airportIndex().list;
 }
 
 /**
@@ -169,7 +170,7 @@ export function getMajorAirportsForCountry(countryCodeOrName: string): string[] 
     }
   }
 
-  const matched = indexedAirports.filter((a) => {
+  const matched = airportIndex().list.filter((a) => {
     const c = a.country.toLowerCase();
     const st = (a.state || '').toLowerCase();
     return c === targetCountryName || (clean.length === 2 && st.startsWith(clean.toLowerCase() + '-'));
@@ -257,7 +258,7 @@ export function getRecommendedAirportsForCoordinates(
       const clean = d.trim().toLowerCase();
       const targetAirport =
         getAirportByIata(clean) ||
-        indexedAirports.find(
+        airportIndex().list.find(
           (a) =>
             a.code.toLowerCase() === clean ||
             a.city.toLowerCase() === clean ||
@@ -276,7 +277,7 @@ export function getRecommendedAirportsForCoordinates(
     }
   }
 
-  for (const airport of indexedAirports) {
+  for (const airport of airportIndex().list) {
     const distanceKm = calculateGeodesicDistanceKm(userLat, userLon, airport.lat, airport.lon);
     const rail = evaluateHighSpeedRailConnectivity(userLat, userLon, airport.code);
 
@@ -413,7 +414,7 @@ export function searchAirports(
   const q = query.trim().toUpperCase();
   if (!q) return [];
 
-  const matched = indexedAirports.filter((a) => {
+  const matched = airportIndex().list.filter((a) => {
     if (a.code === q) return true;
     if (a.code.startsWith(q)) return true;
     if (a.city.toUpperCase().includes(q)) return true;
@@ -453,12 +454,10 @@ export function searchAirports(
   return enriched.slice(0, limit);
 }
 
-const airportTraffic = airportTrafficData as Record<string, number>;
-
 /**
- * Peak annual passengers in millions (Wikidata P3872, generated by
- * scripts/generate-airport-traffic.js), or undefined when no figure is recorded.
+ * Peak annual passengers in millions (Wikidata P3872, see
+ * src/lib/datasets/generators/airport-traffic.ts), or undefined when no figure is recorded.
  */
 export function getAirportPassengersMillions(code: string): number | undefined {
-  return airportTraffic[(code || '').toUpperCase()];
+  return getDataset('airport-traffic', airportTrafficData as Record<string, number>)[(code || '').toUpperCase()];
 }

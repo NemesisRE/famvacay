@@ -4,10 +4,12 @@ import {
   historyWindow,
   summarizeRain,
   type ClimateGeneratorState,
-} from '../climate-normals-generator';
+} from '../generators/climate-normals';
 import { resolveOpenMeteoAccess, openMeteoCallCost } from '@/lib/integrations/open-meteo-access';
 import { getDestinationSeasonalWarning } from '@/lib/optimizer/weather';
 import type { WeatherAssessment } from '@/lib/optimizer/types';
+import airportsData from '@/lib/airports/data/airports.json';
+import flightRoutesData from '@/lib/airports/data/flight-routes.json';
 
 describe('Open-Meteo access by operation mode', () => {
   it('uses the free endpoint only in private mode', () => {
@@ -81,6 +83,8 @@ describe('generateClimateNormals', () => {
 
   const run = (state: ClimateGeneratorState, openMeteo: ReturnType<typeof resolveOpenMeteoAccess>, onlyCodes: string[]) =>
     generateClimateNormals({
+      airports: airportsData,
+      flightRoutes: flightRoutesData,
       state,
       saveState: async () => {},
       openMeteo,

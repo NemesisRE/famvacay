@@ -300,6 +300,29 @@ model CandidateVote {
   @@index([candidateId])
 }
 
+/// Reference datasets (airports, routes, traffic, city names, climate normals) refreshed in the
+/// background by the app itself (src/lib/datasets/refresh-service.ts). The JSON bundled in the
+/// repo is only the seed until the first refresh is published here.
+model GeneratedDataset {
+  name           String    @id
+  /// Increments with every published payload; replicas load anything newer than what they hold
+  version        Int       @default(0)
+  /// gzip-compressed JSON of the published dataset
+  payload        Bytes?
+  payloadSha256  String?
+  publishedAt    DateTime?
+  /// gzip-compressed JSON of the generator's resumable progress (e.g. climate cells fetched)
+  generatorState Bytes?
+  lastAttemptAt  DateTime?
+  lastError      String?
+  /// When the next refresh should run (null = as soon as possible, e.g. on a fresh install)
+  nextDueAt      DateTime?
+  /// Lease so only one replica refreshes a dataset at a time
+  leaseOwner     String?
+  leaseUntil     DateTime?
+  updatedAt      DateTime  @updatedAt
+}
+
 // -------------------------------------------------------------
 // Legacy Models Preserved for Database Migration Compatibility
 // -------------------------------------------------------------

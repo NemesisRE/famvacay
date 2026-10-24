@@ -3,6 +3,7 @@ import climateNormals from './data/climate-normals.json';
 import { DestinationType, WeatherAssessment } from './types';
 import { getAirportByIata } from '../airports/airport-service';
 import { getDestinationPoint } from '../geo/destination-points';
+import { getDataset } from '../datasets/store';
 
 export interface DestinationProfile {
   code: string;
@@ -336,11 +337,11 @@ export function getEasterDate(year: number): { month: number; day: number } {
  * Completely eliminates arbitrary latitude bounding boxes and static city lookup tables.
  */
 /**
- * Measured monthly climate normals (see src/lib/datasets/climate-normals-generator.ts):
+ * Measured monthly climate normals (see src/lib/datasets/generators/climate-normals.ts):
  * [12 x mean °C, 12 x mean daily range °C, 12 x precipitation mm/day]            (NASA POWER)
  * optionally followed by [12 x rainy days/month, 12 x rain hours per rainy day]  (Open-Meteo)
  */
-const CLIMATE_NORMALS = climateNormals as Record<string, number[]>;
+const climateNormalsData = () => getDataset('climate-normals', climateNormals as Record<string, number[]>);
 
 export interface ClimateNormals {
   avgTempC: number;
@@ -353,7 +354,8 @@ export interface ClimateNormals {
 }
 
 export function getClimateNormals(destinationCode: string, monthIndex: number): ClimateNormals | null {
-  const row = CLIMATE_NORMALS[(destinationCode || '').toUpperCase()] || CLIMATE_NORMALS[destinationCode];
+  const normalsByCode = climateNormalsData();
+  const row = normalsByCode[(destinationCode || '').toUpperCase()] || normalsByCode[destinationCode];
   if (!row || row.length < 36) return null;
   const normals: ClimateNormals = {
     avgTempC: row[monthIndex],
@@ -781,7 +783,7 @@ export function getDestinationSeasonalWarning(
     // Measured rain duration: a monsoon is heavy (>= 8 mm/day, ~240 mm/month), frequent AND
     // long-lasting rain; frequent but light or short rain (afternoon storms, trade-wind showers)
     // is only a rainy season. Rainy days count >= 2.5 mm, rain hours >= 0.5 mm/h (see
-    // climate-normals-generator.ts). E.g. Bali in January (10 mm/day, ~22 days of ~6 h) is a
+    // generators/climate-normals.ts). E.g. Bali in January (10 mm/day, ~22 days of ~6 h) is a
     // monsoon; Mauritius in August (~1 mm/day on ~18 short shower days) is not.
     const hoursLabel = Math.round(rainHours);
     const mmPerDay = weather.precipitationMmPerDay ?? 0;

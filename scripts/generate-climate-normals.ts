@@ -1,5 +1,5 @@
 /**
- * Climate Normals Generator (manual run) - see src/lib/datasets/climate-normals-generator.ts.
+ * Climate Normals Generator (manual run) - see src/lib/datasets/generators/climate-normals.ts.
  *
  * Writes src/lib/optimizer/data/climate-normals.json. Progress is cached in the OS temp directory,
  * so an interrupted run - or one that stopped at the Open-Meteo free-tier daily budget - simply
@@ -19,7 +19,9 @@ import 'dotenv/config';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { generateClimateNormals, type ClimateGeneratorState } from '../src/lib/datasets/climate-normals-generator';
+import { generateClimateNormals, type ClimateGeneratorState } from '../src/lib/datasets/generators/climate-normals';
+import airports from '../src/lib/airports/data/airports.json';
+import flightRoutes from '../src/lib/airports/data/flight-routes.json';
 import { resolveOpenMeteoAccess } from '../src/lib/integrations/open-meteo-access';
 
 const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1];
@@ -49,6 +51,8 @@ function loadState(): ClimateGeneratorState {
 
 async function main() {
   const result = await generateClimateNormals({
+    airports,
+    flightRoutes,
     state: loadState(),
     saveState: async (state) => fs.writeFileSync(cacheFile, JSON.stringify(state)),
     openMeteo: resolveOpenMeteoAccess(),

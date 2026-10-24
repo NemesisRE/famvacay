@@ -1,0 +1,139 @@
+import airportsSeed from '@/lib/airports/data/airports.json';
+import airportTrafficSeed from '@/lib/airports/data/airport-traffic.json';
+import cityNamesSeed from '@/lib/airports/data/city-names.json';
+import flightRoutesSeed from '@/lib/airports/data/flight-routes.json';
+import climateNormalsSeed from '@/lib/optimizer/data/climate-normals.json';
+import { resolveOpenMeteoAccess } from '@/lib/integrations/open-meteo-access';
+import { getDataset, type DatasetName } from './store';
+import type { AirportRecord, GeneratorContext } from './generators/common';
+import { generateAirports } from './generators/airports';
+import { generateFlightRoutes } from './generators/flight-routes';
+import { generateAirportTraffic } from './generators/airport-traffic';
+import { generateCityNames } from './generators/city-names';
+import { generateClimateNormals, type ClimateGeneratorState } from './generators/climate-normals';
+
+/**
+ * The refreshable reference datasets, in dependency order (routes, traffic, names and climate
+ * are derived from the airport list; climate also from the route network).
+ */
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export interface DatasetRunContext extends GeneratorContext {
+  /** Resumable generator progress persisted between runs (null on the first run). */
+  loadState: () => Promise<unknown | null>;
+  saveState: (state: unknown) => Promise<void>;
+}
+
+export interface DatasetRunResult {
+  data: unknown;
+  /** More work pending (e.g. a daily API budget ran out): retry soon instead of at the interval. */
+  incomplete?: boolean;
+}
+
+export interface DatasetDefinition {
+  name: DatasetName;
+  seed: unknown;
+  refreshIntervalMs: number;
+  /** Retry interval while a run reports `incomplete`. */
+  incompleteRetryMs?: number;
+  run: (ctx: DatasetRunContext) => Promise<DatasetRunResult>;
+  /**
+   * Sanity check before publishing - the replacement for the human review the weekly CI pull
+   * request used to get. Returns an error message, or null when the data may be published.
+   */
+  validate: (data: unknown, current: unknown) => string | null;
+}
+
+export const current = <T>(name: DatasetName, seed: unknown) => getDataset(name, seed) as T;
+
+function sizeOf(data: unknown): number {
+  if (Array.isArray(data)) return data.length;
+  if (data && typeof data === 'object') return Object.keys(data).length;
+  return 0;
+}
+
+/** Guards against an upstream source going (partly) empty: at least `min` entries and `ratio` of today's. */
+function notShrunk(data: unknown, currentData: unknown, min: number, ratio: number): string | null {
+  const size = sizeOf(data);
+  const before = sizeOf(currentData);
+  if (size < min) return `only ${size} entries (minimum ${min})`;
+  if (size < before * ratio) return `shrank from ${before} to ${size} entries (more than ${Math.round((1 - ratio) * 100)}%)`;
+  return null;
+}
+
+function everyValue(data: unknown, check: (value: unknown, key: string) => boolean): boolean {
+  return Boolean(data) && typeof data === 'object' && Object.entries(data as object).every(([k, v]) => check(v, k));
+}
+
+const airports = () => current<AirportRecord[]>('airports', airportsSeed);
+
+export const DATASET_DEFINITIONS: DatasetDefinition[] = [
+  {
+    name: 'airports',
+    seed: airportsSeed,
+    refreshIntervalMs: 30 * DAY_MS,
+    run: async (ctx) => ({ data: await generateAirports(ctx) }),
+    validate: (data, before) => {
+      if (!Array.isArray(data)) return 'not an array';
+      const bad = data.find(
+        (a: AirportRecord) => !/^[A-Z]{3}$/.test(a?.code) || !Number.isFinite(a?.lat) || !Number.isFinite(a?.lon)
+      );
+      if (bad) return `invalid airport record ${JSON.stringify(bad).slice(0, 120)}`;
+      return notShrunk(data, before, 1_000, 0.9);
+    },
+  },
+  {
+    name: 'flight-routes',
+    seed: flightRoutesSeed,
+    refreshIntervalMs: 30 * DAY_MS,
+    run: async (ctx) => ({ data: await generateFlightRoutes(ctx, airports()) }),
+    validate: (data, before) =>
+      everyValue(data, (v, k) => /^[A-Z]{3}$/.test(k) && typeof v === 'string')
+        ? notShrunk(data, before, 1_000, 0.9)
+        : 'invalid route adjacency list',
+  },
+  {
+    name: 'airport-traffic',
+    seed: airportTrafficSeed,
+    refreshIntervalMs: 30 * DAY_MS,
+    run: async (ctx) => ({ data: await generateAirportTraffic(ctx, airports()) }),
+    validate: (data, before) =>
+      everyValue(data, (v) => typeof v === 'number' && v > 0) ? notShrunk(data, before, 200, 0.8) : 'invalid traffic figures',
+  },
+  {
+    name: 'city-names',
+    seed: cityNamesSeed,
+    refreshIntervalMs: 30 * DAY_MS,
+    run: async (ctx) => ({ data: await generateCityNames(ctx, airports()) }),
+    validate: (data, before) =>
+      everyValue(data, (v) => Boolean(v) && typeof v === 'object') ? notShrunk(data, before, 200, 0.8) : 'invalid city names',
+  },
+  {
+    name: 'climate-normals',
+    seed: climateNormalsSeed,
+    // Climatology barely changes; the hourly retry lets rain-duration data fill in within the
+    // Open-Meteo free tier's per-hour and per-day limits.
+    refreshIntervalMs: 90 * DAY_MS,
+    incompleteRetryMs: 60 * 60 * 1000,
+    run: async (ctx) => {
+      const saved = (await ctx.loadState()) as ClimateGeneratorState | null;
+      const result = await generateClimateNormals({
+        airports: airports(),
+        flightRoutes: current<Record<string, string>>('flight-routes', flightRoutesSeed),
+        previousData: current<Record<string, number[]>>('climate-normals', climateNormalsSeed),
+        state: saved ?? { nasa: {}, rain: {} },
+        saveState: (state) => ctx.saveState(state),
+        openMeteo: resolveOpenMeteoAccess(),
+        fetchImpl: ctx.fetch,
+        sleep: ctx.sleep,
+        log: ctx.log,
+      });
+      return { data: result.data, incomplete: !result.complete };
+    },
+    validate: (data, before) =>
+      everyValue(data, (v) => Array.isArray(v) && (v.length === 36 || v.length === 60))
+        ? notShrunk(data, before, 1_000, 0.9)
+        : 'invalid climate rows',
+  },
+];

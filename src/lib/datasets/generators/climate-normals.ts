@@ -1,6 +1,5 @@
-import airports from '@/lib/airports/data/airports.json';
-import flightRoutes from '@/lib/airports/data/flight-routes.json';
 import { SURFACE_DESTINATIONS } from '@/lib/geo/surface-destinations';
+import type { AirportRecord } from './common';
 import {
   type OpenMeteoAccess,
   openMeteoCallCost,
@@ -59,6 +58,9 @@ export interface ClimateGeneratorState {
 }
 
 export interface ClimateGeneratorOptions {
+  /** Current airport and route datasets: climate is generated for airports with airline routes. */
+  airports: Pick<AirportRecord, 'code' | 'lat' | 'lon' | 'altitude'>[];
+  flightRoutes: Record<string, string>;
   state: ClimateGeneratorState;
   /** Persist progress (called periodically and at the end). */
   saveState: (state: ClimateGeneratorState) => Promise<void>;
@@ -103,10 +105,10 @@ export function climateCellOf(lat: number, lon: number): string {
   return `${cLat.toFixed(2)},${cLon.toFixed(3)}`;
 }
 
-function collectPoints(onlyCodes?: string[]): Point[] {
-  const routes = flightRoutes as Record<string, unknown>;
+function collectPoints(options: ClimateGeneratorOptions): Point[] {
+  const { airports, flightRoutes: routes, onlyCodes } = options;
   const points: Point[] = [];
-  for (const a of airports as Array<{ code: string; lat: number; lon: number; altitude?: number }>) {
+  for (const a of airports) {
     if (!routes[a.code]) continue;
     points.push({ code: a.code, lat: a.lat, lon: a.lon, elevation: (a.altitude || 0) * 0.3048 });
   }
@@ -205,7 +207,7 @@ export async function generateClimateNormals(options: ClimateGeneratorOptions): 
   state.nasa ||= {};
   state.rain ||= {};
 
-  const points = collectPoints(options.onlyCodes);
+  const points = collectPoints(options);
   const cellPoints = new Map<string, Point>();
   for (const p of points) {
     const cell = climateCellOf(p.lat, p.lon);
