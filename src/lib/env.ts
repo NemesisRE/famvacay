@@ -98,6 +98,12 @@ function validateEnv(): Env {
     console.warn('Invalid environment variables (non-fatal outside production):\n', JSON.stringify(parsed.error.format(), null, 2));
   }
 
+  // Not fatal: the database is only reachable on the internal network, but the compose default
+  // password is public
+  if (process.env.NODE_ENV === 'production' && !buildPhase && rawEnv.DATABASE_URL.includes(':famvacay_secure_password@')) {
+    console.warn('[env] DATABASE_URL uses the default password from docker-compose.yml. Set POSTGRES_PASSWORD to a random value.');
+  }
+
   return (parsed.success ? parsed.data : rawEnv) as Env;
 }
 

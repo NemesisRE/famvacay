@@ -88,6 +88,7 @@ const nextConfig = {
     ];
   },
   async headers() {
+    const isProduction = process.env.NODE_ENV === 'production';
     return [
       {
         source: '/:path*',
@@ -108,11 +109,15 @@ const nextConfig = {
             key: 'X-Frame-Options',
             value: 'DENY',
           },
+          // Browsers only honour HSTS over HTTPS, so plain-HTTP LAN setups are unaffected. No
+          // includeSubDomains: other services on sibling subdomains may not have TLS.
+          ...(isProduction ? [{ key: 'Strict-Transport-Security', value: 'max-age=31536000' }] : []),
           {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+              // 'unsafe-eval' is only needed by the dev server (React Fast Refresh)
+              `script-src 'self' 'unsafe-inline'${isProduction ? '' : " 'unsafe-eval'"}`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",

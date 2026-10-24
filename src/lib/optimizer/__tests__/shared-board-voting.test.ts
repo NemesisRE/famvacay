@@ -38,7 +38,9 @@ describe('Persistent trip sharing & voting', () => {
     for (const candidate of fakePrisma.__state.candidates.values()) {
       expect(candidate.boardId).toBe(board.id);
     }
-  });
+    // The first dynamic import of the route loads its whole module graph, which can exceed the
+    // default 5s under a busy full-suite run
+  }, 30_000);
 
   it('rejects an empty candidate list', async () => {
     const { POST } = await import('../../../app/api/vacations/share/route');

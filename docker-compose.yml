@@ -184,7 +184,7 @@ services:
   # Self-hosted, cookieless analytics (Umami) - reachable only via the web container's
   # /stats/* rewrite proxy (next.config.js), never exposed on proxy-network directly.
   umami:
-    image: ghcr.io/umami-software/umami:postgresql-latest
+    image: ghcr.io/umami-software/umami:3.4.1
     container_name: famvacay-umami
     restart: unless-stopped
     environment:
