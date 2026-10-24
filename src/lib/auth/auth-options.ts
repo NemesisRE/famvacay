@@ -5,6 +5,10 @@ import GoogleProvider from 'next-auth/providers/google';
 import AppleProvider from 'next-auth/providers/apple';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db/prisma';
+import { getAppleCredentials, getGoogleCredentials } from './oauth-config';
+
+const googleCredentials = getGoogleCredentials();
+const appleCredentials = getAppleCredentials();
 
 export const authOptions: AuthOptions = {
   // Use PrismaAdapter to persist accounts, sessions, and users
@@ -48,22 +52,20 @@ export const authOptions: AuthOptions = {
     }),
 
     // 2. Google OAuth
-    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+    ...(googleCredentials
       ? [
           GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            ...googleCredentials,
             allowDangerousEmailAccountLinking: true,
           }),
         ]
       : []),
 
     // 3. Apple Sign-In
-    ...(process.env.APPLE_ID && process.env.APPLE_SECRET
+    ...(appleCredentials
       ? [
           AppleProvider({
-            clientId: process.env.APPLE_ID,
-            clientSecret: process.env.APPLE_SECRET,
+            ...appleCredentials,
             allowDangerousEmailAccountLinking: true,
           }),
         ]

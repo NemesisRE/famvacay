@@ -606,7 +606,24 @@ export const it: TranslationDictionary = {
     analyticsOptInButton: 'Attiva statistiche',
     userRightsSectionTitle: 'I tuoi diritti (art. 15-21 GDPR)',
     userRightsNotice:
-      "Puoi richiedere in qualsiasi momento accesso, rettifica, cancellazione o un'esportazione portabile dei tuoi dati.",
+      "Hai diritto di accesso (art. 15), rettifica (art. 16), cancellazione (art. 17), limitazione del trattamento (art. 18) e portabilità (art. 20), nonché di opporti al trattamento basato sul legittimo interesse (art. 21 GDPR). Puoi esportare e cancellare i tuoi dati da solo nelle impostazioni dell'account; per qualsiasi altra richiesta contattaci all'indirizzo indicato sopra.",
+    consentWithdrawalNotice:
+      'Se il trattamento si basa sul tuo consenso, puoi revocarlo in qualsiasi momento con effetto per il futuro.',
+    complaintNotice:
+      "Hai inoltre il diritto di proporre reclamo a un'autorità di controllo per la protezione dei dati (art. 77 GDPR), in particolare nello Stato membro in cui risiedi, lavori o in cui si è verificata la presunta violazione.",
+    automatedDecisionNotice:
+      "Non utilizziamo processi decisionali automatizzati, compresa la profilazione, ai sensi dell'art. 22 GDPR. La classificazione dei periodi di vacanza è un calcolo da te richiesto, senza effetti giuridici o effetti analoghi significativi.",
+    hostingNoDpaNotice:
+      "Questa applicazione è ospitata su server situati in Germania. I log di accesso al server vengono conservati solo per il tempo necessario a fini di sicurezza e funzionamento e poi eliminati automaticamente.",
+    sharedLinksSectionTitle: 'Link condivisi e votazioni',
+    sharedLinksNotice:
+      "Quando condividi dei risultati, viene creato un link che chiunque lo possieda può aprire senza accedere (art. 6, par. 1, lett. b GDPR, su tua richiesta). Contiene solo quanto serve a mostrare i risultati - valori derivati come l'età dei bambini, la regione di partenza e gli aeroporti, ma nessun nome, indirizzo, coordinata o data di nascita. Chi vota su un link condiviso può indicare volontariamente un nome e un commento, visibili a chiunque abbia il link. I link condivisi, comprese tutte le votazioni, vengono eliminati 30 giorni dopo la creazione.",
+    storageSectionTitle: 'Cookie e memoria del browser',
+    storageNotice:
+      "FamVacay memorizza sul tuo dispositivo solo ciò che è strettamente necessario (§ 25, c. 2, n. 2 TDDDG): i cookie di accesso (sessione, protezione CSRF, indirizzo di ritorno) e, nella memoria locale del browser, lingua e tema, l'ultimo modulo di ricerca con i risultati, i filtri, i portali di prenotazione preferiti, il nome usato per votare e - se sono offerte statistiche - la tua scelta sulla privacy. La memoria locale resta sul tuo dispositivo; puoi cancellarla in qualsiasi momento nelle impostazioni del browser.",
+    retentionSectionTitle: 'Periodi di conservazione',
+    retentionNotice:
+      "I dati dell'account e del profilo familiare sono conservati fino alla cancellazione dell'account, che elimina tutti i dati collegati. Le sessioni di accesso scadono dopo 30 giorni. I link condivisi e le relative votazioni vengono eliminati 30 giorni dopo la creazione. Le ricerche di luoghi, vacanze e festività sono memorizzate nella cache del nostro server da 10 minuti a 30 giorni, senza riferimento alla tua persona. I log di accesso al server vengono eliminati dopo un breve periodo.",
     exportDataLink: 'Esporta i miei dati',
     accountSettingsLink: 'Vai alle impostazioni account',
     vatIdLabel: 'P.IVA',

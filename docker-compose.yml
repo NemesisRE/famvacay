@@ -74,6 +74,11 @@ services:
       - DATASET_AUTO_REFRESH=${DATASET_AUTO_REFRESH:-true}
       # Paid Open-Meteo plan (needed for rain-duration data with LEGAL_OPERATION_MODE=commercial)
       - OPEN_METEO_API_KEY=${OPEN_METEO_API_KEY:-}
+      # Optional third-party sign-in (enabled only when both values of a provider are set)
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - APPLE_CLIENT_ID=${APPLE_CLIENT_ID:-}
+      - APPLE_CLIENT_SECRET=${APPLE_CLIENT_SECRET:-}
     depends_on:
       migrate:
         condition: service_completed_successfully

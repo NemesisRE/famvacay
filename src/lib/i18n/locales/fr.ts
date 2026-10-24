@@ -606,7 +606,24 @@ export const fr: TranslationDictionary = {
     analyticsOptInButton: 'Activer les statistiques',
     userRightsSectionTitle: 'Vos droits (art. 15 à 21 RGPD)',
     userRightsNotice:
-      "Vous pouvez demander l'accès, la rectification, la suppression ou un export portable de vos données à tout moment.",
+      "Vous disposez d'un droit d'accès (art. 15), de rectification (art. 16), d'effacement (art. 17), de limitation du traitement (art. 18) et de portabilité (art. 20), ainsi que d'un droit d'opposition aux traitements fondés sur l'intérêt légitime (art. 21 RGPD). Vous pouvez exporter et supprimer vos données vous-même dans les paramètres du compte ; pour toute autre demande, contactez-nous à l'adresse ci-dessus.",
+    consentWithdrawalNotice:
+      'Lorsque le traitement repose sur votre consentement, vous pouvez le retirer à tout moment pour l\'avenir.',
+    complaintNotice:
+      "Vous avez également le droit d'introduire une réclamation auprès d'une autorité de contrôle de la protection des données (art. 77 RGPD), notamment dans l'État membre de votre résidence, de votre lieu de travail ou du lieu de la violation présumée.",
+    automatedDecisionNotice:
+      "Nous n'utilisons aucune prise de décision automatisée, y compris le profilage, au sens de l'art. 22 RGPD. Le classement des périodes de vacances est un calcul que vous demandez, sans effet juridique ni effet significatif similaire.",
+    hostingNoDpaNotice:
+      "Cette application est hébergée sur des serveurs situés en Allemagne. Les journaux d'accès serveur ne sont conservés que le temps nécessaire à la sécurité et à l'exploitation, puis supprimés automatiquement.",
+    sharedLinksSectionTitle: 'Liens partagés et votes',
+    sharedLinksNotice:
+      "Lorsque vous partagez des résultats, un lien est créé que toute personne le possédant peut ouvrir sans connexion (art. 6, par. 1, point b RGPD, à votre demande). Il ne contient que le nécessaire à l'affichage des résultats - des valeurs dérivées comme l'âge des enfants, la région et les aéroports de départ, mais aucun nom, adresse, coordonnée ni date de naissance. Les personnes qui votent peuvent indiquer volontairement un nom et un commentaire, visibles par toute personne disposant du lien. Les liens partagés, votes compris, sont supprimés 30 jours après leur création.",
+    storageSectionTitle: 'Cookies et stockage du navigateur',
+    storageNotice:
+      "FamVacay ne stocke sur votre appareil que ce qui est strictement nécessaire (§ 25, al. 2, n° 2 TDDDG) : les cookies de connexion (session, protection CSRF, adresse de retour) et, dans le stockage local du navigateur, la langue et le thème, votre dernier formulaire de recherche et ses résultats, les filtres, les portails de réservation préférés, le nom utilisé pour voter et - si des statistiques sont proposées - votre choix de confidentialité. Le stockage local reste sur votre appareil ; vous pouvez le supprimer à tout moment dans les paramètres du navigateur.",
+    retentionSectionTitle: 'Durée de conservation',
+    retentionNotice:
+      "Les données du compte et du profil familial sont conservées jusqu'à la suppression de votre compte, qui efface toutes les données associées. Les sessions de connexion expirent après 30 jours. Les liens partagés et leurs votes sont supprimés 30 jours après leur création. Les recherches de lieux, de vacances et de jours fériés sont mises en cache sur notre serveur de 10 minutes à 30 jours, sans lien avec votre personne. Les journaux d'accès serveur sont supprimés après une courte période.",
     exportDataLink: 'Exporter mes données',
     accountSettingsLink: 'Accéder aux paramètres du compte',
     vatIdLabel: 'N° de TVA',

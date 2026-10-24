@@ -606,7 +606,24 @@ export const de: TranslationDictionary = {
     analyticsOptInButton: 'Analyse aktivieren',
     userRightsSectionTitle: 'Ihre Rechte (Art. 15–21 DSGVO)',
     userRightsNotice:
-      'Sie können jederzeit Auskunft, Berichtigung, Löschung oder eine portable Exportdatei Ihrer Daten verlangen.',
+      'Sie haben das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18) und Datenübertragbarkeit (Art. 20) sowie das Recht, einer Verarbeitung auf Grundlage berechtigter Interessen zu widersprechen (Art. 21 DSGVO). Export und Löschung Ihrer Daten können Sie selbst in den Kontoeinstellungen vornehmen; für alles Weitere wenden Sie sich an die oben genannte Adresse.',
+    consentWithdrawalNotice:
+      'Soweit eine Verarbeitung auf Ihrer Einwilligung beruht, können Sie diese jederzeit mit Wirkung für die Zukunft widerrufen.',
+    complaintNotice:
+      'Sie haben zudem das Recht, sich bei einer Datenschutz-Aufsichtsbehörde zu beschweren (Art. 77 DSGVO), insbesondere in dem EU-Mitgliedstaat Ihres Aufenthaltsorts, Ihres Arbeitsplatzes oder des Orts des mutmaßlichen Verstoßes.',
+    automatedDecisionNotice:
+      'Eine automatisierte Entscheidungsfindung einschließlich Profiling im Sinne von Art. 22 DSGVO findet nicht statt. Die Bewertung von Urlaubszeiträumen ist eine von Ihnen angeforderte Berechnung ohne rechtliche oder ähnlich erhebliche Wirkung.',
+    hostingNoDpaNotice:
+      'Diese Anwendung wird auf Servern mit Standort in Deutschland betrieben. Server-Zugriffsprotokolle werden nur so lange gespeichert, wie es für Sicherheits- und Betriebszwecke erforderlich ist, und danach automatisch gelöscht.',
+    sharedLinksSectionTitle: 'Geteilte Links & Abstimmungen',
+    sharedLinksNotice:
+      'Wenn Sie Suchergebnisse teilen, entsteht ein Link, den jede Person mit diesem Link ohne Anmeldung öffnen kann (Art. 6 Abs. 1 lit. b DSGVO, auf Ihren Wunsch). Er enthält nur, was zur Anzeige der Ergebnisse nötig ist - abgeleitete Werte wie das Alter der Kinder, Heimatregion und Abflughäfen, aber keine Namen, Adressen, Koordinaten oder Geburtsdaten. Wer über einen geteilten Link abstimmt, kann freiwillig einen Namen und einen Kommentar angeben; beides ist für alle mit dem Link sichtbar. Geteilte Links werden samt aller Abstimmungen 30 Tage nach ihrer Erstellung gelöscht.',
+    storageSectionTitle: 'Cookies & Speicher im Browser',
+    storageNotice:
+      'FamVacay speichert auf Ihrem Gerät nur, was technisch unbedingt erforderlich ist (§ 25 Abs. 2 Nr. 2 TDDDG): die Login-Cookies unserer Anmeldung (Sitzung, CSRF-Schutz, Rücksprungadresse) sowie im lokalen Speicher Ihres Browsers Sprache und Farbschema, Ihr letztes Suchformular samt Ergebnissen (damit ein Neuladen nichts verliert), Ergebnisfilter, bevorzugte Buchungsportale, den beim Abstimmen verwendeten Namen und - sofern Statistik angeboten wird - Ihre Datenschutz-Auswahl. Der lokale Speicher verbleibt auf Ihrem Gerät; Sie können ihn jederzeit in den Browsereinstellungen löschen.',
+    retentionSectionTitle: 'Speicherdauer',
+    retentionNotice:
+      'Konto- und Familienprofildaten werden gespeichert, bis Sie Ihr Konto löschen; dabei werden alle zugehörigen Daten gelöscht. Login-Sitzungen laufen nach 30 Tagen ab. Geteilte Links und ihre Abstimmungen werden 30 Tage nach Erstellung gelöscht. Such-, Orts- und Feiertagsabfragen werden auf unserem Server für 10 Minuten bis 30 Tage ohne Personenbezug zwischengespeichert. Server-Zugriffsprotokolle werden nach kurzer Zeit gelöscht.',
     exportDataLink: 'Meine Daten exportieren',
     accountSettingsLink: 'Zu den Kontoeinstellungen',
     vatIdLabel: 'USt-IdNr.',

@@ -604,6 +604,16 @@ export interface TranslationDictionary {
     analyticsOptInButton: string;
     userRightsSectionTitle: string;
     userRightsNotice: string;
+    consentWithdrawalNotice: string;
+    complaintNotice: string;
+    automatedDecisionNotice: string;
+    hostingNoDpaNotice: string;
+    sharedLinksSectionTitle: string;
+    sharedLinksNotice: string;
+    storageSectionTitle: string;
+    storageNotice: string;
+    retentionSectionTitle: string;
+    retentionNotice: string;
     exportDataLink: string;
     accountSettingsLink: string;
     vatIdLabel: string;

@@ -605,7 +605,25 @@ export const en: TranslationDictionary = {
     analyticsOptOutButton: 'Disable analytics',
     analyticsOptInButton: 'Enable analytics',
     userRightsSectionTitle: 'Your Rights (Art. 15-21 GDPR)',
-    userRightsNotice: 'You may request access, rectification, erasure, or a portable export of your data at any time.',
+    userRightsNotice:
+      'You have the right of access (Art. 15), rectification (Art. 16), erasure (Art. 17), restriction of processing (Art. 18) and data portability (Art. 20), and the right to object to processing based on legitimate interests (Art. 21 GDPR). You can export and delete your data yourself in your account settings; for anything else, contact us at the address above.',
+    consentWithdrawalNotice:
+      'Where processing is based on your consent, you can withdraw it at any time with effect for the future.',
+    complaintNotice:
+      'You also have the right to lodge a complaint with a data protection supervisory authority (Art. 77 GDPR), in particular in the EU member state of your residence, your place of work or the place of the alleged infringement.',
+    automatedDecisionNotice:
+      'We do not use automated decision-making, including profiling, within the meaning of Art. 22 GDPR. Ranking vacation windows is a calculation you request; it has no legal or similarly significant effect on you.',
+    hostingNoDpaNotice:
+      'This application is hosted on servers located in Germany. Server access logs are retained only as long as necessary for security and operational purposes, then automatically deleted.',
+    sharedLinksSectionTitle: 'Shared Links & Voting',
+    sharedLinksNotice:
+      "When you share search results, a link is created that anyone who has it can open without logging in (Art. 6(1)(b) GDPR, at your request). It contains only what is needed to show the results - derived values such as children's ages, home region and departure airports, but no names, addresses, coordinates or dates of birth. People voting on a shared link may enter a name and a comment voluntarily; both are visible to everyone with the link. Shared links, including all votes, are deleted 30 days after they were created.",
+    storageSectionTitle: 'Cookies & Browser Storage',
+    storageNotice:
+      'FamVacay only stores what is strictly necessary on your device (§ 25(2) No. 2 TDDDG): the login cookies set by our authentication (session, CSRF protection, return address), and in your browser\'s local storage your language and theme, your last search form and results (so a reload does not lose them), result filters, preferred booking portals, the name you used for voting and - where analytics are offered - your privacy choice. Local storage stays on your device; you can delete it at any time in your browser settings.',
+    retentionSectionTitle: 'Storage Periods',
+    retentionNotice:
+      'Account and family profile data are stored until you delete your account, which deletes all associated data. Login sessions expire after 30 days. Shared links and their votes are deleted 30 days after creation. Search, place and holiday lookups are cached on our server for 10 minutes to 30 days without reference to your person. Server access logs are deleted after a short period.',
     exportDataLink: 'Export my data',
     accountSettingsLink: 'Go to Account Settings',
     vatIdLabel: 'VAT ID',
