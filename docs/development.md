@@ -92,3 +92,29 @@ pnpm run test:coverage
 pnpm run test:e2e
 ```
 
+
+## Pull Requests & Releases
+
+Releases are drafted automatically by [Release Drafter](https://github.com/release-drafter/release-drafter)
+(`.github/release-drafter.yml`). Every pull request merged into `main` is added to a draft
+release, and its labels decide both the release-notes section and the next version:
+
+| Label | Version bump |
+| --- | --- |
+| `breaking-change` | major (`1.4.2` → `2.0.0`) |
+| `feature`, `enhancement` | minor (`1.4.2` → `1.5.0`) |
+| anything else (`fix`, `security`, `dependencies`, `chore`, ...) | patch (`1.4.2` → `1.4.3`) |
+| `skip-changelog` | left out of the release notes |
+
+Pull request titles follow [Conventional Commits](https://www.conventionalcommits.org/), and the
+labels are set from them automatically: `feat: ...` → `feature`, `fix: ...` → `fix`,
+`feat!: ...` or a `BREAKING CHANGE` note in the description → `breaking-change`. Renaming the title
+updates the labels; labels can also be set or corrected by hand. Commits pushed directly to `main`
+without a pull request do not appear in the release notes.
+
+To release, open the draft under **Releases**, check the notes and the version, and click
+**Publish release**. Publishing creates the `vX.Y.Z` tag, and the CI pipeline then builds the
+`linux/amd64` and `linux/arm64` images and pushes them to
+`ghcr.io/nemesisre/famvacay` as `X.Y.Z`, `X.Y`, `X` and `latest`.
+
+Labels themselves are defined in `.github/labels.yml` and synced by the *Sync Labels* workflow.

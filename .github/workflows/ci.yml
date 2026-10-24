@@ -260,7 +260,13 @@ jobs:
         working-directory: ${{ runner.temp }}/digests
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/famvacay"
+          version="${GITHUB_REF_NAME#v}"
+          # v1.4.2 -> 1.4.2, 1.4, 1 and latest; a prerelease (v1.5.0-rc.1) only gets its own tag
+          tags=(-t "$image:$version")
+          if [[ "$version" != *-* ]]; then
+            tags+=(-t "$image:${version%.*}" -t "$image:${version%%.*}" -t "$image:latest")
+          fi
           refs=()
           for digest in *; do refs+=("$image@sha256:$digest"); done
-          docker buildx imagetools create -t "$image:${GITHUB_REF_NAME}" -t "$image:latest" "${refs[@]}"
-          docker buildx imagetools inspect "$image:${GITHUB_REF_NAME}"
+          docker buildx imagetools create "${tags[@]}" "${refs[@]}"
+          docker buildx imagetools inspect "$image:$version"

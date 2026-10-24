@@ -1,0 +1,117 @@
+# Release Drafter: keeps a draft release up to date with every pull request merged into main.
+# Publishing the draft creates the tag, and the CI pipeline then builds and pushes the
+# multi-arch container image for it (.github/workflows/ci.yml, docker-merge).
+#
+# Version bump, from the pull request labels (the highest one wins):
+#   breaking-change          -> major
+#   feature, enhancement     -> minor
+#   everything else          -> patch
+# The autolabeler below sets these labels from conventional-commit PR titles
+# (feat:, fix:, feat!:, ...); labels can also be set or corrected by hand.
+
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+categories:
+  - type: 'pre-exclude'
+    when:
+      label: 'skip-changelog'
+
+  # Exclusive categories first: a breaking feature or a dependency fix is listed once
+  - title: '💥 Breaking Changes'
+    semver-increment: 'major'
+    exclusive: true
+    when:
+      label: 'breaking-change'
+  - title: '🔒 Security'
+    exclusive: true
+    when:
+      label: 'security'
+  - title: '📦 Dependencies'
+    exclusive: true
+    collapse-after: 3
+    when:
+      label: 'dependencies'
+  - title: '🚀 Features'
+    semver-increment: 'minor'
+    when:
+      labels:
+        - 'feature'
+        - 'enhancement'
+  - title: '🐛 Bug Fixes'
+    when:
+      labels:
+        - 'fix'
+        - 'bug'
+  - title: '⚡ Performance'
+    when:
+      label: 'performance'
+  - title: '🧰 Maintenance'
+    collapse-after: 5
+    when:
+      labels:
+        - 'chore'
+        - 'ci'
+        - 'refactor'
+        - 'test'
+        - 'documentation'
+
+  # Anything not labelled still counts as a patch release
+  - type: 'version-resolver'
+    semver-increment: 'patch'
+
+change-template: '- $TITLE (#$NUMBER) $AUTHORS'
+# Escape Markdown characters and prevent accidental @mentions in PR titles
+change-title-escapes: '\<*_&@'
+no-changes-template: '- No changes'
+
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+  ## Container Image
+
+  ```bash
+  docker pull ghcr.io/nemesisre/famvacay:$RESOLVED_VERSION
+  ```
+
+  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...$RESOLVED_TAG
+
+# Labels from conventional-commit PR titles; sync-labels swaps them when a title changes
+# (e.g. fix: -> feat:). Labels not listed here (dependencies, bug, enhancement, ...) are
+# never removed.
+sync-labels: true
+autolabeler:
+  - labels: ['breaking-change']
+    title:
+      - '/^\w+(\([^)]*\))?!:/'
+    body:
+      - '/BREAKING[ -]CHANGE/'
+  - labels: ['feature']
+    title:
+      - '/^feat(\([^)]*\))?!?:/i'
+  - labels: ['fix']
+    title:
+      - '/^fix(\([^)]*\))?!?:/i'
+  - labels: ['security']
+    title:
+      - '/^\w+\(security\)!?:/i'
+  - labels: ['performance']
+    title:
+      - '/^perf(\([^)]*\))?!?:/i'
+  - labels: ['refactor']
+    title:
+      - '/^refactor(\([^)]*\))?!?:/i'
+  - labels: ['test']
+    title:
+      - '/^test(\([^)]*\))?!?:/i'
+  - labels: ['ci']
+    title:
+      - '/^ci(\([^)]*\))?!?:/i'
+  - labels: ['documentation']
+    title:
+      - '/^docs(\([^)]*\))?!?:/i'
+  - labels: ['chore']
+    title:
+      - '/^(chore|build|style|revert)(\([^)]*\))?!?:/i'

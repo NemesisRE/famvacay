@@ -1,0 +1,40 @@
+name: Release Drafter
+
+# Keeps the draft release for the next version up to date (config: .github/release-drafter.yml)
+# and labels pull requests from their conventional-commit titles, which decides whether the
+# next release is a major, minor or patch version.
+on:
+  push:
+    branches: [ "main" ]
+  # pull_request_target so pull requests from forks can be labelled too. Safe here: the job
+  # never checks out or runs code from the pull request, it only reads its title and body.
+  pull_request_target:
+    types: [ opened, reopened, synchronize, edited ]
+
+permissions:
+  contents: read
+
+jobs:
+  update-draft:
+    name: Update Release Draft
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    concurrency:
+      group: release-drafter
+      cancel-in-progress: false
+    steps:
+      - name: Update Draft Release
+        uses: release-drafter/release-drafter@978bb0b30c5ee8cdd332ced253758157150d43f0 # v7.10.0
+
+  autolabel:
+    name: Label Pull Request
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Apply Labels from Title
+        uses: release-drafter/release-drafter/autolabeler@978bb0b30c5ee8cdd332ced253758157150d43f0 # v7.10.0
