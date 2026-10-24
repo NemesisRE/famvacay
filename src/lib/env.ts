@@ -30,8 +30,9 @@ const envSchema = z
     // (the free API is non-commercial only), see src/lib/integrations/open-meteo-access.ts
     OPEN_METEO_API_KEY: z.string().optional(),
     OPEN_METEO_CUSTOMER_ARCHIVE_URL: z.string().url().optional(),
-    // In-app background refresh of the reference datasets (default: on in production)
-    DATASET_AUTO_REFRESH: z.enum(['true', 'false']).optional(),
+    // In-app background refresh of the reference datasets (default: on in production);
+    // empty means "use the default", as in .env.example
+    DATASET_AUTO_REFRESH: z.enum(['true', 'false', '']).optional(),
 
     // Impressum / Datenschutz (§5 DDG, Art. 13/14 GDPR) - all have safe placeholder fallbacks so
     // the build never fails without real operator details configured.
