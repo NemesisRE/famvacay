@@ -1295,7 +1295,12 @@ export function optimizeVacationWindows(
       tempDiff = cand.weather.avgTempC - tempBand.maxIdeal;
     }
     const tempQuality = Math.max(10, Math.round(100 - tempDiff * 4.5));
-    const rainQuality = Math.max(10, 100 - cand.weather.precipitationRiskPercent * 2);
+    // Where measured, how long it rains on a rainy day scales the rain penalty: a short afternoon
+    // storm costs far less vacation time than a day of steady rain. ~3 h of noticeable rain is
+    // typical on a rainy day, hence the neutral point (1 h -> 0.6x, 5+ h -> 1.4x).
+    const rainHours = cand.weather.rainHoursPerRainyDay;
+    const rainDurationFactor = rainHours !== undefined ? Math.min(1.4, Math.max(0.6, rainHours / 3)) : 1;
+    const rainQuality = Math.max(10, 100 - cand.weather.precipitationRiskPercent * 2 * rainDurationFactor);
     let weatherIndex = Math.round((tempQuality * 0.6 + rainQuality * 0.4) * 10) / 10;
 
     if (input.minBeachTemp && cand.weather.avgTempC >= input.minBeachTemp) {

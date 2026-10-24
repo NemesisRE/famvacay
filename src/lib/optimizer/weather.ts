@@ -336,17 +336,35 @@ export function getEasterDate(year: number): { month: number; day: number } {
  * Completely eliminates arbitrary latitude bounding boxes and static city lookup tables.
  */
 /**
- * Measured monthly climate normals (NASA POWER, see scripts/generate-climate-normals.js):
- * [12 x mean °C, 12 x mean daily range °C, 12 x precipitation mm/day] per destination code.
+ * Measured monthly climate normals (see src/lib/datasets/climate-normals-generator.ts):
+ * [12 x mean °C, 12 x mean daily range °C, 12 x precipitation mm/day]            (NASA POWER)
+ * optionally followed by [12 x rainy days/month, 12 x rain hours per rainy day]  (Open-Meteo)
  */
 const CLIMATE_NORMALS = climateNormals as Record<string, number[]>;
 
-export function getClimateNormals(destinationCode: string, monthIndex: number):
-  | { avgTempC: number; dailyRangeC: number; precipMmPerDay: number }
-  | null {
+export interface ClimateNormals {
+  avgTempC: number;
+  dailyRangeC: number;
+  precipMmPerDay: number;
+  /** Observed rainy days (>= 1 mm) per month - only where rain-duration data was fetched. */
+  rainyDays?: number;
+  /** Mean hours of rain on those rainy days - only where rain-duration data was fetched. */
+  rainHoursPerRainyDay?: number;
+}
+
+export function getClimateNormals(destinationCode: string, monthIndex: number): ClimateNormals | null {
   const row = CLIMATE_NORMALS[(destinationCode || '').toUpperCase()] || CLIMATE_NORMALS[destinationCode];
   if (!row || row.length < 36) return null;
-  return { avgTempC: row[monthIndex], dailyRangeC: row[12 + monthIndex], precipMmPerDay: row[24 + monthIndex] };
+  const normals: ClimateNormals = {
+    avgTempC: row[monthIndex],
+    dailyRangeC: row[12 + monthIndex],
+    precipMmPerDay: row[24 + monthIndex],
+  };
+  if (row.length >= 60) {
+    normals.rainyDays = row[36 + monthIndex];
+    normals.rainHoursPerRainyDay = row[48 + monthIndex];
+  }
+  return normals;
 }
 
 export function getEstimatedClimate(
@@ -463,8 +481,12 @@ export function getEstimatedClimate(
   let rainyDaysFromNormals: number | null = null;
   if (normals) {
     tempBase = normals.avgTempC;
-    // ~2.2 rain days per mm of mean daily precipitation (e.g. Antalya January: 5.9 mm/day -> 13 days)
-    rainyDaysFromNormals = Math.max(1, Math.min(24, Math.round(normals.precipMmPerDay * 2.2)));
+    rainyDaysFromNormals =
+      normals.rainyDays !== undefined
+        ? // Observed rainy days (Open-Meteo archive)
+          Math.max(0, Math.min(31, Math.round(normals.rainyDays)))
+        : // ~2.2 rain days per mm of mean daily precipitation (e.g. Antalya January: 5.9 mm/day -> 13 days)
+          Math.max(1, Math.min(24, Math.round(normals.precipMmPerDay * 2.2)));
     precipRisk = Math.min(95, Math.round((rainyDaysFromNormals / 22) * 100));
   }
 
@@ -509,6 +531,8 @@ export function getEstimatedClimate(
     minTempC,
     waterTempC: isMaritime ? waterTemp : null,
     rainyDays,
+    rainHoursPerRainyDay: normals?.rainHoursPerRainyDay,
+    precipitationMmPerDay: normals?.precipMmPerDay,
     sunshineHoursPerDay: sunshineHours,
     precipitationRiskPercent: precipRisk,
     isSuitable,
@@ -752,7 +776,34 @@ export function getDestinationSeasonalWarning(
   // results by default) vs. the milder RAINY_SEASON (noticeably more rain than usual, but not
   // monsoon-level - shown by default with only a small score penalty).
   const effectiveRainyDays = weather.rainyDays ?? Math.max(1, Math.round((weather.precipitationRiskPercent / 100) * 22));
-  if (Math.abs(lat) <= 26 && weather.avgTempC >= 24) {
+  const rainHours = weather.rainHoursPerRainyDay;
+  if (Math.abs(lat) <= 26 && weather.avgTempC >= 24 && rainHours !== undefined) {
+    // Measured rain duration: a monsoon is heavy (>= 8 mm/day, ~240 mm/month), frequent AND
+    // long-lasting rain; frequent but light or short rain (afternoon storms, trade-wind showers)
+    // is only a rainy season. Rainy days count >= 2.5 mm, rain hours >= 0.5 mm/h (see
+    // climate-normals-generator.ts). E.g. Bali in January (10 mm/day, ~22 days of ~6 h) is a
+    // monsoon; Mauritius in August (~1 mm/day on ~18 short shower days) is not.
+    const hoursLabel = Math.round(rainHours);
+    const mmPerDay = weather.precipitationMmPerDay ?? 0;
+    if (mmPerDay >= 8 && effectiveRainyDays >= 15 && rainHours >= 4) {
+      return {
+        destinationCode,
+        seasonType: 'MONSOON',
+        monthRange: [5, 6, 7, 8, 9],
+        messageKey: 'seasonWarningMonsoon',
+        fallbackMessage: `Monsoon season: Rain on ~${effectiveRainyDays} days, typically ~${hoursLabel} hours each.`,
+      };
+    }
+    if (effectiveRainyDays >= 15 || (effectiveRainyDays >= 10 && rainHours >= 4)) {
+      return {
+        destinationCode,
+        seasonType: 'RAINY_SEASON',
+        monthRange: [5, 6, 7, 8, 9],
+        messageKey: 'seasonWarningRainySeason',
+        fallbackMessage: `Rainy season: Rain on ~${effectiveRainyDays} days, typically ~${hoursLabel} hours each.`,
+      };
+    }
+  } else if (Math.abs(lat) <= 26 && weather.avgTempC >= 24) {
     if (weather.precipitationRiskPercent >= 65 || effectiveRainyDays >= 18) {
       return {
         destinationCode,

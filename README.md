@@ -124,6 +124,7 @@ and test-run first, never auto-merged — see the workflow for details):
 - **Airline route network:** [OpenFlights route database](https://openflights.org/data), made available under the [Open Database License](https://opendatacommons.org/licenses/odbl/1-0/) (`pnpm run generate:flight-routes`)
 - **School holidays (home regions and Europe's big source markets):** [OpenHolidays API](https://www.openholidaysapi.org); markets it does not (fully) cover - United Kingdom, Italy, Spain, and incomplete years for France/Poland - use typical national calendars (`src/lib/holidays/source-markets.ts`)
 - **Climate normals (monthly temperature, daily range, rainfall):** [NASA POWER](https://power.larc.nasa.gov) climatology, public domain (`pnpm run generate:climate-normals`)
+- **Rain duration (rainy days, hours of rain per rainy day):** [Weather data by Open-Meteo.com](https://open-meteo.com/), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (same script). The free Open-Meteo API is for non-commercial use only: with `LEGAL_OPERATION_MODE=commercial`, new data is fetched only with a paid-plan `OPEN_METEO_API_KEY` (customer endpoint, 10 years of history instead of 3); already published data stays in use
 - **Localized city names & airport passenger figures:** [Wikidata](https://www.wikidata.org), CC0 (`pnpm run generate:city-names`, `pnpm run generate:airport-traffic`)
 
 ---

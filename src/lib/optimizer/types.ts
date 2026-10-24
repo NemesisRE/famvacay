@@ -130,6 +130,10 @@ export interface WeatherAssessment {
   minTempC?: number;
   waterTempC?: number | null;
   rainyDays?: number;
+  /** Mean hours of rain on a rainy day (measured; absent where no rain-duration data exists). */
+  rainHoursPerRainyDay?: number;
+  /** Mean precipitation in mm/day (measured climate normals; absent for formula estimates). */
+  precipitationMmPerDay?: number;
   sunshineHoursPerDay?: number;
   hasSnow?: boolean;
   snowDepthCm?: number;
