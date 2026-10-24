@@ -62,10 +62,16 @@ describe('Regions, Subdivisions & Airport Proximity', () => {
   });
 
   it('evaluates destination seasonal constraints and warnings accurately', () => {
-    // Bangkok in July (monthIndex 6) has Monsoon warning
+    // Bangkok in July (monthIndex 6) is noticeably rainier than usual but not yet the peak -
+    // the milder RAINY_SEASON tier, not the full MONSOON severity
     const bkkWarning = getDestinationSeasonalWarning('BKK', 6);
     expect(bkkWarning).not.toBeNull();
-    expect(bkkWarning?.seasonType).toBe('MONSOON');
+    expect(bkkWarning?.seasonType).toBe('RAINY_SEASON');
+
+    // Bangkok in September (monthIndex 8), the actual peak of Thailand's rainy season: heavy,
+    // near-constant downpours - the severe MONSOON tier
+    const bkkPeakWarning = getDestinationSeasonalWarning('BKK', 8);
+    expect(bkkPeakWarning?.seasonType).toBe('MONSOON');
 
     // Bangkok in December (monthIndex 11) is cool and dry, no warning
     expect(getDestinationSeasonalWarning('BKK', 11)).toBeNull();

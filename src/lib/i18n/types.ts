@@ -196,6 +196,8 @@ export interface TranslationDictionary {
     seasonalWarningBadge: string;
     seasonWarningMonsoonTitle: string;
     seasonWarningMonsoonDesc: string;
+    seasonWarningRainySeasonTitle: string;
+    seasonWarningRainySeasonDesc: string;
     seasonWarningExtremeHeatTitle: string;
     seasonWarningExtremeHeatDesc: string;
     seasonWarningHurricaneTitle: string;

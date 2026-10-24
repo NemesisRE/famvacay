@@ -151,6 +151,7 @@ export const POPULAR_DESTINATIONS: Record<string, DestinationProfile> = new Prox
 
 export type SeasonalWarningType =
   | 'MONSOON'
+  | 'RAINY_SEASON'
   | 'EXTREME_HEAT'
   | 'TYPHOON_HURRICANE'
   | 'OVERCROWDED_PEAK'
@@ -207,6 +208,15 @@ export function getSeasonalWarningPenalty(
         overallScorePenalty: 10,
         severity: 'high',
         reason: 'Sustained monsoon rain and high humidity impair outdoor leisure.',
+      };
+    case 'RAINY_SEASON':
+      // Noticeably more rain than usual, but not the heavy, near-constant downpours of a monsoon -
+      // a small malus rather than a severity tier that gets filtered out of results by default.
+      return {
+        weatherPenalty: 8,
+        overallScorePenalty: 3,
+        severity: 'moderate',
+        reason: 'More rain than usual, though not constant downpours.',
       };
     case 'EXTREME_HEAT':
       // Treat extreme summer heat as an allowed user-configurable constraint/filter preference
@@ -736,21 +746,31 @@ export function getDestinationSeasonalWarning(
     };
   }
 
-  // 5. Monsoon Warning
-  // Evaluated directly from tropical convective precipitation and high humidity
+  // 5. Monsoon / Rainy Season Warning
+  // Evaluated directly from tropical convective precipitation and high humidity. Two severity
+  // tiers on the same underlying signal: MONSOON (heavy, near-constant rain - filtered out of
+  // results by default) vs. the milder RAINY_SEASON (noticeably more rain than usual, but not
+  // monsoon-level - shown by default with only a small score penalty).
   const effectiveRainyDays = weather.rainyDays ?? Math.max(1, Math.round((weather.precipitationRiskPercent / 100) * 22));
-  if (
-    Math.abs(lat) <= 26 &&
-    weather.avgTempC >= 24 &&
-    (weather.precipitationRiskPercent >= 45 || effectiveRainyDays >= 14)
-  ) {
-    return {
-      destinationCode,
-      seasonType: 'MONSOON',
-      monthRange: [5, 6, 7, 8, 9],
-      messageKey: 'seasonWarningMonsoon',
-      fallbackMessage: `Monsoon season: Heavy tropical downpours and high humidity (${effectiveRainyDays} rain days).`,
-    };
+  if (Math.abs(lat) <= 26 && weather.avgTempC >= 24) {
+    if (weather.precipitationRiskPercent >= 65 || effectiveRainyDays >= 18) {
+      return {
+        destinationCode,
+        seasonType: 'MONSOON',
+        monthRange: [5, 6, 7, 8, 9],
+        messageKey: 'seasonWarningMonsoon',
+        fallbackMessage: `Monsoon season: Heavy, near-constant tropical downpours and high humidity (${effectiveRainyDays} rain days).`,
+      };
+    }
+    if (weather.precipitationRiskPercent >= 45 || effectiveRainyDays >= 14) {
+      return {
+        destinationCode,
+        seasonType: 'RAINY_SEASON',
+        monthRange: [5, 6, 7, 8, 9],
+        messageKey: 'seasonWarningRainySeason',
+        fallbackMessage: `Rainy season: Noticeably more rain than usual (${effectiveRainyDays} rain days), but not constant downpours.`,
+      };
+    }
   }
 
   // 6. Seasonal & Local Natural Phenomenon Warnings

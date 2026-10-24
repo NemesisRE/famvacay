@@ -188,6 +188,8 @@ export const fr: TranslationDictionary = {
     seasonalWarningBadge: 'Avis de saisonnalité',
     seasonWarningMonsoonTitle: 'Saison de la mousson',
     seasonWarningMonsoonDesc: 'Fortes averses tropicales et humidité très élevée durant cette période.',
+    seasonWarningRainySeasonTitle: 'Saison des pluies',
+    seasonWarningRainySeasonDesc: 'Nettement plus de pluie que d\'habitude durant cette période, mais pas d\'averses continues.',
     seasonWarningExtremeHeatTitle: 'Chaleur estivale extrême',
     seasonWarningExtremeHeatDesc: 'Températures diurnes dépassant régulièrement 40°C, inadapté aux jeunes enfants.',
     seasonWarningHurricaneTitle: 'Saison des tempêtes tropicales',

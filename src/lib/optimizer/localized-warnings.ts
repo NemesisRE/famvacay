@@ -86,8 +86,11 @@ export function getWindowSeasonalWarnings(win: {
 }
 
 /**
- * Returns the primary non-heat seasonal warning controlled by the Seasonal Warnings filter
- * (Extreme Summer Heat has its own dedicated filter).
+ * Returns the primary seasonal warning controlled by the Seasonal Warnings filter (CLEAN_ONLY,
+ * hidden unless explicitly allowed). Extreme Summer Heat has its own dedicated filter, and
+ * RAINY_SEASON (noticeably more rain than usual, but not a monsoon's heavy near-constant
+ * downpours) is deliberately excluded too - it only carries a small score malus and stays
+ * visible by default rather than being filtered out like the more severe MONSOON.
  */
 export function getWindowFilterWarning(win: {
   destinationAirport: string;
@@ -95,7 +98,11 @@ export function getWindowFilterWarning(win: {
   seasonalWarning?: SeasonalConstraintWarning | null;
   sourceMarketDemand?: { index: number; marketsOnHoliday: string[] };
 }): SeasonalConstraintWarning | null {
-  return getWindowSeasonalWarnings(win).find((w) => w.seasonType !== 'EXTREME_HEAT') || null;
+  return (
+    getWindowSeasonalWarnings(win).find(
+      (w) => w.seasonType !== 'EXTREME_HEAT' && w.seasonType !== 'RAINY_SEASON'
+    ) || null
+  );
 }
 
 /**
@@ -144,6 +151,11 @@ export function getLocalizedSeasonalWarning(
       return {
         title: t.home.seasonWarningMonsoonTitle,
         description: withMarkets(t.home.seasonWarningMonsoonDesc),
+      };
+    case 'RAINY_SEASON':
+      return {
+        title: t.home.seasonWarningRainySeasonTitle,
+        description: withMarkets(t.home.seasonWarningRainySeasonDesc),
       };
     case 'EXTREME_HEAT':
       return {

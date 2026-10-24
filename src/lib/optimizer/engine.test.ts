@@ -505,6 +505,12 @@ describe('Arbitrage Airport Info & Localized Seasonal Warnings', () => {
     );
     expect(monsoon.title).toBe(en.home.seasonWarningMonsoonTitle);
 
+    const rainySeason = getLocalizedSeasonalWarning(
+      { destinationCode: 'DPS', seasonType: 'RAINY_SEASON', monthRange: [11], messageKey: '', fallbackMessage: '' },
+      en
+    );
+    expect(rainySeason.title).toBe(en.home.seasonWarningRainySeasonTitle);
+
     const heat = getLocalizedSeasonalWarning(
       { destinationCode: 'DXB', seasonType: 'EXTREME_HEAT', monthRange: [6], messageKey: '', fallbackMessage: '' },
       en
