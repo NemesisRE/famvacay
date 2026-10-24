@@ -35,3 +35,8 @@ process.on('SIGINT', () => void shutdown('SIGINT'));
 void import('@/lib/datasets/scheduler')
   .then(({ startDatasetRefreshScheduler }) => startDatasetRefreshScheduler())
   .catch((err) => console.warn('[datasets] could not start background refresh:', err?.message || err));
+
+// Shared links are deleted 30 days after creation, as the privacy policy states
+void import('@/lib/share/purge-expired-boards')
+  .then(({ startExpiredBoardPurge }) => startExpiredBoardPurge())
+  .catch((err) => console.warn('[share] could not start expired board purge:', err?.message || err));
