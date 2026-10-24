@@ -578,6 +578,8 @@ export const de: TranslationDictionary = {
     liabilityTitle: 'Haftung für ausgehende Links',
     liabilityNotice:
       'Diese Seite verlinkt auf externe Buchungsportale. Auf deren Inhalte haben wir keinen Einfluss und übernehmen hierfür keine Haftung; für die Inhalte der verlinkten Seiten ist stets der jeweilige Anbieter verantwortlich.',
+    dataSourcesTitle: 'Datenquellen',
+    dataSourcesIntro: 'FamVacay basiert auf offenen Daten aus folgenden Quellen:',
     controllerSectionTitle: 'Verantwortlicher',
     hostingDpaSectionTitle: 'Hosting & Auftragsverarbeitung',
     hostingDpaNotice:

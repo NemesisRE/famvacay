@@ -582,6 +582,8 @@ export interface TranslationDictionary {
     disputeResolutionNotice: string;
     liabilityTitle: string;
     liabilityNotice: string;
+    dataSourcesTitle: string;
+    dataSourcesIntro: string;
     controllerSectionTitle: string;
     hostingDpaSectionTitle: string;
     hostingDpaNotice: string;
