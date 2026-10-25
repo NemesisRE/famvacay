@@ -23,7 +23,11 @@ export function SiteFooter() {
           {t.common.sourceCode}
         </a>
         <span className="hidden sm:inline">•</span>
-        <Link href="/imprint" className="underline hover:text-slate-800 dark:hover:text-slate-200 transition-colors">
+        <Link href="/about" className="underline hover:text-slate-800 dark:hover:text-slate-200 transition-colors">
+          {t.about.footerLink}
+        </Link>
+        <span className="hidden sm:inline">•</span>
+        <Link href="/imprint"className="underline hover:text-slate-800 dark:hover:text-slate-200 transition-colors">
           {t.legal.footerImprintLink}
         </Link>
         <span className="hidden sm:inline">•</span>

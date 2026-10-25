@@ -1,3 +1,11 @@
+import type {
+  AccommodationBookingAction,
+  BookingTimingReason,
+  BookingTimingStatus,
+  BookingTravelMode,
+  TransportBookingAction,
+} from '@/lib/pricing/booking-timing';
+
 export type SupportedLocale = 'en' | 'de' | 'fr' | 'es' | 'it';
 
 export const DEFAULT_LOCALE: SupportedLocale = 'en';
@@ -646,4 +654,47 @@ export interface TranslationDictionary {
     retry: string;
     home: string;
   };
+  /** Booking lead-time advisor; placeholders: {days}, {minWeeks}, {maxWeeks} */
+  bookingTiming: {
+    title: string;
+    leadTime: string;
+    leadTimeOne: string;
+    leadTimeToday: string;
+    statusLabel: Record<BookingTimingStatus, string>;
+    statusSummary: Record<BookingTimingStatus, string>;
+    reasons: Record<BookingTimingReason, string>;
+    transportHeading: Record<BookingTravelMode, string>;
+    /** BOOK_NOW_IN_WINDOW: BOOK_NOW while inside the mode's lowest-price window */
+    transport: Record<TransportBookingAction | 'BOOK_NOW_IN_WINDOW', string>;
+    accommodationHeading: string;
+    accommodation: Record<AccommodationBookingAction, string>;
+    disclaimer: string;
+  };
+  about: {
+    footerLink: string;
+    heroBadge: string;
+    heroTitle: string;
+    heroIntro: string;
+    heroIntroSecond: string;
+    divisionTitle: string;
+    divisionIntro: string;
+    humanTitle: string;
+    humanSubtitle: string;
+    humanItems: Record<'idea' | 'design' | 'architecture' | 'testing', AboutItem>;
+    aiTitle: string;
+    aiSubtitle: string;
+    aiItems: Record<'code' | 'tests', AboutItem>;
+    capabilitiesTitle: string;
+    capabilitiesIntro: string;
+    capabilities: Record<'solver' | 'climate' | 'pto' | 'privacy', AboutItem>;
+    honestyTitle: string;
+    honestyBody: string;
+    honestyBodySecond: string;
+    sourceCodeLink: string;
+  };
+}
+
+export interface AboutItem {
+  title: string;
+  body: string;
 }

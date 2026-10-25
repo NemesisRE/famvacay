@@ -54,6 +54,8 @@ import { MultiDestinationInput } from '@/components/destination/MultiDestination
 import { ClimateDetailsPopover } from '@/components/climate/ClimateDetailsPopover';
 import { BookingDealsPopover } from '@/components/pricing/BookingDealsPopover';
 import { BackgroundSearchBanner, SearchLoadingPanel, type BackgroundSearchState } from '@/components/search/SearchProgress';
+import { BookingTimingBadge } from '@/components/pricing/BookingTimingAdvisor';
+import { evaluateBookingTimingForCandidate } from '@/lib/pricing/booking-timing';
 import { FlightDetailsPopover } from '@/components/airports/FlightDetailsPopover';
 import {
   getLocalizedSeasonalWarning,
@@ -1837,6 +1839,10 @@ export default function HomePage() {
                   <span className="block text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                     {win.travelVehicle && win.travelVehicle !== 'PLANE' ? t.home.travelAndLodgingIncluded : t.home.flightAndLodgingIncluded}
                   </span>
+                  {/* When to book; details in the deals popover */}
+                  <div className="mt-1 flex sm:justify-end">
+                    <BookingTimingBadge advice={evaluateBookingTimingForCandidate(win)} />
+                  </div>
                 </div>
               );
             })()}

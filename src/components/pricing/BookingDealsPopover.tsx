@@ -33,6 +33,8 @@ import {
 import { AggregatedTripPricing } from '@/lib/pricing/types';
 import { CandidateWindow } from '@/lib/optimizer/types';
 import { generateVacationIcs } from '@/lib/calendar/ics-export';
+import { evaluateBookingTimingForCandidate } from '@/lib/pricing/booking-timing';
+import { BookingTimingCard } from './BookingTimingAdvisor';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/destination-points';
 import {
@@ -147,6 +149,7 @@ export function BookingDealsPopover({
   }
 
   const { flight, lodging } = pricingDetails;
+  const timingAdvice = candidate ? evaluateBookingTimingForCandidate(candidate) : null;
 
   // Overland trips (car/train/coach) have no flight leg: show the vehicle's round-trip cost,
   // skip flight/package portals and Park-Sleep-Fly, and search accommodation by place name
@@ -283,6 +286,9 @@ export function BookingDealsPopover({
               </div>
             ) : (
               <div className="space-y-3 py-3 text-xs">
+                {/* When to book: first, because it decides whether to use the links below now */}
+                {timingAdvice && <BookingTimingCard advice={timingAdvice} />}
+
                 {/* Trip Cost Breakdown Summary */}
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div className="p-2 rounded-lg bg-teal-50/70 dark:bg-teal-950/30 border border-teal-100 dark:border-teal-900/60">
