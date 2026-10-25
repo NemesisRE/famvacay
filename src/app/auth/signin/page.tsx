@@ -82,7 +82,7 @@ export default function SignInPage() {
       }
 
       const options = await optRes.json();
-      const credential = await startRegistration(options);
+      const credential = await startRegistration({ optionsJSON: options });
 
       const verifyRes = await fetch('/api/auth/passkeys/verify-registration', {
         method: 'POST',
