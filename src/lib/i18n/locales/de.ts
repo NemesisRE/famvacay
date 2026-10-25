@@ -21,6 +21,8 @@ export const de: TranslationDictionary = {
     estimatesDisclaimerTitle: 'Alle Angaben sind Schätzungen.',
     estimatesDisclaimerText: 'Flugverbindungen, Strecken, Reisezeiten, Preise, Wetter und Reisehinweise beruhen auf offenen Daten und Modellen, nicht auf Live-Buchungsdaten. Bitte prüfe Verfügbarkeit, Preise sowie Einreise- und Sicherheitshinweise vor der Buchung direkt beim Anbieter.',
     constraintsTitle: 'Reisebedingungen & Filter',
+    constraintsExpand: "Suchoptionen anzeigen",
+    constraintsCollapse: "Suchoptionen ausblenden",
     formReset: 'Zurücksetzen',
     formResetTitle: 'Formular und gespeicherte Einstellungen zurücksetzen',
     filterReset: 'Filter zurücksetzen',
@@ -433,9 +435,9 @@ export const de: TranslationDictionary = {
     allDistances: 'Alle Distanzen',
     distShort: '< 1.000 km (Kurzstrecke / Regional)',
     distMid: '< 2.500 km (Europa & Mittelmeer)',
-    distExtended: '< 3.500 km (Kanaren & Erweitertes Mittelmeer)',
+    distExtended: '< 4.000 km (Kanaren, Rotes Meer & Erweitertes Mittelmeer)',
     distLong: '< 6.000 km (Naher Osten & Langstrecke)',
-    distIntercontinental: '> 3.500 km (Nur Fernreise & Exotisch)',
+    distIntercontinental: '> 4.000 km (Nur Fernreise & Exotisch)',
     showOnMap: 'Auf Karte zeigen',
     mapOpenGoogleMaps: 'In Google Maps öffnen',
     mapOpenOsm: 'In OpenStreetMap öffnen',
@@ -625,7 +627,7 @@ export const de: TranslationDictionary = {
       'Wenn Sie Suchergebnisse teilen, entsteht ein Link, den jede Person mit diesem Link ohne Anmeldung öffnen kann (Art. 6 Abs. 1 lit. b DSGVO, auf Ihren Wunsch). Er enthält nur, was zur Anzeige der Ergebnisse nötig ist - abgeleitete Werte wie das Alter der Kinder, Heimatregion und Abflughäfen, aber keine Namen, Adressen, Koordinaten oder Geburtsdaten. Geteilte Links werden 30 Tage nach ihrer Erstellung gelöscht.',
     storageSectionTitle: 'Cookies & Speicher im Browser',
     storageNotice:
-      'FamVacay speichert auf Ihrem Gerät nur, was technisch unbedingt erforderlich ist (§ 25 Abs. 2 Nr. 2 TDDDG): die Login-Cookies unserer Anmeldung (Sitzung, CSRF-Schutz, Rücksprungadresse) sowie im lokalen Speicher Ihres Browsers Sprache und Farbschema, Ihr letztes Suchformular samt Ergebnissen (damit ein Neuladen nichts verliert), Ergebnisfilter, bevorzugte Buchungsportale und - sofern Statistik angeboten wird - Ihre Datenschutz-Auswahl. Der lokale Speicher verbleibt auf Ihrem Gerät; Sie können ihn jederzeit in den Browsereinstellungen löschen.',
+      'FamVacay speichert auf Ihrem Gerät nur, was technisch unbedingt erforderlich ist (§ 25 Abs. 2 Nr. 2 TDDDG): die Login-Cookies unserer Anmeldung (Sitzung, CSRF-Schutz, Rücksprungadresse) sowie im lokalen Speicher Ihres Browsers Sprache und Farbschema, Ihr letztes Suchformular samt Ergebnissen (damit ein Neuladen nichts verliert), Ergebnisfilter, bevorzugte Buchungsportale und - sofern Statistik angeboten wird - Ihre Datenschutz-Auswahl. Der lokale Speicher verbleibt auf Ihrem Gerät; Sie können ihn jederzeit in den Browsereinstellungen löschen. Damit FamVacay als installierte App und offline funktioniert, speichert Ihr Browser außerdem eine Kopie der Programmdateien und öffentlichen Seiten (keine personenbezogenen Daten).',
     retentionSectionTitle: 'Speicherdauer',
     retentionNotice:
       'Konto- und Familienprofildaten werden gespeichert, bis Sie Ihr Konto löschen; dabei werden alle zugehörigen Daten gelöscht. Login-Sitzungen laufen nach 30 Tagen ab. Geteilte Links werden 30 Tage nach Erstellung gelöscht. Such-, Orts- und Feiertagsabfragen werden auf unserem Server für 10 Minuten bis 30 Tage ohne Personenbezug zwischengespeichert. Server-Zugriffsprotokolle werden nach kurzer Zeit gelöscht.',
@@ -672,5 +674,11 @@ export const de: TranslationDictionary = {
       "Prüfe, ob Oma auch mitkommen kann…",
       "Übe „Noch ein Eis, bitte“ in fünf Sprachen…",
     ],
+  },
+  offline: {
+    title: "Du bist offline",
+    body: "Diese Seite lässt sich ohne Internetverbindung nicht laden. Deine letzten Suchergebnisse findest du noch eine Weile auf der Startseite.",
+    retry: "Erneut versuchen",
+    home: "Zur Startseite",
   },
 };

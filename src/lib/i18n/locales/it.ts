@@ -21,6 +21,8 @@ export const it: TranslationDictionary = {
     estimatesDisclaimerTitle: 'Tutti i dati sono stime.',
     estimatesDisclaimerText: 'Collegamenti aerei, percorsi, tempi di viaggio, prezzi, meteo e avvisi di viaggio si basano su dati aperti e modelli, non su dati di prenotazione in tempo reale. Verifica disponibilità, prezzi e requisiti di ingresso e sicurezza presso il fornitore prima di prenotare.',
     constraintsTitle: 'Criteri e Preferenze di Viaggio',
+    constraintsExpand: "Mostra le opzioni di ricerca",
+    constraintsCollapse: "Nascondi le opzioni di ricerca",
     formReset: 'Reimposta',
     formResetTitle: 'Reimposta il modulo e le impostazioni salvate',
     filterReset: 'Reimposta filtro',
@@ -433,9 +435,9 @@ export const it: TranslationDictionary = {
     allDistances: 'Tutte le distanze',
     distShort: '< 1.000 km (Corto raggio / Regionale)',
     distMid: '< 2.500 km (Europa & Mediterraneo)',
-    distExtended: '< 3.500 km (Canarie & Mediterraneo esteso)',
+    distExtended: '< 4.000 km (Canarie, Mar Rosso & Mediterraneo esteso)',
     distLong: '< 6.000 km (Vicino Oriente & Lungo raggio)',
-    distIntercontinental: '> 3.500 km (Solo lungo raggio ed esotico)',
+    distIntercontinental: '> 4.000 km (Solo lungo raggio ed esotico)',
     showOnMap: 'Mostra sulla mappa',
     mapOpenGoogleMaps: 'Apri in Google Maps',
     mapOpenOsm: 'Apri in OpenStreetMap',
@@ -625,7 +627,7 @@ export const it: TranslationDictionary = {
       "Quando condividi dei risultati, viene creato un link che chiunque lo possieda può aprire senza accedere (art. 6, par. 1, lett. b GDPR, su tua richiesta). Contiene solo quanto serve a mostrare i risultati - valori derivati come l'età dei bambini, la regione di partenza e gli aeroporti, ma nessun nome, indirizzo, coordinata o data di nascita. I link condivisi vengono eliminati 30 giorni dopo la creazione.",
     storageSectionTitle: 'Cookie e memoria del browser',
     storageNotice:
-      "FamVacay memorizza sul tuo dispositivo solo ciò che è strettamente necessario (§ 25, c. 2, n. 2 TDDDG): i cookie di accesso (sessione, protezione CSRF, indirizzo di ritorno) e, nella memoria locale del browser, lingua e tema, l'ultimo modulo di ricerca con i risultati, i filtri, i portali di prenotazione preferiti e - se sono offerte statistiche - la tua scelta sulla privacy. La memoria locale resta sul tuo dispositivo; puoi cancellarla in qualsiasi momento nelle impostazioni del browser.",
+      "FamVacay memorizza sul tuo dispositivo solo ciò che è strettamente necessario (§ 25, c. 2, n. 2 TDDDG): i cookie di accesso (sessione, protezione CSRF, indirizzo di ritorno) e, nella memoria locale del browser, lingua e tema, l'ultimo modulo di ricerca con i risultati, i filtri, i portali di prenotazione preferiti e - se sono offerte statistiche - la tua scelta sulla privacy. La memoria locale resta sul tuo dispositivo; puoi cancellarla in qualsiasi momento nelle impostazioni del browser. Per funzionare come app installata e offline, il browser conserva anche una copia dei file del programma e delle pagine pubbliche di FamVacay (nessun dato personale).",
     retentionSectionTitle: 'Periodi di conservazione',
     retentionNotice:
       "I dati dell'account e del profilo familiare sono conservati fino alla cancellazione dell'account, che elimina tutti i dati collegati. Le sessioni di accesso scadono dopo 30 giorni. I link condivisi vengono eliminati 30 giorni dopo la creazione. Le ricerche di luoghi, vacanze e festività sono memorizzate nella cache del nostro server da 10 minuti a 30 giorni, senza riferimento alla tua persona. I log di accesso al server vengono eliminati dopo un breve periodo.",
@@ -672,5 +674,11 @@ export const it: TranslationDictionary = {
       "Controllo se anche la nonna può venire…",
       "Mi esercito con «Un altro gelato, per favore» in cinque lingue…",
     ],
+  },
+  offline: {
+    title: "Sei offline",
+    body: "Questa pagina non si può caricare senza connessione a internet. Gli ultimi risultati di ricerca restano disponibili per un po' nella pagina iniziale.",
+    retry: "Riprova",
+    home: "Pagina iniziale",
   },
 };

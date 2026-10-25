@@ -21,6 +21,8 @@ export const es: TranslationDictionary = {
     estimatesDisclaimerTitle: 'Todos los datos son estimaciones.',
     estimatesDisclaimerText: 'Las conexiones de vuelo, rutas, tiempos de viaje, precios, el clima y las recomendaciones de viaje se basan en datos abiertos y modelos, no en datos de reserva en tiempo real. Comprueba disponibilidad, precios y requisitos de entrada y seguridad con el proveedor antes de reservar.',
     constraintsTitle: 'Filtros y Requisitos',
+    constraintsExpand: "Mostrar opciones de búsqueda",
+    constraintsCollapse: "Ocultar opciones de búsqueda",
     formReset: 'Restablecer',
     formResetTitle: 'Restablecer el formulario y los ajustes guardados',
     filterReset: 'Restablecer filtro',
@@ -433,9 +435,9 @@ export const es: TranslationDictionary = {
     allDistances: 'Todas las distancias',
     distShort: '< 1.000 km (Corto radio / Regional)',
     distMid: '< 2.500 km (Europa y Mediterráneo)',
-    distExtended: '< 3.500 km (Canarias y Mediterráneo extendido)',
+    distExtended: '< 4.000 km (Canarias, mar Rojo y Mediterráneo extendido)',
     distLong: '< 6.000 km (Oriente Próximo y Largo radio)',
-    distIntercontinental: '> 3.500 km (Solo largo radio y exótico)',
+    distIntercontinental: '> 4.000 km (Solo largo radio y exótico)',
     showOnMap: 'Ver en el mapa',
     mapOpenGoogleMaps: 'Abrir en Google Maps',
     mapOpenOsm: 'Abrir en OpenStreetMap',
@@ -625,7 +627,7 @@ export const es: TranslationDictionary = {
       'Cuando comparte resultados, se crea un enlace que cualquier persona que lo tenga puede abrir sin iniciar sesión (art. 6.1.b RGPD, a petición suya). Solo contiene lo necesario para mostrar los resultados: valores derivados como la edad de los niños, la región de origen y los aeropuertos de salida, pero ningún nombre, dirección, coordenada ni fecha de nacimiento. Los enlaces compartidos se eliminan 30 días después de su creación.',
     storageSectionTitle: 'Cookies y almacenamiento del navegador',
     storageNotice:
-      'FamVacay solo guarda en su dispositivo lo estrictamente necesario (§ 25.2 n.º 2 TDDDG): las cookies de inicio de sesión (sesión, protección CSRF, dirección de retorno) y, en el almacenamiento local del navegador, el idioma y el tema, su último formulario de búsqueda y resultados, los filtros, los portales de reserva preferidos y, si se ofrecen estadísticas, su elección de privacidad. El almacenamiento local permanece en su dispositivo; puede borrarlo en cualquier momento en la configuración del navegador.',
+      'FamVacay solo guarda en su dispositivo lo estrictamente necesario (§ 25.2 n.º 2 TDDDG): las cookies de inicio de sesión (sesión, protección CSRF, dirección de retorno) y, en el almacenamiento local del navegador, el idioma y el tema, su último formulario de búsqueda y resultados, los filtros, los portales de reserva preferidos y, si se ofrecen estadísticas, su elección de privacidad. El almacenamiento local permanece en su dispositivo; puede borrarlo en cualquier momento en la configuración del navegador. Para funcionar como aplicación instalada y sin conexión, su navegador guarda también una copia de los archivos del programa y de las páginas públicas de FamVacay (ningún dato personal).',
     retentionSectionTitle: 'Plazos de conservación',
     retentionNotice:
       'Los datos de la cuenta y del perfil familiar se conservan hasta que elimine su cuenta, lo que borra todos los datos asociados. Las sesiones de inicio de sesión caducan a los 30 días. Los enlaces compartidos se eliminan 30 días después de su creación. Las consultas de búsqueda, lugares y festivos se guardan en caché en nuestro servidor de 10 minutos a 30 días sin referencia a su persona. Los registros de acceso al servidor se eliminan tras un breve periodo.',
@@ -672,5 +674,11 @@ export const es: TranslationDictionary = {
       "Comprobando si la abuela también puede venir…",
       "Practicando \"Otro helado, por favor\" en cinco idiomas…",
     ],
+  },
+  offline: {
+    title: "Estás sin conexión",
+    body: "Esta página no se puede cargar sin conexión a internet. Tus últimos resultados de búsqueda siguen disponibles un tiempo en la página de inicio.",
+    retry: "Reintentar",
+    home: "Página de inicio",
   },
 };

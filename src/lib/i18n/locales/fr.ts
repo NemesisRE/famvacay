@@ -21,6 +21,8 @@ export const fr: TranslationDictionary = {
     estimatesDisclaimerTitle: 'Toutes les données sont des estimations.',
     estimatesDisclaimerText: 'Les vols, itinéraires, durées de trajet, prix, la météo et les conseils aux voyageurs reposent sur des données ouvertes et des modèles, pas sur des données de réservation en temps réel. Vérifie disponibilités, prix et conditions d’entrée et de sécurité auprès du prestataire avant de réserver.',
     constraintsTitle: 'Critères de Voyage',
+    constraintsExpand: "Afficher les critères de recherche",
+    constraintsCollapse: "Masquer les critères de recherche",
     formReset: 'Réinitialiser',
     formResetTitle: 'Réinitialiser le formulaire et les réglages enregistrés',
     filterReset: 'Réinitialiser le filtre',
@@ -433,9 +435,9 @@ export const fr: TranslationDictionary = {
     allDistances: 'Toutes les distances',
     distShort: '< 1 000 km (Court-courrier / Régional)',
     distMid: '< 2 500 km (Europe & Méditerranée)',
-    distExtended: '< 3 500 km (Canaries & Méditerranée étendue)',
+    distExtended: '< 4 000 km (Canaries, mer Rouge & Méditerranée étendue)',
     distLong: '< 6 000 km (Moyen-Orient & Long-courrier)',
-    distIntercontinental: '> 3 500 km (Long-courrier & Exotique uniquement)',
+    distIntercontinental: '> 4 000 km (Long-courrier & Exotique uniquement)',
     showOnMap: 'Voir sur la carte',
     mapOpenGoogleMaps: 'Ouvrir dans Google Maps',
     mapOpenOsm: 'Ouvrir dans OpenStreetMap',
@@ -625,7 +627,7 @@ export const fr: TranslationDictionary = {
       "Lorsque vous partagez des résultats, un lien est créé que toute personne le possédant peut ouvrir sans connexion (art. 6, par. 1, point b RGPD, à votre demande). Il ne contient que le nécessaire à l'affichage des résultats - des valeurs dérivées comme l'âge des enfants, la région et les aéroports de départ, mais aucun nom, adresse, coordonnée ni date de naissance. Les liens partagés sont supprimés 30 jours après leur création.",
     storageSectionTitle: 'Cookies et stockage du navigateur',
     storageNotice:
-      "FamVacay ne stocke sur votre appareil que ce qui est strictement nécessaire (§ 25, al. 2, n° 2 TDDDG) : les cookies de connexion (session, protection CSRF, adresse de retour) et, dans le stockage local du navigateur, la langue et le thème, votre dernier formulaire de recherche et ses résultats, les filtres, les portails de réservation préférés et - si des statistiques sont proposées - votre choix de confidentialité. Le stockage local reste sur votre appareil ; vous pouvez le supprimer à tout moment dans les paramètres du navigateur.",
+      "FamVacay ne stocke sur votre appareil que ce qui est strictement nécessaire (§ 25, al. 2, n° 2 TDDDG) : les cookies de connexion (session, protection CSRF, adresse de retour) et, dans le stockage local du navigateur, la langue et le thème, votre dernier formulaire de recherche et ses résultats, les filtres, les portails de réservation préférés et - si des statistiques sont proposées - votre choix de confidentialité. Le stockage local reste sur votre appareil ; vous pouvez le supprimer à tout moment dans les paramètres du navigateur. Pour fonctionner comme application installée et hors ligne, votre navigateur conserve aussi une copie des fichiers du programme et des pages publiques de FamVacay (aucune donnée personnelle).",
     retentionSectionTitle: 'Durée de conservation',
     retentionNotice:
       "Les données du compte et du profil familial sont conservées jusqu'à la suppression de votre compte, qui efface toutes les données associées. Les sessions de connexion expirent après 30 jours. Les liens partagés sont supprimés 30 jours après leur création. Les recherches de lieux, de vacances et de jours fériés sont mises en cache sur notre serveur de 10 minutes à 30 jours, sans lien avec votre personne. Les journaux d'accès serveur sont supprimés après une courte période.",
@@ -672,5 +674,11 @@ export const fr: TranslationDictionary = {
       "On vérifie si mamie peut venir aussi…",
       "Entraînement à « Encore une glace, s’il te plaît » en cinq langues…",
     ],
+  },
+  offline: {
+    title: "Tu es hors ligne",
+    body: "Cette page ne peut pas être chargée sans connexion Internet. Tes derniers résultats de recherche restent disponibles un moment sur la page d'accueil.",
+    retry: "Réessayer",
+    home: "Page d'accueil",
   },
 };

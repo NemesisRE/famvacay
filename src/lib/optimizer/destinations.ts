@@ -8,6 +8,7 @@ import iso from 'iso-3166-2';
 import { parseISO } from 'date-fns';
 import { POPULAR_DESTINATIONS, getClimateNormals, getEstimatedClimate } from './weather';
 import { MIN_STYLE_EVIDENCE, getHolidayAppeal, getStyleEvidence } from './holiday-appeal';
+import { LONG_HAUL_KM } from './distance-bands';
 import type { DestinationType, TravelVehicle } from './types';
 import {
   isOverlandReachable,
@@ -775,6 +776,8 @@ interface DiscoveryCandidate {
   overlandOk: boolean;
   /** Real long-haul gateway (see isLongHaulGateway) - only these fill long-haul slots */
   longHaulGateway: boolean;
+  /** On an island: an island and the mainland opposite are different holidays */
+  isIsland: boolean;
 }
 
 /**
@@ -830,9 +833,18 @@ export function hasDistinctClimate(
   return maxRainDiff >= CLIMATE_DISTINCT_RAIN_MM_PER_DAY || maxTempDiff >= CLIMATE_DISTINCT_TEMP_C;
 }
 
+/** Smaller airports still count as long-haul gateways when they serve a popular holiday place */
+const GATEWAY_MIN_PASSENGERS_MILLIONS = 1;
+const HOLIDAY_GATEWAY_MIN_PASSENGERS_MILLIONS = 0.3;
+const HOLIDAY_GATEWAY_MIN_APPEAL = 0.35;
+
 function isLongHaulGateway(ap: DynamicAirport): boolean {
   const pax = getAirportPassengersMillions(ap.code);
-  if (pax !== undefined) return pax >= 1;
+  if (pax !== undefined) {
+    if (pax >= GATEWAY_MIN_PASSENGERS_MILLIONS) return true;
+    // Zanzibar (0.9 million passengers): a holiday island with real scheduled service
+    return pax >= HOLIDAY_GATEWAY_MIN_PASSENGERS_MILLIONS && (getHolidayAppeal(ap.code, []) ?? 0) >= HOLIDAY_GATEWAY_MIN_APPEAL;
+  }
   return ap.type === 'large_airport' && ISLAND_OR_COASTAL_COUNTRIES.has(ap.country);
 }
 
@@ -968,6 +980,8 @@ function createSoftDiversityPicker(): SoftDiversityPicker {
   const climateCache = new Map<string, boolean>();
 
   const distinct = (a: DiscoveryCandidate, b: DiscoveryCandidate) => {
+    // Zanzibar and Dar es Salaam share a climate, but not the kind of holiday
+    if (a.isIsland !== b.isIsland) return true;
     const key = a.code < b.code ? `${a.code}|${b.code}` : `${b.code}|${a.code}`;
     let result = climateCache.get(key);
     if (result === undefined) {
@@ -992,7 +1006,7 @@ function createSoftDiversityPicker(): SoftDiversityPicker {
     // alternative (Koh Samui next to Phuket), not more of the same world region: no region penalty
     const seasonalAlternative =
       sameCountry.length > 0 && sameCountry.length < SEASONAL_ALTERNATIVES_PER_COUNTRY + 1 && sameCountry.every((p) => distinct(p, c));
-    if (c.dist > 3500 && !seasonalAlternative) {
+    if (c.dist > LONG_HAUL_KM && !seasonalAlternative) {
       points += LONG_HAUL_REGION_PENALTY * (longHaulPerRegion.get(getWorldRegion(c.lat, c.lon)) ?? 0);
     }
     return points;
@@ -1003,7 +1017,7 @@ function createSoftDiversityPicker(): SoftDiversityPicker {
     picks.push(c);
     const key = diversityCountryKey(c);
     byCountry.set(key, [...(byCountry.get(key) ?? []), c]);
-    if (c.dist > 3500) {
+    if (c.dist > LONG_HAUL_KM) {
       const region = getWorldRegion(c.lat, c.lon);
       longHaulPerRegion.set(region, (longHaulPerRegion.get(region) ?? 0) + 1);
     }
@@ -1191,7 +1205,7 @@ export function discoverDestinationTiers(
       ? surfaceStyles.includes('NATURE')
       : isAlpine || (hasCoastalGeo && altitudeMeters < 250) || Math.abs(ap.lat) >= 55;
     const isLongRange =
-      dist >= 3500 &&
+      dist >= LONG_HAUL_KM &&
       (Boolean(ap.isMajorHub) ||
         isTropicalSeaLevel ||
         isCaribbeanOrGulf ||
@@ -1203,9 +1217,9 @@ export function discoverDestinationTiers(
       matchStyle = effectiveBeach || effectiveAlpine || isCity || isNature || isLongRange;
     } else {
       const allowsLongRange = types.includes('LONGRANGE');
-      // If user did NOT select LONGRANGE, long-range/exotic destinations (>3500 km or exotic)
+      // If user did NOT select LONGRANGE, long-range/exotic destinations (long-haul or exotic)
       // must NOT be included in BEACH, CITY, NATURE, or ALPINE open discovery.
-      const isExoticOrLongRange = dist >= 3500 || (isLongRange && dist >= 3500);
+      const isExoticOrLongRange = dist >= LONG_HAUL_KM;
       if (!allowsLongRange && isExoticOrLongRange) {
         matchStyle = false;
       } else {
@@ -1294,8 +1308,8 @@ export function discoverDestinationTiers(
       const includeLongRange = isAll || types.includes('LONGRANGE');
 
       // Sweet spot distance corridors for family travel:
-      // Extended to 3500 km so extended Mediterranean & Canary Islands (TFS, LPA, ACE, FUE) get full priority
-      if (dist >= 200 && dist <= 3500) {
+      // Up to long-haul so the Canaries, Cyprus and the Red Sea get full priority
+      if (dist >= 200 && dist <= LONG_HAUL_KM) {
         score += 50;
       } else if (dist <= 6500) {
         // Extended corridor (e.g. Dubai, Near East, Cape Verde, Red Sea)
@@ -1328,6 +1342,7 @@ export function discoverDestinationTiers(
       isSurface,
       overlandOk,
       longHaulGateway: !isSurface && isLongHaulGateway(ap),
+      isIsland,
     });
   }
 
@@ -1345,29 +1360,29 @@ export function discoverDestinationTiers(
   airportCandidates.sort((a, b) => b.score - a.score || a.dist - b.dist);
 
   const picker = createSoftDiversityPicker();
-  const longHaul = airportCandidates.filter((c) => c.dist > 3500 && c.longHaulGateway);
+  const longHaul = airportCandidates.filter((c) => c.dist > LONG_HAUL_KM && c.longHaulGateway);
   // Corridors with their slot counts: `primary` for the first results, `extended` for the
   // destinations a progressive search adds afterwards
   let corridors: { pool: DiscoveryCandidate[]; primary: number; extended: number }[];
   if (isAll) {
     corridors = [
       // Core regional & Mediterranean (<= 2500 km): alpine, Med coast & culture
-      { pool: airportCandidates.filter((c) => c.dist <= 2500), primary: 14, extended: 14 },
-      // Extended island & sea (2500-3500 km): Canaries, Madeira, Azores, Cyprus, Red Sea
-      { pool: airportCandidates.filter((c) => c.dist > 2500 && c.dist <= 3500), primary: 5, extended: 4 },
-      // Long-range & exotic (> 3500 km), spread across world regions by the region penalty
-      { pool: longHaul, primary: 15, extended: 18 },
+      { pool: airportCandidates.filter((c) => c.dist <= 2500), primary: 14, extended: 18 },
+      // Extended island & sea (2500 km to long-haul): Canaries, Madeira, Azores, Cyprus, Red Sea
+      { pool: airportCandidates.filter((c) => c.dist > 2500 && c.dist <= LONG_HAUL_KM), primary: 5, extended: 6 },
+      // Long-range & exotic (long-haul), spread across world regions by the region penalty
+      { pool: longHaul, primary: 15, extended: 30 },
     ];
   } else if (types.includes('LONGRANGE')) {
     const onlyLongRange = types.every((t) => t === 'LONGRANGE');
     corridors = onlyLongRange
-      ? [{ pool: longHaul, primary: 30, extended: 28 }]
+      ? [{ pool: longHaul, primary: 30, extended: 45 }]
       : [
-          { pool: airportCandidates.filter((x) => x.dist <= 3500), primary: 14, extended: 12 },
-          { pool: longHaul, primary: 16, extended: 16 },
+          { pool: airportCandidates.filter((x) => x.dist <= LONG_HAUL_KM), primary: 14, extended: 16 },
+          { pool: longHaul, primary: 16, extended: 28 },
         ];
   } else {
-    corridors = [{ pool: airportCandidates, primary: 28, extended: 26 }];
+    corridors = [{ pool: airportCandidates, primary: 28, extended: 40 }];
   }
 
   const selected = corridors.flatMap((c) => picker.pick(c.pool, c.primary)).map((c) => c.code);

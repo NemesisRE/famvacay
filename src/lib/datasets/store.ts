@@ -20,7 +20,8 @@ export type DatasetName =
   | 'city-names'
   | 'flight-routes'
   | 'climate-normals'
-  | 'holiday-appeal';
+  | 'holiday-appeal'
+  | 'destination-names';
 
 interface PublishedDataset {
   data: unknown;

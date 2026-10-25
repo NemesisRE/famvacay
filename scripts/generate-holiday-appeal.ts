@@ -1,19 +1,23 @@
 /**
  * Holiday Appeal Generator (manual run) - see src/lib/datasets/generators/holiday-appeal.ts.
- * Writes src/lib/optimizer/data/holiday-appeal.json. Usage: npm run generate:holiday-appeal
+ * Writes src/lib/optimizer/data/holiday-appeal.json and src/lib/geo/data/destination-names.json.
+ * Usage: npm run generate:holiday-appeal
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import airports from '../src/lib/airports/data/airports.json';
-import { generateHolidayAppeal } from '../src/lib/datasets/generators/holiday-appeal';
+import { generateHolidayData } from '../src/lib/datasets/generators/holiday-appeal';
 import { defaultGeneratorContext } from '../src/lib/datasets/generators/common';
 
-const outFile = path.join(__dirname, '../src/lib/optimizer/data/holiday-appeal.json');
+const appealFile = path.join(__dirname, '../src/lib/optimizer/data/holiday-appeal.json');
+const namesFile = path.join(__dirname, '../src/lib/geo/data/destination-names.json');
 
-generateHolidayAppeal(defaultGeneratorContext(console.log), airports as any)
-  .then((data) => {
-    fs.writeFileSync(outFile, JSON.stringify(data));
-    console.log(`Wrote ${Object.keys(data).length} airports to ${path.relative(process.cwd(), outFile)}`);
+generateHolidayData(defaultGeneratorContext(console.log), airports as any)
+  .then(({ appeal, names }) => {
+    fs.writeFileSync(appealFile, JSON.stringify(appeal));
+    fs.writeFileSync(namesFile, JSON.stringify(names));
+    console.log(`Wrote ${Object.keys(appeal).length} airports to ${path.relative(process.cwd(), appealFile)}`);
+    console.log(`Wrote ${Object.keys(names).length} display names to ${path.relative(process.cwd(), namesFile)}`);
   })
   .catch((err) => {
     console.error(err);

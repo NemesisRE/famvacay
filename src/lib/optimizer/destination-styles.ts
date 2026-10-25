@@ -8,6 +8,7 @@ import iso from 'iso-3166-2';
 import { DestinationType } from './types';
 import { getDestinationPoint } from '../geo/destination-points';
 import { getEstimatedClimate } from './weather';
+import { LONG_HAUL_KM } from './distance-bands';
 import { datasetScopedCache } from '@/lib/datasets/store';
 
 export const ISLAND_OR_COASTAL_COUNTRIES = new Set([
@@ -31,6 +32,10 @@ export const ISLAND_SUBDIVISIONS = new Set([
   'GR-M', 'GR-L', 'GR-K', 'GR-I', 'GR-A', 'GR-69',
   // USA: Hawaii, PR, VI, Guam, American Samoa
   'US-HI', 'US-PR', 'US-VI', 'US-GU', 'US-AS',
+  // Tanzania: Zanzibar (Unguja) and Pemba
+  'TZ-06', 'TZ-07', 'TZ-10', 'TZ-11', 'TZ-15',
+  // Indonesia: Bali; Thailand: Phuket
+  'ID-BA', 'TH-83',
 ]);
 
 export const COASTAL_KEYWORDS = new RegExp(
@@ -56,10 +61,10 @@ export function getDestinationVacationStyles(
   airportCode: string,
   distanceKm?: number
 ): DestinationType[] {
-  // Distance only matters for the LONGRANGE >= 3500 km threshold (and the "unknown" 0 case),
+  // Distance only matters for the LONGRANGE long-haul threshold (and the "unknown" 0 case),
   // so bucket it: results list filtering calls this for every rendered window.
   const dist = distanceKm || 0;
-  const cacheKey = `${airportCode}|${dist >= 3500 ? 'L' : dist === 0 ? '0' : 'S'}`;
+  const cacheKey = `${airportCode}|${dist >= LONG_HAUL_KM ? 'L' : dist === 0 ? '0' : 'S'}`;
   const cache = stylesCache();
   const cached = cache.get(cacheKey);
   if (cached) return cached;
@@ -146,7 +151,7 @@ function computeDestinationVacationStyles(airportCode: string, dist: number): De
   }
 
   const isLongRange =
-    dist >= 3500 ||
+    dist >= LONG_HAUL_KM ||
     isCaribbeanOrGulf ||
     isTropicalSeaLevel ||
     (dist === 0 && (isCaribbeanOrGulf || isTropicalSeaLevel || Math.abs(lat) <= 22));

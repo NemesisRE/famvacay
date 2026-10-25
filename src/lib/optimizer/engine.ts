@@ -58,6 +58,7 @@ import {
   type OverlandAccessResult,
 } from './vehicles';
 import { getDestinationSafetyAssessment, isDestinationBanned } from '../safety/advisory-store';
+import { LONG_HAUL_KM } from './distance-bands';
 
 /**
  * Filter blackout dates: Checks if [candidateStart, candidateEnd] overlaps with any blackout range.
@@ -1020,7 +1021,7 @@ export function optimizeVacationWindows(
             !hasUserSelectedDestinations &&
             !selectedTypes.includes('ALL') &&
             !selectedTypes.includes('LONGRANGE') &&
-            (ov.distKm >= 3500 || getDestinationVacationStyles(dest, ov.distKm).includes('LONGRANGE'))
+            (ov.distKm >= LONG_HAUL_KM || getDestinationVacationStyles(dest, ov.distKm).includes('LONGRANGE'))
           ) {
             continue;
           }
@@ -1093,7 +1094,7 @@ export function optimizeVacationWindows(
             !hasUserSelectedDestinations &&
             !selectedTypes.includes('ALL') &&
             !selectedTypes.includes('LONGRANGE') &&
-            (directDist >= 3500 || getDestinationVacationStyles(dest, directDist).includes('LONGRANGE'))
+            (directDist >= LONG_HAUL_KM || getDestinationVacationStyles(dest, directDist).includes('LONGRANGE'))
           ) {
             continue;
           }

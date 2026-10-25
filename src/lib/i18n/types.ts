@@ -30,6 +30,9 @@ export interface TranslationDictionary {
     estimatesDisclaimerTitle: string;
     estimatesDisclaimerText: string;
     constraintsTitle: string;
+    /** Mobile: toggle for the collapsible search form */
+    constraintsExpand: string;
+    constraintsCollapse: string;
     formReset: string;
     formResetTitle: string;
     filterReset: string;
@@ -632,5 +635,12 @@ export interface TranslationDictionary {
     backgroundDoneNone: string;
     /** Playful lines rotated while searching */
     messages: string[];
+  };
+  /** Offline fallback page of the installed app (service worker) */
+  offline: {
+    title: string;
+    body: string;
+    retry: string;
+    home: string;
   };
 }

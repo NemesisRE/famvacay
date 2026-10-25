@@ -1,4 +1,5 @@
 import { type AirportRecord, type GeneratorContext, USER_AGENT, iataCodes, wikidataQuery } from './common';
+import { calculateGeodesicDistanceKm } from '../../airports/airport-service';
 import { HOLIDAY_EVIDENCE_KINDS, holidayEvidence, type HolidayEvidenceKind } from '../../optimizer/holiday-evidence';
 
 /**
@@ -16,6 +17,14 @@ import { HOLIDAY_EVIDENCE_KINDS, holidayEvidence, type HolidayEvidenceKind } fro
  * Each kind of holiday takes its figures from the article that says the most about it, among the
  * airport's places in English and German (German Wikivoyage covers many Mediterranean destinations
  * in far more depth): the English Nassau guide for beaches, the German one for sights.
+ *
+ * Airports whose Wikidata links reach no guide (Zanzibar: its guide belongs to another item) try
+ * the guide named like the airport's city, accepted only when that article is not a
+ * disambiguation page and its own coordinates lie within 100 km of the airport.
+ *
+ * The same run yields display names (see generateHolidayData): where the most-read guide of an
+ * airport's places is a famous island or region rather than the airport's city, that name is used
+ * - "Bali" instead of Denpasar, "Kreta (Heraklion)" where several airports share the island.
  * Raw counts, so the scoring in src/lib/optimizer/holiday-appeal.ts can change without a re-run.
  */
 
@@ -80,17 +89,40 @@ const KEYWORDS: Record<TextLanguage, Record<Signal, RegExp>> = {
   },
 };
 
-type PlaceKind = 'served' | 'island' | 'territory';
+type PlaceKind = 'served' | 'island' | 'territory' | 'byName';
 
 interface PlaceArticles {
   place: string;
   kind: PlaceKind;
   titles: Partial<Record<Language, string>>;
+  /** Airports linked to this place (a shared island needs the city to tell them apart) */
+  sharedBy: number;
 }
 
 interface ArticleStats extends Record<Signal, number> {
   sizeKb: number;
+  /** The article's own coordinates ({{geo}}), if any */
+  geo?: { lat: number; lon: number };
+  disambiguation: boolean;
 }
+
+/** Localized display name of an airport's destination; s = shared by several airports */
+export interface DestinationNameEntry {
+  n: Partial<Record<Language, string>>;
+  s?: 1;
+}
+
+export interface HolidayData {
+  appeal: Record<string, HolidayAppealRow>;
+  names: Record<string, DestinationNameEntry>;
+}
+
+/** A guide found only by the city's name must lie this close to the airport */
+const MAX_BY_NAME_DISTANCE_KM = 100;
+/** A region or island name replaces the city name only when its guide is this widely read ... */
+const MIN_FAMOUS_NAME_VIEWS = 5_000;
+/** ... and this many times more than the city's own guide */
+const FAMOUS_NAME_VIEWS_FACTOR = 2;
 
 function titleFromUrl(url: string): string {
   return decodeURIComponent(url.split('/wiki/')[1] || '').replace(/_/g, ' ');
@@ -126,7 +158,7 @@ SELECT ?iata ?place ?kind ${LANGUAGES.map((l) => `?${l}`).join(' ')} WHERE {
       const place = r.place.value as string;
       const kind = r.kind.value as PlaceKind;
       const key = `${kind}|${place}`;
-      const entry = places.get(key) ?? { place, kind, titles: {} };
+      const entry = places.get(key) ?? { place, kind, titles: {}, sharedBy: 0 };
       for (const l of LANGUAGES) if (r[l]) entry.titles[l] = titleFromUrl(r[l].value);
       places.set(key, entry);
       byAirport.set(iata, places);
@@ -139,11 +171,10 @@ SELECT ?iata ?place ?kind ${LANGUAGES.map((l) => `?${l}`).join(' ')} WHERE {
   // British Columbia guide says nothing about the airstrip at Fort Nelson)
   const airportsPerPlace = new Map<string, number>();
   for (const places of byAirport.values()) {
-    for (const p of places.values()) {
-      if (p.kind !== 'served') airportsPerPlace.set(`${p.kind}|${p.place}`, (airportsPerPlace.get(`${p.kind}|${p.place}`) ?? 0) + 1);
-    }
+    for (const p of places.values()) airportsPerPlace.set(`${p.kind}|${p.place}`, (airportsPerPlace.get(`${p.kind}|${p.place}`) ?? 0) + 1);
   }
   const sharedBy = (p: PlaceArticles) => airportsPerPlace.get(`${p.kind}|${p.place}`) ?? 0;
+  for (const places of byAirport.values()) for (const p of places.values()) p.sharedBy = sharedBy(p);
 
   const result = new Map<string, PlaceArticles[]>();
   for (const [iata, places] of byAirport) {
@@ -156,6 +187,28 @@ SELECT ?iata ?place ?kind ${LANGUAGES.map((l) => `?${l}`).join(' ')} WHERE {
     if (chosen.length > 0) result.set(iata, chosen);
   }
   return result;
+}
+
+function parseGeo(text: string): { lat: number; lon: number } | undefined {
+  const m = text.match(/\{\{\s*geo\s*\|\s*(-?[\d.]+)\s*\|\s*(-?[\d.]+)/i);
+  if (!m) return undefined;
+  const lat = Number(m[1]);
+  const lon = Number(m[2]);
+  return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : undefined;
+}
+
+function normalizeName(name: string): string {
+  return name
+    .replace(/\s*\(.*\)\s*$/, '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+/** "Victoria (Seychelles)" -> "Victoria" */
+function displayTitle(title: string): string {
+  return title.replace(/\s*\(.*\)\s*$/, '').trim();
 }
 
 async function fetchArticleStats(
@@ -205,6 +258,8 @@ async function fetchArticleStats(
         nature: countMatches(text, keywords.nature),
         culture: countMatches(text, keywords.culture),
         family: countMatches(text, keywords.family),
+        geo: parseGeo(text),
+        disambiguation: /\{\{\s*(disamb|disambiguation|begriffskl[aä]rung)\b/i.test(text),
       });
     }
     for (const title of batch) {
@@ -304,9 +359,25 @@ export async function generateHolidayAppeal(
   airports: AirportRecord[],
   now: Date = new Date()
 ): Promise<Record<string, HolidayAppealRow>> {
+  return (await generateHolidayData(ctx, airports, now)).appeal;
+}
+
+export async function generateHolidayData(
+  ctx: GeneratorContext,
+  airports: AirportRecord[],
+  now: Date = new Date()
+): Promise<HolidayData> {
   const codes = iataCodes(airports);
+  const airportByCode = new Map(airports.map((a) => [a.code, a]));
   const placesByAirport = await mapAirportsToArticles(ctx, codes);
   ctx.log(`Holiday appeal: ${placesByAirport.size} airports with Wikivoyage guides`);
+
+  // Fallback: the guide named like the airport's city (checked against its coordinates below)
+  for (const code of codes) {
+    const city = airportByCode.get(code)?.city?.trim();
+    if (placesByAirport.has(code) || !city) continue;
+    placesByAirport.set(code, [{ place: `name:${code}`, kind: 'byName', titles: { en: city, de: city }, sharedBy: 1 }]);
+  }
 
   const allPlaces = [...placesByAirport.values()].flat();
   const articleStats = {} as Record<TextLanguage, Map<string, ArticleStats>>;
@@ -316,25 +387,45 @@ export async function generateHolidayAppeal(
     ctx.log(`Holiday appeal: ${articleStats[language].size} of ${titles.length} ${language} guides read`);
   }
 
+  // A usable article for a place: no disambiguation page, and a by-name match must be nearby
+  const usableStats = (place: PlaceArticles, language: TextLanguage, airport?: AirportRecord): ArticleStats | undefined => {
+    const title = place.titles[language];
+    const stats = title ? articleStats[language].get(title) : undefined;
+    if (!stats || stats.disambiguation) return undefined;
+    if (place.kind === 'byName') {
+      if (!stats.geo || !airport) return undefined;
+      if (calculateGeodesicDistanceKm(stats.geo.lat, stats.geo.lon, airport.lat, airport.lon) > MAX_BY_NAME_DISTANCE_KM) return undefined;
+    }
+    return stats;
+  };
+  // Places without any usable article are dropped (also from page views)
+  for (const [code, places] of placesByAirport) {
+    const airport = airportByCode.get(code);
+    const usable = places.filter((p) => TEXT_LANGUAGES.some((l) => usableStats(p, l, airport)));
+    if (usable.length > 0) placesByAirport.set(code, usable);
+    else placesByAirport.delete(code);
+  }
+
   const { from, to } = lastTwelveMonths(now);
   const viewJobs = [
-    ...new Set(allPlaces.flatMap((p) => LANGUAGES.filter((l) => p.titles[l]).map((l) => `${l}|${p.titles[l]}`))),
+    ...new Set(
+      [...placesByAirport.values()].flat().flatMap((p) => LANGUAGES.filter((l) => p.titles[l]).map((l) => `${l}|${p.titles[l]}`))
+    ),
   ];
   const views = await fetchAllViews(ctx, viewJobs, from, to);
+  const placeViews = (place: PlaceArticles) =>
+    LANGUAGES.reduce((sum, l) => sum + (place.titles[l] ? views.get(`${l}|${place.titles[l]}`) ?? 0 : 0), 0);
 
-  const result: Record<string, HolidayAppealRow> = {};
+  const appeal: Record<string, HolidayAppealRow> = {};
+  const names: Record<string, DestinationNameEntry> = {};
   for (const [iata, places] of placesByAirport) {
+    const airport = airportByCode.get(iata);
     let mostViews = 0;
     const best: Partial<Record<HolidayEvidenceKind, { mentions: number; sizeKb: number; evidence: number }>> = {};
     for (const place of places) {
-      const placeViews = LANGUAGES.reduce(
-        (sum, l) => sum + (place.titles[l] ? views.get(`${l}|${place.titles[l]}`) ?? 0 : 0),
-        0
-      );
-      mostViews = Math.max(mostViews, placeViews);
+      mostViews = Math.max(mostViews, placeViews(place));
       for (const language of TEXT_LANGUAGES) {
-        const title = place.titles[language];
-        const stats = title ? articleStats[language].get(title) : undefined;
+        const stats = usableStats(place, language, airport);
         if (!stats) continue;
         for (const kind of HOLIDAY_EVIDENCE_KINDS) {
           const evidence = holidayEvidence(kind, stats[kind], stats.sizeKb);
@@ -343,11 +434,46 @@ export async function generateHolidayAppeal(
         }
       }
     }
-    if (!best.beach) continue; // none of the airport's guides could be read
+    if (!best.beach) continue;
     const row: number[] = [mostViews];
     for (const kind of HOLIDAY_EVIDENCE_KINDS) row.push(best[kind]!.mentions, best[kind]!.sizeKb);
-    result[iata] = row as HolidayAppealRow;
+    appeal[iata] = row as HolidayAppealRow;
+
+    const name = famousName(places, airport?.city ?? '', placeViews);
+    if (name) names[iata] = name;
   }
-  ctx.log(`Holiday appeal: ${Object.keys(result).length} airports scored`);
-  return result;
+  ctx.log(`Holiday appeal: ${Object.keys(appeal).length} airports scored, ${Object.keys(names).length} display names`);
+  return { appeal, names };
+}
+
+/**
+ * The famous island or region an airport serves, when its guide is much more read than the
+ * city's own (Bali for Denpasar, Crete for Heraklion); null to keep the city name.
+ */
+function famousName(
+  places: PlaceArticles[],
+  city: string,
+  placeViews: (place: PlaceArticles) => number
+): DestinationNameEntry | null {
+  const cityKey = normalizeName(city);
+  if (!cityKey) return null;
+  const titleKey = (p: PlaceArticles) => normalizeName(p.titles.en ?? p.titles.de ?? '');
+  // The city's own guide, and places that are just longer names of it ("Bangkok Metropolitan Area")
+  const isCity = (p: PlaceArticles) => {
+    const key = titleKey(p);
+    return !key || key.includes(cityKey) || cityKey.includes(key);
+  };
+  const cityViews = Math.max(0, ...places.filter(isCity).map(placeViews));
+  const candidates = places.filter((p) => (p.kind === 'served' || p.kind === 'island') && !isCity(p));
+  let best: PlaceArticles | null = null;
+  for (const p of candidates) if (!best || placeViews(p) > placeViews(best)) best = p;
+  if (!best) return null;
+  const views = placeViews(best);
+  if (views < MIN_FAMOUS_NAME_VIEWS || views < FAMOUS_NAME_VIEWS_FACTOR * cityViews) return null;
+  const n: Partial<Record<Language, string>> = {};
+  for (const l of LANGUAGES) {
+    const title = best.titles[l] ?? best.titles.en ?? best.titles.de;
+    if (title) n[l] = displayTitle(title);
+  }
+  return best.sharedBy > 1 ? { n, s: 1 } : { n };
 }

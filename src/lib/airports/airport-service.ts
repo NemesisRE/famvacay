@@ -2,6 +2,7 @@ import airportsData from './data/airports.json';
 import airportTrafficData from './data/airport-traffic.json';
 import { getLocalizedCityName } from './localized-city-names';
 import { derived, getDataset } from '@/lib/datasets/store';
+import { LONG_HAUL_KM } from '../optimizer/distance-bands';
 
 export interface DynamicAirport {
   code: string;       // 3-letter IATA code
@@ -268,7 +269,7 @@ export function getRecommendedAirportsForCoordinates(
 
       if (targetAirport) {
         const distKm = calculateGeodesicDistanceKm(userLat, userLon, targetAirport.lat, targetAirport.lon);
-        if (distKm >= 3500) {
+        if (distKm >= LONG_HAUL_KM) {
           hasLongHaulDestinations = true;
         } else if (distKm >= 1500) {
           hasMediumHaulDestinations = true;

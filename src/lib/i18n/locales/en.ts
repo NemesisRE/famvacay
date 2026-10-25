@@ -21,6 +21,8 @@ export const en: TranslationDictionary = {
     estimatesDisclaimerTitle: 'All figures are estimates.',
     estimatesDisclaimerText: 'Flight connections, routes, travel times, prices, weather and travel advisories are based on open data and models, not live booking data. Please check availability, prices and entry and safety requirements with the provider before booking.',
     constraintsTitle: 'Vacation Constraints',
+    constraintsExpand: "Show search settings",
+    constraintsCollapse: "Hide search settings",
     formReset: 'Reset',
     formResetTitle: 'Reset the form and saved settings',
     filterReset: 'Reset filter',
@@ -433,9 +435,9 @@ export const en: TranslationDictionary = {
     allDistances: 'All Distances',
     distShort: '< 1,000 km (Short-haul / Regional)',
     distMid: '< 2,500 km (Europe & Med)',
-    distExtended: '< 3,500 km (Canaries & Extended Med)',
+    distExtended: '< 4,000 km (Canaries, Red Sea & Extended Med)',
     distLong: '< 6,000 km (Near East & Long-haul)',
-    distIntercontinental: '> 3,500 km (Long-range & Exotic only)',
+    distIntercontinental: '> 4,000 km (Long-range & Exotic only)',
     showOnMap: 'Show on Map',
     mapOpenGoogleMaps: 'Open in Google Maps',
     mapOpenOsm: 'Open in OpenStreetMap',
@@ -625,7 +627,7 @@ export const en: TranslationDictionary = {
       "When you share search results, a link is created that anyone who has it can open without logging in (Art. 6(1)(b) GDPR, at your request). It contains only what is needed to show the results - derived values such as children's ages, home region and departure airports, but no names, addresses, coordinates or dates of birth. Shared links are deleted 30 days after they were created.",
     storageSectionTitle: 'Cookies & Browser Storage',
     storageNotice:
-      'FamVacay only stores what is strictly necessary on your device (§ 25(2) No. 2 TDDDG): the login cookies set by our authentication (session, CSRF protection, return address), and in your browser\'s local storage your language and theme, your last search form and results (so a reload does not lose them), result filters, preferred booking portals and - where analytics are offered - your privacy choice. Local storage stays on your device; you can delete it at any time in your browser settings.',
+      'FamVacay only stores what is strictly necessary on your device (§ 25(2) No. 2 TDDDG): the login cookies set by our authentication (session, CSRF protection, return address), and in your browser\'s local storage your language and theme, your last search form and results (so a reload does not lose them), result filters, preferred booking portals and - where analytics are offered - your privacy choice. Local storage stays on your device; you can delete it at any time in your browser settings. To work as an installed app and offline, your browser also keeps a copy of FamVacay\'s program files and public pages (no personal data).',
     retentionSectionTitle: 'Storage Periods',
     retentionNotice:
       'Account and family profile data are stored until you delete your account, which deletes all associated data. Login sessions expire after 30 days. Shared links are deleted 30 days after creation. Search, place and holiday lookups are cached on our server for 10 minutes to 30 days without reference to your person. Server access logs are deleted after a short period.',
@@ -672,5 +674,11 @@ export const en: TranslationDictionary = {
       "Checking whether grandma can come too…",
       "Practising \"One more ice cream, please\" in five languages…",
     ],
+  },
+  offline: {
+    title: "You're offline",
+    body: "This page can't be loaded without an internet connection. Your last search results are still available on the start page for a while.",
+    retry: "Try again",
+    home: "Start page",
   },
 };

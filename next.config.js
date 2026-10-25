@@ -128,6 +128,17 @@ const nextConfig = {
           },
         ],
       },
+      // Service worker (installable app, offline fallback): always revalidated, so an update
+      // reaches every installed copy on the next visit. After the global rule: for the same
+      // header the last matching rule wins
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self'" },
+        ],
+      },
     ];
   },
   turbopack: {},

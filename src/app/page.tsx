@@ -199,6 +199,8 @@ export default function HomePage() {
   const [results, setResults] = useState<CandidateWindow[] | null>(null);
   // Progressive search: more destinations are searched after the first results are shown
   const [backgroundSearch, setBackgroundSearch] = useState<BackgroundSearchState>({ status: 'idle' });
+  // Phones and tablets (form above results): the search form folds away after a search
+  const [constraintsCollapsed, setConstraintsCollapsed] = useState(false);
   const searchRunRef = useRef(0);
   const backgroundAbortRef = useRef<AbortController | null>(null);
   const dismissBackgroundSearch = useCallback(() => setBackgroundSearch({ status: 'idle' }), []);
@@ -960,6 +962,13 @@ export default function HomePage() {
     // A newer search supersedes the background phase of the previous one
     const runId = ++searchRunRef.current;
     backgroundAbortRef.current?.abort();
+    // Below the two-column layout the results are under the form: fold it and go to the results
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+      setConstraintsCollapsed(true);
+      requestAnimationFrame(() =>
+        document.getElementById('results-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      );
+    }
     setBackgroundSearch({ status: 'idle' });
     setLoading(true);
     setError(null);
@@ -2039,9 +2048,23 @@ export default function HomePage() {
         <div className="lg:col-span-5 space-y-4">
           <div className="border-b border-slate-200 dark:border-slate-800 pb-2.5">
             <div className="flex items-center justify-between min-h-9">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-                {t.home.constraintsTitle}
+              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+                {/* A toggle below the two-column layout; on wide screens the form always shows */}
+                <button
+                  type="button"
+                  onClick={() => setConstraintsCollapsed((c) => !c)}
+                  aria-expanded={!constraintsCollapsed}
+                  aria-controls="search-constraints"
+                  title={constraintsCollapsed ? t.home.constraintsExpand : t.home.constraintsCollapse}
+                  className="flex items-center gap-2 cursor-pointer lg:cursor-default lg:pointer-events-none text-left"
+                >
+                  <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                  {t.home.constraintsTitle}
+                  <ChevronDown
+                    className={`lg:hidden w-4 h-4 text-slate-400 transition-transform ${constraintsCollapsed ? '' : 'rotate-180'}`}
+                    aria-hidden="true"
+                  />
+                </button>
               </h2>
               <div className="flex items-center gap-2">
                 <button
@@ -2077,7 +2100,44 @@ export default function HomePage() {
             )}
           </div>
 
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
+          {constraintsCollapsed && (
+            <button
+              type="button"
+              onClick={() => setConstraintsCollapsed(false)}
+              className="lg:hidden w-full text-left bg-white dark:bg-slate-900 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-3 cursor-pointer hover:border-teal-300 dark:hover:border-teal-700 transition-colors"
+            >
+              <span className="min-w-0 text-xs text-slate-600 dark:text-slate-300">
+                {(() => {
+                  const dates = earliestDate && latestDate ? `${formatLocalizedDate(earliestDate)} – ${formatLocalizedDate(latestDate)}` : '';
+                  const travelers = (adultsCount + childrenList.length === 1 ? t.home.travelerCountOne : t.home.travelerCountOther).replace(
+                    '{count}',
+                    String(adultsCount + childrenList.length)
+                  );
+                  // Departure place first when there is one (flexible searches have none)
+                  const [first, second] = departureLocation
+                    ? [departureLocation, [dates, travelers].filter(Boolean).join(' · ')]
+                    : [dates || t.home.constraintsTitle, travelers];
+                  return (
+                    <>
+                      <span className="block font-semibold text-slate-800 dark:text-slate-100 truncate">{first}</span>
+                      <span className="block truncate">{second}</span>
+                    </>
+                  );
+                })()}
+              </span>
+              <span className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-teal-700 dark:text-teal-300">
+                {t.home.constraintsExpand}
+                <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
+              </span>
+            </button>
+          )}
+
+          <div
+            id="search-constraints"
+            className={`bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6 ${
+              constraintsCollapsed ? 'hidden lg:block' : ''
+            }`}
+          >
 
             <form onSubmit={handleOptimize} className="space-y-6">
               {/* Step 1: Departure Location & School District */}
@@ -2500,7 +2560,7 @@ export default function HomePage() {
         {/* Results Stream */}
         <div className="lg:col-span-7 space-y-4">
           {/* One row like the form's heading (title left, action right), so both cards start level */}
-          <div className="border-b border-slate-200 dark:border-slate-800 pb-2.5">
+          <div id="results-heading" className="border-b border-slate-200 dark:border-slate-800 pb-2.5 scroll-mt-20">
             <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2 min-h-9">
             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 min-w-0">
               <Award className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
