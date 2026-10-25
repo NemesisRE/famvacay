@@ -4,6 +4,7 @@ import {
   getDestinationSafetyAssessment,
   refreshTravelAdvisories,
 } from './safety-service';
+import { getAdvisorySourceUrls } from './advisory-store';
 
 describe('Destination Safety & Security Service (Auswärtiges Amt & US State Dept Live APIs)', () => {
   beforeAll(async () => {
@@ -99,5 +100,23 @@ describe('Destination Safety & Security Service (Auswärtiges Amt & US State Dep
     // Verified US State Dept Level for Ukraine or Russia
     expect(cache.entries['UA']?.usStateDeptLevel === 4 || cache.entries['RU']?.usStateDeptLevel === 4).toBe(true);
   }, 10000);
+});
+
+describe('getAdvisorySourceUrls', () => {
+  it('links the country pages when known and the overviews otherwise', () => {
+    expect(
+      getAdvisorySourceUrls({
+        germanContentId: '201558',
+        usUrl: 'https://travel.state.gov/content/tsg_aem/us/en/home/international-travel/travel-advisories/destination.tha.html',
+      })
+    ).toEqual({
+      germanAdvisoryUrl: 'https://www.auswaertiges-amt.de/de/ReiseUndSicherheit/reise-und-sicherheitshinweise/201558',
+      usAdvisoryUrl: 'https://travel.state.gov/content/tsg_aem/us/en/home/international-travel/travel-advisories/destination.tha.html',
+    });
+    expect(getAdvisorySourceUrls()).toEqual({
+      germanAdvisoryUrl: 'https://www.auswaertiges-amt.de/de/ReiseUndSicherheit/reise-und-sicherheitshinweise',
+      usAdvisoryUrl: 'https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories.html',
+    });
+  });
 });
 

@@ -21,8 +21,10 @@ import {
   X,
   Shield,
   Info,
+  ExternalLink,
 } from 'lucide-react';
 import { DestinationSafetyAssessment } from '@/lib/safety/safety-service';
+import { getAdvisorySourceUrls } from '@/lib/safety/advisory-store';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
 interface DestinationSafetyPopoverProps {
@@ -52,6 +54,20 @@ export function getSafetyTexts(
     ? t.home.safetyStatusWarning
     : t.home.safetyBadgeDanger;
   return { badgeLabel, usLevelText };
+}
+
+function SourceLink({ href, label }: { href?: string; label: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700 dark:text-teal-400 hover:underline"
+    >
+      {label}
+      <ExternalLink className="w-3 h-3 shrink-0" aria-hidden="true" />
+    </a>
+  );
 }
 
 export function DestinationSafetyPopover({
@@ -123,6 +139,12 @@ export function DestinationSafetyPopover({
     : { text: t.home.safetyGermanNoWarning, chip: t.home.safetyAaStatusNone, color: TONE.green };
 
   const displayName = destinationName || countryName || safety.countryName || '';
+  // Results saved before the links existed have no URLs: fall back to the providers' overviews
+  const sourceUrls = {
+    ...getAdvisorySourceUrls(),
+    ...(safety.germanAdvisoryUrl && { germanAdvisoryUrl: safety.germanAdvisoryUrl }),
+    ...(safety.usAdvisoryUrl && { usAdvisoryUrl: safety.usAdvisoryUrl }),
+  };
 
   return (
     <div className={`inline-block ${className}`}>
@@ -221,6 +243,7 @@ export function DestinationSafetyPopover({
                 <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
                   {germanStatus.text}
                 </p>
+                <SourceLink href={sourceUrls.germanAdvisoryUrl} label={t.home.safetyAaLink} />
               </div>
 
               {/* 2. US State Department Advisory */}
@@ -237,6 +260,7 @@ export function DestinationSafetyPopover({
                 <p className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold">
                   {usLevelText}
                 </p>
+                <SourceLink href={sourceUrls.usAdvisoryUrl} label={t.home.safetyUsLink} />
               </div>
 
               {/* 3. Specific Risks & Contextual Notes (if any) */}

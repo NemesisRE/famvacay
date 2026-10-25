@@ -366,6 +366,9 @@ export interface TranslationDictionary {
     climateShowDetails: string;
     flightDetailsTooltip: string;
     safetyDataSource: string;
+    /** Link to the official advisory page (German Foreign Office / US State Department) */
+    safetyAaLink: string;
+    safetyUsLink: string;
     seasonEventEaster: string;
     seasonEventSpringBreakEaster: string;
     seasonEventCarnival: string;

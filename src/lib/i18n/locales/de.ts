@@ -358,6 +358,8 @@ export const de: TranslationDictionary = {
     climateShowDetails: 'Klima- & Wetterdetails anzeigen',
     flightDetailsTooltip: 'Flughäfen, Flugzeit und Entfernung von zu Hause',
     safetyDataSource: 'Offizielle Open-Data-Einstufungen von Auswärtigem Amt & US Department of State.',
+    safetyAaLink: 'Auf auswaertiges-amt.de lesen',
+    safetyUsLink: 'Auf travel.state.gov lesen (Englisch)',
     seasonEventEaster: 'Ostern & Karwoche',
     seasonEventSpringBreakEaster: 'Spring Break & Ostern',
     seasonEventCarnival: 'Karneval & Fasching',
