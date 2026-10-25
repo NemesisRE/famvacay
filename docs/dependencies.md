@@ -79,16 +79,16 @@ confirming upstream has addressed the issue below.
 
 ### TypeScript 7
 
-`typescript@7.0.2` reintroduces `TS7006` implicit-`any` errors on `.map()` /
-`.filter()` callbacks over Prisma relation-`include` query results, across 6
-API routes (`account/passkeys`, `account`, `account/unlink`,
-`auth/linked-accounts`, `auth/passkeys/register-options`,
-`vacations/share`). Confirmed to be TS7
-itself and not a stale generated client: regenerating `@prisma/client` with
-TS7 still installed does not clear the errors, and reverting to TypeScript
-5.x with nothing else changed does. This is a known rough edge in TS7's
-rewritten type-inference engine against Prisma's generated conditional
-types. Currently pinned to the latest 5.x release (`^5.9.3`).
+`typescript@7` is the native (Go) compiler and ships no JavaScript compiler
+API: the package's main export is only a version stub. Everything that loads
+TypeScript as a library breaks, first of all ESLint (`eslint-config-next` ->
+`typescript-eslint`, whose peer range is `>=4.8.4 <6.1.0`) and the type-check
+step of `next build`. `tsc --noEmit` itself passes on TS 7 since the Prisma 7
+upgrade (the earlier `TS7006` implicit-`any` errors on Prisma `include` results
+came from Prisma 6's generated types and are gone).
+
+Pinned to `~6.0.3`, the newest release `typescript-eslint` supports. Re-attempt
+once `typescript-eslint` and Next.js support TypeScript 7.
 
 ### Prisma 7 (done)
 
