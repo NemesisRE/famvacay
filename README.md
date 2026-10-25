@@ -131,6 +131,7 @@ new installs via a reviewed PR:
 - **Climate normals (monthly temperature, daily range, rainfall):** [NASA POWER](https://power.larc.nasa.gov) climatology, public domain (`pnpm run generate:climate-normals`)
 - **Rain duration (rainy days, hours of rain per rainy day):** [Weather data by Open-Meteo.com](https://open-meteo.com/), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (same script). The free Open-Meteo API is for non-commercial use only: with `LEGAL_OPERATION_MODE=commercial`, new data is fetched only with a paid-plan `OPEN_METEO_API_KEY` (customer endpoint, 10 years of history instead of 3); already published data stays in use
 - **Localized city names & airport passenger figures:** [Wikidata](https://www.wikidata.org), CC0 (`pnpm run generate:city-names`, `pnpm run generate:airport-traffic`)
+- **Holiday appeal (where people actually go on holiday, and what for):** how often [Wikivoyage](https://www.wikivoyage.org) guides (English and German, CC BY-SA 4.0) mention beaches, skiing, nature, sights and family attractions, and how widely they are read ([Wikimedia page views](https://wikimedia.org/api/rest_v1/), CC0). Only counts are stored, no text. Discovery ranks destinations by it instead of airport size (`pnpm run generate:holiday-appeal`)
 
 ---
 

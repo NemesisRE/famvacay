@@ -1,6 +1,8 @@
 import { getAirportByIata, getLocalizedAirportDetails, type DynamicAirport } from '../airports/airport-service';
 import { getSurfaceDestination, type SurfaceDestination } from './surface-destinations';
-import { datasetScopedCache } from '@/lib/datasets/store';
+import { datasetScopedCache, getDataset } from '@/lib/datasets/store';
+import destinationNamesSeed from './data/destination-names.json';
+import type { DestinationNameEntry } from '@/lib/datasets/generators/holiday-appeal';
 
 export type DestinationPointKind = 'AIRPORT' | 'SURFACE';
 
@@ -99,7 +101,43 @@ export function getLocalizedDestinationLabel(
   fallback?: { city?: string; country?: string; name?: string }
 ): LocalizedDestinationLabel {
   const point = getDestinationPoint(code, locale);
-  const city = point?.city || fallback?.city || fallback?.name || code;
+  const pointCity = point?.city || fallback?.city || fallback?.name || code;
   const country = point?.country || fallback?.country || '';
-  return { city, country, label: country ? `${city}, ${country}` : city };
+  const famous = getFamousDestinationName(code, locale);
+  // "Bali" instead of Denpasar; "Kreta (Heraklion)" where several airports share the island
+  const city = famous
+    ? famous.shared && foldName(famous.name) !== foldName(pointCity)
+      ? `${famous.name} (${pointCity})`
+      : famous.name
+    : pointCity;
+  const label = country && city.toLowerCase() !== country.toLowerCase() ? `${city}, ${country}` : city;
+  return { city, country, label };
+}
+
+const destinationNames = () =>
+  getDataset('destination-names', destinationNamesSeed as unknown as Record<string, DestinationNameEntry>);
+
+/**
+ * The famous island or region an airport serves (from Wikivoyage, see the holiday-appeal
+ * generator), in the UI language; undefined to show the city.
+ */
+export function getFamousDestinationName(code: string, locale: string): { name: string; shared: boolean } | undefined {
+  const entry = destinationNames()[(code || '').toUpperCase()];
+  if (!entry) return undefined;
+  // Only a different place than the city names already show (Bali for Denpasar): where it is the
+  // same place under another spelling (Santorini), the localized city name ("Santorin") is better
+  const englishCity = getDestinationPoint(code, 'en')?.city;
+  if (entry.n.en && englishCity && foldName(entry.n.en) === foldName(englishCity)) return undefined;
+  const lang = (locale || 'en').slice(0, 2).toLowerCase() as keyof DestinationNameEntry['n'];
+  const name = entry.n[lang] ?? entry.n.en ?? entry.n.de;
+  return name ? { name, shared: entry.s === 1 } : undefined;
+}
+
+/** Case- and accent-insensitive form for comparing place names */
+function foldName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim();
 }

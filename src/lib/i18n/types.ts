@@ -30,6 +30,9 @@ export interface TranslationDictionary {
     estimatesDisclaimerTitle: string;
     estimatesDisclaimerText: string;
     constraintsTitle: string;
+    /** Mobile: toggle for the collapsible search form */
+    constraintsExpand: string;
+    constraintsCollapse: string;
     formReset: string;
     formResetTitle: string;
     filterReset: string;
@@ -363,6 +366,9 @@ export interface TranslationDictionary {
     climateShowDetails: string;
     flightDetailsTooltip: string;
     safetyDataSource: string;
+    /** Link to the official advisory page (German Foreign Office / US State Department) */
+    safetyAaLink: string;
+    safetyUsLink: string;
     seasonEventEaster: string;
     seasonEventSpringBreakEaster: string;
     seasonEventCarnival: string;
@@ -417,6 +423,9 @@ export interface TranslationDictionary {
     destGroupFromPrice: string;
     destGroupFeaturedBadge: string;
     filterByDestination: string;
+    /** Results filter groups; OTHER = destinations without a known country */
+    continentNames: Record<import('@/lib/geo/continents').Continent | 'OTHER', string>;
+    destinationGroupHint: string;
     allDestinations: string;
     shareSearch: string;
     shareCopiedShort: string;
@@ -619,5 +628,22 @@ export interface TranslationDictionary {
     cookieBannerAcceptAllLabel: string;
     cookieBannerEssentialOnlyLabel: string;
     cookieBannerAcceptAnalyticsLabel: string;
+  };
+  /** Progressive search: loading screen and background phase; {count} = destinations added */
+  searchProgress: {
+    loadingTitle: string;
+    loadingHint: string;
+    backgroundRunning: string;
+    backgroundDone: string;
+    backgroundDoneNone: string;
+    /** Playful lines rotated while searching */
+    messages: string[];
+  };
+  /** Offline fallback page of the installed app (service worker) */
+  offline: {
+    title: string;
+    body: string;
+    retry: string;
+    home: string;
   };
 }

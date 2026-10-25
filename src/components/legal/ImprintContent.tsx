@@ -10,6 +10,8 @@ const DATA_SOURCES = [
   { name: 'Weather data by Open-Meteo.com', url: 'https://open-meteo.com/', license: 'CC BY 4.0' },
   { name: 'NASA POWER', url: 'https://power.larc.nasa.gov', license: 'public domain' },
   { name: 'Wikidata', url: 'https://www.wikidata.org', license: 'CC0' },
+  { name: 'Wikivoyage (travel guide statistics)', url: 'https://www.wikivoyage.org', license: 'CC BY-SA 4.0' },
+  { name: 'Wikimedia page views', url: 'https://wikimedia.org/api/rest_v1/', license: 'CC0' },
   { name: 'OpenHolidays API', url: 'https://www.openholidaysapi.org', license: 'ODbL' },
 ];
 

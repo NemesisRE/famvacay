@@ -14,7 +14,14 @@
  * `getDatasetGeneration()` with the generation they were built at.
  */
 
-export type DatasetName = 'airports' | 'airport-traffic' | 'city-names' | 'flight-routes' | 'climate-normals';
+export type DatasetName =
+  | 'airports'
+  | 'airport-traffic'
+  | 'city-names'
+  | 'flight-routes'
+  | 'climate-normals'
+  | 'holiday-appeal'
+  | 'destination-names';
 
 interface PublishedDataset {
   data: unknown;

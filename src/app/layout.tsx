@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/components/auth-provider';
 import { I18nProvider } from '@/lib/i18n/i18n-context';
@@ -9,11 +9,23 @@ import { MainContent } from '@/components/layout/MainContent';
 import { ConsentUiProvider } from '@/lib/consent/cookie-consent-context';
 import { CookiePrivacyBanner } from '@/components/consent/CookiePrivacyBanner';
 import { UmamiAnalytics } from '@/components/analytics/UmamiAnalytics';
+import { ServiceWorkerRegistration } from '@/components/pwa/ServiceWorkerRegistration';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.APP_URL || 'https://famvacay.us'),
   title: 'FamVacay - Vacation Optimizer',
   description: 'Self-hostable vacation window optimization engine leveraging school holidays, departure savings, weather models, and PTO bridge days.',
+  applicationName: 'FamVacay',
+  // Installed to the home screen (iOS reads these instead of the web app manifest)
+  appleWebApp: { capable: true, title: 'FamVacay', statusBarStyle: 'default' },
+  icons: { apple: '/icons/apple-touch-icon.png' },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+  ],
 };
 
 export default function RootLayout({
@@ -61,6 +73,7 @@ export default function RootLayout({
               <SiteFooter />
               <CookiePrivacyBanner />
               <UmamiAnalytics />
+              <ServiceWorkerRegistration />
             </ConsentUiProvider>
           </I18nProvider>
         </AuthProvider>

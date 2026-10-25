@@ -2,6 +2,7 @@ import type { CandidateWindow } from '../optimizer/types';
 import { getDestinationVacationStyles } from '../optimizer/destination-styles';
 import { LOW_DEMAND_THRESHOLD } from '../holidays/source-markets';
 import { getSeasonalWarningTypeKey, getWindowFilterWarning } from '../optimizer/localized-warnings';
+import { LONG_HAUL_KM } from '../optimizer/distance-bands';
 
 /**
  * Result filters of the search page as pure functions, so the page can both filter the results
@@ -85,11 +86,11 @@ const TESTS: Tests = {
       case 'MID':
         return dist <= 2500;
       case 'EXTENDED':
-        return dist <= 3500;
+        return dist <= LONG_HAUL_KM;
       case 'LONG':
         return dist <= 6000;
       case 'INTERCONTINENTAL':
-        return dist > 3500;
+        return dist > LONG_HAUL_KM;
       default:
         return true;
     }

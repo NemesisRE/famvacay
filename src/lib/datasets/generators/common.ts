@@ -49,17 +49,21 @@ const WIKIDATA_ENDPOINT = 'https://query.wikidata.org/sparql';
 
 export async function wikidataQuery(ctx: GeneratorContext, sparql: string): Promise<any[]> {
   for (let attempt = 1; ; attempt++) {
-    const res = await ctx.fetch(WIKIDATA_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/sparql-results+json',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': USER_AGENT,
-      },
-      body: new URLSearchParams({ query: sparql }).toString(),
-    });
-    if (res.status === 429 || res.status >= 500) {
-      if (attempt > 4) throw new Error(`Wikidata HTTP ${res.status}`);
+    // Wikidata stops queries after 60 s; a connection still open after 2 minutes has stalled
+    const res = await ctx
+      .fetch(WIKIDATA_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/sparql-results+json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': USER_AGENT,
+        },
+        body: new URLSearchParams({ query: sparql }).toString(),
+        signal: AbortSignal.timeout(120_000),
+      })
+      .catch(() => null);
+    if (!res || res.status === 429 || res.status >= 500) {
+      if (attempt > 4) throw new Error(`Wikidata HTTP ${res?.status ?? 'timeout'}`);
       await ctx.sleep(3_000 * attempt);
       continue;
     }

@@ -63,6 +63,10 @@ jobs:
         continue-on-error: true
         run: pnpm run generate:airport-traffic
 
+      - name: Regenerate holiday appeal (Wikivoyage)
+        continue-on-error: true
+        run: pnpm run generate:holiday-appeal
+
       # Rain-duration data (Open-Meteo free tier) fills in gradually: each run keeps what is
       # already published and adds what fits into the time cap, staying inside the job timeout.
       - name: Regenerate climate normals
@@ -84,7 +88,7 @@ jobs:
             Automated weekly refresh of the generated reference data under
             `src/lib/airports/data/`, produced by the `generate:*` scripts in
             `package.json` from their public upstream sources (OurAirports,
-            OpenFlights, Wikidata, NASA POWER, Open-Meteo).
+            OpenFlights, Wikidata, Wikivoyage, NASA POWER, Open-Meteo).
 
             Typecheck and the full test suite ran against the regenerated data
             before this PR was opened. Review the diff for unexpected swings

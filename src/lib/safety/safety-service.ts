@@ -106,7 +106,7 @@ async function fetchAuswaertigesAmtWarnings(): Promise<Record<string, any> | nul
 /**
  * Fetches US Department of State Travel Advisories using official JSON or XML/RSS feeds
  */
-async function fetchUSStateDeptAdvisories(): Promise<Array<{ Title: string }>> {
+async function fetchUSStateDeptAdvisories(): Promise<Array<{ Title: string; Link?: string }>> {
   // 1. Try official JSON API
   try {
     const res = await fetch('https://cadataapi.state.gov/api/TravelAdvisories', {
@@ -138,12 +138,11 @@ async function fetchUSStateDeptAdvisories(): Promise<Array<{ Title: string }>> {
     });
     if (res.ok) {
       const xml = await res.text();
-      const items: Array<{ Title: string }> = [];
-      const titleMatches = xml.matchAll(/<title>([^<]+)<\/title>/g);
-      for (const match of titleMatches) {
-        const title = match[1].trim();
+      const items: Array<{ Title: string; Link?: string }> = [];
+      for (const [, body] of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+        const title = body.match(/<title>([^<]+)<\/title>/)?.[1].trim();
         if (title && /Level\s*[1-4]/i.test(title)) {
-          items.push({ Title: title });
+          items.push({ Title: title, Link: body.match(/<link>([^<]+)<\/link>/)?.[1].trim() });
         }
       }
       if (items.length > 0) return items;
@@ -188,7 +187,7 @@ export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCa
 
       // 1. Parse German Foreign Office (Auswärtiges Amt) warnings
       if (aaData) {
-        for (const item of Object.values<any>(aaData)) {
+        for (const [contentId, item] of Object.entries<any>(aaData)) {
           if (!item || !item.countryCode) continue;
           const iso = item.countryCode.toUpperCase();
           const hasWarning = Boolean(item.warning);
@@ -207,6 +206,8 @@ export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCa
           existing.hasGermanWarning = hasWarning;
           existing.hasGermanPartialWarning = hasPartial;
           if (item.countryName) existing.countryName = item.countryName;
+          // The open-data key is the content id of the country's travel and safety advice page
+          if (/^\d+$/.test(contentId)) existing.germanContentId = contentId;
 
           entries[iso] = existing;
         }
@@ -256,6 +257,9 @@ export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCa
 
             existing.usStateDeptLevel = level;
             existing.usTitle = title;
+            if (typeof item.Link === 'string' && item.Link.startsWith('https://travel.state.gov/')) {
+              existing.usUrl = item.Link;
+            }
             entries[upperIso] = existing;
           }
         }

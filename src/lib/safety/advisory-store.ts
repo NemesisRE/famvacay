@@ -30,6 +30,9 @@ export interface DestinationSafetyAssessment {
   advisoryTitle?: string;
   /** Active conflict / crisis zone (high-risk airport list) */
   conflictZone?: boolean;
+  /** Official sources: the country page when known, otherwise the provider's overview */
+  germanAdvisoryUrl?: string;
+  usAdvisoryUrl?: string;
 }
 
 export interface TravelAdvisoryCacheEntry {
@@ -37,8 +40,12 @@ export interface TravelAdvisoryCacheEntry {
   countryName: string;
   hasGermanWarning: boolean;
   hasGermanPartialWarning: boolean;
+  /** Auswärtiges Amt open-data key = content id of the country's travel and safety advice page */
+  germanContentId?: string;
   usStateDeptLevel: 1 | 2 | 3 | 4;
   usTitle?: string;
+  /** Country advisory page from the State Department feed */
+  usUrl?: string;
   isSafeForFamilies: boolean;
   safetyScore: number;
 }
@@ -161,6 +168,21 @@ export function isDestinationSafeForVacation(airportCode: string, countryCodeOrN
   return entry ? entry.isSafeForFamilies : true;
 }
 
+const AA_OVERVIEW_URL = 'https://www.auswaertiges-amt.de/de/ReiseUndSicherheit/reise-und-sicherheitshinweise';
+const US_OVERVIEW_URL = 'https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories.html';
+
+/** Links to the official advisories; the AA site resolves a page by its content id alone */
+export function getAdvisorySourceUrls(
+  entry?: Pick<TravelAdvisoryCacheEntry, 'germanContentId' | 'usUrl'>
+): Pick<DestinationSafetyAssessment, 'germanAdvisoryUrl' | 'usAdvisoryUrl'> {
+  return {
+    germanAdvisoryUrl: entry?.germanContentId
+      ? `${AA_OVERVIEW_URL}/${entry.germanContentId}`
+      : AA_OVERVIEW_URL,
+    usAdvisoryUrl: entry?.usUrl || US_OVERVIEW_URL,
+  };
+}
+
 /**
  * Returns comprehensive safety assessment with official government sources
  */
@@ -171,6 +193,7 @@ export function getDestinationSafetyAssessment(
   const apCode = (airportCode || '').trim().toUpperCase();
   const iso = resolveIsoCountryCode(countryCodeOrName);
   const entry = getAdvisoryStore().entries[iso];
+  const sourceUrls = getAdvisorySourceUrls(entry);
 
   if (HIGH_RISK_AIRPORT_CODES.has(apCode)) {
     return {
@@ -189,6 +212,7 @@ export function getDestinationSafetyAssessment(
       usStateDeptLevel: 4,
       advisoryTitle: 'Level 4: Do Not Travel (High-Risk Conflict Zone)',
       conflictZone: true,
+      ...sourceUrls,
     };
   }
 
@@ -238,6 +262,7 @@ export function getDestinationSafetyAssessment(
       hasGermanPartialWarning: entry.hasGermanPartialWarning,
       usStateDeptLevel: entry.usStateDeptLevel,
       advisoryTitle: entry.usTitle || defaultTitle,
+      ...sourceUrls,
     };
   }
 
@@ -255,5 +280,6 @@ export function getDestinationSafetyAssessment(
     hasGermanPartialWarning: false,
     usStateDeptLevel: 1,
     advisoryTitle: 'Level 1: Exercise Normal Precautions',
+    ...sourceUrls,
   };
 }

@@ -14,13 +14,73 @@ import {
   FloatingPortal,
 } from '@floating-ui/react';
 import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop, POPOVER_DISMISS_OPTIONS } from '@/components/ui/responsive-popover';
-import { ChevronDown, Check, X, Search } from 'lucide-react';
+import { ChevronDown, Check, Minus, X, Search } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
+import { CONTINENT_ORDER, type Continent } from '@/lib/geo/continents';
 
 export interface DestinationOption {
   code: string;
   name: string;
   count: number;
+  /** ISO 3166-1 alpha-2, for grouping */
+  countryCode?: string;
+  /** Localized country name, shown as the group heading */
+  countryName?: string;
+  continent?: Continent;
+}
+
+type ContinentKey = Continent | 'OTHER';
+
+interface DestinationGroup {
+  continent: ContinentKey;
+  count: number;
+  codes: string[];
+  countries: { name: string; count: number; codes: string[]; destinations: DestinationOption[] }[];
+}
+
+/** Continent -> country -> destinations, in continent order and alphabetical countries */
+function groupDestinations(destinations: DestinationOption[], locale: string): DestinationGroup[] {
+  const byContinent = new Map<ContinentKey, Map<string, DestinationOption[]>>();
+  for (const d of destinations) {
+    const continent = d.continent ?? 'OTHER';
+    const countries = byContinent.get(continent) ?? new Map<string, DestinationOption[]>();
+    const country = d.countryName || d.countryCode || '';
+    countries.set(country, [...(countries.get(country) ?? []), d]);
+    byContinent.set(continent, countries);
+  }
+  return ([...CONTINENT_ORDER, 'OTHER'] as ContinentKey[])
+    .filter((c) => byContinent.has(c))
+    .map((continent) => {
+      const countries = [...byContinent.get(continent)!.entries()]
+        .sort(([a], [b]) => a.localeCompare(b, locale))
+        .map(([name, list]) => ({
+          name,
+          count: list.reduce((sum, d) => sum + d.count, 0),
+          codes: list.map((d) => d.code),
+          destinations: list,
+        }));
+      return {
+        continent,
+        count: countries.reduce((sum, c) => sum + c.count, 0),
+        codes: countries.flatMap((c) => c.codes),
+        countries,
+      };
+    });
+}
+
+function Checkbox({ state }: { state: 'all' | 'some' | 'none' }) {
+  return (
+    <div
+      className={`w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0 ${
+        state === 'none'
+          ? 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+          : 'bg-teal-600 border-teal-600 text-white'
+      }`}
+    >
+      {state === 'all' && <Check className="w-3 h-3 stroke-3" />}
+      {state === 'some' && <Minus className="w-3 h-3 stroke-3" />}
+    </div>
+  );
 }
 
 export interface DestinationFilterDropdownProps {
@@ -38,7 +98,7 @@ export function DestinationFilterDropdown({
   totalCount,
   className = '',
 }: DestinationFilterDropdownProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -72,6 +132,7 @@ export function DestinationFilterDropdown({
   ]);
 
   const isAllSelected = selectedDestinations.length === 0;
+  const allGroups = useMemo(() => groupDestinations(destinations, locale), [destinations, locale]);
 
   const handleToggleDestination = (code: string) => {
     if (selectedDestinations.includes(code)) {
@@ -85,9 +146,34 @@ export function DestinationFilterDropdown({
     onChange([]);
   };
 
+  const groupState = (codes: string[]): 'all' | 'some' | 'none' => {
+    const selectedCount = codes.filter((c) => selectedDestinations.includes(c)).length;
+    return selectedCount === 0 ? 'none' : selectedCount === codes.length ? 'all' : 'some';
+  };
+
+  // Selecting a group while everything is shown means "only this group"; otherwise the group is
+  // added to or removed from the current selection
+  const handleToggleGroup = (codes: string[]) => {
+    if (groupState(codes) === 'all') {
+      onChange(selectedDestinations.filter((c) => !codes.includes(c)));
+    } else {
+      onChange([...new Set([...selectedDestinations, ...codes])]);
+    }
+  };
+
   const getButtonLabel = () => {
     if (isAllSelected) {
       return `${t.home.allDestinations} (${totalCount})`;
+    }
+    // A selection that is exactly one country or continent is named after it
+    const selectedSet = new Set(selectedDestinations);
+    const sameSet = (codes: string[]) => codes.length === selectedSet.size && codes.every((c) => selectedSet.has(c));
+    if (selectedDestinations.length > 1) {
+      for (const group of allGroups) {
+        if (sameSet(group.codes)) return `${t.home.continentNames[group.continent]} (${group.count})`;
+        const country = group.countries.find((c) => sameSet(c.codes));
+        if (country) return `${country.name} (${country.count})`;
+      }
     }
     if (selectedDestinations.length === 1) {
       const match = destinations.find((d) => d.code === selectedDestinations[0]);
@@ -104,9 +190,14 @@ export function DestinationFilterDropdown({
     return destinations.filter(
       (d) =>
         d.name.toLowerCase().includes(q) ||
-        d.code.toLowerCase().includes(q)
+        d.code.toLowerCase().includes(q) ||
+        (d.countryName ?? '').toLowerCase().includes(q) ||
+        t.home.continentNames[d.continent ?? 'OTHER'].toLowerCase().includes(q)
     );
-  }, [destinations, searchQuery]);
+  }, [destinations, searchQuery, t]);
+
+  const groups = useMemo(() => groupDestinations(filteredDestinations, locale), [filteredDestinations, locale]);
+  const showContinents = groups.length > 1;
 
   return (
     <div className={`relative inline-block ${className}`}>
@@ -218,46 +309,77 @@ export function DestinationFilterDropdown({
               </span>
             </button>
 
-            {/* Individual Destinations */}
-            <div className="mt-1 space-y-0.5">
-              {filteredDestinations.map((dest) => {
-                const isSelected = selectedDestinations.includes(dest.code);
-
-                return (
-                  <button
-                    key={dest.code}
-                    type="button"
-                    onClick={() => handleToggleDestination(dest.code)}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer text-left ${
-                      isSelected
-                        ? 'bg-teal-50/80 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 font-semibold'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 truncate min-w-0">
-                      <div
-                        className={`w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0 ${
-                          isSelected
-                            ? 'bg-teal-600 border-teal-600 text-white'
-                            : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
-                        }`}
-                      >
-                        {isSelected && <Check className="w-3 h-3 stroke-3" />}
-                      </div>
-                      <span className="truncate" title={dest.name}>{dest.name}</span>
-                    </div>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-1.5 ${
-                        isSelected
-                          ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-900 dark:text-teal-200 font-bold'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                      }`}
+            {/* Destinations grouped by continent and country: a group row selects all of it */}
+            <p className="px-2.5 pt-1.5 pb-0.5 text-[10px] text-slate-400 dark:text-slate-500">{t.home.destinationGroupHint}</p>
+            <div className="mt-0.5 space-y-0.5">
+              {groups.map((group) => (
+                <div key={group.continent} className="space-y-0.5">
+                  {showContinents && (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleGroup(group.codes)}
+                      className="w-full flex items-center justify-between px-2.5 py-1.5 mt-1 rounded-lg text-[11px] font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition cursor-pointer text-left"
                     >
-                      {dest.count}
-                    </span>
-                  </button>
-                );
-              })}
+                      <div className="flex items-center gap-2">
+                        <Checkbox state={groupState(group.codes)} />
+                        <span>{t.home.continentNames[group.continent]}</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium normal-case">({group.count})</span>
+                    </button>
+                  )}
+                  {group.countries.map((country) => {
+                    const isCountryGroup = country.destinations.length > 1;
+                    return (
+                      <div key={country.name} className={showContinents ? 'pl-3' : ''}>
+                        {isCountryGroup && (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleGroup(country.codes)}
+                            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition cursor-pointer text-left"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Checkbox state={groupState(country.codes)} />
+                              <span className="truncate">{country.name}</span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium shrink-0 ml-1.5">({country.count})</span>
+                          </button>
+                        )}
+                        <div className={isCountryGroup ? 'pl-3' : ''}>
+                          {country.destinations.map((dest) => {
+                            const isSelected = selectedDestinations.includes(dest.code);
+                            return (
+                              <button
+                                key={dest.code}
+                                type="button"
+                                onClick={() => handleToggleDestination(dest.code)}
+                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer text-left ${
+                                  isSelected
+                                    ? 'bg-teal-50/80 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 font-semibold'
+                                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 truncate min-w-0">
+                                  <Checkbox state={isSelected ? 'all' : 'none'} />
+                                  <span className="truncate" title={dest.name}>{dest.name}</span>
+                                </div>
+                                <span
+                                  className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-1.5 ${
+                                    isSelected
+                                      ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-900 dark:text-teal-200 font-bold'
+                                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                  }`}
+                                >
+                                  {dest.count}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
 
             </div>

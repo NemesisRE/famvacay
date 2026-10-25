@@ -53,6 +53,7 @@ import { ChildrenSelector, ChildItem } from '@/components/family/ChildrenSelecto
 import { MultiDestinationInput } from '@/components/destination/MultiDestinationInput';
 import { ClimateDetailsPopover } from '@/components/climate/ClimateDetailsPopover';
 import { BookingDealsPopover } from '@/components/pricing/BookingDealsPopover';
+import { BackgroundSearchBanner, SearchLoadingPanel, type BackgroundSearchState } from '@/components/search/SearchProgress';
 import { FlightDetailsPopover } from '@/components/airports/FlightDetailsPopover';
 import {
   getLocalizedSeasonalWarning,
@@ -64,7 +65,8 @@ import {
 import { SeasonalWarningFilterDropdown, type SeasonalWarningOption } from '@/components/results/SeasonalWarningFilterDropdown';
 import { DestinationMapModal } from '@/components/destination/DestinationMapModal';
 import { DestinationSafetyPopover } from '@/components/destination/DestinationSafetyPopover';
-import { DestinationFilterDropdown } from '@/components/destination/DestinationFilterDropdown';
+import { DestinationFilterDropdown, type DestinationOption } from '@/components/destination/DestinationFilterDropdown';
+import { getContinentForCountry } from '@/lib/geo/continents';
 import { getDestinationVacationStyles } from '@/lib/optimizer/destination-styles';
 import { shareOrCopyLink } from '@/lib/share/share-link';
 import {
@@ -195,6 +197,13 @@ export default function HomePage() {
   // Search Results & Filter / Pagination State
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<CandidateWindow[] | null>(null);
+  // Progressive search: more destinations are searched after the first results are shown
+  const [backgroundSearch, setBackgroundSearch] = useState<BackgroundSearchState>({ status: 'idle' });
+  // Phones and tablets (form above results): the search form folds away after a search
+  const [constraintsCollapsed, setConstraintsCollapsed] = useState(false);
+  const searchRunRef = useRef(0);
+  const backgroundAbortRef = useRef<AbortController | null>(null);
+  const dismissBackgroundSearch = useCallback(() => setBackgroundSearch({ status: 'idle' }), []);
   const [error, setError] = useState<string | null>(null);
   const [activeShareId, setActiveShareId] = useState<string | null>(null);
   const [shareCopiedToast, setShareCopiedToast] = useState<boolean>(false);
@@ -950,6 +959,17 @@ export default function HomePage() {
 
   const handleOptimize = async (e: React.FormEvent) => {
     e.preventDefault();
+    // A newer search supersedes the background phase of the previous one
+    const runId = ++searchRunRef.current;
+    backgroundAbortRef.current?.abort();
+    // Below the two-column layout the results are under the form: fold it and go to the results
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+      setConstraintsCollapsed(true);
+      requestAnimationFrame(() =>
+        document.getElementById('results-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      );
+    }
+    setBackgroundSearch({ status: 'idle' });
     setLoading(true);
     setError(null);
     setCurrentPage(1);
@@ -1029,62 +1049,97 @@ export default function HomePage() {
       }
 
       const data = await res.json();
+
+      // Cache for reloads and persist as a shareable link (again after the background phase)
+      const publishResults = (windows: CandidateWindow[]) => {
+        try {
+          localStorage.setItem('famvac_cached_results', JSON.stringify({ timestamp: Date.now(), windows }));
+        } catch {
+          // Storage quota / disabled
+        }
+        fetch('/api/vacations/share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: payload,
+            formState: {
+              departureLocation,
+              departureCoords,
+              country,
+              federalState,
+              selectedStyles,
+              targetDestinations,
+              originAirports,
+              adultsCount,
+              childrenList,
+              durationDaysMin,
+              durationDaysMax,
+              earliestDate,
+              latestDate,
+              maxBudget,
+              selectedVehicles,
+              preferredBoardType,
+              minBeachTemp,
+              requireSnow,
+              longRangeStyles,
+              recurringBlackouts,
+              maxFlightStops,
+              carFuelType,
+              maxOverlandDurationHours,
+            },
+            windows,
+          }),
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((shareData) => {
+            if (shareData?.shareId && searchRunRef.current === runId) {
+              setActiveShareId(shareData.shareId);
+              const newUrl = new URL(window.location.href);
+              newUrl.searchParams.set('s', shareData.shareId);
+              window.history.replaceState(null, '', newUrl.toString());
+            }
+          })
+          .catch(() => {});
+      };
+
       setResults(data.windows);
       setSelectedDestinationsList([]);
       setTimeframeCurrentPage(1);
-      try {
-        localStorage.setItem(
-          'famvac_cached_results',
-          JSON.stringify({ timestamp: Date.now(), windows: data.windows })
-        );
-      } catch {
-        // Storage quota / disabled
-      }
+      publishResults(data.windows);
 
-      // Persist results for reload-safety and direct shareable URL
-      fetch('/api/vacations/share', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: payload,
-          formState: {
-            departureLocation,
-            departureCoords,
-            country,
-            federalState,
-            selectedStyles,
-            targetDestinations,
-            originAirports,
-            adultsCount,
-            childrenList,
-            durationDaysMin,
-            durationDaysMax,
-            earliestDate,
-            latestDate,
-            maxBudget,
-            selectedVehicles,
-            preferredBoardType,
-            minBeachTemp,
-            requireSnow,
-            longRangeStyles,
-            recurringBlackouts,
-            maxFlightStops,
-            carFuelType,
-            maxOverlandDurationHours,
-          },
-          windows: data.windows,
-        }),
-      })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((shareData) => {
-          if (shareData?.shareId) {
-            setActiveShareId(shareData.shareId);
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.set('s', shareData.shareId);
-            window.history.replaceState(null, '', newUrl.toString());
-          }
+      // Progressive search: the most relevant destinations are shown now, the next tier is
+      // searched in the background and replaces the list when ready (scores are relative to the
+      // whole result set, so the full search runs again rather than merging two partial ones)
+      if (!hasDestinations) {
+        const destinationCount = (windows: CandidateWindow[]) => new Set(windows.map((w) => w.destinationAirport)).size;
+        const firstCount = destinationCount(data.windows);
+        const controller = new AbortController();
+        backgroundAbortRef.current = controller;
+        setBackgroundSearch({ status: 'running' });
+        fetch('/api/vacations/optimize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, discoveryScope: 'extended' }),
+          signal: controller.signal,
         })
-        .catch(() => {});
+          .then((r) => (r.ok ? r.json() : null))
+          .then((full: { windows?: CandidateWindow[] } | null) => {
+            if (searchRunRef.current !== runId) return;
+            if (!full?.windows) {
+              setBackgroundSearch({ status: 'idle' });
+              return;
+            }
+            const added = destinationCount(full.windows) - firstCount;
+            if (added > 0) {
+              setResults(full.windows);
+              publishResults(full.windows);
+            }
+            setBackgroundSearch({ status: 'done', added: Math.max(0, added) });
+          })
+          .catch(() => {
+            if (searchRunRef.current === runId) setBackgroundSearch({ status: 'idle' });
+          });
+      }
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred');
     } finally {
@@ -1225,16 +1280,21 @@ export default function HomePage() {
 
   const activeQueryDestinations = useMemo(() => {
     if (!results) return [];
-    const map = new Map<string, { code: string; name: string; country?: string; count: number }>();
+    const map = new Map<string, DestinationOption>();
     for (const w of results) {
       const existing = map.get(w.destinationAirport);
       if (existing) {
         existing.count++;
       } else {
+        // Country and continent for the filter's groups ("only Asia", "only Thailand")
+        const point = getDestinationPoint(w.destinationAirport, locale);
+        const countryCode = point?.state ? point.state.split('-')[0].toUpperCase() : undefined;
         map.set(w.destinationAirport, {
           code: w.destinationAirport,
           name: getFormattedLocalizedDestination(w.destinationAirport, w.destinationName),
-          country: w.destinationCountry,
+          countryCode,
+          countryName: point?.country || w.destinationCountry,
+          continent: getContinentForCountry(countryCode),
           count: 1,
         });
       }
@@ -1988,9 +2048,23 @@ export default function HomePage() {
         <div className="lg:col-span-5 space-y-4">
           <div className="border-b border-slate-200 dark:border-slate-800 pb-2.5">
             <div className="flex items-center justify-between min-h-9">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-                {t.home.constraintsTitle}
+              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+                {/* A toggle below the two-column layout; on wide screens the form always shows */}
+                <button
+                  type="button"
+                  onClick={() => setConstraintsCollapsed((c) => !c)}
+                  aria-expanded={!constraintsCollapsed}
+                  aria-controls="search-constraints"
+                  title={constraintsCollapsed ? t.home.constraintsExpand : t.home.constraintsCollapse}
+                  className="flex items-center gap-2 cursor-pointer lg:cursor-default lg:pointer-events-none text-left"
+                >
+                  <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                  {t.home.constraintsTitle}
+                  <ChevronDown
+                    className={`lg:hidden w-4 h-4 text-slate-400 transition-transform ${constraintsCollapsed ? '' : 'rotate-180'}`}
+                    aria-hidden="true"
+                  />
+                </button>
               </h2>
               <div className="flex items-center gap-2">
                 <button
@@ -2026,7 +2100,44 @@ export default function HomePage() {
             )}
           </div>
 
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
+          {constraintsCollapsed && (
+            <button
+              type="button"
+              onClick={() => setConstraintsCollapsed(false)}
+              className="lg:hidden w-full text-left bg-white dark:bg-slate-900 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-3 cursor-pointer hover:border-teal-300 dark:hover:border-teal-700 transition-colors"
+            >
+              <span className="min-w-0 text-xs text-slate-600 dark:text-slate-300">
+                {(() => {
+                  const dates = earliestDate && latestDate ? `${formatLocalizedDate(earliestDate)} – ${formatLocalizedDate(latestDate)}` : '';
+                  const travelers = (adultsCount + childrenList.length === 1 ? t.home.travelerCountOne : t.home.travelerCountOther).replace(
+                    '{count}',
+                    String(adultsCount + childrenList.length)
+                  );
+                  // Departure place first when there is one (flexible searches have none)
+                  const [first, second] = departureLocation
+                    ? [departureLocation, [dates, travelers].filter(Boolean).join(' · ')]
+                    : [dates || t.home.constraintsTitle, travelers];
+                  return (
+                    <>
+                      <span className="block font-semibold text-slate-800 dark:text-slate-100 truncate">{first}</span>
+                      <span className="block truncate">{second}</span>
+                    </>
+                  );
+                })()}
+              </span>
+              <span className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-teal-700 dark:text-teal-300">
+                {t.home.constraintsExpand}
+                <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
+              </span>
+            </button>
+          )}
+
+          <div
+            id="search-constraints"
+            className={`bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6 ${
+              constraintsCollapsed ? 'hidden lg:block' : ''
+            }`}
+          >
 
             <form onSubmit={handleOptimize} className="space-y-6">
               {/* Step 1: Departure Location & School District */}
@@ -2449,7 +2560,7 @@ export default function HomePage() {
         {/* Results Stream */}
         <div className="lg:col-span-7 space-y-4">
           {/* One row like the form's heading (title left, action right), so both cards start level */}
-          <div className="border-b border-slate-200 dark:border-slate-800 pb-2.5">
+          <div id="results-heading" className="border-b border-slate-200 dark:border-slate-800 pb-2.5 scroll-mt-20">
             <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2 min-h-9">
             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 min-w-0">
               <Award className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
@@ -2473,6 +2584,12 @@ export default function HomePage() {
             <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 text-sm rounded-xl">
               {error}
             </div>
+          )}
+
+          {loading && <SearchLoadingPanel />}
+
+          {!loading && results && results.length > 0 && (
+            <BackgroundSearchBanner state={backgroundSearch} onDismiss={dismissBackgroundSearch} />
           )}
 
           {!results && !loading && (

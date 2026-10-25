@@ -3,6 +3,8 @@ import airportTrafficSeed from '@/lib/airports/data/airport-traffic.json';
 import cityNamesSeed from '@/lib/airports/data/city-names.json';
 import flightRoutesSeed from '@/lib/airports/data/flight-routes.json';
 import climateNormalsSeed from '@/lib/optimizer/data/climate-normals.json';
+import holidayAppealSeed from '@/lib/optimizer/data/holiday-appeal.json';
+import destinationNamesSeed from '@/lib/geo/data/destination-names.json';
 import { resolveOpenMeteoAccess } from '@/lib/integrations/open-meteo-access';
 import { getDataset, type DatasetName } from './store';
 import type { AirportRecord, GeneratorContext } from './generators/common';
@@ -11,9 +13,10 @@ import { generateFlightRoutes } from './generators/flight-routes';
 import { generateAirportTraffic } from './generators/airport-traffic';
 import { generateCityNames } from './generators/city-names';
 import { generateClimateNormals, type ClimateGeneratorState } from './generators/climate-normals';
+import { generateHolidayData, HOLIDAY_APPEAL_ROW_LENGTH, type HolidayData } from './generators/holiday-appeal';
 
 /**
- * The refreshable reference datasets, in dependency order (routes, traffic, names and climate
+ * The refreshable reference datasets, in dependency order (routes, traffic, names, holiday appeal and climate
  * are derived from the airport list; climate also from the route network).
  */
 
@@ -68,6 +71,10 @@ function everyValue(data: unknown, check: (value: unknown, key: string) => boole
 
 const airports = () => current<AirportRecord[]>('airports', airportsSeed);
 
+// The holiday-appeal run also yields the destination names; the names dataset (next in order)
+// publishes them instead of reading every guide a second time
+let lastHolidayData: HolidayData | null = null;
+
 export const DATASET_DEFINITIONS: DatasetDefinition[] = [
   {
     name: 'airports',
@@ -108,6 +115,49 @@ export const DATASET_DEFINITIONS: DatasetDefinition[] = [
     run: async (ctx) => ({ data: await generateCityNames(ctx, airports()) }),
     validate: (data, before) =>
       everyValue(data, (v) => Boolean(v) && typeof v === 'object') ? notShrunk(data, before, 200, 0.8) : 'invalid city names',
+  },
+  {
+    name: 'holiday-appeal',
+    seed: holidayAppealSeed,
+    // Travel guides and their readership change slowly; one run takes a few minutes
+    refreshIntervalMs: 30 * DAY_MS,
+    run: async (ctx) => {
+      lastHolidayData = await generateHolidayData(ctx, airports());
+      return { data: lastHolidayData.appeal };
+    },
+    validate: (data, before) =>
+      everyValue(
+        data,
+        (v, k) =>
+          /^[A-Z]{3}$/.test(k) &&
+          Array.isArray(v) &&
+          v.length === HOLIDAY_APPEAL_ROW_LENGTH &&
+          v.every((n) => Number.isFinite(n) && n >= 0)
+      )
+        ? notShrunk(data, before, 500, 0.8)
+        : 'invalid holiday appeal rows',
+  },
+  {
+    name: 'destination-names',
+    seed: destinationNamesSeed,
+    refreshIntervalMs: 30 * DAY_MS,
+    run: async (ctx) => {
+      const data = lastHolidayData ?? (await generateHolidayData(ctx, airports()));
+      lastHolidayData = null;
+      return { data: data.names };
+    },
+    validate: (data, before) =>
+      everyValue(
+        data,
+        (v, k) =>
+          /^[A-Z]{3}$/.test(k) &&
+          Boolean(v) &&
+          typeof v === 'object' &&
+          typeof (v as { n?: unknown }).n === 'object' &&
+          Object.values((v as { n: Record<string, unknown> }).n).every((name) => typeof name === 'string' && name.length > 0)
+      )
+        ? notShrunk(data, before, 0, 0.7)
+        : 'invalid destination names',
   },
   {
     name: 'climate-normals',
