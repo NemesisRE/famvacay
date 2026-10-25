@@ -53,6 +53,7 @@ import { ChildrenSelector, ChildItem } from '@/components/family/ChildrenSelecto
 import { MultiDestinationInput } from '@/components/destination/MultiDestinationInput';
 import { ClimateDetailsPopover } from '@/components/climate/ClimateDetailsPopover';
 import { BookingDealsPopover } from '@/components/pricing/BookingDealsPopover';
+import { BackgroundSearchBanner, SearchLoadingPanel, type BackgroundSearchState } from '@/components/search/SearchProgress';
 import { FlightDetailsPopover } from '@/components/airports/FlightDetailsPopover';
 import {
   getLocalizedSeasonalWarning,
@@ -64,7 +65,8 @@ import {
 import { SeasonalWarningFilterDropdown, type SeasonalWarningOption } from '@/components/results/SeasonalWarningFilterDropdown';
 import { DestinationMapModal } from '@/components/destination/DestinationMapModal';
 import { DestinationSafetyPopover } from '@/components/destination/DestinationSafetyPopover';
-import { DestinationFilterDropdown } from '@/components/destination/DestinationFilterDropdown';
+import { DestinationFilterDropdown, type DestinationOption } from '@/components/destination/DestinationFilterDropdown';
+import { getContinentForCountry } from '@/lib/geo/continents';
 import { getDestinationVacationStyles } from '@/lib/optimizer/destination-styles';
 import { shareOrCopyLink } from '@/lib/share/share-link';
 import {
@@ -195,6 +197,11 @@ export default function HomePage() {
   // Search Results & Filter / Pagination State
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<CandidateWindow[] | null>(null);
+  // Progressive search: more destinations are searched after the first results are shown
+  const [backgroundSearch, setBackgroundSearch] = useState<BackgroundSearchState>({ status: 'idle' });
+  const searchRunRef = useRef(0);
+  const backgroundAbortRef = useRef<AbortController | null>(null);
+  const dismissBackgroundSearch = useCallback(() => setBackgroundSearch({ status: 'idle' }), []);
   const [error, setError] = useState<string | null>(null);
   const [activeShareId, setActiveShareId] = useState<string | null>(null);
   const [shareCopiedToast, setShareCopiedToast] = useState<boolean>(false);
@@ -950,6 +957,10 @@ export default function HomePage() {
 
   const handleOptimize = async (e: React.FormEvent) => {
     e.preventDefault();
+    // A newer search supersedes the background phase of the previous one
+    const runId = ++searchRunRef.current;
+    backgroundAbortRef.current?.abort();
+    setBackgroundSearch({ status: 'idle' });
     setLoading(true);
     setError(null);
     setCurrentPage(1);
@@ -1029,62 +1040,97 @@ export default function HomePage() {
       }
 
       const data = await res.json();
+
+      // Cache for reloads and persist as a shareable link (again after the background phase)
+      const publishResults = (windows: CandidateWindow[]) => {
+        try {
+          localStorage.setItem('famvac_cached_results', JSON.stringify({ timestamp: Date.now(), windows }));
+        } catch {
+          // Storage quota / disabled
+        }
+        fetch('/api/vacations/share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: payload,
+            formState: {
+              departureLocation,
+              departureCoords,
+              country,
+              federalState,
+              selectedStyles,
+              targetDestinations,
+              originAirports,
+              adultsCount,
+              childrenList,
+              durationDaysMin,
+              durationDaysMax,
+              earliestDate,
+              latestDate,
+              maxBudget,
+              selectedVehicles,
+              preferredBoardType,
+              minBeachTemp,
+              requireSnow,
+              longRangeStyles,
+              recurringBlackouts,
+              maxFlightStops,
+              carFuelType,
+              maxOverlandDurationHours,
+            },
+            windows,
+          }),
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((shareData) => {
+            if (shareData?.shareId && searchRunRef.current === runId) {
+              setActiveShareId(shareData.shareId);
+              const newUrl = new URL(window.location.href);
+              newUrl.searchParams.set('s', shareData.shareId);
+              window.history.replaceState(null, '', newUrl.toString());
+            }
+          })
+          .catch(() => {});
+      };
+
       setResults(data.windows);
       setSelectedDestinationsList([]);
       setTimeframeCurrentPage(1);
-      try {
-        localStorage.setItem(
-          'famvac_cached_results',
-          JSON.stringify({ timestamp: Date.now(), windows: data.windows })
-        );
-      } catch {
-        // Storage quota / disabled
-      }
+      publishResults(data.windows);
 
-      // Persist results for reload-safety and direct shareable URL
-      fetch('/api/vacations/share', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: payload,
-          formState: {
-            departureLocation,
-            departureCoords,
-            country,
-            federalState,
-            selectedStyles,
-            targetDestinations,
-            originAirports,
-            adultsCount,
-            childrenList,
-            durationDaysMin,
-            durationDaysMax,
-            earliestDate,
-            latestDate,
-            maxBudget,
-            selectedVehicles,
-            preferredBoardType,
-            minBeachTemp,
-            requireSnow,
-            longRangeStyles,
-            recurringBlackouts,
-            maxFlightStops,
-            carFuelType,
-            maxOverlandDurationHours,
-          },
-          windows: data.windows,
-        }),
-      })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((shareData) => {
-          if (shareData?.shareId) {
-            setActiveShareId(shareData.shareId);
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.set('s', shareData.shareId);
-            window.history.replaceState(null, '', newUrl.toString());
-          }
+      // Progressive search: the most relevant destinations are shown now, the next tier is
+      // searched in the background and replaces the list when ready (scores are relative to the
+      // whole result set, so the full search runs again rather than merging two partial ones)
+      if (!hasDestinations) {
+        const destinationCount = (windows: CandidateWindow[]) => new Set(windows.map((w) => w.destinationAirport)).size;
+        const firstCount = destinationCount(data.windows);
+        const controller = new AbortController();
+        backgroundAbortRef.current = controller;
+        setBackgroundSearch({ status: 'running' });
+        fetch('/api/vacations/optimize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, discoveryScope: 'extended' }),
+          signal: controller.signal,
         })
-        .catch(() => {});
+          .then((r) => (r.ok ? r.json() : null))
+          .then((full: { windows?: CandidateWindow[] } | null) => {
+            if (searchRunRef.current !== runId) return;
+            if (!full?.windows) {
+              setBackgroundSearch({ status: 'idle' });
+              return;
+            }
+            const added = destinationCount(full.windows) - firstCount;
+            if (added > 0) {
+              setResults(full.windows);
+              publishResults(full.windows);
+            }
+            setBackgroundSearch({ status: 'done', added: Math.max(0, added) });
+          })
+          .catch(() => {
+            if (searchRunRef.current === runId) setBackgroundSearch({ status: 'idle' });
+          });
+      }
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred');
     } finally {
@@ -1225,16 +1271,21 @@ export default function HomePage() {
 
   const activeQueryDestinations = useMemo(() => {
     if (!results) return [];
-    const map = new Map<string, { code: string; name: string; country?: string; count: number }>();
+    const map = new Map<string, DestinationOption>();
     for (const w of results) {
       const existing = map.get(w.destinationAirport);
       if (existing) {
         existing.count++;
       } else {
+        // Country and continent for the filter's groups ("only Asia", "only Thailand")
+        const point = getDestinationPoint(w.destinationAirport, locale);
+        const countryCode = point?.state ? point.state.split('-')[0].toUpperCase() : undefined;
         map.set(w.destinationAirport, {
           code: w.destinationAirport,
           name: getFormattedLocalizedDestination(w.destinationAirport, w.destinationName),
-          country: w.destinationCountry,
+          countryCode,
+          countryName: point?.country || w.destinationCountry,
+          continent: getContinentForCountry(countryCode),
           count: 1,
         });
       }
@@ -2473,6 +2524,12 @@ export default function HomePage() {
             <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 text-sm rounded-xl">
               {error}
             </div>
+          )}
+
+          {loading && <SearchLoadingPanel />}
+
+          {!loading && results && results.length > 0 && (
+            <BackgroundSearchBanner state={backgroundSearch} onDismiss={dismissBackgroundSearch} />
           )}
 
           {!results && !loading && (

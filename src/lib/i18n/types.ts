@@ -417,6 +417,9 @@ export interface TranslationDictionary {
     destGroupFromPrice: string;
     destGroupFeaturedBadge: string;
     filterByDestination: string;
+    /** Results filter groups; OTHER = destinations without a known country */
+    continentNames: Record<import('@/lib/geo/continents').Continent | 'OTHER', string>;
+    destinationGroupHint: string;
     allDestinations: string;
     shareSearch: string;
     shareCopiedShort: string;
@@ -619,5 +622,15 @@ export interface TranslationDictionary {
     cookieBannerAcceptAllLabel: string;
     cookieBannerEssentialOnlyLabel: string;
     cookieBannerAcceptAnalyticsLabel: string;
+  };
+  /** Progressive search: loading screen and background phase; {count} = destinations added */
+  searchProgress: {
+    loadingTitle: string;
+    loadingHint: string;
+    backgroundRunning: string;
+    backgroundDone: string;
+    backgroundDoneNone: string;
+    /** Playful lines rotated while searching */
+    messages: string[];
   };
 }

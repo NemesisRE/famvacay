@@ -784,21 +784,27 @@ describe('Arbitrage Airport Info & Localized Seasonal Warnings', () => {
 
     // Top results must feature Caribbean / Regional Americas destinations
     const topDestinations = results.slice(0, 20).map((r) => r.destinationAirport);
-    expect(topDestinations).toContain('NAS'); // Bahamas
     expect(topDestinations).toContain('PUJ'); // Dominican Republic
-    expect(topDestinations).toContain('MBJ'); // Jamaica
     expect(topDestinations).toContain('CUN'); // Cancun
+    const caribbean = ['NAS', 'MBJ', 'SJU', 'BGI', 'CUK', 'GCM', 'AUA', 'STT', 'BDA', 'PLS', 'SXM'];
+    expect(new Set(topDestinations.filter((c) => caribbean.includes(c))).size).toBeGreaterThanOrEqual(3);
+
+    // The Bahamas and Jamaica follow in the background phase of the progressive search
+    const extended = optimizeVacationWindows({ ...input, discoveryScope: 'extended' }, {}, {});
+    const extendedDestinations = new Set(extended.map((r) => r.destinationAirport));
+    expect(extendedDestinations).toContain('NAS');
+    expect(extendedDestinations).toContain('MBJ');
 
     // European destinations must not be ahead of the close Caribbean hubs. (Tenerife may appear further
     // down: with measured climate data it is dry and warm in November, the Caribbean's late rainy season.)
     expect(topDestinations).not.toContain('INN');
     const rank = (code: string) => { const i = topDestinations.indexOf(code); return i < 0 ? Infinity : i; };
-    for (const caribbean of ['NAS', 'PUJ', 'CUN']) {
-      expect(rank(caribbean)).toBeLessThan(rank('TFS'));
+    for (const code of ['PUJ', 'CUN']) {
+      expect(rank(code)).toBeLessThan(rank('TFS'));
     }
 
     // Friction score for top Caribbean results must be high (>= 90)
-    const nasWindow = results.find((r) => r.destinationAirport === 'NAS');
+    const nasWindow = extended.find((r) => r.destinationAirport === 'NAS');
     expect(nasWindow?.scoreBreakdown.travelFrictionIndex).toBeGreaterThanOrEqual(90);
 
     const pujWindow = results.find((r) => r.destinationAirport === 'PUJ');

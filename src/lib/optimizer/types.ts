@@ -106,6 +106,9 @@ export interface TripPlanInput {
   searchBlackouts?: BlackoutRange[]; // Additional search-specific blackouts
   maxWindowsPerDestination?: number; // Representative windows kept per destination (default 40, 0 = keep all)
   maxTotalWindows?: number;          // Global cap on returned windows (default 1200)
+  /** Open discovery only: 'extended' also searches the second tier of destinations (the
+   *  background phase of a progressive search). Default 'primary'. */
+  discoveryScope?: 'primary' | 'extended';
 }
 
 export interface PublicHoliday {

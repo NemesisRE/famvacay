@@ -7,6 +7,7 @@ import itCountries from 'i18n-iso-countries/langs/it.json';
 import iso from 'iso-3166-2';
 import { parseISO } from 'date-fns';
 import { POPULAR_DESTINATIONS, getClimateNormals, getEstimatedClimate } from './weather';
+import { MIN_STYLE_EVIDENCE, getHolidayAppeal, getStyleEvidence } from './holiday-appeal';
 import type { DestinationType, TravelVehicle } from './types';
 import {
   isOverlandReachable,
@@ -783,15 +784,27 @@ interface DiscoveryCandidate {
  * (e.g. Corisco Island), which previously filled long-haul slots.
  */
 /**
- * A country's further airports earn a discovery slot only where the climate really differs
- * (another monsoon, rainy season or altitude), e.g. Phuket (Andaman Sea, wettest in September)
- * and Koh Samui (Gulf of Thailand, wettest in November) next to Bangkok - not three resorts on
- * the same stretch of coast.
+ * Discovery picks greedily by score minus soft diversity penalties instead of hard caps: a
+ * country's further destinations cost points (little when the climate differs, e.g. Phuket and
+ * Koh Samui next to Bangkok; a lot for another resort on the same coast), and so do further
+ * long-haul picks in an already covered world region. Popular holiday places of a country can
+ * still win several slots, but only by being clearly better than the alternatives.
  */
-const CLIMATE_EXTRA_SLOTS = 8;
-const CLIMATE_EXTRA_MAX_PER_COUNTRY = 3;
-/** A world region needs this many regular picks before its countries get extra regions */
-const CLIMATE_EXTRA_MIN_REGION_PICKS = 3;
+const NEAR_DUPLICATE_KM = 60;
+const COUNTRY_STEP_PENALTY = 5;
+const SAME_CLIMATE_PENALTY = 80;
+/** Large, varied countries (US, Canada, Australia, Spain, Italy, Greece) are penalised half as much */
+const LARGE_COUNTRY_PENALTY_FACTOR = 0.5;
+/** Beyond this flight distance a trip counts as halfway round the world */
+const EXTREME_DISTANCE_KM = 12000;
+const EXTREME_DISTANCE_PENALTY = 25;
+/** Climatically different regions per country exempt from the region penalty */
+const SEASONAL_ALTERNATIVES_PER_COUNTRY = 2;
+const LONG_HAUL_REGION_PENALTY = 10;
+/** Weight of the 0-1 Wikivoyage holiday appeal in the discovery score; airports without a guide get the fallback */
+const HOLIDAY_APPEAL_WEIGHT = 90;
+const HOLIDAY_APPEAL_FALLBACK = 0.25;
+
 const CLIMATE_DISTINCT_RAIN_MM_PER_DAY = 3;
 const CLIMATE_DISTINCT_TEMP_C = 4;
 const CLIMATE_DISTINCT_MIN_KM = 150;
@@ -860,46 +873,6 @@ export function getWorldRegion(lat: number, lon: number): WorldRegion {
   return 'OCEANIA';
 }
 
-/**
- * Long-haul (> 3500 km) slots are filled round-robin across world regions: each round every
- * region contributes its best-scoring eligible candidate. Pure score ordering let the region
- * with the strongest heuristic bonuses (Caribbean/Gulf beaches) take every slot, so flexible
- * searches never surfaced East/Southeast/Central Asia or Oceania at all.
- */
-function selectAcrossWorldRegions(
-  candidates: DiscoveryCandidate[],
-  slots: number,
-  trySelect: (c: DiscoveryCandidate) => boolean
-): void {
-  if (slots <= 0) return;
-  const byRegion = new Map<WorldRegion, DiscoveryCandidate[]>();
-  for (const c of candidates) {
-    const region = getWorldRegion(c.lat, c.lon);
-    const list = byRegion.get(region) || [];
-    list.push(c);
-    byRegion.set(region, list);
-  }
-  const regions = Array.from(byRegion.keys()).sort(
-    (a, b) => byRegion.get(b)![0].score - byRegion.get(a)![0].score
-  );
-  let taken = 0;
-  let progressed = true;
-  while (taken < slots && progressed) {
-    progressed = false;
-    for (const region of regions) {
-      if (taken >= slots) break;
-      const list = byRegion.get(region)!;
-      while (list.length > 0) {
-        const c = list.shift()!;
-        if (trySelect(c)) {
-          taken++;
-          progressed = true;
-          break;
-        }
-      }
-    }
-  }
-}
 
 /**
  * Diversity-first selection for road/rail discovery. Airport-style selection (1 airport per
@@ -970,10 +943,114 @@ function selectOverlandDiverse(
  * Overland (car/train/bus) searches additionally index non-airport surface destinations and
  * select them without any airport-hub bias.
  */
-export function discoverDestinationsDynamically(
+interface SoftDiversityPicker {
+  /** Picks up to `count` candidates from `pool` (sorted by score, descending), best first */
+  pick(pool: DiscoveryCandidate[], count: number): DiscoveryCandidate[];
+}
+
+/** Country bucket for diversity: the Canaries and Portugal's Atlantic islands count separately */
+function diversityCountryKey(c: DiscoveryCandidate): string {
+  const isSpain = c.country === 'Spain' || c.country === 'ES';
+  const isPortugal = c.country === 'Portugal' || c.country === 'PT';
+  return isSpain && (c.dist > 2500 || c.state === 'ES-CN' || c.state === 'CN')
+    ? 'Spain_Canaries'
+    : isPortugal && (c.dist > 2000 || c.state === 'PT-20' || c.state === 'PT-30')
+    ? 'Portugal_Atlantic'
+    : c.country;
+}
+
+/** Greedy selection by score minus soft diversity penalties; state is shared across pick() calls */
+function createSoftDiversityPicker(): SoftDiversityPicker {
+  const pickedCodes = new Set<string>();
+  const picks: DiscoveryCandidate[] = [];
+  const byCountry = new Map<string, DiscoveryCandidate[]>();
+  const longHaulPerRegion = new Map<WorldRegion, number>();
+  const climateCache = new Map<string, boolean>();
+
+  const distinct = (a: DiscoveryCandidate, b: DiscoveryCandidate) => {
+    const key = a.code < b.code ? `${a.code}|${b.code}` : `${b.code}|${a.code}`;
+    let result = climateCache.get(key);
+    if (result === undefined) {
+      result = hasDistinctClimate(a, b);
+      climateCache.set(key, result);
+    }
+    return result;
+  };
+
+  /** Points deducted for picking `c` next, or null when it duplicates a pick */
+  const penalty = (c: DiscoveryCandidate): number | null => {
+    for (const p of picks) {
+      if (calculateGeodesicDistanceKm(p.lat, p.lon, c.lat, c.lon) < NEAR_DUPLICATE_KM) return null;
+    }
+    const factor = MULTI_STATE_COUNTRIES.has(c.country) ? LARGE_COUNTRY_PENALTY_FACTOR : 1;
+    const sameCountry = byCountry.get(diversityCountryKey(c)) ?? [];
+    let points = 0;
+    for (const p of sameCountry) {
+      points += (distinct(p, c) ? COUNTRY_STEP_PENALTY : SAME_CLIMATE_PENALTY) * factor;
+    }
+    // A climatically different second or third region of a country already chosen is a seasonal
+    // alternative (Koh Samui next to Phuket), not more of the same world region: no region penalty
+    const seasonalAlternative =
+      sameCountry.length > 0 && sameCountry.length < SEASONAL_ALTERNATIVES_PER_COUNTRY + 1 && sameCountry.every((p) => distinct(p, c));
+    if (c.dist > 3500 && !seasonalAlternative) {
+      points += LONG_HAUL_REGION_PENALTY * (longHaulPerRegion.get(getWorldRegion(c.lat, c.lon)) ?? 0);
+    }
+    return points;
+  };
+
+  const add = (c: DiscoveryCandidate) => {
+    pickedCodes.add(c.code);
+    picks.push(c);
+    const key = diversityCountryKey(c);
+    byCountry.set(key, [...(byCountry.get(key) ?? []), c]);
+    if (c.dist > 3500) {
+      const region = getWorldRegion(c.lat, c.lon);
+      longHaulPerRegion.set(region, (longHaulPerRegion.get(region) ?? 0) + 1);
+    }
+  };
+
+  return {
+    pick(pool, count) {
+      const added: DiscoveryCandidate[] = [];
+      while (added.length < count) {
+        let best: DiscoveryCandidate | null = null;
+        let bestScore = -Infinity;
+        for (const c of pool) {
+          // Penalties only lower a score: nothing further down the sorted pool can beat the best
+          if (c.score <= bestScore) break;
+          if (pickedCodes.has(c.code)) continue;
+          const points = penalty(c);
+          if (points === null) continue;
+          if (c.score - points > bestScore) {
+            best = c;
+            bestScore = c.score - points;
+          }
+        }
+        if (!best) break;
+        add(best);
+        added.push(best);
+      }
+      return added;
+    },
+  };
+}
+
+export interface DiscoveryTiers {
+  /** The first, most relevant destinations: searched right away */
+  primary: string[];
+  /** More destinations a progressive search adds in the background */
+  extended: string[];
+}
+
+/** Open discovery: the most relevant destinations for the styles and origin (primary tier) */
+export function discoverDestinationsDynamically(types: DestinationType[], originContext?: OriginContext): string[] {
+  return discoverDestinationTiers(types, originContext).primary;
+}
+
+export function discoverDestinationTiers(
   types: DestinationType[],
   originContext?: OriginContext
-): string[] {
+): DiscoveryTiers {
   const { lat: userLat, lon: userLon } = resolveOriginCoordinates(originContext);
   const originAirportSet = new Set((originContext?.originAirports || []).map((c) => c.toUpperCase()));
   const allAirports = getAllCommercialAirports();
@@ -1155,7 +1232,23 @@ export function discoverDestinationsDynamically(
 
     // Flight discovery prioritizes major passenger hubs with reliable airline service. That
     // bias is meaningless for a road trip, so overland-only candidates start level.
-    let score = planeOk ? (ap.isMajorHub ? 60 : 25) : 40;
+    let score = planeOk ? (ap.isMajorHub ? 45 : 25) : 40;
+
+    // Where people actually go on holiday, for the requested kind of holiday (Wikivoyage)
+    const appealStyles: DestinationType[] = isAll
+      ? []
+      : types.includes('LONGRANGE') && (originContext?.longRangeStyles?.length ?? 0) > 0
+      ? [...types.filter((t) => t !== 'LONGRANGE'), ...(originContext?.longRangeStyles ?? [])]
+      : types.filter((t) => t !== 'LONGRANGE');
+    // A travel guide that hardly mentions the requested kind of holiday rules the place out (e.g.
+    // high, cold plateau towns without a single ski slope for an alpine search)
+    const styleEvidence = isSurface ? null : getStyleEvidence(ap.code, appealStyles);
+    if (styleEvidence !== null && styleEvidence < MIN_STYLE_EVIDENCE) continue;
+    const appeal = isSurface ? null : getHolidayAppeal(ap.code, appealStyles);
+    // For a specific style, an airport whose area has no travel guide at all is no holiday place
+    const specificStyleSearch = appealStyles.some((s) => s !== 'ALL' && s !== 'LONGRANGE');
+    if (!isSurface && specificStyleSearch && appeal === null) continue;
+    if (!isSurface) score += Math.round(HOLIDAY_APPEAL_WEIGHT * (appeal ?? HOLIDAY_APPEAL_FALLBACK));
 
     // Vacation appeal boosts: Beach and Alpine represent primary family holiday archetypes
     if (effectiveBeach) score += 20;
@@ -1194,9 +1287,9 @@ export function discoverDestinationsDynamically(
     }
 
     if (planeOk) {
-      // Popularity: real holiday gateways (Palma, Bangkok) over minor airfields
+      // Reliable airline service: a small bonus for busier airports (holiday appeal decides the rest)
       const pax = getAirportPassengersMillions(ap.code) || 0;
-      score += Math.min(20, Math.round(10 * Math.log10(1 + pax)));
+      score += Math.min(10, Math.round(5 * Math.log10(1 + pax)));
 
       const includeLongRange = isAll || types.includes('LONGRANGE');
 
@@ -1214,6 +1307,9 @@ export function discoverDestinationsDynamically(
         } else {
           score -= 20;
         }
+        // Halfway round the world (Europe <-> Australia, the South Pacific): 20+ hours with
+        // layovers and the worst jet lag - a hard trip with children
+        if (dist > EXTREME_DISTANCE_KM) score -= EXTREME_DISTANCE_PENALTY;
       }
 
       if (includeLongRange && isLongRange) {
@@ -1237,132 +1333,45 @@ export function discoverDestinationsDynamically(
 
   // Overland-only search: diversity-first selection across airports-as-places and surface nodes.
   if (!allowsPlane) {
-    return selectOverlandDiverse(candidates, 36);
+    const primary = selectOverlandDiverse(candidates, 36);
+    const primarySet = new Set(primary);
+    const anchors = candidates.filter((c) => primarySet.has(c.code)).map((c) => ({ lat: c.lat, lon: c.lon }));
+    return { primary, extended: selectOverlandDiverse(candidates, 30, anchors, primarySet) };
   }
 
   const airportCandidates = candidates.filter((c) => !c.isSurface);
 
-  // Sort candidates by score descending, then distance ascending
+  // Sort candidates by score descending, then distance ascending (the picker relies on it)
   airportCandidates.sort((a, b) => b.score - a.score || a.dist - b.dist);
 
-  // Geographic diversity deduplication:
-  // - Maximum 1 airport per state/subdivision/island
-  // - Maximum 4 airports for continental federations (US, CA, AU) across different states,
-  //   3 for multi-state large nations (ES, IT, GR), and 1 for others
-  // - Treat Canary Islands (ES with dist > 2500) and Azores/Madeira (PT with dist > 2200) as separate territories
-  const selected: string[] = [];
-  const selectedByCountry = new Map<string, DiscoveryCandidate[]>();
-  const seenSubdivision = new Set<string>();
-
-  const countryKeyOf = (c: DiscoveryCandidate) => {
-    const isSpain = c.country === 'Spain' || c.country === 'ES';
-    const isPortugal = c.country === 'Portugal' || c.country === 'PT';
-    return isSpain && (c.dist > 2500 || c.state === 'ES-CN' || c.state === 'CN')
-      ? 'Spain_Canaries'
-      : isPortugal && (c.dist > 2000 || c.state === 'PT-20' || c.state === 'PT-30')
-      ? 'Portugal_Atlantic'
-      : c.country;
-  };
-
-  const addSelection = (c: DiscoveryCandidate, countryKey: string) => {
-    if (c.state) seenSubdivision.add(c.state);
-    selectedByCountry.set(countryKey, [...(selectedByCountry.get(countryKey) || []), c]);
-    selected.push(c.code);
-  };
-
-  const canSelect = (c: DiscoveryCandidate) => {
-    if (c.state && seenSubdivision.has(c.state)) return false;
-    const countryKey = countryKeyOf(c);
-    const maxPerCountry = CONTINENTAL_FEDERATIONS.has(c.country)
-      ? 4
-      : MULTI_STATE_COUNTRIES.has(c.country)
-      ? 3
-      : 1;
-    if ((selectedByCountry.get(countryKey)?.length || 0) >= maxPerCountry) return false;
-    addSelection(c, countryKey);
-    return true;
-  };
-
-  // A further airport in an already chosen country, only where the climate differs from every
-  // airport already picked there
-  const canSelectClimateExtra = (c: DiscoveryCandidate) => {
-    if (selected.includes(c.code) || (c.state && seenSubdivision.has(c.state))) return false;
-    const countryKey = countryKeyOf(c);
-    const picked = selectedByCountry.get(countryKey) || [];
-    if (picked.length === 0 || picked.length >= CLIMATE_EXTRA_MAX_PER_COUNTRY) return false;
-    if (!picked.every((p) => hasDistinctClimate(p, c))) return false;
-    addSelection(c, countryKey);
-    return true;
-  };
-
+  const picker = createSoftDiversityPicker();
   const longHaul = airportCandidates.filter((c) => c.dist > 3500 && c.longHaulGateway);
-
+  // Corridors with their slot counts: `primary` for the first results, `extended` for the
+  // destinations a progressive search adds afterwards
+  let corridors: { pool: DiscoveryCandidate[]; primary: number; extended: number }[];
   if (isAll) {
-    // 1. Core Regional & Mediterranean Corridor (dist <= 2500 km): Alpine, Med Coast & Culture
-    const coreRegional = airportCandidates.filter((c) => c.dist <= 2500);
-    for (const c of coreRegional) {
-      canSelect(c);
-      if (selected.length >= 14) break;
-    }
-
-    // 2. Extended Island & Sea Corridor (2500 < dist <= 3500 km): Canary Islands, Madeira, Azores, Cyprus, Red Sea
-    const extendedIsland = airportCandidates.filter((c) => c.dist > 2500 && c.dist <= 3500);
-    for (const c of extendedIsland) {
-      canSelect(c);
-      if (selected.length >= 19) break;
-    }
-
-    // 3. Long-range & Exotic Corridor (dist > 3500 km): balanced across world regions
-    // (Middle East, Africa & Indian Ocean, South/Southeast/East/Central Asia, Oceania, Americas)
-    selectAcrossWorldRegions(longHaul, 34 - selected.length, canSelect);
+    corridors = [
+      // Core regional & Mediterranean (<= 2500 km): alpine, Med coast & culture
+      { pool: airportCandidates.filter((c) => c.dist <= 2500), primary: 14, extended: 14 },
+      // Extended island & sea (2500-3500 km): Canaries, Madeira, Azores, Cyprus, Red Sea
+      { pool: airportCandidates.filter((c) => c.dist > 2500 && c.dist <= 3500), primary: 5, extended: 4 },
+      // Long-range & exotic (> 3500 km), spread across world regions by the region penalty
+      { pool: longHaul, primary: 15, extended: 18 },
+    ];
   } else if (types.includes('LONGRANGE')) {
-    // Long-range requested (alone or combined with other styles): short/medium-haul matches by
-    // score, long-haul slots balanced across world regions.
     const onlyLongRange = types.every((t) => t === 'LONGRANGE');
-    if (!onlyLongRange) {
-      for (const c of airportCandidates.filter((x) => x.dist <= 3500)) {
-        canSelect(c);
-        if (selected.length >= 14) break;
-      }
-    }
-    selectAcrossWorldRegions(longHaul, 30 - selected.length, canSelect);
+    corridors = onlyLongRange
+      ? [{ pool: longHaul, primary: 30, extended: 28 }]
+      : [
+          { pool: airportCandidates.filter((x) => x.dist <= 3500), primary: 14, extended: 12 },
+          { pool: longHaul, primary: 16, extended: 16 },
+        ];
   } else {
-    for (const c of airportCandidates) {
-      canSelect(c);
-      if (selected.length >= 28) break;
-    }
+    corridors = [{ pool: airportCandidates, primary: 28, extended: 26 }];
   }
 
-  // Extra slots for climatically different regions of countries already chosen (one extra per
-  // country per round, so a single country cannot take them all); drawn from the same corridors
-  // the search used above
-  const onlyLongRangeSearch = !isAll && types.length > 0 && types.every((t) => t === 'LONGRANGE');
-  const extraPool = airportCandidates.filter((c) =>
-    c.dist > 3500 ? c.longHaulGateway && (isAll || types.includes('LONGRANGE')) : !onlyLongRangeSearch
-  );
-  // Only deepen world regions the selection above already covers substantially: from Sydney,
-  // Europe's single token slot must not grow into a European block
-  const picksPerRegion = new Map<WorldRegion, number>();
-  for (const picks of selectedByCountry.values()) {
-    for (const p of picks) {
-      const region = getWorldRegion(p.lat, p.lon);
-      picksPerRegion.set(region, (picksPerRegion.get(region) || 0) + 1);
-    }
-  }
-  let extrasAdded = 0;
-  for (let round = 0; round < CLIMATE_EXTRA_MAX_PER_COUNTRY - 1 && extrasAdded < CLIMATE_EXTRA_SLOTS; round++) {
-    const extendedThisRound = new Set<string>();
-    for (const c of extraPool) {
-      if (extrasAdded >= CLIMATE_EXTRA_SLOTS) break;
-      if ((picksPerRegion.get(getWorldRegion(c.lat, c.lon)) || 0) < CLIMATE_EXTRA_MIN_REGION_PICKS) continue;
-      const countryKey = countryKeyOf(c);
-      if (extendedThisRound.has(countryKey)) continue;
-      if (canSelectClimateExtra(c)) {
-        extendedThisRound.add(countryKey);
-        extrasAdded++;
-      }
-    }
-  }
+  const selected = corridors.flatMap((c) => picker.pick(c.pool, c.primary)).map((c) => c.code);
+  const extendedFlights = corridors.flatMap((c) => picker.pick(c.pool, c.extended)).map((c) => c.code);
 
   // Mixed flight + overland search: add a diverse set of road/rail-only destinations on top
   // of the flight corridor picks, so a "plane or car" search is not airport-bound either.
@@ -1375,7 +1384,7 @@ export function discoverDestinationsDynamically(
     selected.push(...selectOverlandDiverse(surfaceOnly, 10, anchors, selectedSet));
   }
 
-  return selected;
+  return { primary: selected, extended: extendedFlights };
 }
 
 /**
@@ -1431,7 +1440,8 @@ export const VACATION_STYLE_PORTFOLIOS: Record<DestinationType, string[]> = new 
 export function resolveDestinationCodes(
   destinationTags?: string[],
   destinationTypes: DestinationType | DestinationType[] = 'ALL',
-  originContext?: OriginContext
+  originContext?: OriginContext,
+  options: { includeExtended?: boolean } = {}
 ): string[] {
   // Normalize destinationTypes into an array
   let types: DestinationType[] = [];
@@ -1446,7 +1456,8 @@ export function resolveDestinationCodes(
 
   // If no destination filter was set by user, discover dynamically from the user's origin
   if (!destinationTags || destinationTags.length === 0) {
-    return discoverDestinationsDynamically(types, originContext);
+    const tiers = discoverDestinationTiers(types, originContext);
+    return options.includeExtended ? [...tiers.primary, ...tiers.extended] : tiers.primary;
   }
 
   const resolved = new Set<string>();

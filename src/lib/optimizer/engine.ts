@@ -520,7 +520,8 @@ export function optimizeVacationWindows(
       ? [input.targetRegion]
       : undefined,
     selectedTypes,
-    originContext
+    originContext,
+    { includeExtended: input.discoveryScope === 'extended' }
   );
 
   // STRICT FILTERING:
@@ -535,7 +536,9 @@ export function optimizeVacationWindows(
 
   // If user chose open discovery (no destination tags), ensure candidate destinations are populated
   if (!hasUserSelectedDestinations && (!candidateDestinations || candidateDestinations.length === 0)) {
-    candidateDestinations = resolveDestinationCodes(undefined, selectedTypes, originContext);
+    candidateDestinations = resolveDestinationCodes(undefined, selectedTypes, originContext, {
+      includeExtended: input.discoveryScope === 'extended',
+    });
   }
 
   const homeCoords = resolveOriginCoordinates(originContext);
