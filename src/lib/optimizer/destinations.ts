@@ -6,7 +6,7 @@ import esCountries from 'i18n-iso-countries/langs/es.json';
 import itCountries from 'i18n-iso-countries/langs/it.json';
 import iso from 'iso-3166-2';
 import { parseISO } from 'date-fns';
-import { POPULAR_DESTINATIONS, getEstimatedClimate } from './weather';
+import { POPULAR_DESTINATIONS, getClimateNormals, getEstimatedClimate } from './weather';
 import type { DestinationType, TravelVehicle } from './types';
 import {
   isOverlandReachable,
@@ -782,6 +782,41 @@ interface DiscoveryCandidate {
  * Seychelles...). The airport dataset's own "large/major" flags also cover remote airstrips
  * (e.g. Corisco Island), which previously filled long-haul slots.
  */
+/**
+ * A country's further airports earn a discovery slot only where the climate really differs
+ * (another monsoon, rainy season or altitude), e.g. Phuket (Andaman Sea, wettest in September)
+ * and Koh Samui (Gulf of Thailand, wettest in November) next to Bangkok - not three resorts on
+ * the same stretch of coast.
+ */
+const CLIMATE_EXTRA_SLOTS = 8;
+const CLIMATE_EXTRA_MAX_PER_COUNTRY = 3;
+/** A world region needs this many regular picks before its countries get extra regions */
+const CLIMATE_EXTRA_MIN_REGION_PICKS = 3;
+const CLIMATE_DISTINCT_RAIN_MM_PER_DAY = 3;
+const CLIMATE_DISTINCT_TEMP_C = 4;
+const CLIMATE_DISTINCT_MIN_KM = 150;
+/** Without measured normals for both places, only distance can tell: require a long one */
+const CLIMATE_DISTINCT_FALLBACK_KM = 800;
+
+/** True when two places' monthly climate differs enough to be a different trip */
+export function hasDistinctClimate(
+  a: { code: string; lat: number; lon: number },
+  b: { code: string; lat: number; lon: number }
+): boolean {
+  const km = calculateGeodesicDistanceKm(a.lat, a.lon, b.lat, b.lon);
+  if (km < CLIMATE_DISTINCT_MIN_KM) return false;
+  let maxRainDiff = 0;
+  let maxTempDiff = 0;
+  for (let month = 0; month < 12; month++) {
+    const na = getClimateNormals(a.code, month);
+    const nb = getClimateNormals(b.code, month);
+    if (!na || !nb) return km >= CLIMATE_DISTINCT_FALLBACK_KM;
+    maxRainDiff = Math.max(maxRainDiff, Math.abs(na.precipMmPerDay - nb.precipMmPerDay));
+    maxTempDiff = Math.max(maxTempDiff, Math.abs(na.avgTempC - nb.avgTempC));
+  }
+  return maxRainDiff >= CLIMATE_DISTINCT_RAIN_MM_PER_DAY || maxTempDiff >= CLIMATE_DISTINCT_TEMP_C;
+}
+
 function isLongHaulGateway(ap: DynamicAirport): boolean {
   const pax = getAirportPassengersMillions(ap.code);
   if (pax !== undefined) return pax >= 1;
@@ -1216,32 +1251,47 @@ export function discoverDestinationsDynamically(
   //   3 for multi-state large nations (ES, IT, GR), and 1 for others
   // - Treat Canary Islands (ES with dist > 2500) and Azores/Madeira (PT with dist > 2200) as separate territories
   const selected: string[] = [];
-  const seenCountryCount = new Map<string, number>();
+  const selectedByCountry = new Map<string, DiscoveryCandidate[]>();
   const seenSubdivision = new Set<string>();
+
+  const countryKeyOf = (c: DiscoveryCandidate) => {
+    const isSpain = c.country === 'Spain' || c.country === 'ES';
+    const isPortugal = c.country === 'Portugal' || c.country === 'PT';
+    return isSpain && (c.dist > 2500 || c.state === 'ES-CN' || c.state === 'CN')
+      ? 'Spain_Canaries'
+      : isPortugal && (c.dist > 2000 || c.state === 'PT-20' || c.state === 'PT-30')
+      ? 'Portugal_Atlantic'
+      : c.country;
+  };
+
+  const addSelection = (c: DiscoveryCandidate, countryKey: string) => {
+    if (c.state) seenSubdivision.add(c.state);
+    selectedByCountry.set(countryKey, [...(selectedByCountry.get(countryKey) || []), c]);
+    selected.push(c.code);
+  };
 
   const canSelect = (c: DiscoveryCandidate) => {
     if (c.state && seenSubdivision.has(c.state)) return false;
-
-    const isSpain = c.country === 'Spain' || c.country === 'ES';
-    const isPortugal = c.country === 'Portugal' || c.country === 'PT';
-    const countryKey =
-      isSpain && (c.dist > 2500 || c.state === 'ES-CN' || c.state === 'CN')
-        ? 'Spain_Canaries'
-        : isPortugal && (c.dist > 2000 || c.state === 'PT-20' || c.state === 'PT-30')
-        ? 'Portugal_Atlantic'
-        : c.country;
-
+    const countryKey = countryKeyOf(c);
     const maxPerCountry = CONTINENTAL_FEDERATIONS.has(c.country)
       ? 4
       : MULTI_STATE_COUNTRIES.has(c.country)
       ? 3
       : 1;
-    const countryCount = seenCountryCount.get(countryKey) || 0;
-    if (countryCount >= maxPerCountry) return false;
+    if ((selectedByCountry.get(countryKey)?.length || 0) >= maxPerCountry) return false;
+    addSelection(c, countryKey);
+    return true;
+  };
 
-    if (c.state) seenSubdivision.add(c.state);
-    seenCountryCount.set(countryKey, countryCount + 1);
-    selected.push(c.code);
+  // A further airport in an already chosen country, only where the climate differs from every
+  // airport already picked there
+  const canSelectClimateExtra = (c: DiscoveryCandidate) => {
+    if (selected.includes(c.code) || (c.state && seenSubdivision.has(c.state))) return false;
+    const countryKey = countryKeyOf(c);
+    const picked = selectedByCountry.get(countryKey) || [];
+    if (picked.length === 0 || picked.length >= CLIMATE_EXTRA_MAX_PER_COUNTRY) return false;
+    if (!picked.every((p) => hasDistinctClimate(p, c))) return false;
+    addSelection(c, countryKey);
     return true;
   };
 
@@ -1280,6 +1330,37 @@ export function discoverDestinationsDynamically(
     for (const c of airportCandidates) {
       canSelect(c);
       if (selected.length >= 28) break;
+    }
+  }
+
+  // Extra slots for climatically different regions of countries already chosen (one extra per
+  // country per round, so a single country cannot take them all); drawn from the same corridors
+  // the search used above
+  const onlyLongRangeSearch = !isAll && types.length > 0 && types.every((t) => t === 'LONGRANGE');
+  const extraPool = airportCandidates.filter((c) =>
+    c.dist > 3500 ? c.longHaulGateway && (isAll || types.includes('LONGRANGE')) : !onlyLongRangeSearch
+  );
+  // Only deepen world regions the selection above already covers substantially: from Sydney,
+  // Europe's single token slot must not grow into a European block
+  const picksPerRegion = new Map<WorldRegion, number>();
+  for (const picks of selectedByCountry.values()) {
+    for (const p of picks) {
+      const region = getWorldRegion(p.lat, p.lon);
+      picksPerRegion.set(region, (picksPerRegion.get(region) || 0) + 1);
+    }
+  }
+  let extrasAdded = 0;
+  for (let round = 0; round < CLIMATE_EXTRA_MAX_PER_COUNTRY - 1 && extrasAdded < CLIMATE_EXTRA_SLOTS; round++) {
+    const extendedThisRound = new Set<string>();
+    for (const c of extraPool) {
+      if (extrasAdded >= CLIMATE_EXTRA_SLOTS) break;
+      if ((picksPerRegion.get(getWorldRegion(c.lat, c.lon)) || 0) < CLIMATE_EXTRA_MIN_REGION_PICKS) continue;
+      const countryKey = countryKeyOf(c);
+      if (extendedThisRound.has(countryKey)) continue;
+      if (canSelectClimateExtra(c)) {
+        extendedThisRound.add(countryKey);
+        extrasAdded++;
+      }
     }
   }
 
