@@ -24,23 +24,25 @@
     {
       "description": "Group minor and patch dependencies to minimize pull request noise",
       "matchUpdateTypes": ["minor", "patch"],
-      "matchPackagePatterns": ["*"],
       "groupName": "production minor and patch updates",
       "groupSlug": "prod-minor-patch"
     },
     {
       "description": "Group linters, type checkers, and test frameworks together",
       "matchDepTypes": ["devDependencies"],
-      "matchPackagePatterns": [
-        "eslint*",
+      "matchPackageNames": [
+        "eslint",
+        "eslint-*",
         "@typescript-eslint/*",
-        "prettier*",
-        "vitest*",
+        "prettier",
+        "prettier-*",
+        "vitest",
         "@vitest/*",
         "@playwright/*",
         "typescript",
         "postcss",
-        "tailwindcss"
+        "tailwindcss",
+        "@tailwindcss/*"
       ],
       "groupName": "development & quality toolchain",
       "groupSlug": "dev-toolchain"
