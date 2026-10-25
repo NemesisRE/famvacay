@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { generateRegistrationOptions } from '@simplewebauthn/server';
+import { generateRegistrationOptions, type AuthenticatorTransport } from '@simplewebauthn/server';
 import { authOptions } from '@/lib/auth/auth-options';
 import { prisma } from '@/lib/db/prisma';
 import { setCached } from '@/lib/cache/redis';
@@ -46,14 +46,14 @@ export async function POST(req: NextRequest) {
     const options = await generateRegistrationOptions({
       rpName,
       rpID,
-      userID: user.id,
+      // Same user handle bytes as before v10 of the library (UTF-8 of the user id)
+      userID: new TextEncoder().encode(user.id),
       userName: user.email || user.id,
       userDisplayName: user.name || user.email || 'Parent',
       attestationType: 'none',
       excludeCredentials: user.passkeys.map((p) => ({
-        id: Buffer.from(p.credentialID, 'base64url') as unknown as BufferSource,
-        type: 'public-key' as const,
-        transports: p.transports ? (p.transports.split(',') as any) : undefined,
+        id: p.credentialID, // stored as base64url
+        transports: p.transports ? (p.transports.split(',') as AuthenticatorTransport[]) : undefined,
       })),
       authenticatorSelection: {
         residentKey: 'preferred',

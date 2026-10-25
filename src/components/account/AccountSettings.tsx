@@ -190,7 +190,7 @@ export function AccountSettings() {
         throw new Error(optData.error || 'Failed to get passkey options.');
       }
 
-      const attResp = await startRegistration(optData.options);
+      const attResp = await startRegistration({ optionsJSON: optData });
 
       const verRes = await fetch('/api/auth/passkeys/verify-registration', {
         method: 'POST',

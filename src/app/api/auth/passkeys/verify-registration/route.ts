@@ -54,19 +54,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { credentialPublicKey, credentialID, counter } = verification.registrationInfo;
+    const { credential: verified, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
 
     // Save Authenticator credential into Prisma
     await prisma.authenticator.create({
       data: {
         userId: user.id,
-        credentialID: Buffer.from(credentialID).toString('base64url'),
+        credentialID: verified.id, // already base64url
         providerAccountId: user.id,
-        credentialPublicKey: Buffer.from(credentialPublicKey).toString('base64url'),
-        counter: BigInt(counter),
-        credentialDeviceType: 'singleDevice',
-        credentialBackedUp: true,
-        transports: credential.response?.transports?.join(',') || null,
+        credentialPublicKey: Buffer.from(verified.publicKey).toString('base64url'),
+        counter: BigInt(verified.counter),
+        credentialDeviceType,
+        credentialBackedUp,
+        transports: (verified.transports ?? credential.response?.transports)?.join(',') || null,
       },
     });
 

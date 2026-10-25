@@ -1,11 +1,12 @@
+// Connection URL: prisma.config.ts (CLI) and src/lib/db/prisma.ts (driver adapter)
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
+// Generated TypeScript client, bundled by Next.js (no native query engine since Prisma 7)
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x"]
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 // -------------------------------------------------------------

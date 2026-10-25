@@ -24,23 +24,25 @@
     {
       "description": "Group minor and patch dependencies to minimize pull request noise",
       "matchUpdateTypes": ["minor", "patch"],
-      "matchPackagePatterns": ["*"],
       "groupName": "production minor and patch updates",
       "groupSlug": "prod-minor-patch"
     },
     {
       "description": "Group linters, type checkers, and test frameworks together",
       "matchDepTypes": ["devDependencies"],
-      "matchPackagePatterns": [
-        "eslint*",
+      "matchPackageNames": [
+        "eslint",
+        "eslint-*",
         "@typescript-eslint/*",
-        "prettier*",
-        "vitest*",
+        "prettier",
+        "prettier-*",
+        "vitest",
         "@vitest/*",
         "@playwright/*",
         "typescript",
         "postcss",
-        "tailwindcss"
+        "tailwindcss",
+        "@tailwindcss/*"
       ],
       "groupName": "development & quality toolchain",
       "groupSlug": "dev-toolchain"
@@ -52,8 +54,8 @@
       "labels": ["dependencies", "major-update"]
     },
     {
-      "description": "TypeScript 7 and Prisma 7 are intentionally pinned below their latest major: see docs/dependencies.md#known-blocked-major-upgrades for the reproducible incompatibilities. Still proposed for visibility, just held back from auto-rebase noise.",
-      "matchPackageNames": ["typescript", "prisma", "@prisma/client"],
+      "description": "TypeScript 7 is intentionally pinned below its latest major: see docs/dependencies.md#known-blocked-major-upgrades for the reproducible incompatibility. Still proposed for visibility, just held back from auto-rebase noise.",
+      "matchPackageNames": ["typescript"],
       "matchUpdateTypes": ["major"],
       "labels": ["dependencies", "major-update", "blocked-known-issue"],
       "rebaseWhen": "never"

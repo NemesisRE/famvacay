@@ -20,3 +20,4 @@ k8s
 eslint.config.mjs
 playwright.config.ts
 vitest.config.mts
+src/generated

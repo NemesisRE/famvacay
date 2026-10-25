@@ -12,6 +12,7 @@ const config = [
       'test-results/**',
       'next-env.d.ts',
       'node_modules/**',
+      'src/generated/**',
       'scripts/**',
     ],
   },
