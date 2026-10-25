@@ -52,8 +52,8 @@
       "labels": ["dependencies", "major-update"]
     },
     {
-      "description": "TypeScript 7 and Prisma 7 are intentionally pinned below their latest major: see docs/dependencies.md#known-blocked-major-upgrades for the reproducible incompatibilities. Still proposed for visibility, just held back from auto-rebase noise.",
-      "matchPackageNames": ["typescript", "prisma", "@prisma/client"],
+      "description": "TypeScript 7 is intentionally pinned below its latest major: see docs/dependencies.md#known-blocked-major-upgrades for the reproducible incompatibility. Still proposed for visibility, just held back from auto-rebase noise.",
+      "matchPackageNames": ["typescript"],
       "matchUpdateTypes": ["major"],
       "labels": ["dependencies", "major-update", "blocked-known-issue"],
       "rebaseWhen": "never"

@@ -42,12 +42,9 @@ ENV NODE_ENV=production
 # Generate Prisma Client
 RUN pnpm exec prisma generate
 
-# Build Next.js in standalone mode. Next's output file tracing already
-# bundles @prisma/client -- symlink into .pnpm plus the real target,
-# including the native query engine binaries -- into .next/standalone/
-# node_modules on its own; no manual copy step needed (and don't add one:
-# an earlier version of this Dockerfile did, and it conflicted with the
-# symlink Next had already placed there, breaking the runner stage's COPY).
+# Build Next.js in standalone mode. The generated Prisma Client (src/generated)
+# is bundled like app code, and output file tracing copies its runtime and the
+# pg driver into .next/standalone/node_modules; no manual copy step needed.
 RUN pnpm run build
 
 # ------------------------------------------------------------------------------
@@ -57,28 +54,28 @@ FROM node:26-alpine AS migrator
 WORKDIR /app
 
 RUN apk add --no-cache openssl libc6-compat
-RUN npm install -g corepack && corepack enable
 
 # Non-root user nextjs (UID/GID 10001) matching runner and k8s securityContext
 RUN addgroup --system --gid 10001 nodejs && \
     adduser --system --uid 10001 nextjs
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN corepack install && pnpm install --frozen-lockfile --prod --ignore-scripts
+# Since Prisma 7 the CLI reads the connection URL from prisma.config.ts, which
+# imports `prisma/config` and `dotenv`. Install just those two, at the exact
+# versions the lockfile resolved (read from the deps stage), instead of the
+# whole dev toolchain. npm runs prisma's postinstall here as root, so the schema
+# engine is downloaded before we drop to the non-root user.
+COPY --from=deps /app/node_modules/prisma/package.json /tmp/versions/prisma.json
+COPY --from=deps /app/node_modules/dotenv/package.json /tmp/versions/dotenv.json
+RUN npm install --no-save --no-package-lock --no-audit --no-fund \
+      "prisma@$(node -p "require('/tmp/versions/prisma.json').version")" \
+      "dotenv@$(node -p "require('/tmp/versions/dotenv.json').version")" && \
+    npm cache clean --force && rm -rf /tmp/versions
 
-# `pnpm add -g` refuses to run until its global bin dir is actually on PATH.
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PNPM_HOME/bin:$PATH"
-# Without --allow-build, pnpm skips prisma/@prisma/engines' postinstall (the
-# step that downloads the schema/query engine binaries) and prisma tries to
-# lazily fetch them on first run instead -- by then we've already dropped to
-# the non-root `nextjs` user, who can't write into this global store.
-RUN pnpm add -g prisma@6.19.3 --allow-build=prisma --allow-build=@prisma/engines
-
+COPY prisma.config.ts ./
 COPY --chown=nextjs:nodejs prisma ./prisma/
 
 USER nextjs
-ENTRYPOINT ["prisma"]
+ENTRYPOINT ["node_modules/.bin/prisma"]
 CMD ["migrate", "deploy"]
 
 # ------------------------------------------------------------------------------
@@ -87,8 +84,6 @@ CMD ["migrate", "deploy"]
 FROM node:26-alpine AS runner
 WORKDIR /app
 
-# Only openssl required by Prisma client runtime
-RUN apk add --no-cache openssl
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1

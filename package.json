@@ -35,7 +35,8 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
     "@floating-ui/react": "^0.27.20",
-    "@prisma/client": "^6.19.3",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
     "@simplewebauthn/browser": "^14.0.0",
     "@simplewebauthn/server": "^14.0.3",
     "airport-data": "^1.0.1",
@@ -69,7 +70,7 @@
     "eslint": "^10.13.0",
     "eslint-config-next": "^16.4.3",
     "postcss": "^8.5.30",
-    "prisma": "^6.19.3",
+    "prisma": "^7.10.1",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",

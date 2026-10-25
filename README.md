@@ -7,7 +7,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16.4.3-black.svg)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-blue.svg)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16--alpine-336791.svg)](https://www.postgresql.org/)
-[![Prisma](https://img.shields.io/badge/Prisma-6.19.3-2D3748.svg)](https://www.prisma.io/)
+[![Prisma](https://img.shields.io/badge/Prisma-7.10.1-2D3748.svg)](https://www.prisma.io/)
 [![Valkey](https://img.shields.io/badge/Valkey_/_Redis-8_/_7-DC382D.svg)](https://valkey.io/)
 [![Docker](https://img.shields.io/badge/Docker-Multi--Arch-2496ED.svg)](Dockerfile)
 [![Coverage](https://img.shields.io/badge/Coverage-92.8%25-brightgreen.svg)](docs/development.md)
