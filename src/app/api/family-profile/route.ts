@@ -211,21 +211,26 @@ export async function POST(req: NextRequest) {
         where: { familyProfileId: profileId },
       });
 
+      // Names and adults' birth dates are optional: empty or unparseable dates are stored as null
+      const optionalDate = (value: unknown) => {
+        const date = typeof value === 'string' && value.trim() ? new Date(value) : null;
+        return date && !Number.isNaN(date.getTime()) ? date : null;
+      };
       if (members.length > 0) {
         await prisma.familyMember.createMany({
           data: members.map((m: any) => ({
             familyProfileId: profileId,
-            displayName: m.displayName || m.firstName || null,
-            firstName: m.firstName || m.displayName || null,
+            displayName: m.displayName?.trim() || m.firstName?.trim() || null,
+            firstName: m.firstName?.trim() || m.displayName?.trim() || null,
             role: m.role || 'MEMBER',
-            birthDate: new Date(m.birthDate),
+            birthDate: optionalDate(m.birthDate),
             schoolRequired: Boolean(m.schoolRequired),
             // Only a valid ISO 3166-2 code; empty means "follows the family's home region".
             schoolSubdivision:
               typeof m.schoolSubdivision === 'string' && /^[A-Z]{2}(-[A-Z0-9]{1,3})?$/i.test(m.schoolSubdivision.trim())
                 ? m.schoolSubdivision.trim().toUpperCase()
                 : null,
-            passportExpiry: m.passportExpiry ? new Date(m.passportExpiry) : null,
+            passportExpiry: optionalDate(m.passportExpiry),
           })),
         });
       }

@@ -24,9 +24,9 @@ import {
   getAllCommercialAirports,
   getMajorAirportsForCountry,
   calculateGeodesicDistanceKm,
-  getAirportPassengersMillions,
   type DynamicAirport,
 } from '../airports/airport-service';
+import { getEstimatedPassengersMillions } from '../airports/passenger-estimate';
 import { getCountryCodeFromSubdivision } from '../regions/subdivisions';
 
 // Static import of the dependency-free advisory store: the former runtime require() of
@@ -662,6 +662,7 @@ export interface OriginContext {
   latestDate?: string;
   maxOverlandTravelMinutes?: number;
   longRangeStyles?: DestinationType[];
+  excludedCountries?: string[];
 }
 
 const CONTINENTAL_FEDERATIONS = new Set([
@@ -799,11 +800,11 @@ const SAME_CLIMATE_PENALTY = 80;
 /** Large, varied countries (US, Canada, Australia, Spain, Italy, Greece) are penalised half as much */
 const LARGE_COUNTRY_PENALTY_FACTOR = 0.5;
 /** Beyond this flight distance a trip counts as halfway round the world */
-const EXTREME_DISTANCE_KM = 12000;
+const EXTREME_DISTANCE_KM = 14000;
 const EXTREME_DISTANCE_PENALTY = 25;
 /** Climatically different regions per country exempt from the region penalty */
 const SEASONAL_ALTERNATIVES_PER_COUNTRY = 2;
-const LONG_HAUL_REGION_PENALTY = 10;
+const LONG_HAUL_REGION_PENALTY = 6;
 /** Weight of the 0-1 Wikivoyage holiday appeal in the discovery score; airports without a guide get the fallback */
 const HOLIDAY_APPEAL_WEIGHT = 90;
 const HOLIDAY_APPEAL_FALLBACK = 0.25;
@@ -839,7 +840,7 @@ const HOLIDAY_GATEWAY_MIN_PASSENGERS_MILLIONS = 0.3;
 const HOLIDAY_GATEWAY_MIN_APPEAL = 0.35;
 
 function isLongHaulGateway(ap: DynamicAirport): boolean {
-  const pax = getAirportPassengersMillions(ap.code);
+  const pax = getEstimatedPassengersMillions(ap.code);
   if (pax !== undefined) {
     if (pax >= GATEWAY_MIN_PASSENGERS_MILLIONS) return true;
     // Zanzibar (0.9 million passengers): a holiday island with real scheduled service
@@ -866,7 +867,8 @@ export type WorldRegion =
  * (no country tables), so every airport in the index gets a region.
  */
 export function getWorldRegion(lat: number, lon: number): WorldRegion {
-  if (lon <= -150 || lon >= 150 || (lon >= 110 && lat <= -11)) return 'OCEANIA';
+  // Pacific islands from Hawaii to Tahiti (-149.6°); Alaska and Kamchatka at the same longitudes are not
+  if ((lat < 35 && (lon <= -135 || lon >= 150)) || (lon >= 110 && lat <= -11)) return 'OCEANIA';
   if (lon < -30) {
     if (lat >= 24) return 'NORTH_AMERICA';
     if (lat >= 7 || (lon < -77 && lat >= 0)) return 'CARIBBEAN_CENTRAL_AMERICA';
@@ -1067,6 +1069,7 @@ export function discoverDestinationTiers(
 ): DiscoveryTiers {
   const { lat: userLat, lon: userLon } = resolveOriginCoordinates(originContext);
   const originAirportSet = new Set((originContext?.originAirports || []).map((c) => c.toUpperCase()));
+  const excludedCountries = new Set((originContext?.excludedCountries || []).map((c) => c.toUpperCase()));
   const allAirports = getAllCommercialAirports();
   const candidates: DiscoveryCandidate[] = [];
 
@@ -1105,6 +1108,8 @@ export function discoverDestinationTiers(
   for (const ap of places) {
     const isSurface = ap.kind === 'SURFACE';
     if (!isSurface && originAirportSet.has(ap.code.toUpperCase())) continue;
+    // Dropped before slot selection, so the corridors fill up with other destinations instead
+    if (ap.state && excludedCountries.has(ap.state.split('-')[0].toUpperCase())) continue;
 
     // Safety Assessment Filter (Amadeus Safe Place / Travel Advisory Level 1 & 2):
     // Flex search / open discovery must only surface safe, family-friendly destinations.
@@ -1302,7 +1307,7 @@ export function discoverDestinationTiers(
 
     if (planeOk) {
       // Reliable airline service: a small bonus for busier airports (holiday appeal decides the rest)
-      const pax = getAirportPassengersMillions(ap.code) || 0;
+      const pax = getEstimatedPassengersMillions(ap.code) || 0;
       score += Math.min(10, Math.round(5 * Math.log10(1 + pax)));
 
       const includeLongRange = isAll || types.includes('LONGRANGE');
@@ -1370,16 +1375,17 @@ export function discoverDestinationTiers(
       { pool: airportCandidates.filter((c) => c.dist <= 2500), primary: 14, extended: 18 },
       // Extended island & sea (2500 km to long-haul): Canaries, Madeira, Azores, Cyprus, Red Sea
       { pool: airportCandidates.filter((c) => c.dist > 2500 && c.dist <= LONG_HAUL_KM), primary: 5, extended: 6 },
-      // Long-range & exotic (long-haul), spread across world regions by the region penalty
-      { pool: longHaul, primary: 15, extended: 30 },
+      // Long-range & exotic (long-haul), spread across world regions by the region penalty. The
+      // background phase is where the rest of the world's great long-haul places get their room.
+      { pool: longHaul, primary: 15, extended: 45 },
     ];
   } else if (types.includes('LONGRANGE')) {
     const onlyLongRange = types.every((t) => t === 'LONGRANGE');
     corridors = onlyLongRange
-      ? [{ pool: longHaul, primary: 30, extended: 45 }]
+      ? [{ pool: longHaul, primary: 30, extended: 70 }]
       : [
           { pool: airportCandidates.filter((x) => x.dist <= LONG_HAUL_KM), primary: 14, extended: 16 },
-          { pool: longHaul, primary: 16, extended: 28 },
+          { pool: longHaul, primary: 16, extended: 44 },
         ];
   } else {
     corridors = [{ pool: airportCandidates, primary: 28, extended: 40 }];

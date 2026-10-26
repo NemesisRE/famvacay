@@ -3,6 +3,7 @@ import { getSurfaceDestination, type SurfaceDestination } from './surface-destin
 import { datasetScopedCache, getDataset } from '@/lib/datasets/store';
 import destinationNamesSeed from './data/destination-names.json';
 import type { DestinationNameEntry } from '@/lib/datasets/generators/holiday-appeal';
+import { getDestinationNameOverride, USE_COUNTRY_NAME } from './destination-name-overrides';
 
 export type DestinationPointKind = 'AIRPORT' | 'SURFACE';
 
@@ -101,7 +102,8 @@ export function getLocalizedDestinationLabel(
   fallback?: { city?: string; country?: string; name?: string }
 ): LocalizedDestinationLabel {
   const point = getDestinationPoint(code, locale);
-  const pointCity = point?.city || fallback?.city || fallback?.name || code;
+  // Wikidata labels some airport towns by their administrative unit ("Karpathos Municipality")
+  const pointCity = (point?.city || fallback?.city || fallback?.name || code).replace(/ Municipality$/, '');
   const country = point?.country || fallback?.country || '';
   const famous = getFamousDestinationName(code, locale);
   // "Bali" instead of Denpasar; "Kreta (Heraklion)" where several airports share the island
@@ -122,13 +124,20 @@ const destinationNames = () =>
  * generator), in the UI language; undefined to show the city.
  */
 export function getFamousDestinationName(code: string, locale: string): { name: string; shared: boolean } | undefined {
+  const lang = (locale || 'en').slice(0, 2).toLowerCase() as keyof DestinationNameEntry['n'];
+  const override = getDestinationNameOverride(code);
+  if (override === USE_COUNTRY_NAME) {
+    const country = getDestinationPoint(code, locale)?.country;
+    return country ? { name: country, shared: false } : undefined;
+  }
+  if (override) return { name: override[lang] ?? override.en, shared: false };
+
   const entry = destinationNames()[(code || '').toUpperCase()];
   if (!entry) return undefined;
   // Only a different place than the city names already show (Bali for Denpasar): where it is the
   // same place under another spelling (Santorini), the localized city name ("Santorin") is better
   const englishCity = getDestinationPoint(code, 'en')?.city;
   if (entry.n.en && englishCity && foldName(entry.n.en) === foldName(englishCity)) return undefined;
-  const lang = (locale || 'en').slice(0, 2).toLowerCase() as keyof DestinationNameEntry['n'];
   const name = entry.n[lang] ?? entry.n.en ?? entry.n.de;
   return name ? { name, shared: entry.s === 1 } : undefined;
 }

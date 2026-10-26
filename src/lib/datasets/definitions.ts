@@ -70,6 +70,10 @@ function everyValue(data: unknown, check: (value: unknown, key: string) => boole
 }
 
 const airports = () => current<AirportRecord[]>('airports', airportsSeed);
+const holidayDataOptions = () => ({
+  traffic: current<Record<string, number>>('airport-traffic', airportTrafficSeed),
+  routes: current<Record<string, string>>('flight-routes', flightRoutesSeed),
+});
 
 // The holiday-appeal run also yields the destination names; the names dataset (next in order)
 // publishes them instead of reading every guide a second time
@@ -122,7 +126,7 @@ export const DATASET_DEFINITIONS: DatasetDefinition[] = [
     // Travel guides and their readership change slowly; one run takes a few minutes
     refreshIntervalMs: 30 * DAY_MS,
     run: async (ctx) => {
-      lastHolidayData = await generateHolidayData(ctx, airports());
+      lastHolidayData = await generateHolidayData(ctx, airports(), holidayDataOptions());
       return { data: lastHolidayData.appeal };
     },
     validate: (data, before) =>
@@ -142,7 +146,7 @@ export const DATASET_DEFINITIONS: DatasetDefinition[] = [
     seed: destinationNamesSeed,
     refreshIntervalMs: 30 * DAY_MS,
     run: async (ctx) => {
-      const data = lastHolidayData ?? (await generateHolidayData(ctx, airports()));
+      const data = lastHolidayData ?? (await generateHolidayData(ctx, airports(), holidayDataOptions()));
       lastHolidayData = null;
       return { data: data.names };
     },

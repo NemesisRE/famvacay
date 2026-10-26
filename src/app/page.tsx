@@ -17,14 +17,13 @@ import {
   Calendar,
   Users,
   Check,
-  ChevronLeft,
-  ChevronRight,
   ArrowUpDown,
   SlidersHorizontal,
   Info,
   MapPin,
   Route,
   Compass,
+  Ban,
   List,
   ChevronDown,
   ChevronUp,
@@ -51,6 +50,8 @@ import { detectUserLocation, formatLocationLabel, resolveCountryAndRegion } from
 import { detectBrowserLocale } from '@/lib/i18n/i18n-context';
 import { ChildrenSelector, ChildItem } from '@/components/family/ChildrenSelector';
 import { MultiDestinationInput } from '@/components/destination/MultiDestinationInput';
+import { CountryExclusionPicker } from '@/components/destination/CountryExclusionPicker';
+import { DatePicker } from '@/components/calendar/DatePicker';
 import { ClimateDetailsPopover } from '@/components/climate/ClimateDetailsPopover';
 import { BookingDealsPopover } from '@/components/pricing/BookingDealsPopover';
 import { BackgroundSearchBanner, SearchLoadingPanel, type BackgroundSearchState } from '@/components/search/SearchProgress';
@@ -83,6 +84,7 @@ import { resolveSpecialHolidayPeriods, type SpecialHolidayId } from '@/lib/holid
 import { HolidayBlackoutToggles } from '@/components/forms/HolidayBlackoutToggles';
 import { ResultsCountPopover } from '@/components/results/ResultsCountPopover';
 import { SelectDropdown, type SelectDropdownOption } from '@/components/ui/select-dropdown';
+import { ResultsPagination } from '@/components/results/ResultsPagination';
 import { OverlandTripDetailsPopover } from '@/components/travel/OverlandTripDetailsPopover';
 import { CountrySelect, SubdivisionSelect } from '@/components/forms/RegionSelectors';
 import { BoardTypeSelect, OverlandDurationSelect } from '@/components/forms/PreferenceSelects';
@@ -91,6 +93,9 @@ import { VacationStyleTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/
 import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/destination-points';
 import { DateRangePicker } from '@/components/calendar/DateRangePicker';
 import { getCategoryBadges, getVehicleBadge } from '@/components/ui/badge-styles';
+
+/** Background results this soon after the first ones are merged directly instead of offered */
+const INSTANT_BACKGROUND_MS = 1500;
 
 export default function HomePage() {
   const { status } = useSession();
@@ -119,6 +124,8 @@ export default function HomePage() {
   // Preferred kind of long-haul trip when the long-range style is selected (empty = any)
   const [longRangeStyles, setLongRangeStyles] = useState<DestinationType[]>([]);
   const [targetDestinations, setTargetDestinations] = useState<string[]>([]);
+  // ISO country codes open discovery never proposes
+  const [excludedCountries, setExcludedCountries] = useState<string[]>([]);
 
   const isAllStylesSelected = isAllStylesSelection(selectedStyles);
 
@@ -205,7 +212,17 @@ export default function HomePage() {
   const [constraintsCollapsed, setConstraintsCollapsed] = useState(false);
   const searchRunRef = useRef(0);
   const backgroundAbortRef = useRef<AbortController | null>(null);
-  const dismissBackgroundSearch = useCallback(() => setBackgroundSearch({ status: 'idle' }), []);
+  // Background results wait here until the user asks for them, so the list never reshuffles while read
+  const pendingBackgroundApplyRef = useRef<(() => void) | null>(null);
+  const dismissBackgroundSearch = useCallback(() => {
+    pendingBackgroundApplyRef.current = null;
+    setBackgroundSearch({ status: 'idle' });
+  }, []);
+  const applyBackgroundSearch = useCallback(() => {
+    pendingBackgroundApplyRef.current?.();
+    pendingBackgroundApplyRef.current = null;
+    setBackgroundSearch({ status: 'idle' });
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [activeShareId, setActiveShareId] = useState<string | null>(null);
   const [shareCopiedToast, setShareCopiedToast] = useState<boolean>(false);
@@ -213,18 +230,25 @@ export default function HomePage() {
   const [shareFallbackUrl, setShareFallbackUrl] = useState<string | null>(null);
   const [shareError, setShareError] = useState(false);
 
-  const [viewMode, setViewMode] = useState<'list' | 'destination' | 'timeframe'>('destination');
+  const [viewMode, setViewMode] = useState<'list' | 'destination'>('destination');
   const [selectedDestinationsList, setSelectedDestinationsList] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [maxCostFilter, setMaxCostFilter] = useState<number | undefined>(undefined);
   const [schoolHolidayFilter, setSchoolHolidayFilter] = useState<'all' | 'holidaysOnly'>('all');
-  const [sortBy, setSortBy] = useState<'score' | 'price' | 'pto' | 'duration' | 'date-asc' | 'date-desc'>('score');
+  const [sortBy, setSortBy] = useState<'score' | 'price' | 'pto' | 'duration' | 'date-asc' | 'date-desc' | 'country'>('score');
   const [pageSize, setPageSize] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [timeframePageSize, setTimeframePageSize] = useState<number>(4);
-  const [timeframeCurrentPage, setTimeframeCurrentPage] = useState<number>(1);
-  // View a "show all in the list" jump came from (destination or period group), for the way back
-  const [listReturnView, setListReturnView] = useState<'destination' | 'timeframe' | null>(null);
+  const [destinationPageSize, setDestinationPageSize] = useState<number>(10);
+  const [destinationCurrentPage, setDestinationCurrentPage] = useState<number>(1);
+  // Set when the list was opened from a destination group ("show all periods"), for the way back
+  const [listReturnView, setListReturnView] = useState<'destination' | null>(null);
+  // Filters and page in effect before "show all in list", restored by the back button
+  const [filtersBeforeListJump, setFiltersBeforeListJump] = useState<{
+    destinations: string[];
+    month: string;
+    destinationPage: number;
+  } | null>(null);
+  const [destinationPageToRestore, setDestinationPageToRestore] = useState<number | null>(null);
   const [resultStyleFilter, setResultStyleFilter] = useState<DestinationType>('ALL');
   const [distanceFilter, setDistanceFilter] = useState<string>('ALL');
   const [vehicleFilter, setVehicleFilter] = useState<string>('ALL');
@@ -293,7 +317,6 @@ export default function HomePage() {
     setMaxCostFilter(undefined);
     setSortBy('score');
     setCurrentPage(1);
-    setTimeframeCurrentPage(1);
   };
 
   // Map Modal State
@@ -383,6 +406,7 @@ export default function HomePage() {
         if (typeof parsed.minBeachTemp === 'number') setMinBeachTemp(parsed.minBeachTemp);
         if (typeof parsed.requireSnow === 'boolean') setRequireSnow(parsed.requireSnow);
         if (Array.isArray(parsed.longRangeStyles)) setLongRangeStyles(parsed.longRangeStyles);
+        if (Array.isArray(parsed.excludedCountries)) setExcludedCountries(parsed.excludedCountries);
         if (Array.isArray(parsed.recurringBlackouts)) setRecurringBlackouts(parsed.recurringBlackouts);
         if (parsed.preferredBoardType) setPreferredBoardType(parsed.preferredBoardType);
         if (typeof parsed.maxOverlandDurationHours === 'number') setMaxOverlandDurationHours(parsed.maxOverlandDurationHours);
@@ -395,7 +419,7 @@ export default function HomePage() {
       const savedFilters = localStorage.getItem('famvac_filter_settings');
       if (savedFilters) {
         const parsed = JSON.parse(savedFilters);
-        if (parsed.viewMode) setViewMode(parsed.viewMode);
+        if (parsed.viewMode === 'list' || parsed.viewMode === 'destination') setViewMode(parsed.viewMode);
         if (Array.isArray(parsed.selectedDestinationsList)) setSelectedDestinationsList(parsed.selectedDestinationsList);
         if (parsed.selectedMonth) setSelectedMonth(parsed.selectedMonth);
         if (parsed.maxCostFilter !== undefined) setMaxCostFilter(parsed.maxCostFilter);
@@ -431,7 +455,7 @@ export default function HomePage() {
 
       // URL parameters take precedence over localStorage for direct links & sharing
       const urlView = urlParams.get('view');
-      if (urlView === 'list' || urlView === 'destination' || urlView === 'timeframe') {
+      if (urlView === 'list' || urlView === 'destination') {
         setViewMode(urlView);
       }
       const urlDest = urlParams.get('dest');
@@ -500,6 +524,7 @@ export default function HomePage() {
                   if (typeof formState.minBeachTemp === 'number') setMinBeachTemp(formState.minBeachTemp);
                   if (typeof formState.requireSnow === 'boolean') setRequireSnow(formState.requireSnow);
                   if (Array.isArray(formState.longRangeStyles)) setLongRangeStyles(formState.longRangeStyles);
+                  if (Array.isArray(formState.excludedCountries)) setExcludedCountries(formState.excludedCountries);
                   if (Array.isArray(formState.recurringBlackouts)) setRecurringBlackouts(formState.recurringBlackouts);
                   if (typeof formState.maxFlightStops === 'number') setMaxFlightStops(formState.maxFlightStops);
                   if (['PETROL', 'DIESEL', 'ELECTRIC'].includes(formState.carFuelType)) setCarFuelType(formState.carFuelType);
@@ -552,6 +577,7 @@ export default function HomePage() {
         minBeachTemp,
         requireSnow,
         longRangeStyles,
+        excludedCountries,
         recurringBlackouts,
         preferredBoardType,
         maxOverlandDurationHours,
@@ -584,6 +610,7 @@ export default function HomePage() {
     minBeachTemp,
     requireSnow,
     longRangeStyles,
+    excludedCountries,
     recurringBlackouts,
     preferredBoardType,
     maxOverlandDurationHours,
@@ -732,6 +759,7 @@ export default function HomePage() {
     setSelectedStyles(['ALL']);
     setLongRangeStyles([]);
     setTargetDestinations([]);
+    setExcludedCountries([]);
     setOriginAirports([]);
     setAdultsCount(2);
     setChildrenList([]);
@@ -751,6 +779,9 @@ export default function HomePage() {
     setSearchBlackouts([]);
     setRecurringBlackouts([]);
     setIsAddingBlackout(false);
+    searchRunRef.current++;
+    backgroundAbortRef.current?.abort();
+    dismissBackgroundSearch();
     setResults(null);
     resetAllFilters();
     locationTouchedRef.current = false;
@@ -868,6 +899,9 @@ export default function HomePage() {
             if (Array.isArray(sw.longRangeStyles)) {
               setLongRangeStyles(sw.longRangeStyles);
             }
+            if (Array.isArray(sw.excludedCountries)) {
+              setExcludedCountries(sw.excludedCountries);
+            }
             if (Array.isArray(sw.recurringBlackouts)) {
               setRecurringBlackouts(sw.recurringBlackouts);
             }
@@ -971,6 +1005,7 @@ export default function HomePage() {
         document.getElementById('results-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       );
     }
+    pendingBackgroundApplyRef.current = null;
     setBackgroundSearch({ status: 'idle' });
     setLoading(true);
     setError(null);
@@ -1007,6 +1042,7 @@ export default function HomePage() {
         minBeachTemp: (!hasDestinations && isBeachClimateRelevant) ? minBeachTemp : undefined,
         requireSnow: (!hasDestinations && isAlpineClimateRelevant) ? requireSnow : false,
         longRangeStyles: (!hasDestinations && isLongRangeSelected && longRangeStyles.length > 0) ? longRangeStyles : undefined,
+        excludedCountries: (!hasDestinations && excludedCountries.length > 0) ? [...excludedCountries].sort() : undefined,
         preferredBoardType,
         maxOverlandTravelMinutes: maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
         maxFlightStops,
@@ -1084,6 +1120,7 @@ export default function HomePage() {
               minBeachTemp,
               requireSnow,
               longRangeStyles,
+              excludedCountries,
               recurringBlackouts,
               maxFlightStops,
               carFuelType,
@@ -1106,7 +1143,6 @@ export default function HomePage() {
 
       setResults(data.windows);
       setSelectedDestinationsList([]);
-      setTimeframeCurrentPage(1);
       publishResults(data.windows);
 
       // Progressive search: the most relevant destinations are shown now, the next tier is
@@ -1118,13 +1154,18 @@ export default function HomePage() {
         const controller = new AbortController();
         backgroundAbortRef.current = controller;
         setBackgroundSearch({ status: 'running' });
+        const firstShownAt = Date.now();
+        let fromCache = false;
         fetch('/api/vacations/optimize', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...payload, discoveryScope: 'extended' }),
           signal: controller.signal,
         })
-          .then((r) => (r.ok ? r.json() : null))
+          .then((r) => {
+            fromCache = r.headers.get('X-Famvac-Cache') === 'HIT';
+            return r.ok ? r.json() : null;
+          })
           .then((full: { windows?: CandidateWindow[] } | null) => {
             if (searchRunRef.current !== runId) return;
             if (!full?.windows) {
@@ -1132,11 +1173,22 @@ export default function HomePage() {
               return;
             }
             const added = destinationCount(full.windows) - firstCount;
-            if (added > 0) {
+            // Before anyone could start reading (a repeated, cached search): no reason to ask
+            const arrivedInstantly = fromCache || Date.now() - firstShownAt < INSTANT_BACKGROUND_MS;
+            if (added > 0 && arrivedInstantly) {
               setResults(full.windows);
               publishResults(full.windows);
+              setBackgroundSearch({ status: 'idle' });
+            } else if (added > 0) {
+              const windows = full.windows;
+              pendingBackgroundApplyRef.current = () => {
+                setResults(windows);
+                publishResults(windows);
+              };
+              setBackgroundSearch({ status: 'ready', added });
+            } else {
+              setBackgroundSearch({ status: 'done', added: 0 });
             }
-            setBackgroundSearch({ status: 'done', added: Math.max(0, added) });
           })
           .catch(() => {
             if (searchRunRef.current === runId) setBackgroundSearch({ status: 'idle' });
@@ -1178,6 +1230,7 @@ export default function HomePage() {
               minBeachTemp,
               requireSnow,
               longRangeStyles,
+              excludedCountries,
               recurringBlackouts,
               maxFlightStops,
               carFuelType,
@@ -1259,8 +1312,20 @@ export default function HomePage() {
     if (!results) return [];
     const list = applyResultFilters(results, resultFilterState);
 
+    const countryNames = new Map<string, string>();
+    const countryOf = (w: CandidateWindow) => {
+      let name = countryNames.get(w.destinationAirport);
+      if (name === undefined) {
+        name = getLocalizedDestinationLabel(w.destinationAirport, locale, { country: w.destinationCountry }).country || '';
+        countryNames.set(w.destinationAirport, name);
+      }
+      return name;
+    };
+
     list.sort((a, b) => {
       switch (sortBy) {
+        case 'country':
+          return countryOf(a).localeCompare(countryOf(b), locale) || b.finalScore - a.finalScore;
         case 'price':
           return a.estimatedTotalCost - b.estimatedTotalCost;
         case 'pto':
@@ -1278,7 +1343,7 @@ export default function HomePage() {
     });
 
     return list;
-  }, [results, resultFilterState, sortBy]);
+  }, [results, resultFilterState, sortBy, locale]);
 
   const activeQueryDestinations = useMemo(() => {
     if (!results) return [];
@@ -1320,23 +1385,19 @@ export default function HomePage() {
     return filteredResults.slice(startIdx, startIdx + pageSize);
   }, [filteredResults, currentPage, pageSize]);
 
-  // "Show all periods" of a destination group: the list view filtered to that destination
-  const jumpToList = (returnView: 'destination' | 'timeframe') => {
-    setListReturnView(returnView);
-    setViewMode('list');
-    setCurrentPage(1);
+  const scrollToResultsTop = () =>
     requestAnimationFrame(() => {
       document.getElementById('results-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
-  };
+
+  // "Show all periods" of a destination group: the list view filtered to that destination
   const showDestinationInList = (destinationCode: string) => {
+    setFiltersBeforeListJump({ destinations: selectedDestinationsList, month: selectedMonth, destinationPage: destinationCurrentPage });
     setSelectedDestinationsList([destinationCode]);
-    jumpToList('destination');
-  };
-  // "Show all" of a period group: the list view filtered to that month
-  const showMonthInList = (yearMonth: string) => {
-    setSelectedMonth(yearMonth);
-    jumpToList('timeframe');
+    setListReturnView('destination');
+    setViewMode('list');
+    setCurrentPage(1);
+    scrollToResultsTop();
   };
 
   // Destination Groups
@@ -1376,6 +1437,8 @@ export default function HomePage() {
 
     groups.sort((g1, g2) => {
       switch (sortBy) {
+        case 'country':
+          return (g1.destinationCountry || '').localeCompare(g2.destinationCountry || '', locale) || g2.highestScore - g1.highestScore;
         case 'price':
           return g1.lowestPrice - g2.lowestPrice;
         case 'date-asc':
@@ -1395,79 +1458,19 @@ export default function HomePage() {
     return groups;
   }, [filteredResults, sortBy, locale, getFormattedLocalizedDestination]);
 
-  // Timeframe Groups (Grouped by Month/Period)
-  const timeframeGroups = useMemo(() => {
-    if (!filteredResults || filteredResults.length === 0) return [];
-
-    const map = new Map<string, CandidateWindow[]>();
-    for (const w of filteredResults) {
-      const ym = w.startDate.substring(0, 7);
-      const list = map.get(ym) || [];
-      list.push(w);
-      map.set(ym, list);
-    }
-
-    const sortedKeys = Array.from(map.keys()).sort();
-    if (sortBy === 'date-desc') {
-      sortedKeys.reverse();
-    }
-
-    return sortedKeys.map((ym) => {
-      const windows = map.get(ym)!;
-      const [yearStr, monthStr] = ym.split('-');
-      const y = parseInt(yearStr, 10);
-      const m = parseInt(monthStr, 10) - 1;
-      const monthDate = new Date(y, m, 1);
-      const title = formatDate(monthDate, { month: 'long', year: 'numeric' });
-
-      const lowestPrice = Math.min(...windows.map((w) => w.estimatedTotalCost));
-      const highestScore = Math.max(...windows.map((w) => w.finalScore));
-      // Only meaningful when a school child travels: without one, windows are never flagged as
-      // needing an exemption (and the home region's calendar is still tracked for demand), which
-      // made every month carry the badge even for a family with a toddler.
-      const hasSchoolHolidays = windows.some(
-        (w) => w.travelsWithSchoolChildren && !w.requiresSchoolExemption && (w.schoolHolidayDaysOverlap ?? 0) > 0
-      );
-
-      // Interleave distinct destinations in this timeframe so first items are varied
-      const destMap = new Map<string, CandidateWindow[]>();
-      for (const w of windows) {
-        const l = destMap.get(w.destinationAirport) || [];
-        l.push(w);
-        destMap.set(w.destinationAirport, l);
-      }
-      const sortedDestKeys = Array.from(destMap.keys());
-      const interleaved: CandidateWindow[] = [];
-      let round = 0;
-      let hasMore = true;
-      while (hasMore) {
-        hasMore = false;
-        for (const k of sortedDestKeys) {
-          const l = destMap.get(k)!;
-          if (round < l.length) {
-            interleaved.push(l[round]);
-            if (round + 1 < l.length) hasMore = true;
-          }
-        }
-        round++;
-      }
-
-      return {
-        key: ym,
-        title,
-        windows: sortBy === 'score' ? interleaved : windows,
-        lowestPrice,
-        highestScore,
-        hasSchoolHolidays,
-      };
-    });
-  }, [filteredResults, sortBy, formatDate]);
-
-  const timeframeTotalPages = Math.max(1, Math.ceil(timeframeGroups.length / timeframePageSize));
-  const displayedTimeframeGroups = useMemo(() => {
-    const startIdx = (timeframeCurrentPage - 1) * timeframePageSize;
-    return timeframeGroups.slice(startIdx, startIdx + timeframePageSize);
-  }, [timeframeGroups, timeframeCurrentPage, timeframePageSize]);
+  // Back to the first page whenever the destination list changes (new results, filter, sort)
+  const [destinationPageFor, setDestinationPageFor] = useState(destinationGroups);
+  if (destinationPageFor !== destinationGroups) {
+    setDestinationPageFor(destinationGroups);
+    setDestinationCurrentPage(destinationPageToRestore ?? 1);
+    setDestinationPageToRestore(null);
+  }
+  const destinationTotalPages = Math.max(1, Math.ceil(destinationGroups.length / destinationPageSize));
+  const destinationPageStart = (Math.min(destinationCurrentPage, destinationTotalPages) - 1) * destinationPageSize;
+  const displayedDestinationGroups = useMemo(
+    () => destinationGroups.slice(destinationPageStart, destinationPageStart + destinationPageSize),
+    [destinationGroups, destinationPageStart, destinationPageSize]
+  );
 
   const availableMonths = useMemo(() => {
     if (!results) return [];
@@ -1604,7 +1607,6 @@ export default function HomePage() {
         return next;
       });
       setCurrentPage(1);
-      setTimeframeCurrentPage(1);
       return;
     }
     const neutral: Record<ResultFilterKey, () => void> = {
@@ -1628,7 +1630,6 @@ export default function HomePage() {
     };
     neutral[key]();
     setCurrentPage(1);
-    setTimeframeCurrentPage(1);
   };
 
   // Dropdown option with its result count; options without results are greyed out
@@ -1675,7 +1676,6 @@ export default function HomePage() {
 
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="space-y-1.5 flex-1 min-w-0">
-            {/* Destination Header in Top Space of Timeframe Column */}
             {!options?.hideDestinationHeader && (
               <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-teal-700 dark:text-teal-400 tracking-wide pb-0.5">
                 <button
@@ -2028,15 +2028,11 @@ export default function HomePage() {
       {/* Intro hero banner */}
       <div className="bg-linear-to-r from-teal-800 via-teal-700 to-emerald-800 rounded-2xl p-6 sm:p-8 text-white shadow-lg">
         <div className="max-w-3xl space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-xs font-semibold backdrop-blur-sm">
-            <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-            {t.home.heroBadge}
-          </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
             {t.home.heroTitle}
           </h1>
           <p className="text-teal-100 text-sm sm:text-base leading-relaxed">
-            {t.home.heroDescription}
+            {t.home.heroDescription} <strong className="font-semibold text-white">{t.home.heroAudience}</strong>
           </p>
           {/* Estimates disclaimer: readable on the banner, deliberately not a warning colour */}
           <p className="flex items-start gap-2 rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-xs sm:text-[13px] leading-relaxed text-teal-50">
@@ -2080,8 +2076,8 @@ export default function HomePage() {
                   title={t.home.formResetTitle}
                 >
                   <RotateCcw className="w-3 h-3" />
-                  {/* Icon only between 1024 and 1279px, where the form column is narrowest */}
-                  <span className="lg:sr-only xl:not-sr-only">{t.home.formReset}</span>
+                  {/* Icon only on very small phones and between 1024 and 1279px, where the form column is narrowest */}
+                  <span className="max-[359px]:sr-only lg:sr-only xl:not-sr-only">{t.home.formReset}</span>
                 </button>
                 {profileLoaded && (
                   <span
@@ -2183,6 +2179,26 @@ export default function HomePage() {
                   selectedDestinations={targetDestinations}
                   onChange={setTargetDestinations}
                 />
+
+                {/* Exclusions only shape open discovery; named destinations always win */}
+                {targetDestinations.length === 0 && (
+                  <div>
+                    <div className="mb-2 space-y-0.5">
+                      <label htmlFor="excluded-countries" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <Ban className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                        <span>{t.home.excludeCountriesLabel}</span>
+                      </label>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                        {t.home.excludeCountriesHint}
+                      </p>
+                    </div>
+                    <CountryExclusionPicker
+                      id="excluded-countries"
+                      value={excludedCountries}
+                      onChange={setExcludedCountries}
+                    />
+                  </div>
+                )}
 
                 {/* Kind of Vacation (Vacation Style) selector - Only visible when no destinations are defined */}
                 {targetDestinations.length === 0 && (
@@ -2415,32 +2431,20 @@ export default function HomePage() {
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                  <span>{locale.startsWith('de') ? 'Reisezeitraum' : 'Travel Dates'} ({t.home.earliestDateLabel} &amp; {t.home.latestDateLabel})</span>
+                  <span>{t.home.travelDatesLabel}</span>
                 </label>
                 <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-3">
                   <div>
                     <span className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
                       {t.home.earliestDateLabel}
                     </span>
-                    <input
-                      type="date"
-                      min={todayStr}
-                      value={earliestDate}
-                      onChange={(e) => setEarliestDate(e.target.value)}
-                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 shadow-xs"
-                    />
+                    <DatePicker value={earliestDate} onChange={setEarliestDate} min={todayStr} />
                   </div>
                   <div>
                     <span className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
                       {t.home.latestDateLabel}
                     </span>
-                    <input
-                      type="date"
-                      min={earliestDate || todayStr}
-                      value={latestDate}
-                      onChange={(e) => setLatestDate(e.target.value)}
-                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 shadow-xs"
-                    />
+                    <DatePicker value={latestDate} onChange={setLatestDate} min={earliestDate || todayStr} />
                   </div>
                 </div>
               </div>
@@ -2595,7 +2599,7 @@ export default function HomePage() {
           {loading && <SearchLoadingPanel />}
 
           {!loading && results && results.length > 0 && (
-            <BackgroundSearchBanner state={backgroundSearch} onDismiss={dismissBackgroundSearch} />
+            <BackgroundSearchBanner state={backgroundSearch} onDismiss={dismissBackgroundSearch} onApply={applyBackgroundSearch} />
           )}
 
           {!results && !loading && (
@@ -2686,7 +2690,7 @@ export default function HomePage() {
 
                   {/* Right: View Mode Switcher (icons only at lg, where the results column is narrowest) */}
                   <div className="flex items-center">
-                    <div className="grid grid-cols-3 w-full sm:w-auto sm:inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700">
+                    <div className="grid grid-cols-2 w-full sm:w-auto sm:inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700">
                       <button
                         title={t.home.viewModeDestination}
                         type="button"
@@ -2699,19 +2703,6 @@ export default function HomePage() {
                       >
                         <Compass className="hidden sm:block w-3.5 h-3.5" />
                         <span className="whitespace-nowrap lg:sr-only xl:not-sr-only">{t.home.viewModeDestination}</span>
-                      </button>
-                      <button
-                        title={t.home.viewModeTimeframe}
-                        type="button"
-                        onClick={() => setViewMode('timeframe')}
-                        className={`px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                          viewMode === 'timeframe'
-                            ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-2xs'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                        }`}
-                      >
-                        <Calendar className="hidden sm:block w-3.5 h-3.5" />
-                        <span className="whitespace-nowrap lg:sr-only xl:not-sr-only">{t.home.viewModeTimeframe}</span>
                       </button>
                       <button
                         title={t.home.viewModeList}
@@ -2810,7 +2801,6 @@ export default function HomePage() {
                                 onChange={(selected) => {
                                   setSelectedDestinationsList(selected);
                                   setCurrentPage(1);
-                                  setTimeframeCurrentPage(1);
                                 }}
                                 totalCount={results?.length || 0}
                                 className="flex-1 sm:flex-none min-w-0"
@@ -2822,7 +2812,6 @@ export default function HomePage() {
                                     onClick={() => {
                                       setSelectedDestinationsList([]);
                                       setCurrentPage(1);
-                                      setTimeframeCurrentPage(1);
                                     }}
                                     className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                     title={t.home.filterReset}
@@ -3036,7 +3025,6 @@ export default function HomePage() {
                               onChange={(v) => {
                                 setSeasonalInfoFilter(v as 'ALL' | 'QUIET_ONLY');
                                 setCurrentPage(1);
-                                setTimeframeCurrentPage(1);
                               }}
                               highlighted={isSeasonalInfoActive}
                               options={[
@@ -3051,7 +3039,6 @@ export default function HomePage() {
                                   onClick={() => {
                                     setSeasonalInfoFilter('ALL');
                                     setCurrentPage(1);
-                                    setTimeframeCurrentPage(1);
                                   }}
                                   className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
@@ -3082,7 +3069,6 @@ export default function HomePage() {
                                 setWarningFilter(nextFilter);
                                 setAllowedWarnings(nextAllowed);
                                 setCurrentPage(1);
-                                setTimeframeCurrentPage(1);
                               }}
                               cleanCount={warningFilterStats.cleanCount}
                               totalCount={warningFilterStats.totalCount}
@@ -3096,7 +3082,6 @@ export default function HomePage() {
                                     setWarningFilter('CLEAN_ONLY');
                                     setAllowedWarnings([]);
                                     setCurrentPage(1);
-                                    setTimeframeCurrentPage(1);
                                   }}
                                   className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
@@ -3459,6 +3444,7 @@ export default function HomePage() {
                                 { value: 'price', label: t.home.sortPrice },
                                 { value: 'pto', label: t.home.sortPto },
                                 { value: 'duration', label: t.home.sortDuration },
+                                { value: 'country', label: t.home.sortCountry },
                               ]}
                             />
                             <div className="w-7 h-7 flex items-center justify-center shrink-0">
@@ -3508,10 +3494,20 @@ export default function HomePage() {
                   ) : (
                     /* Destination Cards List */
                     <div className="space-y-6">
-                      {destinationGroups.map((group, groupIdx) => {
+                      {displayedDestinationGroups.map((group, pageIdx) => {
+                    const groupIdx = destinationPageStart + pageIdx;
+                    const startsCountry =
+                      sortBy === 'country' &&
+                      (pageIdx === 0 || displayedDestinationGroups[pageIdx - 1].destinationCountry !== group.destinationCountry);
                     return (
+                      <div key={group.destinationCode} className="space-y-2">
+                      {startsCountry && (
+                        <h3 className="flex items-center gap-1.5 pt-1 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                          {group.destinationCountry}
+                        </h3>
+                      )}
                       <div
-                        key={group.destinationCode}
                         className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs hover:shadow-md transition"
                       >
                         {/* Group Header */}
@@ -3602,7 +3598,7 @@ export default function HomePage() {
                             </p>
 
                             <div className="flex items-center gap-2 flex-wrap self-start sm:self-center">
-                              {groupIdx === 0 && (
+                              {groupIdx === 0 && sortBy === 'score' && (
                                 <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs">
                                   <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                                   {t.home.destGroupFeaturedBadge}
@@ -3632,149 +3628,27 @@ export default function HomePage() {
                           </div>
                         )}
                       </div>
+                      </div>
                     );
                   })}
+
+                  <ResultsPagination
+                    page={Math.min(destinationCurrentPage, destinationTotalPages)}
+                    totalPages={destinationTotalPages}
+                    onPageChange={(p) => {
+                      setDestinationCurrentPage(p);
+                      scrollToResultsTop();
+                    }}
+                    pageSize={destinationPageSize}
+                    pageSizeOptions={[5, 10, 20]}
+                    onPageSizeChange={(size) => {
+                      setDestinationPageSize(size);
+                      setDestinationCurrentPage(1);
+                    }}
+                  />
                 </div>
               )}
             </div>
-          ) : viewMode === 'timeframe' ? (
-                /* Group by Timeframe View */
-                <div className="space-y-6">
-                  {displayedTimeframeGroups.map((group) => {
-                    const shownWindows = group.windows.slice(0, 3);
-                    return (
-                      <div key={group.key} className="space-y-3">
-                        {/* Timeframe Group Header */}
-                        <div className="bg-linear-to-r from-teal-800 via-teal-700 to-emerald-800 rounded-xl p-4 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
-                              <Calendar className="w-5 h-5 text-yellow-300" />
-                            </div>
-                            <div>
-                              <h3 className="font-extrabold text-white text-base sm:text-lg">
-                                {group.title}
-                              </h3>
-                              <p className="text-xs text-teal-100 flex items-center gap-2 mt-0.5">
-                                <span>
-                                  {t.home.timeframeGroupCount.replace('{count}', String(group.windows.length))}
-                                </span>
-                                <span>•</span>
-                                <span>
-                                  {t.home.destGroupFromPrice.replace('{price}', formatCurrency(group.lowestPrice))}
-                                </span>
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 self-start sm:self-center">
-                            {group.hasSchoolHolidays && (
-                              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/30 text-emerald-100 border border-emerald-300/40">
-                                {t.home.timeframeSchoolHolidayBadge}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Windows in this timeframe */}
-                        <div className="space-y-4">
-                          {shownWindows.map((win, idx) =>
-                            renderVacationCard(win, { rank: idx + 1 })
-                          )}
-                        </div>
-
-                        {/* Every option of this period lives in the list view (sorting, pagination) */}
-                        {group.windows.length > 3 && (
-                          <div className="text-center pt-1">
-                            <button
-                              type="button"
-                              onClick={() => showMonthInList(group.key)}
-                              className="px-4 py-2 text-xs font-bold text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-100 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 border border-teal-200 dark:border-teal-800 rounded-lg transition inline-flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <List className="w-3.5 h-3.5" />
-                              <span>
-                                {t.home.timeframeShowAllInList
-                                  .replace('{count}', String(group.windows.length))
-                                  .replace('{period}', group.title)}
-                              </span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {/* Timeframe View Pagination Controls */}
-                  {timeframeGroups.length > 0 && (
-                    <div className="bg-white dark:bg-slate-900/90 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
-                      <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-                        <span>{t.home.resultsPerPage}:</span>
-                        <SelectDropdown
-                          variant="form-sm"
-                          value={String(timeframePageSize)}
-                          onChange={(v) => {
-                            setTimeframePageSize(Number(v));
-                            setTimeframeCurrentPage(1);
-                          }}
-                          className="w-16"
-                          options={[
-                            { value: '2', label: '2' },
-                            { value: '4', label: '4' },
-                            { value: '6', label: '6' },
-                            { value: '12', label: '12' },
-                          ]}
-                        />
-                        <span className="text-slate-400 dark:text-slate-500 ml-2">
-                          {t.home.page} {timeframeCurrentPage} {t.home.of} {timeframeTotalPages}
-                        </span>
-                      </div>
-
-                      {timeframeTotalPages > 1 && (
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            disabled={timeframeCurrentPage <= 1}
-                            onClick={() => setTimeframeCurrentPage((p) => Math.max(1, p - 1))}
-                            className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
-                          >
-                            <ChevronLeft className="w-3.5 h-3.5" />
-                            {t.home.prevPage}
-                          </button>
-
-                          {Array.from({ length: Math.min(5, timeframeTotalPages) }, (_, i) => {
-                            let pageNum = i + 1;
-                            if (timeframeTotalPages > 5 && timeframeCurrentPage > 3) {
-                              pageNum = timeframeCurrentPage - 3 + i;
-                              if (pageNum > timeframeTotalPages) pageNum = timeframeTotalPages - (4 - i);
-                            }
-                            return (
-                              <button
-                                key={pageNum}
-                                type="button"
-                                onClick={() => setTimeframeCurrentPage(pageNum)}
-                                className={`w-7 h-7 rounded-lg text-xs font-bold transition cursor-pointer ${
-                                  timeframeCurrentPage === pageNum
-                                    ? 'bg-teal-600 text-white shadow-2xs'
-                                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                                }`}
-                              >
-                                {pageNum}
-                              </button>
-                            );
-                          })}
-
-                          <button
-                            type="button"
-                            disabled={timeframeCurrentPage >= timeframeTotalPages}
-                            onClick={() => setTimeframeCurrentPage((p) => Math.min(timeframeTotalPages, p + 1))}
-                            className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
-                          >
-                            {t.home.nextPage}
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
               ) : (
                 /* Flat List View */
                 <div className="space-y-4">
@@ -3804,7 +3678,6 @@ export default function HomePage() {
                             setSelectedMonth('ALL');
                             setListReturnView(null);
                             setCurrentPage(1);
-                            setTimeframeCurrentPage(1);
                           }}
                           className="px-2.5 py-1.5 rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 font-semibold hover:bg-teal-50 dark:hover:bg-slate-700 transition cursor-pointer"
                         >
@@ -3815,15 +3688,17 @@ export default function HomePage() {
                             type="button"
                             onClick={() => {
                               // Undo what the jump set, return to the group view it came from
-                              if (listReturnView === 'destination') setSelectedDestinationsList([]);
-                              else setSelectedMonth('ALL');
+                              setSelectedDestinationsList(filtersBeforeListJump?.destinations ?? []);
+                              setSelectedMonth(filtersBeforeListJump?.month ?? 'ALL');
+                              setDestinationPageToRestore(filtersBeforeListJump?.destinationPage ?? null);
+                              setFiltersBeforeListJump(null);
                               setViewMode(listReturnView);
                               setListReturnView(null);
                               setCurrentPage(1);
                             }}
                             className="px-2.5 py-1.5 rounded-lg bg-teal-600 text-white font-semibold hover:bg-teal-700 transition cursor-pointer"
                           >
-                            {listReturnView === 'destination' ? t.home.listBackToDestinations : t.home.listBackToTimeframes}
+                            {t.home.listBackToDestinations}
                           </button>
                         )}
                       </span>
@@ -3835,72 +3710,20 @@ export default function HomePage() {
                   })}
 
                   {/* Pagination Controls */}
-                  <div className="bg-white dark:bg-slate-900/90 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-                      <span>{t.home.resultsPerPage}:</span>
-                      <SelectDropdown
-                        variant="form-sm"
-                        value={String(pageSize)}
-                        onChange={(v) => {
-                          setPageSize(Number(v));
-                          setCurrentPage(1);
-                        }}
-                        className="w-16"
-                        options={[
-                          { value: '5', label: '5' },
-                          { value: '10', label: '10' },
-                          { value: '20', label: '20' },
-                        ]}
-                      />
-                      <span className="text-slate-400 dark:text-slate-500 ml-2">
-                        {t.home.page} {currentPage} {t.home.of} {totalPages}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        disabled={currentPage <= 1}
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5" />
-                        {t.home.prevPage}
-                      </button>
-
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum = i + 1;
-                        if (totalPages > 5 && currentPage > 3) {
-                          pageNum = currentPage - 3 + i;
-                          if (pageNum > totalPages) pageNum = totalPages - (4 - i);
-                        }
-                        return (
-                          <button
-                            key={pageNum}
-                            type="button"
-                            onClick={() => setCurrentPage(pageNum)}
-                            className={`w-7 h-7 rounded-lg text-xs font-bold transition cursor-pointer ${
-                              currentPage === pageNum
-                                ? 'bg-teal-600 text-white shadow-2xs'
-                                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
-
-                      <button
-                        type="button"
-                        disabled={currentPage >= totalPages}
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
-                      >
-                        {t.home.nextPage}
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
+                  <ResultsPagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={(p) => {
+                      setCurrentPage(p);
+                      scrollToResultsTop();
+                    }}
+                    pageSize={pageSize}
+                    pageSizeOptions={[5, 10, 20]}
+                    onPageSizeChange={(size) => {
+                      setPageSize(size);
+                      setCurrentPage(1);
+                    }}
+                  />
                 </div>
               )}
             </>

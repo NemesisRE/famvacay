@@ -494,6 +494,7 @@ export function optimizeVacationWindows(
     latestDate: input.latestDate,
     maxOverlandTravelMinutes: input.maxOverlandTravelMinutes,
     longRangeStyles: input.longRangeStyles,
+    excludedCountries: input.excludedCountries,
   };
 
   // Climate constraints (minimum beach temperature, snow guarantee) also apply to beach /
