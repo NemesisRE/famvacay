@@ -79,8 +79,8 @@ test.describe('Search State Sharing, Destination Filtering, and Dark Mode', () =
     // 2. Access directly via share URL /?s=<shareId>
     await page.goto(`/?s=${shareData.shareId}`);
 
-    // Verify results are loaded and visible immediately
-    await expect(page.locator('text=Palma de Mallorca').first()).toBeVisible();
+    // Verify results are loaded and visible immediately (PMI is labelled by its island)
+    await expect(page.getByText(/Mallorca/).first()).toBeVisible();
 
     // 3. Switch to the list view and open the filter panel, where the destination filter lives
     await page.getByRole('button', { name: /^(List|Liste)$/ }).click();
@@ -92,16 +92,16 @@ test.describe('Search State Sharing, Destination Filtering, and Dark Mode', () =
     // Pick Mallorca only; the options open in a floating dialog outside the results
     await destDropdownBtn.click();
     const destDialog = page.locator('[data-floating-ui-portal]').getByRole('dialog');
-    await destDialog.getByRole('button', { name: /Palma de Mallorca/ }).click();
+    await destDialog.getByRole('button', { name: /^Mallorca/ }).click();
     await destDialog.getByRole('button', { name: /^(Done|Fertig)/ }).click();
 
-    await expect(destDropdownBtn).toContainText('Palma de Mallorca');
+    await expect(destDropdownBtn).toContainText('Mallorca');
     await expect(page.getByText('FRA ➔ PMI').first()).toBeVisible();
     await expect(page.getByText('FRA ➔ HER')).toHaveCount(0);
 
-    // The period view keeps the same destination filter
-    await page.getByRole('button', { name: /^(Period|Zeitraum)$/ }).click();
-    await expect(page.getByTestId('destination-filter-trigger').first()).toBeVisible();
+    // The destination view keeps the same destination filter
+    await page.getByRole('button', { name: /^(Destination|Reiseziel)$/ }).click();
+    await expect(page.getByTestId('destination-filter-trigger').first()).toContainText('Mallorca');
 
     // 4. Dark mode toggle in the settings menu
     await page.getByRole('button', { name: /^(Settings|Einstellungen)$/ }).click();
