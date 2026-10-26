@@ -338,6 +338,10 @@ function computeFlightRoute(
 
   if (networkHubs) {
     stops = networkHubs.length;
+  } else if (hasRouteNetworkData(origClean) && hasRouteNetworkData(destClean)) {
+    // Both airports' routes are known and none connects them within two stops: certainly no
+    // non-stop flight (the rules of thumb below are only for airports without route data)
+    stops = 2;
   } else {
     // Ultra-long-haul (> 11,500km, e.g. Europe to Australia/NZ) cannot operate economically non-stop
     if (directDistKm >= 11500) {
