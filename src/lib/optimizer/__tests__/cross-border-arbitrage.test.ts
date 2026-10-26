@@ -80,7 +80,8 @@ describe('Cross-border / neighbor-state departure discount', () => {
     expect(flex.slice(0, 2)).toEqual(['SXB', 'FKB']);
     // Basel-Mulhouse ranks by its route network, not by patchy passenger figures
     expect(flex).toContain('BSL');
-    expect(resolveFlexOriginAirports(50.776, 6.084).slice(0, 2)).toEqual(['MST', 'LGG']); // Aachen
+    // Aachen: Maastricht next door first; Liège is mostly cargo, Cologne has the passenger routes
+    expect(resolveFlexOriginAirports(50.776, 6.084).slice(0, 2)).toEqual(['MST', 'CGN']);
   });
 });
 

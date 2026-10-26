@@ -30,6 +30,10 @@ const CONTINENT_BY_COUNTRY = new Map<string, Continent>(
   )
 );
 
+export function getCountriesOfContinent(continent: Continent): string[] {
+  return COUNTRIES_BY_CONTINENT[continent].split(' ');
+}
+
 export function getContinentForCountry(countryCode: string | undefined): Continent | undefined {
   return countryCode ? CONTINENT_BY_COUNTRY.get(countryCode.toUpperCase()) : undefined;
 }

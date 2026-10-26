@@ -90,7 +90,13 @@
   --radius: 0.5rem;
 }
 
+/* Native controls (selects, scrollbars, calendar dropdowns) follow the app theme, not the OS */
+:root {
+  color-scheme: light;
+}
+
 .dark {
+  color-scheme: dark;
   --background: 222 47% 9%;
   --foreground: 210 40% 98%;
   --card: 222 40% 13%;
@@ -144,6 +150,14 @@ body {
 }
 .rdp-themed .rdp-chevron {
   fill: currentColor;
+}
+/* Phones: finger-sized days, still fitting a 320px screen */
+.rdp-touch {
+  --rdp-day_button-height: min(44px, calc((100vw - 56px) / 7));
+  --rdp-day_button-width: min(44px, calc((100vw - 56px) / 7));
+  --rdp-day-height: min(44px, calc((100vw - 56px) / 7));
+  --rdp-day-width: min(44px, calc((100vw - 56px) / 7));
+  font-size: 0.875rem;
 }
 
 /*

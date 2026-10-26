@@ -168,6 +168,13 @@ export function isDestinationSafeForVacation(airportCode: string, countryCodeOrN
   return entry ? entry.isSafeForFamilies : true;
 }
 
+/** ISO codes of every country open discovery already leaves out for safety reasons */
+export function getCountriesBlockedFromDiscovery(): string[] {
+  return Object.keys(getAdvisoryStore().entries)
+    .filter((iso) => !isDestinationSafeForVacation('', iso))
+    .sort();
+}
+
 const AA_OVERVIEW_URL = 'https://www.auswaertiges-amt.de/de/ReiseUndSicherheit/reise-und-sicherheitshinweise';
 const US_OVERVIEW_URL = 'https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories.html';
 

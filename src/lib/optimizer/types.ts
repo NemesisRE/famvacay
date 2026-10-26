@@ -84,6 +84,8 @@ export interface TripPlanInput {
   destinationTypes?: DestinationType[]; // Flexible multiple vacation styles (e.g. ['BEACH', 'ALPINE'])
   longRangeStyles?: DestinationType[];  // Preferred kind of long-haul trip when LONGRANGE is selected (BEACH | CITY | NATURE | ALPINE); empty = any
   targetDestinations?: string[];    // Flexible multiple destination tags (e.g. ['Egypt', 'Mallorca'])
+  /** Open discovery only: ISO 3166-1 alpha-2 countries never proposed; their slots go to other destinations */
+  excludedCountries?: string[];
   targetRegion?: string;           // Optional single destination code
   durationDays: number;            // Fixed or base window length
   durationDaysMin?: number;        // Flexible minimum duration

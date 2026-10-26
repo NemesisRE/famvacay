@@ -32,9 +32,9 @@ export interface TranslationDictionary {
     language: string;
   };
   home: {
-    heroBadge: string;
     heroTitle: string;
     heroDescription: string;
+    heroAudience: string;
     estimatesDisclaimerTitle: string;
     estimatesDisclaimerText: string;
     constraintsTitle: string;
@@ -179,6 +179,8 @@ export interface TranslationDictionary {
     quickSpecialTimes: string;
     blackoutReasonPlaceholder: string;
     selectDateRange: string;
+    selectDate: string;
+    travelDatesLabel: string;
     prefilledFromProfile: string;
     prefilledFromProfileShort: string;
     runOptimization: string;
@@ -411,12 +413,12 @@ export interface TranslationDictionary {
     sortPrice: string;
     sortPto: string;
     sortDuration: string;
+    sortCountry: string;
     sortDateAsc: string;
     sortDateDesc: string;
     viewMode: string;
     viewModeList: string;
     viewModeDestination: string;
-    viewModeTimeframe: string;
     schoolHolidaysFilterLabel: string;
     filterAllDates: string;
     filterSchoolHolidaysOnly: string;
@@ -424,10 +426,7 @@ export interface TranslationDictionary {
     destGroupShowAllInList: string;
     listDestinationFilterActive: string;
     listBackToDestinations: string;
-    timeframeShowAllInList: string;
     listClearFilters: string;
-    listBackToTimeframes: string;
-    timeframeSchoolHolidayBadge: string;
     destGroupFromPrice: string;
     destGroupFeaturedBadge: string;
     filterByDestination: string;
@@ -435,6 +434,14 @@ export interface TranslationDictionary {
     continentNames: Record<import('@/lib/geo/continents').Continent | 'OTHER', string>;
     destinationGroupHint: string;
     allDestinations: string;
+    excludeCountriesLabel: string;
+    excludeCountriesHint: string;
+    excludeCountriesNone: string;
+    excludeCountriesCountOne: string;
+    excludeCountriesCountOther: string;
+    excludeCountriesClear: string;
+    excludeCountriesRemove: string;
+    excludeCountriesSafetyNote: string;
     shareSearch: string;
     shareCopiedShort: string;
     shareCopyManually: string;
@@ -462,7 +469,6 @@ export interface TranslationDictionary {
     vehicleBus: string;
     vehicleAll: string;
     filterByVehicle: string;
-    timeframeGroupCount: string;
     page: string;
     of: string;
     nextPage: string;
@@ -644,6 +650,8 @@ export interface TranslationDictionary {
     backgroundRunning: string;
     backgroundDone: string;
     backgroundDoneNone: string;
+    backgroundReady: string;
+    backgroundShow: string;
     /** Playful lines rotated while searching */
     messages: string[];
   };

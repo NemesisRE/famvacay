@@ -48,6 +48,12 @@
       "groupSlug": "dev-toolchain"
     },
     {
+      "description": "Playwright's npm package and the CI container image (browsers) must always have the same version: one PR for both",
+      "matchPackageNames": ["@playwright/*", "mcr.microsoft.com/playwright"],
+      "groupName": "playwright",
+      "groupSlug": "playwright"
+    },
+    {
       "description": "Isolated review for major updates",
       "matchUpdateTypes": ["major"],
       "schedule": ["before 5am on Monday"],

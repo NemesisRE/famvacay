@@ -223,15 +223,16 @@ describe('Feeder-flight regressions (Karlsruhe)', () => {
   it('uses the train to the hub instead of a feeder flight when the hub is not a selected airport', () => {
     const windows = optimizeVacationWindows(search(['FKB', 'STR']), {}, {});
     expect(windows.length).toBeGreaterThan(0);
-    // Honiara: STR -> FRA -> ... becomes train to the hub + the same connection
+    // Honiara: never a feeder flight to the hub - the train to it, or a connection whose first
+    // leg is a real long-haul one (Stuttgart -> Dubai -> Brisbane -> Honiara)
     const honiara = windows.filter((w) => w.destinationAirport === 'HIR');
     expect(honiara.length).toBeGreaterThan(0);
-    expect(honiara.every((w) => w.railFeeder)).toBe(true);
+    expect(honiara.every((w) => w.railFeeder || (w.flightSegments?.[0]?.distanceKm ?? 0) > 1500)).toBe(true);
     expect(windows.some(shortFirstLeg)).toBe(false);
   });
 });
 
-describe('Real route network (OpenFlights)', () => {
+describe('Real route network', () => {
   it('knows real non-stop routes and connects over routes that exist', async () => {
     const { resolveFlightRoute, hasNonStopRoute } = await import('../../airports/flight-routes');
     expect(hasNonStopRoute('FRA', 'FNC')).toBe(true);

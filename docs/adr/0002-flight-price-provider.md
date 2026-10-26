@@ -46,4 +46,7 @@ We implement a pluggable, provider-agnostic interface `FlightPriceProvider`:
   total distance); airports without route data fall back to the distance/hub heuristic.
 - **Limitation:** OpenFlights route data was last updated in 2014. A fresher (commercial) route
   source can replace it by producing the same `{ "IATA": "IATA IATA ..." }` adjacency file.
+- **Update (2026-10):** the routes now come from the "Airlines and destinations" tables of English
+  Wikipedia's airport articles (current, including seasonal and charter routes, e.g. Frankfurt and
+  Stuttgart to Marsa Alam). OpenFlights only fills in between airports without such a table.
 - Prices remain benchmark estimates (see Decision) and are presented as such.

@@ -232,6 +232,15 @@ describe('Pricing Provider & Deep-Links', () => {
   });
 });
 
+describe('World regions', () => {
+  it('puts the Pacific islands in Oceania, but not Alaska or Kamchatka', () => {
+    expect(getWorldRegion(-17.55, -149.61)).toBe('OCEANIA'); // Tahiti
+    expect(getWorldRegion(21.32, -157.92)).toBe('OCEANIA'); // Honolulu
+    expect(getWorldRegion(61.17, -149.99)).toBe('NORTH_AMERICA'); // Anchorage
+    expect(getWorldRegion(53.17, 158.45)).toBe('EAST_ASIA'); // Petropavlovsk-Kamchatsky
+  });
+});
+
 describe('Dynamic Vacation Destination Discovery Engine', () => {
   it('discovers balanced destinations dynamically without any hardcoded lists', () => {
     // Default discovery (no tags, default origin) returns dynamic airport codes

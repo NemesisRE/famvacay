@@ -82,7 +82,7 @@ test.describe('Mobile Viewport & UI Responsiveness', () => {
 
     // 7. Add a child: a birth date field and the "Add Child" button for the next one
     await page.getByRole('button', { name: '+ Add Child' }).tap();
-    await expect(page.locator('input[type="date"]').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /^06\/01\/\d{4}$/ })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Add Child', exact: true })).toBeVisible();
 
     // 8. Location search input on mobile

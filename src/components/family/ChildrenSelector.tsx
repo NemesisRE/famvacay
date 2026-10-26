@@ -5,6 +5,12 @@ import { differenceInYears } from 'date-fns';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { SchoolRegionSelect } from '@/components/forms/RegionSelectors';
 import { ChildAgeBadges } from './ChildAgeBadges';
+import { DatePicker } from '@/components/calendar/DatePicker';
+
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 export interface ChildItem {
   id: string;
@@ -106,11 +112,12 @@ export function ChildrenSelector({
                   <span className="text-[11px] font-bold text-slate-500 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 w-5 h-5 rounded-full flex items-center justify-center">
                     {index + 1}
                   </span>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={child.birthDate}
-                    onChange={(e) => handleDateChange(child.id, e.target.value)}
-                    className="text-xs rounded border border-slate-300 dark:border-slate-600 px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-teal-500 outline-hidden w-32"
+                    onChange={(value) => handleDateChange(child.id, value)}
+                    max={todayStr()}
+                    yearDropdown
+                    className="w-36"
                   />
                 </div>
 

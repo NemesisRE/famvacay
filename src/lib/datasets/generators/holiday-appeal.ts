@@ -1,5 +1,6 @@
 import { type AirportRecord, type GeneratorContext, USER_AGENT, iataCodes, wikidataQuery } from './common';
 import { calculateGeodesicDistanceKm } from '../../airports/airport-service';
+import { estimatePassengersMillions, fitRouteTrafficModel } from '../../airports/passenger-estimate';
 import { HOLIDAY_EVIDENCE_KINDS, holidayEvidence, type HolidayEvidenceKind } from '../../optimizer/holiday-evidence';
 
 /**
@@ -10,7 +11,10 @@ import { HOLIDAY_EVIDENCE_KINDS, holidayEvidence, type HolidayEvidenceKind } fro
  * Wikidata (CC0) links each airport to its guides through
  * - the places it serves (P931), e.g. Palma and Mallorca,
  * - the island it lies on (P706), e.g. Crete for Heraklion, when few airports share it,
- * - otherwise the territory it lies in (P131), when that is small (not a whole province).
+ * - every region and the country it lies in (P131 chain, P17), blended in by the airport's share
+ *   of that area's passengers: the Mauritius guide counts fully for the island's one big airport,
+ *   the Kenya guide (safaris) mostly for Nairobi, the United States guide for no single airport.
+ *   Airports without a passenger figure use the route-based estimate (see passenger-estimate.ts).
  * Per airport the generator records:
  *   [annual page views of its most-read place (en+de+fr+es+it guides),
  *    then for beach, ski, nature, culture and family: mentions, article size (kB)]
@@ -62,8 +66,10 @@ type TextLanguage = (typeof TEXT_LANGUAGES)[number];
 const SPARQL_BATCH = 150;
 /** An island with more airports than this is a large landmass, not one destination */
 const MAX_AIRPORTS_PER_ISLAND = 4;
-/** A territory with more airports than this is too large to describe any one of them */
-const MAX_AIRPORTS_PER_TERRITORY = 2;
+/** An airport with this share of an area's passengers stands for the whole area */
+const FULL_AREA_SHARE = 0.5;
+/** Area guides below this weight cannot change an airport's figures: not fetched at all */
+const MIN_AREA_WEIGHT = 0.05;
 const ARTICLE_BATCH = 50;
 const PAGEVIEW_CONCURRENCY = 6;
 /** No single request may stall the run (a hung connection would otherwise block it for good) */
@@ -89,7 +95,7 @@ const KEYWORDS: Record<TextLanguage, Record<Signal, RegExp>> = {
   },
 };
 
-type PlaceKind = 'served' | 'island' | 'territory' | 'byName';
+type PlaceKind = 'served' | 'island' | 'area' | 'byName';
 
 interface PlaceArticles {
   place: string;
@@ -97,6 +103,8 @@ interface PlaceArticles {
   titles: Partial<Record<Language, string>>;
   /** Airports linked to this place (a shared island needs the city to tell them apart) */
   sharedBy: number;
+  /** 0-1: how fully the guide speaks for this airport (areas: its passenger share); 1 otherwise */
+  weight: number;
 }
 
 interface ArticleStats extends Record<Signal, number> {
@@ -147,7 +155,6 @@ SELECT ?iata ?place ?kind ${LANGUAGES.map((l) => `?${l}`).join(' ')} WHERE {
   ?airport wdt:P238 ?iata .
   { ?airport wdt:P931 ?place . BIND("served" AS ?kind) }
   UNION { ?airport wdt:P706 ?place . BIND("island" AS ?kind) }
-  UNION { ?airport wdt:P131 ?place . BIND("territory" AS ?kind) }
   ${optionals}
   FILTER(BOUND(?en) || BOUND(?de))
 }`
@@ -158,7 +165,7 @@ SELECT ?iata ?place ?kind ${LANGUAGES.map((l) => `?${l}`).join(' ')} WHERE {
       const place = r.place.value as string;
       const kind = r.kind.value as PlaceKind;
       const key = `${kind}|${place}`;
-      const entry = places.get(key) ?? { place, kind, titles: {}, sharedBy: 0 };
+      const entry = places.get(key) ?? { place, kind, titles: {}, sharedBy: 0, weight: 1 };
       for (const l of LANGUAGES) if (r[l]) entry.titles[l] = titleFromUrl(r[l].value);
       places.set(key, entry);
       byAirport.set(iata, places);
@@ -167,8 +174,7 @@ SELECT ?iata ?place ?kind ${LANGUAGES.map((l) => `?${l}`).join(' ')} WHERE {
     await ctx.sleep(500); // be polite to the public endpoint
   }
 
-  // Islands and territories many airports share are too large to stand for one of them (the
-  // British Columbia guide says nothing about the airstrip at Fort Nelson)
+  // Islands many airports share are too large to stand for one of them
   const airportsPerPlace = new Map<string, number>();
   for (const places of byAirport.values()) {
     for (const p of places.values()) airportsPerPlace.set(`${p.kind}|${p.place}`, (airportsPerPlace.get(`${p.kind}|${p.place}`) ?? 0) + 1);
@@ -178,13 +184,67 @@ SELECT ?iata ?place ?kind ${LANGUAGES.map((l) => `?${l}`).join(' ')} WHERE {
 
   const result = new Map<string, PlaceArticles[]>();
   for (const [iata, places] of byAirport) {
-    const all = [...places.values()];
-    const primary = all.filter(
+    const chosen = [...places.values()].filter(
       (p) => p.kind === 'served' || (p.kind === 'island' && sharedBy(p) <= MAX_AIRPORTS_PER_ISLAND)
     );
-    const chosen =
-      primary.length > 0 ? primary : all.filter((p) => p.kind === 'territory' && sharedBy(p) <= MAX_AIRPORTS_PER_TERRITORY);
     if (chosen.length > 0) result.set(iata, chosen);
+  }
+  return result;
+}
+
+/**
+ * The regions and country each airport lies in (with a guide), weighted by the airport's share of
+ * the passengers of all airports in that area: a region's guide describes its main airport, not
+ * every airstrip in it (the Maldives guide belongs to Malé, not to a resort's private runway).
+ */
+async function mapAirportsToAreas(
+  ctx: GeneratorContext,
+  codes: string[],
+  passengers: (code: string) => number
+): Promise<Map<string, PlaceArticles[]>> {
+  const areaTitles = new Map<string, Partial<Record<Language, string>>>();
+  const membersByArea = new Map<string, Set<string>>();
+  for (let i = 0; i < codes.length; i += SPARQL_BATCH) {
+    const batch = codes.slice(i, i + SPARQL_BATCH);
+    const optionals = LANGUAGES.map(
+      (l) => `OPTIONAL { ?${l} schema:about ?place ; schema:isPartOf <https://${l}.wikivoyage.org/> . }`
+    ).join('\n  ');
+    const rows = await wikidataQuery(
+      ctx,
+      `
+SELECT ?iata ?place ${LANGUAGES.map((l) => `?${l}`).join(' ')} WHERE {
+  VALUES ?iata { ${batch.map((c) => `"${c}"`).join(' ')} }
+  ?airport wdt:P238 ?iata .
+  { ?airport wdt:P131+ ?place } UNION { ?airport wdt:P17 ?place }
+  ${optionals}
+  FILTER(BOUND(?en) || BOUND(?de))
+}`
+    );
+    for (const r of rows) {
+      const place = r.place.value as string;
+      const titles = areaTitles.get(place) ?? {};
+      for (const l of LANGUAGES) if (r[l]) titles[l] = titleFromUrl(r[l].value);
+      areaTitles.set(place, titles);
+      const members = membersByArea.get(place) ?? new Set<string>();
+      members.add(r.iata.value as string);
+      membersByArea.set(place, members);
+    }
+    ctx.log(`Holiday appeal: areas of ${Math.min(i + SPARQL_BATCH, codes.length)} / ${codes.length} airports`);
+    await ctx.sleep(500);
+  }
+
+  const result = new Map<string, PlaceArticles[]>();
+  for (const [place, members] of membersByArea) {
+    const total = [...members].reduce((sum, code) => sum + passengers(code), 0);
+    for (const code of members) {
+      // No traffic known anywhere in the area: its airports share it equally
+      const share = total > 0 ? passengers(code) / total : 1 / members.size;
+      const weight = Math.min(1, share / FULL_AREA_SHARE);
+      if (weight < MIN_AREA_WEIGHT) continue;
+      const list = result.get(code) ?? [];
+      list.push({ place, kind: 'area', titles: areaTitles.get(place)!, sharedBy: members.size, weight });
+      result.set(code, list);
+    }
   }
   return result;
 }
@@ -354,18 +414,25 @@ async function fetchAllViews(
   return views;
 }
 
+export interface HolidayDataOptions {
+  now?: Date;
+  /** Passenger figures (airport-traffic dataset) and route network (flight-routes) for area shares */
+  traffic?: Record<string, number>;
+  routes?: Record<string, string>;
+}
+
 export async function generateHolidayAppeal(
   ctx: GeneratorContext,
   airports: AirportRecord[],
-  now: Date = new Date()
+  options: HolidayDataOptions = {}
 ): Promise<Record<string, HolidayAppealRow>> {
-  return (await generateHolidayData(ctx, airports, now)).appeal;
+  return (await generateHolidayData(ctx, airports, options)).appeal;
 }
 
 export async function generateHolidayData(
   ctx: GeneratorContext,
   airports: AirportRecord[],
-  now: Date = new Date()
+  { now = new Date(), traffic = {}, routes = {} }: HolidayDataOptions = {}
 ): Promise<HolidayData> {
   const codes = iataCodes(airports);
   const airportByCode = new Map(airports.map((a) => [a.code, a]));
@@ -376,7 +443,16 @@ export async function generateHolidayData(
   for (const code of codes) {
     const city = airportByCode.get(code)?.city?.trim();
     if (placesByAirport.has(code) || !city) continue;
-    placesByAirport.set(code, [{ place: `name:${code}`, kind: 'byName', titles: { en: city, de: city }, sharedBy: 1 }]);
+    placesByAirport.set(code, [{ place: `name:${code}`, kind: 'byName', titles: { en: city, de: city }, sharedBy: 1, weight: 1 }]);
+  }
+
+  const model = fitRouteTrafficModel(traffic, routes);
+  const passengers = (code: string) => estimatePassengersMillions(code, traffic, routes, model) ?? 0;
+  const areasByAirport = await mapAirportsToAreas(ctx, codes, passengers);
+  for (const [code, areas] of areasByAirport) {
+    const own = placesByAirport.get(code) ?? [];
+    const linked = new Set(own.map((p) => p.place));
+    placesByAirport.set(code, [...own, ...areas.filter((a) => !linked.has(a.place))]);
   }
 
   const allPlaces = [...placesByAirport.values()].flat();
@@ -423,14 +499,16 @@ export async function generateHolidayData(
     let mostViews = 0;
     const best: Partial<Record<HolidayEvidenceKind, { mentions: number; sizeKb: number; evidence: number }>> = {};
     for (const place of places) {
-      mostViews = Math.max(mostViews, placeViews(place));
+      mostViews = Math.max(mostViews, Math.round(placeViews(place) * place.weight));
       for (const language of TEXT_LANGUAGES) {
         const stats = usableStats(place, language, airport);
         if (!stats) continue;
         for (const kind of HOLIDAY_EVIDENCE_KINDS) {
-          const evidence = holidayEvidence(kind, stats[kind], stats.sizeKb);
+          // A partly-shared area guide counts with its weight (fewer mentions -> weaker evidence)
+          const mentions = Math.round(stats[kind] * place.weight);
+          const evidence = holidayEvidence(kind, mentions, stats.sizeKb);
           const current = best[kind];
-          if (!current || evidence > current.evidence) best[kind] = { mentions: stats[kind], sizeKb: stats.sizeKb, evidence };
+          if (!current || evidence > current.evidence) best[kind] = { mentions, sizeKb: stats.sizeKb, evidence };
         }
       }
     }

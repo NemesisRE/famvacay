@@ -91,7 +91,7 @@ export function PopoverBackdrop({ show, zIndex = 9998 }: { show: boolean; zIndex
     <div
       aria-hidden="true"
       style={{ zIndex, touchAction: 'none' }}
-      className="fixed inset-0 bg-slate-900/40 animate-in fade-in"
+      className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 animate-in fade-in"
     />
   );
 }

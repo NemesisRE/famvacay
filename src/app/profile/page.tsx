@@ -43,6 +43,8 @@ import { HolidayBlackoutToggles } from '@/components/forms/HolidayBlackoutToggle
 import { detectUserLocation, formatLocationLabel, resolveCountryAndRegion } from '@/lib/geo/location-helpers';
 import { detectBrowserLocale } from '@/lib/i18n/i18n-context';
 import { SelectDropdown } from '@/components/ui/select-dropdown';
+import { CountryExclusionPicker } from '@/components/destination/CountryExclusionPicker';
+import { DatePicker } from '@/components/calendar/DatePicker';
 
 interface FamilyMemberForm {
   firstName: string;
@@ -86,6 +88,7 @@ export default function FamilyProfilePage() {
   const [maxOverlandDurationHours, setMaxOverlandDurationHours] = useState<number | undefined>(undefined);
   const [preferredVacationStyles, setPreferredVacationStyles] = useState<DestinationType[]>(['ALL']);
   const [longRangeStyles, setLongRangeStyles] = useState<DestinationType[]>([]);
+  const [excludedCountries, setExcludedCountries] = useState<string[]>([]);
   const allStylesSelected = isAllStylesSelection(preferredVacationStyles);
   const climateRelevance = getClimateRelevance(preferredVacationStyles, longRangeStyles);
   const longRangeOnlySelected = climateRelevance.isLongRangeSelected;
@@ -191,6 +194,9 @@ export default function FamilyProfilePage() {
               setPreferredVacationStyles(readStoredStyles(sw));
               if (Array.isArray(sw.longRangeStyles)) {
                 setLongRangeStyles(sw.longRangeStyles);
+              }
+              if (Array.isArray(sw.excludedCountries)) {
+                setExcludedCountries(sw.excludedCountries);
               }
               if (Array.isArray(sw.recurringBlackouts)) {
                 setRecurringBlackouts(sw.recurringBlackouts);
@@ -343,6 +349,7 @@ export default function FamilyProfilePage() {
         // Legacy single value kept for older clients reading the profile
         preferredVacationStyle: allStylesSelected ? 'ALL' : preferredVacationStyles[0],
         longRangeStyles: longRangeOnlySelected ? longRangeStyles : [],
+        excludedCountries,
         recurringBlackouts,
         maxOverlandTravelMinutes: maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
         minBeachTemp,
@@ -519,6 +526,21 @@ export default function FamilyProfilePage() {
             </h2>
 
             <div>
+              <div className="mb-2 space-y-0.5">
+                <label htmlFor="profile-excluded-countries" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Ban className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <span>{t.home.excludeCountriesLabel}</span>
+                </label>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{t.home.excludeCountriesHint}</p>
+              </div>
+              <CountryExclusionPicker
+                id="profile-excluded-countries"
+                value={excludedCountries}
+                onChange={setExcludedCountries}
+              />
+            </div>
+
+            <div>
               <div className="mb-2.5 space-y-0.5">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <Compass className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
@@ -693,12 +715,12 @@ export default function FamilyProfilePage() {
                     <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
                       {t.profile.birthDate}
                     </label>
-                    <input
-                      type="date"
-                      required={member.role === 'CHILD' || member.role === 'INFANT'}
+                    <DatePicker
                       value={member.birthDate}
-                      onChange={(e) => updateMember(index, 'birthDate', e.target.value)}
-                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                      onChange={(value) => updateMember(index, 'birthDate', value)}
+                      max={todayStr}
+                      yearDropdown
+                      clearable={member.role !== 'CHILD' && member.role !== 'INFANT'}
                     />
                   </div>
 
@@ -706,11 +728,11 @@ export default function FamilyProfilePage() {
                     <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
                       {t.profile.passportExpiry}
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
                       value={member.passportExpiry}
-                      onChange={(e) => updateMember(index, 'passportExpiry', e.target.value)}
-                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                      onChange={(value) => updateMember(index, 'passportExpiry', value)}
+                      yearDropdown
+                      clearable
                     />
                   </div>
 
