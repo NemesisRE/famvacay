@@ -1,6 +1,6 @@
 import { getAirportByIata, calculateGeodesicDistanceKm, getAllCommercialAirports, DynamicAirport } from './airport-service';
 import routeGraphData from './data/flight-routes.json';
-import { isDestinationBanned } from '../safety/advisory-store';
+import { getAdvisoryStore, isDestinationBanned } from '../safety/advisory-store';
 import { datasetScopedCache, derived, getDataset } from '@/lib/datasets/store';
 
 /**
@@ -26,6 +26,33 @@ export function hasNonStopRoute(a: string, b: string): boolean {
 }
 
 /**
+ * Connecting airports that may be used, per advisory snapshot: the advisory check is costly and the
+ * route search asks for the same hubs (hundreds of routes per busy airport) on every airport pair.
+ * A new advisory store (live refresh) or refreshed airport data starts a fresh cache.
+ */
+const usableHubsByStore = datasetScopedCache<object, Map<string, DynamicAirport | null>>();
+function usableHubLookup(): (code: string) => DynamicAirport | null {
+  const store = getAdvisoryStore();
+  const byStore = usableHubsByStore();
+  let hubs = byStore.get(store);
+  if (!hubs) {
+    // Only the current snapshot is ever asked for: drop older ones
+    byStore.clear();
+    hubs = new Map();
+    byStore.set(store, hubs);
+  }
+  return (code) => {
+    let hub = hubs.get(code);
+    if (hub === undefined) {
+      const airport = getAirportByIata(code);
+      hub = airport && !isDestinationBanned(airport.code, airport.country) ? airport : null;
+      hubs.set(code, hub);
+    }
+    return hub;
+  };
+}
+
+/**
  * Finds the connection with the fewest stops (max. 2) over routes that actually exist, preferring
  * the shortest total distance (intercontinental gateways get a small bonus as they offer more
  * frequencies). Returns the connecting airports (empty = non-stop), or null when either airport is
@@ -40,12 +67,8 @@ export function findRouteNetworkConnection(orig: DynamicAirport, dest: DynamicAi
 
   const dist = (a: DynamicAirport, b: DynamicAirport) => calculateGeodesicDistanceKm(a.lat, a.lon, b.lat, b.lon);
   const weight = (hub: DynamicAirport) => (PRIMARY_GATEWAY_HUBS.has(hub.code) ? 0.97 : 1);
-  // Never connect through a country under a full travel warning or a conflict-zone airport (the
-  // 2014 route data still lists e.g. Moscow connections that EU sanctions have since ended)
-  const usableHub = (code: string) => {
-    const hub = getAirportByIata(code);
-    return hub && !isDestinationBanned(hub.code, hub.country) ? hub : undefined;
-  };
+  // Never connect through a country under a full travel warning or a conflict-zone airport
+  const usableHub = usableHubLookup();
 
   // One stop: hubs served non-stop from both ends
   let bestOne: DynamicAirport | null = null;
@@ -62,23 +85,32 @@ export function findRouteNetworkConnection(orig: DynamicAirport, dest: DynamicAi
   }
   if (bestOne) return [bestOne];
 
-  // Two stops: orig -> h1 -> h2 -> dest
+  // Two stops: orig -> h1 -> h2 -> dest. The last hubs (and their leg to the destination) are the
+  // same for every first hub: resolve them once.
+  const lastHubs: { code: string; hub: DynamicAirport; toDest: number }[] = [];
+  for (const code of fromDest) {
+    const hub = usableHub(code);
+    if (hub) lastHubs.push({ code, hub, toDest: dist(hub, dest) * weight(hub) });
+  }
   let bestTwo: [DynamicAirport, DynamicAirport] | null = null;
   let bestTwoScore = Infinity;
   for (const c1 of fromOrig) {
-    const h1 = usableHub(c1);
     const fromH1 = graph.get(c1);
-    if (!h1 || !fromH1) continue;
-    const leg1 = dist(orig, h1);
-    if (leg1 >= bestTwoScore) continue;
-    for (const c2 of fromDest) {
-      if (c2 === c1 || !fromH1.has(c2)) continue;
-      const h2 = usableHub(c2);
-      if (!h2) continue;
-      const score = (leg1 + dist(h1, h2) + dist(h2, dest)) * weight(h1) * weight(h2);
+    if (!fromH1) continue;
+    const h1 = usableHub(c1);
+    if (!h1) continue;
+    const w1 = weight(h1);
+    const rawLeg1 = dist(orig, h1);
+    if (rawLeg1 >= bestTwoScore) continue;
+    const leg1 = rawLeg1 * w1;
+    for (const last of lastHubs) {
+      if (last.code === c1 || !fromH1.has(last.code)) continue;
+      // Same total as (leg1 + leg2 + leg3) * w1 * w2, with the weights distributed per leg
+      const w2 = weight(last.hub);
+      const score = (leg1 + dist(h1, last.hub) * w1) * w2 + last.toDest * w1;
       if (score < bestTwoScore) {
         bestTwoScore = score;
-        bestTwo = [h1, h2];
+        bestTwo = [h1, last.hub];
       }
     }
   }
