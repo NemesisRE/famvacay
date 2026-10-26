@@ -52,6 +52,20 @@ function usableHubLookup(): (code: string) => DynamicAirport | null {
   };
 }
 
+/** A connection may fly at most this multiple of the straight distance (plus the allowance below) */
+const MAX_ITINERARY_DETOUR = 1.8;
+const ITINERARY_DETOUR_ALLOWANCE_KM = 600;
+
+/**
+ * Whether flying this route makes sense at all: a connection that exists can still be absurd
+ * (Karlsruhe -> Palma -> Erfurt: ~3,000 km flown for a 290 km trip). Long trips get room for
+ * hub detours (Europe -> Dubai -> Bali), short ones none.
+ */
+export function isPlausibleItinerary(route: FlightRouteDetails, straightKm: number): boolean {
+  const flownKm = route.segments.reduce((sum, s) => sum + (s.distanceKm || 0), 0);
+  return flownKm <= straightKm * MAX_ITINERARY_DETOUR + ITINERARY_DETOUR_ALLOWANCE_KM;
+}
+
 /**
  * Finds the connection with the fewest stops (max. 2) over routes that actually exist, preferring
  * the shortest total distance (intercontinental gateways get a small bonus as they offer more

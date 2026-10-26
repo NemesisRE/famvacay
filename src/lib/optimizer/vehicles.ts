@@ -110,8 +110,9 @@ export interface OverlandAccessResult {
  */
 export function classifyOverlandAccess(destination: DestinationGeoPoint): OverlandAccessResult {
   // Surface (non-airport) nodes carry their own curated ferry topology and crossing costs.
+  // A town the user picked has no curated ferry data: its region decides, like for airports
   const surface = getSurfaceDestination(destination.code);
-  if (surface) {
+  if (surface && !surface.isPlace) {
     return {
       access: surface.access,
       ferrySurchargeEur: surface.ferrySurchargeEur || 0,
