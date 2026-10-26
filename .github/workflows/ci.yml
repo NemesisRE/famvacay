@@ -87,8 +87,16 @@ jobs:
   test-e2e:
     name: E2E Tests (Playwright)
     runs-on: ubuntu-latest
+    # A stalled step (apt mirror, download) must not hold the PR for hours
+    timeout-minutes: 20
     permissions:
       contents: read
+    # Playwright's image ships the browsers and their system libraries: no ~250 MB download and
+    # no apt install per run (that step took 35-55 s and sometimes hung). Its version must match
+    # @playwright/test exactly; Renovate updates both together (see renovate.json).
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:47b510dd9230bf0b9bfc9b20102241e577ea7a99334ab4c3ca19f19770e9b8ea
+      options: --ipc=host
     # The tests run the production build, which refuses to start without a database URL and an
     # auth secret, so the job gets its own Postgres and Valkey like a real deployment
     services:
@@ -115,8 +123,9 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://ci:ci@localhost:5432/famvacay_ci?schema=public
-      REDIS_URL: redis://localhost:6379
+      # From inside the job container the services are reached by their names
+      DATABASE_URL: postgresql://ci:ci@postgres:5432/famvacay_ci?schema=public
+      REDIS_URL: redis://cache:6379
       APP_URL: http://127.0.0.1:3000
       NEXTAUTH_URL: http://127.0.0.1:3000
       # No background refresh of reference data against upstream APIs during tests
@@ -137,10 +146,6 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Playwright Browsers
-        # chromium and mobile-safari projects in playwright.config.ts
-        run: pnpm exec playwright install --with-deps chromium webkit
-
       - name: Generate Prisma Client & Build
         run: |
           pnpm exec prisma generate
@@ -151,7 +156,7 @@ jobs:
 
       - name: Generate Auth Secret
         # A fresh random secret per run; the production build rejects a missing or short one
-        run: echo "NEXTAUTH_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+        run: echo "NEXTAUTH_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")" >> "$GITHUB_ENV"
 
       - name: Run Playwright E2E Tests
         run: pnpm run test:e2e
