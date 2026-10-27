@@ -132,6 +132,26 @@ famvacay.us {
 
 ---
 
+### 3.5 Pangolin (SASE / Tunneled Reverse Proxy)
+
+Both the FamVacay application and the self-hosted Umami analytics service join the external Docker network (`proxy-network` / `${PROXY_NETWORK_NAME}`):
+
+1. **FamVacay Web Application**:
+   - **Target Host**: `famvacay-web` (or `web`)
+   - **Target Port**: `3000`
+   - **Protocol**: HTTP
+   - **Public Domain**: e.g., `famvacay.us`
+
+2. **Umami Analytics Dashboard**:
+   - **Target Host**: `famvacay-umami` (or `umami`)
+   - **Target Port**: `3000`
+   - **Protocol**: HTTP
+   - **Public Domain**: e.g., `analytics.famvacay.us` or `umami.kurz.casa`
+
+If using Pangolin's Newt connector with Docker labels, you can declare proxy resources directly in `docker-compose.yml` or bind a host port (`UMAMI_PORT=3001` in `.env`) if your proxy runs in host network mode.
+
+---
+
 ## 4. Local Development
 
 ```bash
