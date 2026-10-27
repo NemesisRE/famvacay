@@ -577,6 +577,17 @@ export interface TranslationDictionary {
     alreadyHaveAccount: string;
     dontHaveAccount: string;
     signingIn: string;
+    errorOAuthSignin: string;
+    errorOAuthCallback: string;
+    errorOAuthAccountNotLinked: string;
+    errorAccessDenied: string;
+    errorConfiguration: string;
+    errorCredentialsSignin: string;
+    errorGeneric: string;
+    errorSocialSignInFailed: string;
+    passkeyEmailRequired: string;
+    passkeySuccess: string;
+    passkeyCancelled: string;
   };
   common: {
     done: string;
