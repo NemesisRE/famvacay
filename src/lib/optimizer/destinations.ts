@@ -18,7 +18,7 @@ import {
   OVERLAND_MAX_GEODESIC_KM,
 } from './vehicles';
 import { getDestinationPoint, type DestinationPoint } from '../geo/destination-points';
-import { SURFACE_DESTINATIONS } from '../geo/surface-destinations';
+import { SURFACE_DESTINATIONS, placeDestinationCode } from '../geo/surface-destinations';
 import {
   getAirportByIata,
   getAllCommercialAirports,
@@ -69,6 +69,8 @@ export interface LocalizedDestinationEntity {
   aliases?: string[];
   airportCodes: string[];
   countryCode: string;
+  /** A geocoded town: its own road/rail destination (see placeDestinationCode); airports are for flights */
+  place?: { lat: number; lon: number; region: string };
   names: {
     en: string;
     de: string;
@@ -269,14 +271,10 @@ export function getDestinationEntity(
   const clean = normalizeDestinationString(queryOrTag);
   if (!clean || clean.length < 2) return null;
 
-  // 1. Dynamic cache match
+  // 1. Dynamic cache match - exact only: a partial match let "amsterdam" find "city of amsterdam"
+  // (Albany, NY), and the cache is shared by everyone searching on this server
   if (dynamicDestinationEntityCache.has(clean)) {
     return dynamicDestinationEntityCache.get(clean)!;
-  }
-  for (const [key, ent] of dynamicDestinationEntityCache.entries()) {
-    if (key.length >= 4 && (key.includes(clean) || clean.includes(key))) {
-      return ent;
-    }
   }
 
   // 2. Direct IATA commercial airport code
@@ -801,6 +799,10 @@ const SAME_CLIMATE_PENALTY = 80;
 const LARGE_COUNTRY_PENALTY_FACTOR = 0.5;
 /** Beyond this flight distance a trip counts as halfway round the world */
 const EXTREME_DISTANCE_KM = 14000;
+/** Closer than this, an airport is a departure airport or a drive away, not a flight destination */
+const MIN_FLIGHT_DISTANCE_KM = 180;
+/** An airport this close to a picked town serves it (transfer by train, bus or rental car) */
+const STAND_IN_AIRPORT_MAX_KM = 150;
 const EXTREME_DISTANCE_PENALTY = 25;
 /** Climatically different regions per country exempt from the region penalty */
 const SEASONAL_ALTERNATIVES_PER_COUNTRY = 2;
@@ -1083,7 +1085,7 @@ export function discoverDestinationTiers(
   const maxOverlandMinutes = originContext?.maxOverlandTravelMinutes;
   const overlandRangeKm = resolveOverlandRangeKm(vehicles, maxOverlandMinutes);
 
-  const minDistance = allowsPlane && !allowsOverland ? 180 : 40;
+  const minDistance = allowsPlane && !allowsOverland ? MIN_FLIGHT_DISTANCE_KM : 40;
   const maxDistance = allowsPlane ? 20000 : overlandRangeKm;
 
   const originGeo = {
@@ -1118,7 +1120,7 @@ export function discoverDestinationTiers(
     const dist = calculateGeodesicDistanceKm(userLat, userLon, ap.lat, ap.lon);
     if (dist < minDistance || dist > maxDistance) continue;
 
-    const planeOk = allowsPlane && !isSurface && dist >= 180;
+    const planeOk = allowsPlane && !isSurface && dist >= MIN_FLIGHT_DISTANCE_KM;
     let overlandOk = false;
     if (allowsOverland && dist <= overlandRangeKm) {
       const destGeo = {
@@ -1464,6 +1466,24 @@ export function resolveDestinationCodes(
   originContext?: OriginContext,
   options: { includeExtended?: boolean } = {}
 ): string[] {
+  return resolveDestinationTargets(destinationTags, destinationTypes, originContext, options).codes;
+}
+
+export interface DestinationTargets {
+  codes: string[];
+  /**
+   * Airports that only stand in for a picked town, with the town's place code: flown to, never
+   * driven to (the town is), and shown as that town (Amsterdam, not Amsterdam and Rotterdam airports)
+   */
+  standInFor: Map<string, string>;
+}
+
+export function resolveDestinationTargets(
+  destinationTags?: string[],
+  destinationTypes: DestinationType | DestinationType[] = 'ALL',
+  originContext?: OriginContext,
+  options: { includeExtended?: boolean } = {}
+): DestinationTargets {
   // Normalize destinationTypes into an array
   let types: DestinationType[] = [];
   if (Array.isArray(destinationTypes)) {
@@ -1478,10 +1498,13 @@ export function resolveDestinationCodes(
   // If no destination filter was set by user, discover dynamically from the user's origin
   if (!destinationTags || destinationTags.length === 0) {
     const tiers = discoverDestinationTiers(types, originContext);
-    return options.includeExtended ? [...tiers.primary, ...tiers.extended] : tiers.primary;
+    return { codes: options.includeExtended ? [...tiers.primary, ...tiers.extended] : tiers.primary, standInFor: new Map() };
   }
 
   const resolved = new Set<string>();
+  // Airports that only stand in for a town (Oberhof -> Erfurt, Frankfurt): reached by plane, never
+  // the destination of a car or train trip - the town itself is (its place code)
+  const standInAirports = new Map<string, string>();
 
   for (const tag of destinationTags) {
     const clean = normalizeDestinationString(tag);
@@ -1490,7 +1513,25 @@ export function resolveDestinationCodes(
     // 1. Destination entity (region, island, or city)
     const entity = getDestinationEntity(tag);
     if (entity && entity.airportCodes.length > 0) {
-      entity.airportCodes.forEach((c) => resolved.add(c));
+      const place = entity.place;
+      if (!place) {
+        entity.airportCodes.forEach((c) => resolved.add(c));
+        continue;
+      }
+      const placeCode = placeDestinationCode({ ...place, name: tag.trim() });
+      resolved.add(placeCode);
+      // Only airports that actually serve the town (Erfurt for Oberhof, not Düsseldorf 300 km away);
+      // the nearest one when none is that close
+      const byDistance = entity.airportCodes
+        .map((code) => ({ code, point: getAirportByIata(code) }))
+        .filter((a): a is { code: string; point: DynamicAirport } => Boolean(a.point))
+        .map((a) => ({ code: a.code, km: calculateGeodesicDistanceKm(place.lat, place.lon, a.point.lat, a.point.lon) }))
+        .sort((a, b) => a.km - b.km);
+      const serving = byDistance.filter((a) => a.km <= STAND_IN_AIRPORT_MAX_KM);
+      for (const { code } of serving.length > 0 ? serving : byDistance.slice(0, 1)) {
+        resolved.add(code);
+        if (!standInAirports.has(code)) standInAirports.set(code, placeCode);
+      }
       continue;
     }
 
@@ -1524,15 +1565,23 @@ export function resolveDestinationCodes(
   const vehicles = resolveVehicles(originContext);
   const allowsPlane = vehicles.includes('PLANE');
   const overlandVehicles = vehicles.filter((v) => v !== 'PLANE');
+  const { lat: userLat, lon: userLon } = resolveOriginCoordinates(originContext);
+  const distFromHome = (point: { lat: number; lon: number }) => calculateGeodesicDistanceKm(userLat, userLon, point.lat, point.lon);
+  // Nobody flies to an airport next door (Frankfurt from Karlsruhe for Oberhof)
+  const flightWorthy = (point: DestinationPoint) => point.kind === 'AIRPORT' && distFromHome(point) >= MIN_FLIGHT_DISTANCE_KM;
+
   if (overlandVehicles.length === 0) {
-    return Array.from(resolved);
+    const codes = Array.from(resolved).filter((code) => {
+      const point = getDestinationPoint(code);
+      return Boolean(point && flightWorthy(point));
+    });
+    return { codes, standInFor: standInAirports };
   }
 
   for (const tag of destinationTags) {
     matchSurfaceDestinationsForTag(tag).forEach((code) => resolved.add(code));
   }
 
-  const { lat: userLat, lon: userLon } = resolveOriginCoordinates(originContext);
   const originGeo = {
     lat: userLat,
     lon: userLon,
@@ -1542,13 +1591,14 @@ export function resolveDestinationCodes(
   const maxOverlandMinutes = originContext?.maxOverlandTravelMinutes;
   const overlandRangeKm = resolveOverlandRangeKm(vehicles, maxOverlandMinutes);
 
-  return Array.from(resolved).filter((code) => {
+  const codes = Array.from(resolved).filter((code) => {
     const point = getDestinationPoint(code);
     if (!point) return false;
     // Airports stay eligible for flights; only overland-only searches (or surface nodes,
     // which have no runway) must be physically reachable by road/rail.
-    if (allowsPlane && point.kind === 'AIRPORT') return true;
-    const dist = calculateGeodesicDistanceKm(userLat, userLon, point.lat, point.lon);
+    if (allowsPlane && flightWorthy(point)) return true;
+    if (standInAirports.has(code)) return false;
+    const dist = distFromHome(point);
     if (dist > overlandRangeKm) return false;
     const destGeo = {
       lat: point.lat,
@@ -1562,6 +1612,7 @@ export function resolveDestinationCodes(
     if (classifyOverlandAccess(destGeo).access === 'FLIGHT_ONLY') return false;
     return isOverlandFeasible(overlandVehicles, dist, Boolean(point.isHighSpeedRailConnected), maxOverlandMinutes);
   });
+  return { codes, standInFor: standInAirports };
 }
 
 /**
@@ -1643,6 +1694,11 @@ export async function validateDestinationInput(
           aliases: place.aliases,
           airportCodes: place.airportCodes,
           countryCode: place.countryCode,
+          // A town is a destination of its own for car, train and bus (not its nearest airports)
+          place:
+            place.category === 'city' && Number.isFinite(place.lat) && Number.isFinite(place.lon) && place.countryCode
+              ? { lat: place.lat, lon: place.lon, region: place.subdivisionCode || place.countryCode }
+              : undefined,
           names: place.names,
           countryNames: {
             en: place.countryName,

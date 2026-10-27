@@ -30,6 +30,8 @@ export interface SurfaceDestination {
   keywords?: string;
   /** Display name per UI language where it differs from `city` (exonyms, translated lake names). */
   localizedCity?: Partial<Record<'en' | 'de' | 'fr' | 'es' | 'it', string>>;
+  /** A town the user picked (see placeDestinationCode), not a curated node: no ferry data of its own */
+  isPlace?: boolean;
 }
 
 export const SURFACE_CODE_PREFIX = 'srf:';
@@ -164,5 +166,63 @@ export function isSurfaceDestinationCode(code: string | undefined | null): boole
 
 export function getSurfaceDestination(code: string | undefined | null): SurfaceDestination | undefined {
   if (!code || !code.startsWith(SURFACE_CODE_PREFIX)) return undefined;
-  return surfaceByCode.get(code);
+  return surfaceByCode.get(code) ?? decodePlaceDestination(code);
+}
+
+/**
+ * Any town the user picks (Oberhof, Amsterdam) as a road/rail destination of its own. The code
+ * carries everything needed ("srf:@50.7085,10.7253;DE-TH;Oberhof"), so it decodes the same on
+ * every server instance, in caches and in shared links, without a lookup table.
+ */
+const PLACE_CODE_PREFIX = `${SURFACE_CODE_PREFIX}@`;
+
+export function placeDestinationCode(place: { lat: number; lon: number; region: string; name: string }): string {
+  return `${PLACE_CODE_PREFIX}${place.lat.toFixed(4)},${place.lon.toFixed(4)};${place.region.toUpperCase()};${encodeURIComponent(place.name)}`;
+}
+
+export function isPlaceDestinationCode(code: string | undefined | null): boolean {
+  return Boolean(code && code.startsWith(PLACE_CODE_PREFIX));
+}
+
+const placeCache = new Map<string, SurfaceDestination | null>();
+
+function decodePlaceDestination(code: string): SurfaceDestination | undefined {
+  if (!code.startsWith(PLACE_CODE_PREFIX)) return undefined;
+  let place = placeCache.get(code);
+  if (place === undefined) {
+    place = null;
+    const m = code.slice(PLACE_CODE_PREFIX.length).match(/^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?);([A-Z]{2}(?:-[A-Z0-9]{1,3})?);(.+)$/);
+    if (m) {
+      const [lat, lon] = [Number(m[1]), Number(m[2])];
+      let name = m[4];
+      try {
+        name = decodeURIComponent(m[4]);
+      } catch {
+        // Keep the raw name
+      }
+      let country = m[3].slice(0, 2);
+      try {
+        country = new Intl.DisplayNames(['en'], { type: 'region' }).of(country) || country;
+      } catch {
+        // Keep the ISO code
+      }
+      if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+        place = {
+          code,
+          city: name,
+          region: '',
+          country,
+          state: m[3],
+          lat,
+          lon,
+          altitudeMeters: 0,
+          styles: [],
+          access: 'MAINLAND_OR_BRIDGE',
+          isPlace: true,
+        };
+      }
+    }
+    placeCache.set(code, place);
+  }
+  return place ?? undefined;
 }

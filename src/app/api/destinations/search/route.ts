@@ -18,28 +18,11 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Suggestions only: nothing is written to the optimizer's destination cache here. Caching every
+    // suggestion under the typed text let the last one win ("Oberhof" became a village in Poland,
+    // "Amsterdam" the City of Amsterdam, NY) - for everyone on this server. The optimizer resolves
+    // the destination the user actually added on its own (validateDestinationInput).
     const destinations = await searchGlobalPlaces(query.trim(), locale, limit);
-
-    // Cache resolved entities into dynamicDestinationEntityCache for synchronous optimizer queries
-    const { dynamicDestinationEntityCache, normalizeDestinationString } = await import('@/lib/optimizer/destinations');
-    for (const d of destinations) {
-      if (d && d.airportCodes && d.airportCodes.length > 0) {
-        const ent = {
-          id: d.id,
-          category: d.category as any,
-          code: d.airportCodes[0],
-          parentRegionId: d.parentRegionId,
-          aliases: d.aliases,
-          airportCodes: d.airportCodes,
-          countryCode: d.countryCode,
-          names: d.names || { en: d.name, de: d.name, fr: d.name, es: d.name, it: d.name },
-          countryNames: { en: d.countryName, de: d.countryName, fr: d.countryName, es: d.countryName, it: d.countryName },
-        };
-        dynamicDestinationEntityCache.set(normalizeDestinationString(d.name), ent);
-        dynamicDestinationEntityCache.set(normalizeDestinationString(d.id), ent);
-        dynamicDestinationEntityCache.set(normalizeDestinationString(query.trim()), ent);
-      }
-    }
 
     return NextResponse.json({
       success: true,

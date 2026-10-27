@@ -23,6 +23,7 @@ import {
 } from './weather';
 import {
   resolveDestinationCodes,
+  resolveDestinationTargets,
   resolveOriginCoordinates,
   OriginContext,
   getDestinationVacationStyles,
@@ -36,7 +37,7 @@ import {
 } from '../airports/airport-service';
 import { getDestinationPoint, type DestinationPoint } from '../geo/destination-points';
 import type { AggregatedTripPricing } from '../pricing/types';
-import { resolveFlightRoute, FlightRouteDetails, PRIMARY_GATEWAY_HUBS, resolveFlexOriginAirports } from '../airports/flight-routes';
+import { resolveFlightRoute, FlightRouteDetails, PRIMARY_GATEWAY_HUBS, resolveFlexOriginAirports, isPlausibleItinerary } from '../airports/flight-routes';
 import {
   buildSourceMarketDemandTimeline,
   HIGH_DEMAND_THRESHOLD,
@@ -515,7 +516,7 @@ export function optimizeVacationWindows(
       ? [input.destinationType]
       : ['ALL'];
 
-  let candidateDestinations = resolveDestinationCodes(
+  const targets = resolveDestinationTargets(
     input.targetDestinations && input.targetDestinations.length > 0
       ? input.targetDestinations
       : input.targetRegion
@@ -525,6 +526,9 @@ export function optimizeVacationWindows(
     originContext,
     { includeExtended: input.discoveryScope === 'extended' }
   );
+  let candidateDestinations = targets.codes;
+  // Airports standing in for a picked town are flown to; the town itself is the road/rail trip
+  const standInFor = targets.standInFor;
 
   // STRICT FILTERING:
   // If the user explicitly filtered by destinations, results must be strictly bound to those destinations.
@@ -657,9 +661,9 @@ export function optimizeVacationWindows(
     // range - a destination can be reached by car *and* train *and* plane, and scoring (not a
     // fixed preference) decides which trip ranks first.
     const overlandOptions: OverlandOption[] = [];
-    const overlandVehicles = overlandSelected.filter(
-      (v) => availableVehicles.includes(v) && isOverlandVehicleInRange(v, homeDistKm, highSpeedRail)
-    );
+    const overlandVehicles = standInFor.has(dest)
+      ? []
+      : overlandSelected.filter((v) => availableVehicles.includes(v) && isOverlandVehicleInRange(v, homeDistKm, highSpeedRail));
     if (overlandVehicles.length > 0) {
       const access = classifyOverlandAccess(destGeo);
       if (access.access !== 'FLIGHT_ONLY') {
@@ -689,6 +693,7 @@ export function optimizeVacationWindows(
             ? Math.round(calculateGeodesicDistanceKm(leg.airportDetails.lat, leg.airportDetails.lon, point.lat, point.lon))
             : 500);
         if (directDist < 180) continue;
+        if (leg.airportDetails && !isPlausibleItinerary(flightRoute, calculateGeodesicDistanceKm(leg.airportDetails.lat, leg.airportDetails.lon, point.lat, point.lon))) continue;
         const flightFrictionScore = calculateFlightFrictionScore(
           flightRoute.flightDistanceKm,
           flightRoute.stops,
@@ -722,6 +727,7 @@ export function optimizeVacationWindows(
           if (maxToleratedStops !== undefined && flightRoute.stops > maxToleratedStops) continue;
           const directDist = flightRoute.flightDistanceKm;
           if (!directDist || directDist < 180) continue;
+          if (leg.airportDetails && !isPlausibleItinerary(flightRoute, calculateGeodesicDistanceKm(leg.airportDetails.lat, leg.airportDetails.lon, point.lat, point.lon))) continue;
           const key = [flightRoute.stops, leg.rail!.durationMinutes + flightRoute.totalFlightDurationMinutes];
           if (key[0] > bestKey[0] || (key[0] === bestKey[0] && key[1] >= bestKey[1])) continue;
           const flightFrictionScore = calculateFlightFrictionScore(
@@ -992,6 +998,7 @@ export function optimizeVacationWindows(
           endDate: endStr,
           durationDays,
           destinationAirport: dest,
+          destinationPlace: standInFor.get(dest),
           destinationName: ctx.destinationName,
           destinationCity: ctx.destinationCity,
           destinationCountry: ctx.destinationCountry,

@@ -74,6 +74,7 @@ import { getDestinationVacationStyles } from '@/lib/optimizer/destination-styles
 import { shareOrCopyLink } from '@/lib/share/share-link';
 import {
   applyResultFilters,
+  destinationKey,
   countResultFilterOptions,
   explainResultFilterExclusions,
   isResultFilterApplicable,
@@ -1314,10 +1315,11 @@ export default function HomePage() {
 
     const countryNames = new Map<string, string>();
     const countryOf = (w: CandidateWindow) => {
-      let name = countryNames.get(w.destinationAirport);
+      const key = destinationKey(w);
+      let name = countryNames.get(key);
       if (name === undefined) {
-        name = getLocalizedDestinationLabel(w.destinationAirport, locale, { country: w.destinationCountry }).country || '';
-        countryNames.set(w.destinationAirport, name);
+        name = getLocalizedDestinationLabel(key, locale, { country: w.destinationCountry }).country || '';
+        countryNames.set(key, name);
       }
       return name;
     };
@@ -1349,16 +1351,17 @@ export default function HomePage() {
     if (!results) return [];
     const map = new Map<string, DestinationOption>();
     for (const w of results) {
-      const existing = map.get(w.destinationAirport);
+      const key = destinationKey(w);
+      const existing = map.get(key);
       if (existing) {
         existing.count++;
       } else {
         // Country and continent for the filter's groups ("only Asia", "only Thailand")
-        const point = getDestinationPoint(w.destinationAirport, locale);
+        const point = getDestinationPoint(key, locale);
         const countryCode = point?.state ? point.state.split('-')[0].toUpperCase() : undefined;
-        map.set(w.destinationAirport, {
-          code: w.destinationAirport,
-          name: getFormattedLocalizedDestination(w.destinationAirport, w.destinationName),
+        map.set(key, {
+          code: key,
+          name: getFormattedLocalizedDestination(key, w.destinationName),
           countryCode,
           countryName: point?.country || w.destinationCountry,
           continent: getContinentForCountry(countryCode),
@@ -1404,11 +1407,13 @@ export default function HomePage() {
   const destinationGroups = useMemo(() => {
     if (!filteredResults || filteredResults.length === 0) return [];
 
+    // Flights to the airports of a picked town belong to the town (one "Amsterdam", not three)
     const map = new Map<string, CandidateWindow[]>();
     for (const w of filteredResults) {
-      const list = map.get(w.destinationAirport) || [];
+      const key = destinationKey(w);
+      const list = map.get(key) || [];
       list.push(w);
-      map.set(w.destinationAirport, list);
+      map.set(key, list);
     }
 
     const groups = Array.from(map.entries()).map(([destCode, windows]) => {
@@ -1682,10 +1687,10 @@ export default function HomePage() {
                   type="button"
                   onClick={() =>
                     setMapModalDestination({
-                      destinationCode: win.destinationAirport,
-                      destinationName: getFormattedLocalizedDestination(win.destinationAirport, win.destinationName),
-                      destinationCity: getLocalizedDestinationLabel(win.destinationAirport, locale, { city: win.destinationCity }).city,
-                      destinationCountry: getLocalizedDestinationLabel(win.destinationAirport, locale, { country: win.destinationCountry }).country,
+                      destinationCode: destinationKey(win),
+                      destinationName: getFormattedLocalizedDestination(destinationKey(win), win.destinationName),
+                      destinationCity: getLocalizedDestinationLabel(destinationKey(win), locale, { city: win.destinationCity }).city,
+                      destinationCountry: getLocalizedDestinationLabel(destinationKey(win), locale, { country: win.destinationCountry }).country,
                       vacationTypes: getDestinationVacationStyles(win.destinationAirport, win.flightDistanceKm),
                       flightDistanceKm: win.flightDistanceKm,
                       flightDurationMinutes: win.flightDurationMinutes,
@@ -1700,7 +1705,7 @@ export default function HomePage() {
                 >
                   <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all shrink-0" />
                   <span className="font-extrabold text-slate-900 dark:text-slate-100 group-hover:text-teal-600 dark:group-hover:text-teal-400 group-hover:underline text-sm transition-colors">
-                    {getFormattedLocalizedDestination(win.destinationAirport, win.destinationName)}
+                    {getFormattedLocalizedDestination(destinationKey(win), win.destinationName)}
                   </span>
                 </button>
                 {getDedupedStyleMetas(getDestinationVacationStyles(win.destinationAirport, win.flightDistanceKm)).map((meta) => {
