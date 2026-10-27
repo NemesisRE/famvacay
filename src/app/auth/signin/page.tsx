@@ -23,14 +23,14 @@ function SignInContent() {
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   const errorMap: Record<string, string> = {
-    OAuthSignin: 'Could not start social sign-in. Please try again.',
-    OAuthCallback: 'An error occurred during authentication with the provider.',
-    OAuthAccountNotLinked: 'An account with this email already exists using a different sign-in method.',
-    AccessDenied: 'Access was denied by the authentication provider.',
-    Configuration: 'Authentication is not properly configured on the server.',
-    CredentialsSignin: 'Invalid email or password.',
+    OAuthSignin: t.auth.errorOAuthSignin,
+    OAuthCallback: t.auth.errorOAuthCallback,
+    OAuthAccountNotLinked: t.auth.errorOAuthAccountNotLinked,
+    AccessDenied: t.auth.errorAccessDenied,
+    Configuration: t.auth.errorConfiguration,
+    CredentialsSignin: t.auth.errorCredentialsSignin,
   };
-  const urlErrorMessage = errorParam ? errorMap[errorParam] || `Authentication error: ${errorParam}` : null;
+  const urlErrorMessage = errorParam ? errorMap[errorParam] || `${t.auth.errorGeneric} (${errorParam})` : null;
   const activeMessage = message || (urlErrorMessage ? { type: 'error' as const, text: urlErrorMessage } : null);
 
   useEffect(() => {
@@ -84,7 +84,7 @@ function SignInContent() {
       router.push('/');
       router.refresh();
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Authentication error.' });
+      setMessage({ type: 'error', text: err.message || t.auth.errorGeneric });
     } finally {
       setLoading(false);
     }
@@ -96,14 +96,14 @@ function SignInContent() {
     try {
       await signIn(providerId, { callbackUrl: '/' });
     } catch (err: any) {
-      setMessage({ type: 'error', text: err?.message || 'Social sign-in failed.' });
+      setMessage({ type: 'error', text: err?.message || t.auth.errorSocialSignInFailed });
       setSocialLoading(null);
     }
   };
 
   const handlePasskeyRegister = async () => {
     if (!email) {
-      setMessage({ type: 'error', text: 'Please enter your email to register a passkey.' });
+      setMessage({ type: 'error', text: t.auth.passkeyEmailRequired });
       return;
     }
 
@@ -138,10 +138,10 @@ function SignInContent() {
 
       setMessage({
         type: 'success',
-        text: 'Passkey enrolled successfully!',
+        text: t.auth.passkeySuccess,
       });
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Passkey enrollment cancelled.' });
+      setMessage({ type: 'error', text: err.message || t.auth.passkeyCancelled });
     } finally {
       setLoading(false);
     }
