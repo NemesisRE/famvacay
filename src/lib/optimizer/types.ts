@@ -150,6 +150,8 @@ export interface CandidateWindow {
   durationDays: number;
   originAirport: string;
   destinationAirport: string;
+  /** The picked town a flight to this airport goes to (Amsterdam for RTM): results group under it */
+  destinationPlace?: string;
 
   // Destination & Flight Logistics
   destinationName?: string;

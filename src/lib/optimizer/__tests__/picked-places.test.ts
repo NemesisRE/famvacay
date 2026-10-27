@@ -8,6 +8,8 @@ import {
 import { getDestinationPoint } from '../../geo/destination-points';
 import { placeDestinationCode } from '../../geo/surface-destinations';
 import { isPlausibleItinerary, resolveFlightRoute } from '../../airports/flight-routes';
+import { optimizeVacationWindows } from '../engine';
+import { destinationKey } from '../../results/result-filters';
 import type { TravelVehicle } from '../types';
 
 const names = (n: string) => ({ en: n, de: n, fr: n, es: n, it: n });
@@ -47,7 +49,28 @@ describe('Towns the user picks as destinations', () => {
     const all = resolveDestinationTargets(['Oberhof'], 'ALL', home(['PLANE', 'CAR', 'TRAIN', 'BUS']));
     // Erfurt serves Oberhof; Frankfurt is next door to home, Düsseldorf ~300 km from Oberhof
     expect(all.codes.filter((c) => c.length === 3)).toEqual(['ERF']);
-    expect(all.flightOnly.has('ERF')).toBe(true);
+    // ...and flights to Erfurt are shown as trips to Oberhof
+    expect(all.standInFor.get('ERF')).toBe(overland.codes[0]);
+  });
+
+  it('groups the flights to a town\'s airports under the town (one Amsterdam)', () => {
+    dynamicDestinationEntityCache.set('amsterdam', entity('amsterdam', ['AMS', 'RTM'], { lat: 52.3731, lon: 4.8925, region: 'NL' }));
+    const windows = optimizeVacationWindows(
+      {
+        targetDestinations: ['Amsterdam'],
+        durationDays: 7,
+        earliestDate: '2027-01-10',
+        latestDate: '2027-01-31',
+        travelVehicles: ['PLANE', 'CAR', 'TRAIN'],
+        userProfile: { homeLocation: 'Eggenstein-Leopoldshafen', departureLat: 49.0897, departureLon: 8.3937, federalState: 'DE-BW', originAirports: [], childrenAges: [], blackoutRanges: [] },
+      },
+      {},
+      {}
+    );
+    const groups = new Set(windows.map(destinationKey));
+    expect(windows.some((w) => w.destinationAirport === 'AMS')).toBe(true);
+    expect(groups.size).toBe(1);
+    expect(getDestinationPoint([...groups][0])?.city).toBe('Amsterdam');
   });
 
   it('never resolves a name by part of another cached name', () => {

@@ -528,7 +528,7 @@ export function optimizeVacationWindows(
   );
   let candidateDestinations = targets.codes;
   // Airports standing in for a picked town are flown to; the town itself is the road/rail trip
-  const flightOnlyDestinations = targets.flightOnly;
+  const standInFor = targets.standInFor;
 
   // STRICT FILTERING:
   // If the user explicitly filtered by destinations, results must be strictly bound to those destinations.
@@ -661,7 +661,7 @@ export function optimizeVacationWindows(
     // range - a destination can be reached by car *and* train *and* plane, and scoring (not a
     // fixed preference) decides which trip ranks first.
     const overlandOptions: OverlandOption[] = [];
-    const overlandVehicles = flightOnlyDestinations.has(dest)
+    const overlandVehicles = standInFor.has(dest)
       ? []
       : overlandSelected.filter((v) => availableVehicles.includes(v) && isOverlandVehicleInRange(v, homeDistKm, highSpeedRail));
     if (overlandVehicles.length > 0) {
@@ -998,6 +998,7 @@ export function optimizeVacationWindows(
           endDate: endStr,
           durationDays,
           destinationAirport: dest,
+          destinationPlace: standInFor.get(dest),
           destinationName: ctx.destinationName,
           destinationCity: ctx.destinationCity,
           destinationCountry: ctx.destinationCountry,

@@ -1471,8 +1471,11 @@ export function resolveDestinationCodes(
 
 export interface DestinationTargets {
   codes: string[];
-  /** Airports that only stand in for a picked town: flown to, never driven to (the town is) */
-  flightOnly: Set<string>;
+  /**
+   * Airports that only stand in for a picked town, with the town's place code: flown to, never
+   * driven to (the town is), and shown as that town (Amsterdam, not Amsterdam and Rotterdam airports)
+   */
+  standInFor: Map<string, string>;
 }
 
 export function resolveDestinationTargets(
@@ -1495,13 +1498,13 @@ export function resolveDestinationTargets(
   // If no destination filter was set by user, discover dynamically from the user's origin
   if (!destinationTags || destinationTags.length === 0) {
     const tiers = discoverDestinationTiers(types, originContext);
-    return { codes: options.includeExtended ? [...tiers.primary, ...tiers.extended] : tiers.primary, flightOnly: new Set() };
+    return { codes: options.includeExtended ? [...tiers.primary, ...tiers.extended] : tiers.primary, standInFor: new Map() };
   }
 
   const resolved = new Set<string>();
   // Airports that only stand in for a town (Oberhof -> Erfurt, Frankfurt): reached by plane, never
   // the destination of a car or train trip - the town itself is (its place code)
-  const standInAirports = new Set<string>();
+  const standInAirports = new Map<string, string>();
 
   for (const tag of destinationTags) {
     const clean = normalizeDestinationString(tag);
@@ -1515,7 +1518,8 @@ export function resolveDestinationTargets(
         entity.airportCodes.forEach((c) => resolved.add(c));
         continue;
       }
-      resolved.add(placeDestinationCode({ ...place, name: tag.trim() }));
+      const placeCode = placeDestinationCode({ ...place, name: tag.trim() });
+      resolved.add(placeCode);
       // Only airports that actually serve the town (Erfurt for Oberhof, not Düsseldorf 300 km away);
       // the nearest one when none is that close
       const byDistance = entity.airportCodes
@@ -1526,7 +1530,7 @@ export function resolveDestinationTargets(
       const serving = byDistance.filter((a) => a.km <= STAND_IN_AIRPORT_MAX_KM);
       for (const { code } of serving.length > 0 ? serving : byDistance.slice(0, 1)) {
         resolved.add(code);
-        standInAirports.add(code);
+        if (!standInAirports.has(code)) standInAirports.set(code, placeCode);
       }
       continue;
     }
@@ -1571,7 +1575,7 @@ export function resolveDestinationTargets(
       const point = getDestinationPoint(code);
       return Boolean(point && flightWorthy(point));
     });
-    return { codes, flightOnly: standInAirports };
+    return { codes, standInFor: standInAirports };
   }
 
   for (const tag of destinationTags) {
@@ -1608,7 +1612,7 @@ export function resolveDestinationTargets(
     if (classifyOverlandAccess(destGeo).access === 'FLIGHT_ONLY') return false;
     return isOverlandFeasible(overlandVehicles, dist, Boolean(point.isHighSpeedRailConnected), maxOverlandMinutes);
   });
-  return { codes, flightOnly: standInAirports };
+  return { codes, standInFor: standInAirports };
 }
 
 /**

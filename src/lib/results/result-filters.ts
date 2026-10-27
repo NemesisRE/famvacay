@@ -66,10 +66,15 @@ function getWindowSafetyLevel(w: CandidateWindow): 1 | 2 | 3 | 4 {
   return 1;
 }
 
+/** The destination a result is shown and filtered under: the picked town for flights to its airports */
+export function destinationKey(w: Pick<CandidateWindow, 'destinationAirport' | 'destinationPlace'>): string {
+  return w.destinationPlace ?? w.destinationAirport;
+}
+
 type Tests = { [K in ResultFilterKey]: (w: CandidateWindow, value: ResultFilterState[K], state?: ResultFilterState) => boolean };
 
 const TESTS: Tests = {
-  destinations: (w, codes) => codes.length === 0 || codes.includes(w.destinationAirport),
+  destinations: (w, codes) => codes.length === 0 || codes.includes(destinationKey(w)),
   month: (w, month) =>
     month === 'ALL' || (month.length === 7 ? w.startDate.startsWith(month) : w.startDate.split('-')[1] === month),
   style: (w, style) => {
