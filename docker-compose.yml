@@ -181,8 +181,9 @@ services:
       retries: 5
       start_period: 5s
 
-  # Self-hosted, cookieless analytics (Umami) - reachable only via the web container's
-  # /stats/* rewrite proxy (next.config.js), never exposed on proxy-network directly.
+  # Self-hosted, cookieless analytics (Umami) - reachable via the web container's
+  # /stats/* rewrite proxy (next.config.js) and directly by reverse proxies (Pangolin, Traefik, etc.)
+  # on proxy-network for the Umami administration dashboard.
   umami:
     image: ghcr.io/umami-software/umami:3.4.1
     container_name: famvacay-umami
@@ -195,11 +196,15 @@ services:
       - CLIENT_IP_HEADER=X-Forwarded-For
     expose:
       - "3000"
+    # Optional direct host port mapping if reverse proxy runs on host:
+    # ports:
+    #   - "${UMAMI_PORT:-3001}:3000"
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - backend-internal
+      - proxy-network
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=32m

@@ -18,7 +18,14 @@ export const metadata: Metadata = {
   applicationName: 'FamVacay',
   // Installed to the home screen (iOS reads these instead of the web app manifest)
   appleWebApp: { capable: true, title: 'FamVacay', statusBarStyle: 'default' },
-  icons: { apple: '/icons/apple-touch-icon.png' },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '32x32' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icons/icon-192.png', type: 'image/png', sizes: '192x192' },
+    ],
+    apple: '/icons/apple-touch-icon.png',
+  },
 };
 
 export const viewport: Viewport = {
