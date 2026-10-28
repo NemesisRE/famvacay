@@ -19,10 +19,8 @@ To keep packages up to date and reduce manual maintenance overhead, FamVacay use
      - Group: `development & quality toolchain`
      - Group Slug: `dev-toolchain`
    - Major updates are kept isolated for focused review.
-   - `typescript` major-update PRs are labeled
-     `blocked-known-issue` and excluded from auto-rebase noise — see
-     [Known Blocked Major Upgrades](#known-blocked-major-upgrades) below
-     before merging one.
+   - `typescript` major updates are suppressed (`allowedVersions: "<7.0.0"`) until upstream ecosystem support matures — see [Known Blocked Major Upgrades](#known-blocked-major-upgrades) below.
+   - `postgres` major updates are disabled in Renovate (`matchUpdateTypes: ["major"], enabled: false`) because PostgreSQL major version changes break on-disk volume binary compatibility and require planned manual migration (`pg_dumpall` / `pg_upgrade`).
 
 2. **Security Vulnerability Handling**:
    - Vulnerability and CVE alerts trigger immediate pull requests without rate limits (`schedule: ["at any time"]`).
@@ -89,6 +87,14 @@ came from Prisma 6's generated types and are gone).
 
 Pinned to `~6.0.3`, the newest release `typescript-eslint` supports. Re-attempt
 once `typescript-eslint` and Next.js support TypeScript 7.
+
+### PostgreSQL Major Versions (17, 18)
+
+PostgreSQL Docker images cannot automatically mount or convert data directories initialized
+by an older major version (`postgres_data:/var/lib/postgresql/data`). Upgrading from PostgreSQL 16
+to 17 or 18 requires a planned maintenance window with a full logical backup (`pg_dumpall`), volume
+recreation, and restore (`psql`). Automated major version updates are therefore suppressed in
+`renovate.json` (`matchUpdateTypes: ["major"], enabled: false`).
 
 ### Prisma 7 (done)
 
