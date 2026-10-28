@@ -77,16 +77,6 @@ const nextConfig = {
       allowedOrigins: getAllowedOrigins(),
     },
   },
-  async rewrites() {
-    // Self-hosted Umami, proxied first-party under /stats/* so analytics requests never leave
-    // this container as a third-party connection (adblock-resistant, no CSP changes needed).
-    const umamiUrl = process.env.UMAMI_INTERNAL_URL;
-    if (!umamiUrl) return [];
-    return [
-      { source: '/stats/script.js', destination: `${umamiUrl}/script.js` },
-      { source: '/stats/api/:path*', destination: `${umamiUrl}/api/:path*` },
-    ];
-  },
   async headers() {
     const isProduction = process.env.NODE_ENV === 'production';
     return [
