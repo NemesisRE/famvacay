@@ -33,7 +33,14 @@ function subscribe(callback: () => void) {
 
 function readUmamiDisabled(): boolean {
   try {
-    return localStorage.getItem(UMAMI_DISABLED_KEY) === '1';
+    const val = localStorage.getItem(UMAMI_DISABLED_KEY);
+    if (val === '0') {
+      // Legacy cleanup: Umami's tracker treats ANY non-empty string in localStorage (including '0')
+      // as truthy/disabled! Remove the key when enabled so Umami can track.
+      localStorage.removeItem(UMAMI_DISABLED_KEY);
+      return false;
+    }
+    return val === '1' || val === 'true';
   } catch {
     return false;
   }
@@ -49,7 +56,13 @@ function readBannerChoiceMade(): boolean {
 
 export function setUmamiDisabled(disabled: boolean) {
   try {
-    localStorage.setItem(UMAMI_DISABLED_KEY, disabled ? '1' : '0');
+    if (disabled) {
+      localStorage.setItem(UMAMI_DISABLED_KEY, '1');
+    } else {
+      // Must be completely removed from localStorage; Umami's script.js checks
+      // `localStorage.getItem("umami.disabled")`, which evaluates '0' as truthy/disabled!
+      localStorage.removeItem(UMAMI_DISABLED_KEY);
+    }
   } catch {
     // Storage quota / disabled - analytics script just won't opt back in client-side
   }
