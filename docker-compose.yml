@@ -14,6 +14,8 @@ services:
       dockerfile: Dockerfile
       target: migrator
     image: famvacay:migrator
+    # Locally built tag: never try to pull it from a registry (fails with "pull access denied")
+    pull_policy: build
     container_name: famvacay-migrate
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-famvacay}:${POSTGRES_PASSWORD:-famvacay_secure_password}@postgres:5432/${POSTGRES_DB:-famvacay_db}?schema=public
@@ -31,6 +33,8 @@ services:
       dockerfile: Dockerfile
       target: runner
     image: famvacay:latest
+    # Locally built tag: never try to pull it from a registry (fails with "pull access denied")
+    pull_policy: build
     container_name: famvacay-web
     restart: unless-stopped
     expose:
