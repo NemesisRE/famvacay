@@ -15,7 +15,7 @@ data:
 ---
 # NOTE: UMAMI_DATABASE_URL points at a separate database ("famvacay_umami" by default) on the
 # same famvacay-postgres instance. Unlike the Docker Compose setup (which creates it automatically
-# via scripts/postgres-init/), this StatefulSet has no init-script mechanism - create the database
+# via the umami-db-init service), this StatefulSet has no init-script mechanism - create the database
 # once manually before first deploy:
 #   kubectl exec -it famvacay-postgres-0 -- psql -U famvacay -d famvacay_db \
 #     -c 'CREATE DATABASE famvacay_umami;'

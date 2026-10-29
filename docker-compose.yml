@@ -120,8 +120,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-famvacay}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-famvacay_secure_password}
       POSTGRES_DB: ${POSTGRES_DB:-famvacay_db}
-      # Separate database for the self-hosted Umami service (see scripts/postgres-init/).
-      UMAMI_DB: ${UMAMI_DB:-famvacay_umami}
     # No host port mapping: Postgres is reachable only from other containers on
     # backend-internal. For ad-hoc local access use:
     #   docker compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
@@ -129,7 +127,6 @@ services:
       - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/postgres-init:/docker-entrypoint-initdb.d:ro
     networks:
       - backend-internal
     security_opt:
@@ -148,6 +145,32 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # One-shot: creates the separate Umami database if missing. Unlike an
+  # /docker-entrypoint-initdb.d script this also works on an already initialized
+  # volume and does not depend on bind-mount file permissions.
+  umami-db-init:
+    image: postgres:16-alpine
+    container_name: famvacay-umami-db-init
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-famvacay}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-famvacay_secure_password}
+      PGDATABASE: ${POSTGRES_DB:-famvacay_db}
+      UMAMI_DB: ${UMAMI_DB:-famvacay_umami}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "SELECT format('CREATE DATABASE %I', :'db') WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = :'db')\\gexec" |
+          psql -v ON_ERROR_STOP=1 -v db="$$UMAMI_DB"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend-internal
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
 
   # Cache & Rate Limiting store (Valkey / Dragonfly / Redis wire-compatible)
   cache:
@@ -200,8 +223,8 @@ services:
     # ports:
     #   - "${UMAMI_PORT:-3001}:3000"
     depends_on:
-      postgres:
-        condition: service_healthy
+      umami-db-init:
+        condition: service_completed_successfully
     networks:
       - backend-internal
       - proxy-network
