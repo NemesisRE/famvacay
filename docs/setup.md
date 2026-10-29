@@ -134,7 +134,13 @@ famvacay.us {
 
 ### 3.5 Pangolin (SASE / Tunneled Reverse Proxy)
 
-Both the FamVacay application and the self-hosted Umami analytics service join the external Docker network (`proxy-network` / `${PROXY_NETWORK_NAME}`):
+Both the FamVacay application and the self-hosted Umami analytics service join the Docker network `proxy-network` (`${PROXY_NETWORK_NAME}`). Compose creates it automatically. If your reverse proxy already runs on an existing network of that name, start the stack with the override that marks it as external:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.proxy.yml up -d
+```
+
+Then configure:
 
 1. **FamVacay Web Application**:
    - **Target Host**: `famvacay-web` (or `web`)

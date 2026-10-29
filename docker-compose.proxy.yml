@@ -1,0 +1,7 @@
+# Override: join an already existing reverse proxy network instead of creating one.
+#   docker compose -f docker-compose.yml -f docker-compose.proxy.yml up -d
+# The network must exist beforehand (docker network create <name>).
+networks:
+  proxy-network:
+    external: true
+    name: ${PROXY_NETWORK_NAME:-proxy-network}

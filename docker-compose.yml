@@ -2,7 +2,8 @@
 # Hardened Docker Compose Configuration for FamVacay
 # Architecture:
 # - backend-internal: bridge, internal: true (zero host exposure or unauthorized outbound)
-# - proxy-network: external reverse proxy network (only web joins)
+# - proxy-network: reverse proxy network (created by compose; attach an existing one
+#   with docker-compose.proxy.yml, see docs/setup.md)
 # - One-shot migration service running from migrator target
 # ==============================================================================
 
@@ -239,7 +240,8 @@ networks:
     driver: bridge
     internal: true
 
-  # External network joined only by web to connect to reverse proxy
+  # Network joined by web and umami to connect to a reverse proxy. Compose creates it
+  # on first start; to join a network that already exists, add
+  # `-f docker-compose.yml -f docker-compose.proxy.yml`.
   proxy-network:
-    external: true
     name: ${PROXY_NETWORK_NAME:-proxy-network}
