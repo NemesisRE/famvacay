@@ -1054,6 +1054,8 @@ export default function HomePage() {
         throw new Error(data.error || 'Optimization request failed');
       }
 
+      // The server answers with the full result straight away when it is already cached
+      const isFullResult = res.headers.get('X-Famvac-Scope') === 'extended';
       const data = await res.json();
 
       // Cache for reloads and persist as a shareable link (again after the background phase)
@@ -1116,7 +1118,7 @@ export default function HomePage() {
       // Progressive search: the most relevant destinations are shown now, the next tier is
       // searched in the background and replaces the list when ready (scores are relative to the
       // whole result set, so the full search runs again rather than merging two partial ones)
-      if (!hasDestinations) {
+      if (!hasDestinations && !isFullResult) {
         // Same grouping as the results list and its destination count
         const destinationCount = (windows: CandidateWindow[]) => new Set(windows.map(destinationKey)).size;
         const firstCount = destinationCount(data.windows);
@@ -1142,13 +1144,14 @@ export default function HomePage() {
               return;
             }
             const added = destinationCount(full.windows) - firstCount;
-            // Before anyone could start reading (a repeated, cached search): no reason to ask
+            // Before anyone could start reading: no reason to ask (a fully cached search never gets
+            // here, the server returned the full result for the first request already)
             const arrivedInstantly = fromCache || Date.now() - firstShownAt < INSTANT_BACKGROUND_MS;
             if (added > 0 && arrivedInstantly) {
               setResults(full.windows);
               publishResults(full.windows);
-              // Merged without asking, but still said: otherwise the banner just vanished and the
-              // new destinations went unnoticed somewhere in the list
+              // Merged without asking, but still said: the "searching" banner was visible, and
+              // without a word the new destinations went unnoticed somewhere in the list
               setBackgroundSearch({ status: 'done', added });
             } else if (added > 0) {
               const windows = full.windows;
