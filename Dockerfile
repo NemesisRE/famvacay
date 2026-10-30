@@ -100,6 +100,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
+# Release version (the tag, set by CI on release builds; reported by /api/health). Declared after
+# the copies so a new version does not invalidate the cached layers above.
+ARG APP_VERSION=""
+ENV APP_VERSION=${APP_VERSION}
+LABEL org.opencontainers.image.version=${APP_VERSION}
+
 USER nextjs
 EXPOSE 3000
 
