@@ -36,12 +36,21 @@ This guide covers prerequisites, local development, production deployment via Do
 | `GOOGLE_CLIENT_SECRET` | String | (Optional) | OAuth Client Secret for Google login. |
 | `APPLE_CLIENT_ID` | String | (Optional) | OAuth Client ID for Apple login. |
 | `APPLE_CLIENT_SECRET` | String | (Optional) | OAuth Client Secret for Apple login. |
+| `PROXY_NETWORK_NAME` | String | `proxy-network` | Docker Compose only: name of the **external** Docker network shared with your reverse proxy (the web app and Umami join it). It must exist before `docker compose up` - see [3. Reverse Proxy Configuration](#3-reverse-proxy-configuration). |
 
 ---
 
 ## 3. Reverse Proxy Configuration
 
 FamVacay serves plain HTTP on port `3000`. Your reverse proxy **must** terminate TLS, set `TRUST_PROXY=true`, and forward proxy headers accurately.
+
+**Proxy network (Docker Compose):** the web app and Umami join an *external* Docker network that your reverse proxy is also attached to. Compose never creates external networks - `docker compose up` fails with `network proxy-network declared as external, but could not be found` until it exists. Either create it once per host:
+
+```bash
+docker network create proxy-network
+```
+
+or set `PROXY_NETWORK_NAME` in `.env` to the network your reverse proxy already uses (e.g. `traefik`, `pangolin`, `npm_default`). Deployment tools such as Komodo use the same `.env` value.
 
 ### 3.1 Traefik (v3)
 

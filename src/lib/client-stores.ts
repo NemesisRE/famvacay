@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useSyncExternalStore } from 'react';
+import { THEME_STORAGE_KEY, applyTheme } from './theme';
 
 /**
  * Browser-only values read through useSyncExternalStore: the server render and hydration use the
@@ -31,9 +32,9 @@ export function useDarkTheme(): [boolean, (dark: boolean) => void] {
     () => false
   );
   const setDark = useCallback((dark: boolean) => {
-    document.documentElement.classList.toggle('dark', dark);
+    applyTheme(dark);
     try {
-      localStorage.setItem('famvac_theme', dark ? 'dark' : 'light');
+      localStorage.setItem(THEME_STORAGE_KEY, dark ? 'dark' : 'light');
     } catch {
       // storage blocked: the theme still applies for this visit
     }

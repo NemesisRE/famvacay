@@ -46,8 +46,7 @@ import {
 } from '@/lib/regions/subdivisions';
 import { AirportSelector } from '@/components/airports/AirportSelector';
 import { LocationInput, GeocodedLocation } from '@/components/geo/LocationInput';
-import { detectUserLocation, formatLocationLabel, resolveCountryAndRegion } from '@/lib/geo/location-helpers';
-import { detectBrowserLocale } from '@/lib/i18n/i18n-context';
+import { formatLocationLabel, resolveCountryAndRegion } from '@/lib/geo/location-helpers';
 import { ChildrenSelector, ChildItem } from '@/components/family/ChildrenSelector';
 import { MultiDestinationInput } from '@/components/destination/MultiDestinationInput';
 import { CountryExclusionPicker } from '@/components/destination/CountryExclusionPicker';
@@ -165,8 +164,11 @@ export default function HomePage() {
   const [durationDaysMax, setDurationDaysMax] = useState(14);
 
   // 6. Date Boundaries
-  const [earliestDate, setEarliestDate] = useState(defaultEarliest);
-  const [latestDate, setLatestDate] = useState(defaultLatest);
+  // Empty until mounted (the restore effect fills in the defaults): the start page is prerendered at
+  // build time, and dates computed then made server and client HTML differ - React then re-rendered
+  // the whole document and dropped the theme class from <html>
+  const [earliestDate, setEarliestDate] = useState('');
+  const [latestDate, setLatestDate] = useState('');
   const [maxBudget, setMaxBudget] = useState<number | undefined>(undefined);
   const [selectedVehicles, setSelectedVehicles] = useState<TravelVehicle[]>(['PLANE', 'CAR', 'TRAIN', 'BUS']);
 
@@ -338,42 +340,9 @@ export default function HomePage() {
 
   // Set once the user picks a place or the profile provides one, so a late-arriving browser
   // location never overwrites it
-  const locationTouchedRef = useRef(false);
-
-  // Default location: the browser's (asks for permission). Silent when unavailable/denied - the
-  // "My location" button explains why.
-  const autoDetectLocation = useCallback(() => {
-    // On the first visit this runs before the language provider applied the browser's language
-    const lang = detectBrowserLocale();
-    detectUserLocation(lang)
-      .then((loc) => {
-        if (locationTouchedRef.current) return;
-        setDepartureLocation(formatLocationLabel(loc, lang));
-        setDepartureCoords({ lat: loc.lat, lon: loc.lon });
-        const resolved = resolveCountryAndRegion(loc);
-        if (resolved) {
-          setCountry(resolved.country);
-          setFederalState(resolved.region);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
+  // The browser's position is asked for only when the user presses "My location" (LocationInput):
+  // a permission prompt on page load, before anyone asked for it, is unexpected and gets denied.
   const [hasRestoredFromStorage, setHasRestoredFromStorage] = useState(false);
-
-  // First visit (nothing saved, not a shared link): start from the browser's location
-  const firstVisitCheckedRef = useRef(false);
-  useEffect(() => {
-    if (firstVisitCheckedRef.current) return;
-    firstVisitCheckedRef.current = true;
-    let saved: string | null = null;
-    try {
-      saved = localStorage.getItem('famvac_form_state');
-    } catch {
-      // storage blocked: treat as a first visit
-    }
-    if (!saved && !new URLSearchParams(window.location.search).has('s')) autoDetectLocation();
-  }, [autoDetectLocation]);
 
   // Restore form and filter state, plus recent search results from localStorage. This has to run
   // after hydration: the server renders the defaults, so reading the saved values during the first
@@ -381,6 +350,8 @@ export default function HomePage() {
   // pass after mount is the intended exception to "no setState in effects".
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    setEarliestDate(defaultEarliest);
+    setLatestDate(defaultLatest);
     try {
       const savedForm = localStorage.getItem('famvac_form_state');
       if (savedForm) {
@@ -551,7 +522,8 @@ export default function HomePage() {
     } finally {
       setHasRestoredFromStorage(true);
     }
-  }, []);
+    // The defaults are memoized once: this still runs a single time after mount
+  }, [defaultEarliest, defaultLatest]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Save form state to localStorage on changes
@@ -785,8 +757,6 @@ export default function HomePage() {
     dismissBackgroundSearch();
     setResults(null);
     resetAllFilters();
-    locationTouchedRef.current = false;
-    autoDetectLocation();
   };
 
   // Auto-prefill if family profile exists
@@ -809,7 +779,6 @@ export default function HomePage() {
                 const geoData = await geoRes.json();
                 if (geoData.locations && geoData.locations.length > 0) {
                   const loc0 = geoData.locations[0];
-                  locationTouchedRef.current = true;
                   setDepartureLocation(formatLocationLabel(loc0, locale));
                   setDepartureCoords({
                     lat: loc0.lat,
@@ -954,8 +923,6 @@ export default function HomePage() {
       setDepartureCoords(coords);
     }
     if (locationData) {
-      // A place the user picked: never overwritten by the automatic location detection
-      locationTouchedRef.current = true;
       const resolved = resolveCountryAndRegion(locationData);
       if (resolved) {
         setCountry(resolved.country);

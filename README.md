@@ -40,10 +40,16 @@ git clone https://github.com/NemesisRE/famvacay.git
 cd famvacay
 cp .env.example .env
 
-# 2. Launch the full stack (PostgreSQL 16, Valkey 8, Migration Job, Web App)
+# 2. Create the external reverse-proxy network the web app and Umami join (once per host).
+#    Compose does not create external networks and refuses to start without it.
+#    Already running a reverse proxy (Traefik, Pangolin, NPM, ...)? Set PROXY_NETWORK_NAME in .env
+#    to its network instead and skip this step.
+docker network create proxy-network
+
+# 3. Launch the full stack (PostgreSQL 16, Valkey 8, Migration Job, Web App, Umami)
 docker compose up -d
 
-# 3. Access the web app
+# 4. Access the web app
 # Visit http://localhost:3000 (local) or your configured APP_URL
 ```
 
