@@ -27,16 +27,27 @@ export interface ResultsCountRow {
 interface ResultsCountPopoverProps {
   shown: number;
   total: number;
+  /** Distinct destinations among the shown / all windows */
+  shownDestinations: number;
+  totalDestinations: number;
   rows: ResultsCountRow[];
   onInclude: (key: ResultFilterKey, warningKey?: string) => void;
   onIncludeAll: () => void;
 }
 
 /**
- * "1155 / 1190 Reisefenster gefunden" with an explanation of the difference: which filter hides
- * how many windows, each with a button to include them again.
+ * "45 / 109 Reiseziele · 1155 / 1190 Reisefenster gefunden" with an explanation of the difference:
+ * which filter hides how many windows, each with a button to include them again.
  */
-export function ResultsCountPopover({ shown, total, rows, onInclude, onIncludeAll }: ResultsCountPopoverProps) {
+export function ResultsCountPopover({
+  shown,
+  total,
+  shownDestinations,
+  totalDestinations,
+  rows,
+  onInclude,
+  onIncludeAll,
+}: ResultsCountPopoverProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const isSmallScreen = useIsSmallScreen();
@@ -62,6 +73,10 @@ export function ResultsCountPopover({ shown, total, rows, onInclude, onIncludeAl
         title={hidden > 0 ? t.home.resultsBreakdownTitle : undefined}
         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border border-slate-200 dark:border-slate-700 text-[11px] hover:border-teal-300 dark:hover:border-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition cursor-pointer"
       >
+        <span data-testid="results-destination-count">
+          {shownDestinations} / {totalDestinations} {t.home.destinationsFound}
+        </span>
+        <span className="text-slate-400 dark:text-slate-500" aria-hidden="true">·</span>
         <span>
           {shown} / {total} {t.home.windowsFound}
         </span>

@@ -187,6 +187,7 @@ export interface TranslationDictionary {
     optimizing: string;
     resultsTitle: string;
     windowsFound: string;
+    destinationsFound: string;
     resultsBreakdownTitle: string;
     resultsBreakdownFound: string;
     resultsBreakdownShown: string;

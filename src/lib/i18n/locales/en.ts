@@ -169,6 +169,7 @@ export const en: TranslationDictionary = {
     optimizing: 'Finding Best Vacation Dates...',
     resultsTitle: 'Optimal Vacation Windows',
     windowsFound: 'Windows Found',
+    destinationsFound: 'Destinations',
     resultsBreakdownTitle: 'Why some windows are hidden',
     resultsBreakdownFound: 'Found',
     resultsBreakdownShown: 'Shown',

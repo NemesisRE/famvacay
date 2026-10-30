@@ -169,6 +169,7 @@ export const de: TranslationDictionary = {
     optimizing: 'Berechne optimale Reisefenster...',
     resultsTitle: 'Optimale Urlaubszeiträume',
     windowsFound: 'Reisefenster gefunden',
+    destinationsFound: 'Reiseziele',
     resultsBreakdownTitle: 'Warum Reisefenster ausgeblendet sind',
     resultsBreakdownFound: 'Gefunden',
     resultsBreakdownShown: 'Angezeigt',

@@ -1117,7 +1117,8 @@ export default function HomePage() {
       // searched in the background and replaces the list when ready (scores are relative to the
       // whole result set, so the full search runs again rather than merging two partial ones)
       if (!hasDestinations) {
-        const destinationCount = (windows: CandidateWindow[]) => new Set(windows.map((w) => w.destinationAirport)).size;
+        // Same grouping as the results list and its destination count
+        const destinationCount = (windows: CandidateWindow[]) => new Set(windows.map(destinationKey)).size;
         const firstCount = destinationCount(data.windows);
         const controller = new AbortController();
         backgroundAbortRef.current = controller;
@@ -1146,7 +1147,9 @@ export default function HomePage() {
             if (added > 0 && arrivedInstantly) {
               setResults(full.windows);
               publishResults(full.windows);
-              setBackgroundSearch({ status: 'idle' });
+              // Merged without asking, but still said: otherwise the banner just vanished and the
+              // new destinations went unnoticed somewhere in the list
+              setBackgroundSearch({ status: 'done', added });
             } else if (added > 0) {
               const windows = full.windows;
               pendingBackgroundApplyRef.current = () => {
@@ -2553,6 +2556,8 @@ export default function HomePage() {
                 <ResultsCountPopover
                   shown={filteredResults.length}
                   total={results.length}
+                  shownDestinations={destinationGroups.length}
+                  totalDestinations={activeQueryDestinations.length}
                   rows={exclusionRows}
                   onInclude={includeFilter}
                   onIncludeAll={() => exclusionRows.forEach((r) => includeFilter(r.key))}
@@ -2774,7 +2779,7 @@ export default function HomePage() {
                                   setSelectedDestinationsList(selected);
                                   setCurrentPage(1);
                                 }}
-                                totalCount={results?.length || 0}
+                                totalCount={activeQueryDestinations.length}
                                 className="flex-1 sm:flex-none min-w-0"
                               />
                               <div className="w-7 h-7 flex items-center justify-center shrink-0">
