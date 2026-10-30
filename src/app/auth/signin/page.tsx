@@ -11,7 +11,7 @@ function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [email, setEmail] = useState('');
@@ -57,7 +57,8 @@ function SignInContent() {
         const regRes = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, name }),
+          // The confirmation mail is written in the interface language
+          body: JSON.stringify({ email, password, name, locale }),
         });
 
         const regData = await regRes.json();

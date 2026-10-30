@@ -20,6 +20,8 @@ model User {
   emailVerified DateTime?
   passwordHash  String?
   image         String?
+  // Bumped to sign out every existing session (JWTs cannot be revoked one by one)
+  sessionVersion Int               @default(0)
   accounts      Account[]
   sessions      Session[]
   passkeys      Authenticator[]
@@ -163,6 +165,8 @@ model FamilyMember {
   schoolRequired  Boolean       @default(false)
   schoolSubdivision String?     // ISO 3166-2 region whose school calendar this child follows (null = home region)
   passportExpiry  DateTime?     @db.Date
+  // Passport reminders already mailed, as "<expiry date>:<stage>" (a new expiry date starts over)
+  passportRemindersSent String[] @default([])
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 

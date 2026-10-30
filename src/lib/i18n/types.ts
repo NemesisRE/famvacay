@@ -167,6 +167,9 @@ export interface TranslationDictionary {
     locationErrorInsecure: string;
     locationErrorUnavailable: string;
     requiresSchoolExemptionWarning: string;
+    passportWarningTitle: string;
+    passportWarningMember: string;
+    passportWarningHint: string;
     durationLabel: string;
     durationMinLabel: string;
     durationMaxLabel: string;
@@ -559,6 +562,16 @@ export interface TranslationDictionary {
     deleteConfirmModalDesc: string;
     confirmDeleteAccountBtn: string;
     cancelBtn: string;
+    emailVerifiedBadge: string;
+    emailUnverifiedBadge: string;
+    emailUnverifiedHint: string;
+    resendVerificationBtn: string;
+    verificationSent: string;
+    emailChangePending: string;
+    emailVerifiedNotice: string;
+    emailVerifyInvalid: string;
+    emailVerifyExpired: string;
+    emailTaken: string;
   };
   auth: {
     welcome: string;
@@ -620,6 +633,10 @@ export interface TranslationDictionary {
     hostingDpaNotice: string;
     accountDataSectionTitle: string;
     accountDataNotice: string;
+    passportSectionTitle: string;
+    passportNotice: string;
+    emailSectionTitle: string;
+    emailNotice: string;
     passkeysSectionTitle: string;
     passkeysNotice: string;
     oauthSectionTitle: string;
@@ -689,6 +706,24 @@ export interface TranslationDictionary {
     accommodationHeading: string;
     accommodation: Record<AccommodationBookingAction, string>;
     disclaimer: string;
+  };
+  /** Outgoing mail (verification links, passport reminders) */
+  mail: {
+    verifySubject: string;
+    verifyIntro: string;
+    changeSubject: string;
+    changeIntro: string;
+    confirmButton: string;
+    linkValidity: string;
+    passportSubject: string;
+    passportIntro: string;
+    passportExpiredIntro: string;
+    passportAdvice: string;
+    passportSettings: string;
+    openProfile: string;
+    automatedNotice: string;
+    travellerAdult: string;
+    travellerChild: string;
   };
   about: {
     footerLink: string;

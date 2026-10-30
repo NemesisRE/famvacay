@@ -107,13 +107,14 @@ Every family is unique. In your dedicated Family Profile, you can:
 - Automatically calculate airline pricing tiers on the travel date: infants (<2 years at ~10% fare), children (2–11 years at ~95% on short and medium haul, ~75% on long haul), and teens/adults (12+ years at 100%).
 - Set travel comfort settings, including the maximum overland travel time and cabin class preferences.
 - Store recurring blackout periods and your preferred departure airports.
+- Switch on the passport check: search results warn when a passport would be valid for less than 6 months after a trip outside the EU, and reminders arrive by email 6 months and 1 month before it expires.
 - Share search results as a link with a trip board - without addresses, coordinates or exact birth dates.
 
 ### Authentication & Passkeys
 
 Families can safely store their trip plans and profiles with flexible authentication options:
 
-- Traditional Email & Password (secured with bcrypt).
+- Traditional Email & Password (secured with bcrypt), with email confirmation when a mail server is configured.
 - Biometric Passkeys & WebAuthn (Touch ID, Face ID, Windows Hello, YubiKey).
 - Social Logins (Google and Apple).
 - Account linking to bind multiple authentication methods to one family account.

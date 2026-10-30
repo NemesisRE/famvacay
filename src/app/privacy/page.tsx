@@ -4,6 +4,7 @@ import { getLegalConfig } from '@/lib/config/legal';
 import { getPublicRuntimeConfig } from '@/lib/config/public-runtime';
 import { PrivacyContent } from '@/components/legal/PrivacyContent';
 import { getConfiguredOAuthProviders } from '@/lib/auth/oauth-config';
+import { isMailConfigured } from '@/lib/mail/mailer';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy / Datenschutzerklärung - FamVacay',
@@ -18,6 +19,7 @@ export default async function PrivacyPage() {
       legal={getLegalConfig()}
       analyticsEnabled={Boolean(getPublicRuntimeConfig().umamiWebsiteId)}
       oauthProviders={getConfiguredOAuthProviders()}
+      mailEnabled={isMailConfigured()}
     />
   );
 }

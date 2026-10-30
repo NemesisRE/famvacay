@@ -49,6 +49,11 @@ First stable release.
 - **Accounts and family profile:** email and password, passkeys (WebAuthn), Google and Apple
   sign-in, account linking with lockout protection, GDPR data export and deletion; a shared family
   profile with members, school regions, departure airports, blackout periods and preferences.
+- **Email (optional SMTP):** confirmation links after registration and before an address change
+  takes effect; Google/Apple sign-in on an unconfirmed address drops the credentials of whoever
+  registered it; sessions can be revoked.
+- **Passport check:** warnings on results when a passport is valid for less than 6 months after a
+  trip outside the EU/EEA/Switzerland, and reminder mails 6 months and 1 month before expiry.
 - **Five languages** (English, German, French, Spanish, Italian), dark mode, installable as a
   progressive web app.
 - **Imprint, privacy policy and cookie banner** generated from configuration (§5 DDG,
@@ -75,7 +80,6 @@ First stable release.
 - Location autocomplete queries the public OpenStreetMap Nominatim server first, which its usage
   policy does not allow for autocomplete; `PHOTON_API_URL` is not used yet (see ADR 0003).
 - Inviting further adults to a family profile exists in the database schema only.
-- Passport expiry dates are stored in the profile, but no validity warning is shown yet.
 - The standalone production build does not run on Windows (Docker and Linux are fine).
 
 [Unreleased]: https://github.com/NemesisRE/famvacay/compare/v1.0.0...HEAD

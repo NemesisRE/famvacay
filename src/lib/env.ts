@@ -30,6 +30,14 @@ const envSchema = z
     // (the free API is non-commercial only), see src/lib/integrations/open-meteo-access.ts
     OPEN_METEO_API_KEY: z.string().optional(),
     OPEN_METEO_CUSTOMER_ARCHIVE_URL: z.string().url().optional(),
+    // Outgoing mail (confirmation links, passport reminders) - optional, see src/lib/mail/mailer.ts
+    SMTP_HOST: z.string().optional(),
+    SMTP_PORT: z.string().regex(/^\d*$/, 'SMTP_PORT must be a number').optional(),
+    SMTP_SECURE: z.enum(['true', 'false', '']).optional(),
+    SMTP_USER: z.string().optional(),
+    SMTP_PASSWORD: z.string().optional(),
+    SMTP_ALLOW_INSECURE: z.enum(['true', 'false', '']).optional(),
+    MAIL_FROM: z.string().optional(),
     // In-app background refresh of the reference datasets (default: on in production);
     // empty means "use the default", as in .env.example
     DATASET_AUTO_REFRESH: z.enum(['true', 'false', '']).optional(),

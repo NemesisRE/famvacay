@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db/prisma';
 import { RATE_LIMITS, rateLimitByClient } from '@/lib/security/rate-limit';
+import { sendEmailConfirmation } from '@/lib/auth/email-verification';
+import { isMailConfigured } from '@/lib/mail/mailer';
 
 export async function POST(req: NextRequest) {
   const limited = await rateLimitByClient(req, RATE_LIMITS.register);
   if (limited) return limited;
   try {
-    const { email, password, name } = await req.json();
+    const { email, password, name, locale } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json(
@@ -52,8 +54,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Confirmation link in the background: registration never waits for (or fails on) the mail
+    const verificationSent = isMailConfigured();
+    if (verificationSent) {
+      void sendEmailConfirmation({ purpose: 'verify', userId: user.id, email: cleanEmail, locale });
+    }
+
     return NextResponse.json(
-      { success: true, message: 'Account registered successfully.', user },
+      { success: true, message: 'Account registered successfully.', user, verificationSent },
       { status: 201 }
     );
   } catch (error: any) {

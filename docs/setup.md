@@ -36,6 +36,7 @@ Edit `.env`. At least these values must be set for a public instance:
 | `UMAMI_APP_SECRET` | A random secret: `openssl rand -base64 32` |
 | `LEGAL_*` | Operator details for the imprint and privacy policy (see [3.4](#34-imprint--privacy-policy)) |
 | `PROXY_NETWORK_NAME` | The Docker network of your reverse proxy (see [2.2](#22-proxy-network)) |
+| `SMTP_*`, `MAIL_FROM` | Recommended: a mail server for confirmation links and passport reminders (see [2.5](#25-email-optional)) |
 
 > [!CAUTION]
 > Change the passwords **before the first start**. PostgreSQL stores `POSTGRES_PASSWORD` when it
@@ -79,7 +80,26 @@ Analytics stay off until a website ID is configured.
 
 The tracker is served first-party through the app (`/stats/*`), so visitors' browsers never contact the Umami domain. How visitors are asked depends on `NEXT_PUBLIC_COOKIE_BANNER_MODE` (see [3.5](#35-cookie-banner--analytics)).
 
-### 2.5 Updates
+### 2.5 Email (optional)
+
+With a mail server configured, FamVacay
+
+- sends a confirmation link after registration; the account settings show whether the address is confirmed,
+- changes an account's address only after the new address confirmed it,
+- mails passport reminders 6 months and 1 month before a passport stored in a family profile expires (only with the profile's passport check switched on, only to confirmed addresses).
+
+Set `SMTP_HOST`, `MAIL_FROM` and, if your server needs a login, `SMTP_USER` / `SMTP_PASSWORD` (see [3.6](#36-email)), then `docker compose up -d` again. Port 587 requires STARTTLS, port 465 uses implicit TLS; plain-text SMTP is refused unless `SMTP_ALLOW_INSECURE=true`.
+
+> [!NOTE]
+> Without a mail server everything else works: addresses simply stay unconfirmed, address changes
+> apply directly, and passport warnings appear only on the search results.
+
+> [!IMPORTANT]
+> Use a sender domain with SPF, DKIM and DMARC set up (most mail providers guide you through it),
+> otherwise confirmation mails end up in spam. The privacy policy gains an email section
+> automatically once mail is configured.
+
+### 2.6 Updates
 
 ```bash
 git pull
@@ -93,7 +113,7 @@ The `migrate` service applies new database migrations on every start before the 
 > `ghcr.io/nemesisre/famvacay:<version>`. That is the app image only; the database migrations run
 > from the `migrator` build target of the `Dockerfile`, which `docker-compose.yml` builds for you.
 
-### 2.6 Backups
+### 2.7 Backups
 
 All state lives in PostgreSQL (the cache can be lost at any time). Back up both databases, the app's and Umami's:
 
@@ -183,7 +203,18 @@ The imprint (§5 DDG) and privacy policy (Art. 13/14 GDPR) are generated from th
 | `UMAMI_APP_SECRET` | `changeme-umami-secret-min32chars` | Compose only: Umami's own secret. |
 | `UMAMI_DB` | `famvacay_umami` | Compose only: Umami's database on the bundled PostgreSQL, created by `db-init`. |
 
-### 3.6 Docker Compose networking
+### 3.6 Email
+
+| Variable | Default | Description |
+|---|---|---|
+| `SMTP_HOST` | - | Mail server. Mail is off while it or `MAIL_FROM` is empty. |
+| `SMTP_PORT` | `587` | `587` (STARTTLS, required) or `465` (implicit TLS). |
+| `SMTP_SECURE` | `true` on port 465 | `true` for implicit TLS on another port. |
+| `SMTP_USER` / `SMTP_PASSWORD` | - | Login, if the server needs one. |
+| `MAIL_FROM` | - | Sender, e.g. `FamVacay <noreply@famvacay.example.org>`. |
+| `SMTP_ALLOW_INSECURE` | `false` | `true` allows SMTP without TLS - only for a relay on your own network (e.g. Mailpit for testing). |
+
+### 3.7 Docker Compose networking
 
 | Variable | Default | Description |
 |---|---|---|

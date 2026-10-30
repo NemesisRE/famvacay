@@ -91,6 +91,7 @@ import { BoardTypeSelect, OverlandDurationSelect } from '@/components/forms/Pref
 import { isAllStylesSelection, toggleStyleSelection, readStoredStyles, getClimateRelevance } from '@/lib/optimizer/style-selection';
 import { VacationStyleTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
 import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/destination-points';
+import { passportWarningsForTrip, type PassportHolder } from '@/lib/passport/validity';
 import { DateRangePicker } from '@/components/calendar/DateRangePicker';
 import { getCategoryBadges, getVehicleBadge } from '@/components/ui/badge-styles';
 
@@ -211,6 +212,8 @@ export default function HomePage() {
   const [results, setResults] = useState<CandidateWindow[] | null>(null);
   // Progressive search: more destinations are searched after the first results are shown
   const [backgroundSearch, setBackgroundSearch] = useState<BackgroundSearchState>({ status: 'idle' });
+  // Passports from the family profile (only with its passport check on): warnings on result cards
+  const [passportHolders, setPassportHolders] = useState<PassportHolder[]>([]);
   // Phones and tablets (form above results): the search form folds away after a search
   const [constraintsCollapsed, setConstraintsCollapsed] = useState(false);
   const searchRunRef = useRef(0);
@@ -803,6 +806,23 @@ export default function HomePage() {
 
           if (Array.isArray(p.originAirports)) {
             setOriginAirports(p.originAirports);
+          }
+
+          // Labelled like the profile form: name, or "Adult 1" / "Child 2"
+          if (p.passportCheckRequired && Array.isArray(p.members)) {
+            const counters = { adult: 0, child: 0 };
+            const holders: PassportHolder[] = [];
+            for (const m of p.members) {
+              const isChild = m.role === 'CHILD' || m.role === 'INFANT';
+              const n = isChild ? ++counters.child : ++counters.adult;
+              if (!m.passportExpiry) continue;
+              const label =
+                m.displayName?.trim() ||
+                m.firstName?.trim() ||
+                (isChild ? t.mail.travellerChild : t.mail.travellerAdult).replace('{n}', String(n));
+              holders.push({ label, expiry: String(m.passportExpiry).slice(0, 10) });
+            }
+            setPassportHolders(holders);
           }
 
           if (Array.isArray(p.members) && p.members.length > 0) {
@@ -1853,6 +1873,30 @@ export default function HomePage() {
             </div>
           </div>
         )}
+
+        {/* Passport validity (family profile with passport check, trips outside free movement) */}
+        {(() => {
+          const destCountry = getDestinationPoint(destinationKey(win), locale)?.state?.split('-')[0];
+          const expiring = passportWarningsForTrip(passportHolders, win.endDate, country, destCountry);
+          if (expiring.length === 0) return null;
+          return (
+            <div
+              data-testid="passport-warning"
+              className="mt-3 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/60 flex items-start gap-2 text-xs text-amber-900 dark:text-amber-200"
+            >
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold block">{t.home.passportWarningTitle}</span>
+                {expiring.map((h) => (
+                  <span key={h.label} className="block text-[11px] text-amber-800 dark:text-amber-300">
+                    {t.home.passportWarningMember.replace('{name}', h.label).replace('{date}', formatLocalizedDate(h.expiry))}
+                  </span>
+                ))}
+                <span className="block text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">{t.home.passportWarningHint}</span>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Localized Seasonal Warning Banner */}
         {getWindowSeasonalWarnings(win).map((warning, wIdx) => {

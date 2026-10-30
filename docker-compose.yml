@@ -74,6 +74,14 @@ services:
       - DATASET_AUTO_REFRESH=${DATASET_AUTO_REFRESH:-true}
       # Paid Open-Meteo plan (needed for rain-duration data with LEGAL_OPERATION_MODE=commercial)
       - OPEN_METEO_API_KEY=${OPEN_METEO_API_KEY:-}
+      # Outgoing mail: confirmation links and passport reminders (off while SMTP_HOST is empty)
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SECURE=${SMTP_SECURE:-}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_ALLOW_INSECURE=${SMTP_ALLOW_INSECURE:-false}
+      - MAIL_FROM=${MAIL_FROM:-}
       # Optional third-party sign-in (enabled only when both values of a provider are set)
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}

@@ -14,13 +14,15 @@ interface PrivacyContentProps {
   analyticsEnabled: boolean;
   /** Third-party sign-in providers actually configured (runtime), e.g. ['Google']. */
   oauthProviders: string[];
+  /** SMTP configured (runtime): confirmation links and passport reminders are mailed */
+  mailEnabled: boolean;
 }
 
 /**
  * Datenschutzerklärung per Art. 13 GDPR. Every section only states what this deployment really
  * does - optional features (analytics, OAuth, DPA) appear only when configured.
  */
-export function PrivacyContent({ legal, analyticsEnabled, oauthProviders }: PrivacyContentProps) {
+export function PrivacyContent({ legal, analyticsEnabled, oauthProviders, mailEnabled }: PrivacyContentProps) {
   const { t } = useI18n();
   const umamiDisabled = useUmamiDisabled();
 
@@ -65,6 +67,8 @@ export function PrivacyContent({ legal, analyticsEnabled, oauthProviders }: Priv
       </section>
 
       {section(t.legal.accountDataSectionTitle, t.legal.accountDataNotice)}
+      {section(t.legal.passportSectionTitle, t.legal.passportNotice)}
+      {mailEnabled && section(t.legal.emailSectionTitle, t.legal.emailNotice)}
       {section(t.legal.passkeysSectionTitle, t.legal.passkeysNotice)}
       {oauthProviders.length > 0 &&
         section(`${t.legal.oauthSectionTitle.replace(/\(.*\)/, '').trim()} (${oauthProviders.join(' / ')})`, t.legal.oauthNotice)}
