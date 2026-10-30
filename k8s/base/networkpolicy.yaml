@@ -78,7 +78,7 @@ spec:
         - protocol: TCP
           port: 3000
   egress:
-    # Umami needs its own Postgres database (see k8s/umami-deployment.yaml)
+    # Umami needs its own Postgres database (see k8s/base/umami-deployment.yaml)
     - to:
         - podSelector:
             matchLabels:

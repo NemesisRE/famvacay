@@ -16,8 +16,8 @@ spec:
         app: famvacay-redis
     spec:
       containers:
-        - name: redis
-          image: redis:7-alpine
+        - name: valkey
+          image: valkey/valkey:9-alpine@sha256:bf09d58e96d6b4524a15396b65b242bbe18beebbcc15a04d8ee75ddac62fae0b
           ports:
             - containerPort: 6379
               name: redis
@@ -30,12 +30,12 @@ spec:
               memory: 256Mi
           readinessProbe:
             exec:
-              command: ["redis-cli", "ping"]
+              command: ["valkey-cli", "ping"]
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             exec:
-              command: ["redis-cli", "ping"]
+              command: ["valkey-cli", "ping"]
             initialDelaySeconds: 5
             periodSeconds: 10
 ---
