@@ -1,4 +1,5 @@
 import { GlobalPlaceEntity, PlaceCategory } from './places-data';
+import { photonLanguage, photonSearch } from './photon';
 import {
   getAirportByIata,
   getRecommendedAirportsForCoordinates,
@@ -8,6 +9,9 @@ import {
 } from '../airports/airport-service';
 
 export * from './places-data';
+
+/** OSM place types too small to be a destination of their own */
+const TOO_SMALL_PLACES = new Set(['hamlet', 'isolated_dwelling', 'farm', 'plot', 'neighbourhood', 'quarter', 'suburb', 'locality', 'city_block']);
 
 /**
  * Searches and autocompletes places worldwide dynamically via runtime geocoding
@@ -23,7 +27,8 @@ export async function searchGlobalPlaces(
   if (!q || q.length < 2) return [];
 
   const loc = ((locale || 'en').slice(0, 2) as 'en' | 'de' | 'fr' | 'es' | 'it') || 'en';
-  const cacheKey = `geo:places:${loc}:${q.toLowerCase()}`;
+  // Results depend on the Photon language (es/it get local names), not the interface locale itself
+  const cacheKey = `geo:places:v2:${photonLanguage(loc)}:${q.toLowerCase()}`;
 
   let cached: GlobalPlaceEntity[] | null = null;
   let setCachedFn: any = null;
@@ -72,78 +77,28 @@ export async function searchGlobalPlaces(
     }
   }
 
-  // 2. Dynamic runtime geocoding via OpenStreetMap Nominatim with Photon fallback
-  let rawGeocodedItems: any[] = [];
-
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2800);
-
-    const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-      q
-    )}&format=json&limit=${Math.min(limit, 8)}&addressdetails=1`;
-
-    const res = await fetch(nominatimUrl, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'FamVacay/1.0 (self-hosted global vacation optimizer)',
-        'Accept-Language': `${locale},en`,
+  // 2. Dynamic runtime geocoding via Photon: this backs a search-as-you-type field, which the
+  //    public Nominatim server's usage policy forbids
+  //    Only places, boundaries and natural features above hamlet level: Photon also finds radio
+  //    studios, stations and restaurants named after a place
+  const rawGeocodedItems: any[] = (await photonSearch(q, { locale: loc, limit: 12, timeoutMs: 2800 }))
+    .filter(
+      ({ properties: p }) =>
+        ['place', 'boundary', 'natural'].includes(p.osm_key || '') && !TOO_SMALL_PLACES.has(p.osm_value || '')
+    )
+    .map(({ lat, lon, properties: p }) => ({
+      lat,
+      lon,
+      name: p.name,
+      type: p.osm_value || p.type,
+      class: p.osm_key,
+      address: {
+        country: p.country,
+        country_code: p.countrycode,
+        state: p.state,
+        city: p.city,
       },
-    });
-
-    clearTimeout(timeout);
-
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        rawGeocodedItems = data;
-      }
-    }
-  } catch {
-    // Fall through to Photon fallback
-  }
-
-  // Photon fallback if Nominatim returned 0 items
-  if (rawGeocodedItems.length === 0) {
-    try {
-      const photonController = new AbortController();
-      const pTimeout = setTimeout(() => photonController.abort(), 2800);
-
-      const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(
-        q
-      )}&limit=${Math.min(limit, 8)}&lang=${loc}`;
-
-      const pRes = await fetch(photonUrl, {
-        signal: photonController.signal,
-        headers: {
-          'User-Agent': 'FamVacay/1.0',
-        },
-      });
-
-      clearTimeout(pTimeout);
-
-      if (pRes.ok) {
-        const pData = await pRes.json();
-        if (pData?.features && Array.isArray(pData.features)) {
-          rawGeocodedItems = pData.features.map((f: any) => ({
-            lat: f.geometry?.coordinates?.[1],
-            lon: f.geometry?.coordinates?.[0],
-            name: f.properties?.name,
-            type: f.properties?.osm_value || f.properties?.type,
-            class: f.properties?.osm_key,
-            address: {
-              country: f.properties?.country,
-              country_code: f.properties?.countrycode,
-              state: f.properties?.state,
-              city: f.properties?.city,
-            },
-          }));
-        }
-      }
-    } catch {
-      // Return whatever we have
-    }
-  }
+    }));
 
   // Process raw geocoded places
   for (const item of rawGeocodedItems) {

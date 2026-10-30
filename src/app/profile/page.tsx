@@ -484,6 +484,7 @@ export default function FamilyProfilePage() {
                     applyLocation(loc, coords, data);
                   }}
                   placeholder={t.home.departureLocationPlaceholder}
+                  countryHint={country}
                 />
               </div>
 

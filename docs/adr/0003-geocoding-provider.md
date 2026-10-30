@@ -26,13 +26,10 @@ OpenStreetMap offers two primary geocoding technologies:
    - Client displays human-readable names (`"City, Region, Country"`), never raw coordinates or bare postal codes.
 
 ## Implementation status (2026-10-30)
-
-> [!WARNING]
-> Not implemented as decided. `src/lib/geo/geocoding.ts` (departure autocomplete) and
-> `src/lib/geo/places.ts` (destination autocomplete) query the public Nominatim server first and
-> Photon only as a fallback, with hardcoded URLs - `PHOTON_API_URL` is validated but not read.
-> Photon results carry no ISO 3166-2 region code, which the departure field uses to preselect the
-> school region, so swapping the order needs that mapping first.
+Implemented: `src/lib/geo/photon.ts` is the only forward geocoder (`geocoding.ts` for the departure location, `places.ts` for destinations), reading `PHOTON_API_URL`. Nominatim remains for reverse geocoding on an explicit "My location" click.
+- Photon has no ISO 3166-2 codes, so the holiday region is matched from the subdivision name against the ISO data's local names. When the localized name does not match ("Bavaria"), the same search runs once more with local names (`lang=default`) and the result is matched by OSM id.
+- The public server has names in English, German and French only; Spanish and Italian interfaces get local names.
+- A bare postcode is ambiguous worldwide, so searches are biased towards the home country chosen in the form (`lat`/`lon` at `zoom=5`).
 
 ## Consequences
 - Complies 100% with OpenStreetMap Foundation usage policies.

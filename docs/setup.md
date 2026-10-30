@@ -11,7 +11,7 @@ This guide covers a production deployment with Docker Compose or Kubernetes, eve
 - **A domain** for the app, and optionally a second one for the Umami analytics dashboard.
 - The services in `docker-compose.yml` bring everything else: PostgreSQL 16, Valkey 9 (any Redis-compatible cache works), the migration job and Umami.
 
-Outbound internet access is needed at runtime: holiday calendars (OpenHolidays, Nager.Date), geocoding (OpenStreetMap Nominatim / Photon), driving times (OSRM), travel advisories and the background refresh of the reference data.
+Outbound internet access is needed at runtime: holiday calendars (OpenHolidays, Nager.Date), geocoding (Photon, OpenStreetMap Nominatim), driving times (OSRM), travel advisories and the background refresh of the reference data.
 
 ---
 
@@ -142,7 +142,7 @@ Defaults are the application's own; where `docker-compose.yml` sets a different 
 |---|---|---|
 | `OPEN_HOLIDAYS_API_URL` | `https://openholidaysapi.org` | School and public holiday calendars. |
 | `NAGER_DATE_API_URL` | `https://date.nager.at/api/v3` | Public holidays for countries without OpenHolidays coverage. |
-| `PHOTON_API_URL` | `https://photon.komoot.io/api` | Reserved for a self-hosted Photon geocoder. The geocoder currently calls the public Nominatim and Photon servers directly and does not read this value yet. |
+| `PHOTON_API_URL` | `https://photon.komoot.io/api` | Photon geocoder for the location and destination search. Point it at your own [Photon](https://github.com/komoot/photon) instance for heavy use or to keep searches on your own infrastructure. |
 | `OSRM_BASE_URL` | `https://router.project-osrm.org` | Routing service for driving times (public OSRM demo server by default, or your own instance). |
 | `OPEN_METEO_ARCHIVE_URL` | `https://archive-api.open-meteo.com/v1/archive` | Open-Meteo archive for the rain-duration data (free, non-commercial). |
 | `OPEN_METEO_API_KEY` | - | Paid Open-Meteo plan. With `LEGAL_OPERATION_MODE=commercial`, new rain-duration data is only fetched with a key (from the customer endpoint). |

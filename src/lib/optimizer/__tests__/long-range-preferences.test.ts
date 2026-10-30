@@ -38,6 +38,7 @@ const longRangeSearch = (extra: Partial<TripPlanInput> = {}): TripPlanInput => (
 describe('Long-range trip preferences', () => {
   beforeEach(() => setAdvisoryStore({ timestamp: Date.now(), entries: {} }));
 
+  // The first test builds the long-haul catalog (cold caches): too slow for 5 s in a parallel run
   it('narrows long-haul discovery to the preferred kind of trip', () => {
     const any = resolveDestinationCodes(undefined, ['LONGRANGE'], origin);
     const beach = resolveDestinationCodes(undefined, ['LONGRANGE'], { ...origin, longRangeStyles: ['BEACH'] as DestinationType[] });
@@ -50,7 +51,7 @@ describe('Long-range trip preferences', () => {
     const beachShare = beach.filter((c) => getDestinationVacationStyles(c).includes('BEACH')).length / beach.length;
     const anyShare = any.filter((c) => getDestinationVacationStyles(c).includes('BEACH')).length / any.length;
     expect(beachShare).toBeGreaterThanOrEqual(anyShare);
-  });
+  }, 20000);
 
   it('applies the minimum temperature to long-haul beach destinations of a long-range-only search', () => {
     const hot = optimizeVacationWindows(longRangeSearch({ longRangeStyles: ['BEACH'], minBeachTemp: 30 }), {}, {});
