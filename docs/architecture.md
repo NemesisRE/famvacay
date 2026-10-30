@@ -340,7 +340,7 @@ The pricing engine implements a decoupled provider pattern (`src/lib/pricing/`):
 
 ## Optimization Engine (CSP) & Cost Estimation
 
-The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows $[Start\_Date, End\_Date]$:
+The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows $[\text{startDate}, \text{endDate}]$:
 
 1. **Flexible Duration Exploration**:
    Evaluates window spans across user-defined duration ranges $[\text{durationDaysMin}, \text{durationDaysMax}]$ (e.g. 10 to 14 days), computing Pareto-optimal configurations.
@@ -389,9 +389,9 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
     Evaluates departure airports located in neighboring jurisdictions where schools remain in session, factoring a $30\%$ price advantage.
 11. **Parental Leave Minimization**:
     Calculates consumed PTO:
-    $$\text{PTO\_days} = \text{total\_weekdays} - \text{public\_holidays}$$
-12. **Multi-Objective Scoring**:
-    $$\text{Score} = (w_1 \cdot \text{Price}) + (w_2 \cdot \text{Weather}) + (w_3 \cdot \text{PTO}) - (w_4 \cdot \text{Friction})$$
+    $$\text{PTO\\_days\\_consumed} = \text{total\\_weekdays} - \text{public\\_holidays}$$
+12. **Multi-Objective Scoring** (every index is 0-100, higher is better - the friction index is high for an easy trip, so it is added, not subtracted):
+    $$\text{Score} = (w_1 \cdot \text{Price}) + (w_2 \cdot \text{Weather}) + (w_3 \cdot \text{PTO}) + (w_4 \cdot \text{Friction})$$
 
 ---
 

@@ -120,7 +120,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-famvacay}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-famvacay_secure_password}
       POSTGRES_DB: ${POSTGRES_DB:-famvacay_db}
-      # Separate database for the self-hosted Umami service (see scripts/postgres-init/).
+      # Separate database for the self-hosted Umami service (scripts/postgres-init/, re-checked on
+      # every start by db-init).
       UMAMI_DB: ${UMAMI_DB:-famvacay_umami}
     # No host port mapping: Postgres is reachable only from other containers on
     # backend-internal. For ad-hoc local access use:
@@ -148,6 +149,34 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # One-shot: makes sure Umami's database exists on EVERY start. /docker-entrypoint-initdb.d only
+  # runs on an empty data volume, so a first start interrupted after initdb left Umami without
+  # its database permanently. Same script as the initdb hook, over the network this time.
+  db-init:
+    image: postgres:16-alpine
+    container_name: famvacay-db-init
+    entrypoint: ["/bin/sh", "/docker-entrypoint-initdb.d/01-create-umami-db.sh"]
+    environment:
+      PGHOST: postgres
+      PGPASSWORD: ${POSTGRES_PASSWORD:-famvacay_secure_password}
+      POSTGRES_USER: ${POSTGRES_USER:-famvacay}
+      POSTGRES_DB: ${POSTGRES_DB:-famvacay_db}
+      UMAMI_DB: ${UMAMI_DB:-famvacay_umami}
+    volumes:
+      - ./scripts/postgres-init:/docker-entrypoint-initdb.d:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend-internal
+    user: "70:70" # the image's unprivileged postgres user; psql needs no rights in the container
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
 
   # Cache & Rate Limiting store (Valkey / Dragonfly / Redis wire-compatible)
   cache:
@@ -200,8 +229,9 @@ services:
     # ports:
     #   - "${UMAMI_PORT:-3001}:3000"
     depends_on:
-      postgres:
-        condition: service_healthy
+      # Its database must exist before Umami migrates it (created by db-init on every start)
+      db-init:
+        condition: service_completed_successfully
     networks:
       - backend-internal
       - proxy-network

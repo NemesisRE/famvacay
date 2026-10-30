@@ -32,20 +32,27 @@ Engineered with modern cloud-agnostic standards, FamVacay runs seamlessly on hom
 
 ## Quick Start
 
-### Option A: Docker Compose (Recommended)
+### Option A: Try it locally with Docker Compose
+
+For a look at FamVacay on your own machine - no reverse proxy, no domain, reachable only from this computer:
 
 ```bash
-# 1. Clone repository and create local environment
+# 1. Clone the repository
 git clone https://github.com/NemesisRE/famvacay.git
 cd famvacay
-cp .env.example .env
 
-# 2. Launch the full stack (PostgreSQL 16, Valkey 8, Migration Job, Web App)
-docker compose up -d
+# 2. Generate the session secret (the app refuses to start without a real one)
+echo "NEXTAUTH_SECRET=$(openssl rand -base64 32)" > .env
 
-# 3. Access the web app
-# Visit http://localhost:3000 (local) or your configured APP_URL
+# 3. Launch the full stack (PostgreSQL 16, Valkey 8, migrations, web app, Umami)
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+
+# 4. Open http://localhost:3000 (Umami: http://localhost:3001)
 ```
+
+`docker-compose.local.yml` only publishes the ports on `127.0.0.1` and lets Compose create the network a reverse proxy would otherwise provide. It is **not** a production setup.
+
+> **Running it for real?** A production deployment needs a TLS reverse proxy, your public `APP_URL`, real database and Umami secrets and the legal details for your imprint. Follow the [Setup & Deployment Guide](docs/setup.md) - there is deliberately no copy-paste shortcut for it.
 
 ### Option B: Local Development
 

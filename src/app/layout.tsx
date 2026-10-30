@@ -10,6 +10,8 @@ import { ConsentUiProvider } from '@/lib/consent/cookie-consent-context';
 import { CookiePrivacyBanner } from '@/components/consent/CookiePrivacyBanner';
 import { UmamiAnalytics } from '@/components/analytics/UmamiAnalytics';
 import { ServiceWorkerRegistration } from '@/components/pwa/ServiceWorkerRegistration';
+import { ThemeSync } from '@/components/theme/ThemeSync';
+import { THEME_INIT_SCRIPT } from '@/lib/theme';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.APP_URL || 'https://famvacay.us'),
@@ -43,22 +45,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                const t = localStorage.getItem('famvac_theme');
-                if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                  document.documentElement.classList.add('dark');
-                } else {
-                  document.documentElement.classList.remove('dark');
-                }
-              } catch (_) {}
-            `,
-          }}
-        />
+        {/* Theme before first paint (no flash); ThemeSync keeps it once React has taken over */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased flex flex-col transition-colors">
+        <ThemeSync />
         <AuthProvider>
           <I18nProvider>
             <ConsentUiProvider>

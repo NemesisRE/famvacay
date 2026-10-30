@@ -132,6 +132,8 @@ export function DatePicker({ value, onChange, min, max, id, yearDropdown, cleara
               disabled={disabled.length > 0 ? disabled : undefined}
               defaultMonth={selected || minDate || maxDate}
               captionLayout={yearDropdown ? 'dropdown' : 'label'}
+              // Always six week rows: the popup keeps its height and buttons stay put between months
+              fixedWeeks
               startMonth={yearDropdown ? minDate ?? new Date(now.getFullYear() - 100, 0) : minDate}
               endMonth={yearDropdown ? maxDate ?? new Date(now.getFullYear() + 15, 11) : maxDate}
               className={isSmallScreen ? 'rdp-themed rdp-touch' : 'rdp-themed'}

@@ -123,6 +123,8 @@ export function DateRangePicker({ startDate, endDate, onChange, minDate, classNa
             locale={RDP_LOCALES[locale] || enUS}
             disabled={minDateObj ? { before: minDateObj } : undefined}
             defaultMonth={range.from || minDateObj}
+            // Always six week rows: the popup keeps its height between months
+            fixedWeeks
             className="rdp-themed"
           />
         </div>

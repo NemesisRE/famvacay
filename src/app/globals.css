@@ -151,6 +151,22 @@ body {
 .rdp-themed .rdp-chevron {
   fill: currentColor;
 }
+/*
+ * Month/year dropdowns: the native <select> is an invisible overlay, but its open option list is
+ * drawn by the browser in the select's own colours - on Windows Chrome white unless set explicitly.
+ */
+.rdp-themed .rdp-dropdown,
+.rdp-themed .rdp-dropdown option {
+  color-scheme: light;
+  background-color: #ffffff;
+  color: #1e293b; /* slate-800 */
+}
+.dark .rdp-themed .rdp-dropdown,
+.dark .rdp-themed .rdp-dropdown option {
+  color-scheme: dark;
+  background-color: #1e293b; /* slate-800 */
+  color: #e2e8f0; /* slate-200 */
+}
 /* Phones: finger-sized days, still fitting a 320px screen */
 .rdp-touch {
   --rdp-day_button-height: min(44px, calc((100vw - 56px) / 7));
