@@ -44,10 +44,11 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 256Mi
+              memory: 512Mi
             limits:
               cpu: 1000m
-              memory: 512Mi
+              # One search briefly needs up to ~1 GB of heap (NODE_OPTIONS in the ConfigMap)
+              memory: 2Gi
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false

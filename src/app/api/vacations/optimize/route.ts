@@ -9,6 +9,7 @@ import { loadSourceMarketCalendars } from '@/lib/holidays/source-market-loader';
 import { getCached, setCached } from '@/lib/cache/redis';
 import { ensureTravelAdvisoriesLoaded } from '@/lib/safety/safety-service';
 import { RATE_LIMITS, rateLimitByClient } from '@/lib/security/rate-limit';
+import { runOptimizerTask } from '@/lib/optimizer/run-queue';
 
 export const dynamic = 'force-dynamic';
 
@@ -198,7 +199,13 @@ export async function POST(req: NextRequest) {
     let pending = inFlight.get(cacheKey);
     const isCoalesced = Boolean(pending);
     if (!pending) {
-      pending = runOptimization(body).then(async (payload) => {
+      // One computation at a time per process (memory peaks, see run-queue.ts); identical
+      // searches still share it through inFlight.
+      pending = runOptimizerTask(
+        () => runOptimization(body),
+        // Background discovery waits behind anyone still waiting for their first results
+        body.discoveryScope === 'extended' ? 'low' : 'high'
+      ).then(async (payload) => {
         // Cache computed results in Valkey for 10 minutes (600s)
         await setCached(cacheKey, payload, 600).catch(() => {});
         return payload;

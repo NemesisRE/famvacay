@@ -68,6 +68,8 @@ First stable release.
   initialization and Umami; hardened containers on an internal network without host ports.
 - Local quick start (`docker-compose.local.yml`) and Kubernetes manifests (Kustomize, Gateway API
   or Ingress, NetworkPolicy, PodDisruptionBudget).
+- Searches computed one at a time per process (interactive before background discovery), with
+  a 2 GB web container and a 1.5 GB heap: one search briefly needs up to ~1 GB.
 - Liveness (`/api/health`) and readiness (`/api/ready`) probes, graceful shutdown, rate limiting,
   reverse-proxy header hardening (`TRUST_PROXY`, `TRUSTED_PROXY_HOPS`, RFC 7239).
 - Multi-arch release images (`linux/amd64`, `linux/arm64`) for the app and the database

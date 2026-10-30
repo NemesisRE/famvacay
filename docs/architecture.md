@@ -356,4 +356,6 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
 | `GET` | `/api/health` | Liveness probe: returns HTTP 200 without downstream dependency checks |
 | `GET` | `/api/ready` | Readiness probe: validates PostgreSQL and cache connectivity |
 
+Searches are computed one at a time per process (`src/lib/optimizer/run-queue.ts`, `OPTIMIZER_CONCURRENCY`): one search briefly needs up to ~1 GB of heap while it builds and prunes its candidate windows, and the synchronous optimizer gains nothing from running several at once. Interactive searches go before background discovery; identical searches share one computation and results are cached for 10 minutes.
+
 Rate limits (per client, kept in the cache) protect sign-in (per IP and per email), registration, confirmation links, sending confirmation mails, sharing and the optimizer (`src/lib/security/rate-limit.ts`).
