@@ -61,12 +61,16 @@ or set `PROXY_NETWORK_NAME` in `.env` to the network your reverse proxy already 
 ### 2.3 Start
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
-Compose builds the app image from the checked-out source and starts, in order: PostgreSQL, `db-init` (creates Umami's database if it is missing), `migrate` (applies the Prisma migrations), Valkey, Umami and the web app. Both one-shot services exit with code 0 when they are done. `docker compose ps` shows the web app as `healthy` once `/api/ready` reaches the database and the cache.
+Compose pulls the released multi-arch images (`ghcr.io/nemesisre/famvacay` and `ghcr.io/nemesisre/famvacay-migrator`, tag `FAMVACAY_VERSION`, default `1` = the latest 1.x release) and starts, in order: PostgreSQL, `db-init` (creates Umami's database if it is missing), `migrate` (applies the Prisma migrations), Valkey, Umami and the web app. Both one-shot services exit with code 0 when they are done. `docker compose ps` shows the web app as `healthy` once `/api/ready` reaches the database and the cache.
 
 Then point your reverse proxy at `famvacay-web:3000` (see [4. Reverse Proxy Configuration](#4-reverse-proxy-configuration)).
+
+> [!TIP]
+> To run your own changes, build from the checkout instead: `docker compose up -d --build`. Compose
+> also falls back to building when an image cannot be pulled.
 
 ### 2.4 Set up Umami analytics (optional)
 
@@ -82,16 +86,17 @@ The tracker is served first-party through the app (`/stats/*`), so visitors' bro
 ### 2.5 Updates
 
 ```bash
-git pull
-docker compose up -d --build
+git pull                 # the compose file and scripts of the new release
+docker compose pull      # the images of FAMVACAY_VERSION
+docker compose up -d
 ```
 
 The `migrate` service applies new database migrations on every start before the web app comes up. Read the [release notes](https://github.com/NemesisRE/famvacay/releases) before updating: breaking changes are listed there first.
 
 > [!NOTE]
-> Released versions are also published as multi-arch images (`linux/amd64`, `linux/arm64`) at
-> `ghcr.io/nemesisre/famvacay:<version>`. That is the app image only; the database migrations run
-> from the `migrator` build target of the `Dockerfile`, which `docker-compose.yml` builds for you.
+> Pin an exact release with `FAMVACAY_VERSION=1.2.3` in `.env` to update only when you choose to;
+> the default `1` follows every 1.x release on `docker compose pull`. A new major version (`2`) is
+> never pulled automatically.
 
 ### 2.6 Backups
 
@@ -187,6 +192,7 @@ The imprint (§5 DDG) and privacy policy (Art. 13/14 GDPR) are generated from th
 
 | Variable | Default | Description |
 |---|---|---|
+| `FAMVACAY_VERSION` | `1` | Release of the app and migrator images to run: `1` follows the latest 1.x release, `1.2.3` pins one. |
 | `PROXY_NETWORK_NAME` | `proxy-network` | Name of the **external** Docker network shared with your reverse proxy (the web app and Umami join it). It must exist before `docker compose up` - see [2.2](#22-proxy-network). |
 | `WEB_PORT` / `UMAMI_PORT` | `3000` / `3001` | Host ports, used only by `docker-compose.local.yml` or after uncommenting the `ports:` entries in `docker-compose.yml` (for a reverse proxy running directly on the host). |
 
@@ -314,14 +320,7 @@ If using Pangolin's Newt connector with Docker labels, you can declare proxy res
 
 The manifests in `k8s/base/` (Kustomize, with a `production` overlay in `k8s/overlays/production/`) deploy the same stack: the web app (2 replicas, 3 in the `production` overlay) with a PodDisruptionBudget, the migration Job, PostgreSQL (StatefulSet), Valkey, Umami, a NetworkPolicy, and both an Ingress and a Gateway API `HTTPRoute` - keep the one your cluster uses.
 
-1. **Images:** build both targets of the `Dockerfile` and push them to a registry your cluster can pull from:
-
-   ```bash
-   docker buildx build --platform linux/amd64,linux/arm64 --target runner   -t registry.example.org/famvacay:1.0.0 --push .
-   docker buildx build --platform linux/amd64,linux/arm64 --target migrator -t registry.example.org/famvacay-migrator:1.0.0 --push .
-   ```
-
-   Then point the manifests at them with an `images:` entry in your overlay (`famvacay:latest` → the runner image, `famvacay:migrator` → the migrator image). The released `ghcr.io/nemesisre/famvacay:<version>` image can replace the runner image.
+1. **Images:** the manifests use the released `ghcr.io/nemesisre/famvacay` and `ghcr.io/nemesisre/famvacay-migrator` images (`linux/amd64` and `linux/arm64`). Change the version for both with an `images:` entry in your overlay. For your own build, push both `Dockerfile` targets (`runner`, `migrator`) to your registry and point the same `images:` entry at them.
 2. **Configuration:** set your domain and the `LEGAL_*` values in `k8s/base/configmap.yaml` (or an overlay patch) and replace every placeholder in `k8s/base/secret.yaml` - better: create the secret from a secret manager instead of committing it.
 3. **Umami database:** the PostgreSQL StatefulSet has no init scripts. Create Umami's database once before the first deploy:
 

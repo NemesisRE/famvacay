@@ -31,7 +31,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: famvacay:latest
+          image: ghcr.io/nemesisre/famvacay:1.0.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000

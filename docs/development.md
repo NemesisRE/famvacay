@@ -138,7 +138,8 @@ without a pull request do not appear in the release notes.
 To release, open the draft under **Releases**, check the notes and the version, and click
 **Publish release**. Publishing creates the `vX.Y.Z` tag, and the CI pipeline then builds the
 `linux/amd64` and `linux/arm64` images and pushes them to
-`ghcr.io/nemesisre/famvacay` as `X.Y.Z`, `X.Y`, `X` and `latest`.
+`ghcr.io/nemesisre/famvacay` (app) and `ghcr.io/nemesisre/famvacay-migrator` (database migrations)
+as `X.Y.Z`, `X.Y`, `X` and `latest`.
 
 Labels themselves are defined in `.github/labels.yml` and synced by the *Sync Labels* workflow.
 
