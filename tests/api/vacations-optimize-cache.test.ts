@@ -21,6 +21,7 @@ vi.mock('@/lib/integrations/open-holidays', () => ({
 vi.mock('@/lib/safety/safety-service', () => ({ ensureTravelAdvisoriesLoaded: vi.fn(async () => {}) }));
 vi.mock('@/lib/holidays/source-market-loader', () => ({ loadSourceMarketCalendars: vi.fn(async () => []) }));
 vi.mock('@/lib/optimizer/engine', () => ({ optimizeVacationWindows: vi.fn(() => []) }));
+vi.mock('@/lib/optimizer/destinations', () => ({ validateDestinationInput: vi.fn(async () => {}) }));
 
 const { POST } = await import('@/app/api/vacations/optimize/route');
 const { getCached } = await import('@/lib/cache/redis');
