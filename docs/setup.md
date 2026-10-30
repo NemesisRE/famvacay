@@ -228,7 +228,7 @@ The imprint (§5 DDG) and privacy policy (Art. 13/14 GDPR) are generated from th
 | `FAMVACAY_VERSION` | `1` | Release of the app and migrator images to run: `1` follows the latest 1.x release, `1.2.3` pins one. |
 | `PROXY_NETWORK_NAME` | `proxy-network` | Name of the **external** Docker network shared with your reverse proxy (the web app and Umami join it). It must exist before `docker compose up` - see [2.2](#22-proxy-network). |
 | `WEB_MEMORY_LIMIT` / `WEB_HEAP_MB` | `2048M` / `1536` | Memory limit of the web container and its Node.js heap (`--max-old-space-size`); keep the heap at about 75 % of the limit. |
-| `WEB_PORT` / `UMAMI_PORT` | `3000` / `3001` | Host ports, used only by `docker-compose.local.yml` or after uncommenting the `ports:` entries in `docker-compose.yml` (for a reverse proxy running directly on the host). |
+| `WEB_PORT` / `UMAMI_PORT` | `3000` / `3001` | Host ports of the local quick start (`docker-compose.local.yml`, bound to `127.0.0.1`). `docker-compose.yml` publishes no ports. |
 
 ---
 
@@ -236,10 +236,10 @@ The imprint (§5 DDG) and privacy policy (Art. 13/14 GDPR) are generated from th
 
 FamVacay serves plain HTTP on port `3000`. Your reverse proxy **must** terminate TLS, keep `TRUST_PROXY=true`, and forward the proxy headers accurately.
 
-> [!TIP]
-> A reverse proxy in a container on the proxy network reaches the app as `famvacay-web:3000`.
-> A proxy installed directly on the host (the Nginx and Caddy examples below use `127.0.0.1:3000`)
-> needs a host port: uncomment the `ports:` entry of the `web` service in `docker-compose.yml`.
+> [!IMPORTANT]
+> `docker-compose.yml` publishes no host ports: the reverse proxy runs as a container on the proxy
+> network (see [2.2](#22-proxy-network)) and reaches the app as `famvacay-web:3000` and Umami as
+> `famvacay-umami:3000`. Nothing of FamVacay is reachable from outside except through it.
 
 ### 4.1 Traefik (v3)
 
@@ -276,7 +276,7 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/famvacay.us/privkey.pem;
 
     location / {
-        proxy_pass http://127.0.0.1:3000;
+        proxy_pass http://famvacay-web:3000;
         proxy_http_version 1.1;
         
         # Mandatory Forwarded Headers
@@ -301,7 +301,7 @@ In the Nginx Proxy Manager UI:
 1. **Details:**
    - Domain Names: `famvacay.us`
    - Scheme: `http`
-   - Forward Hostname / IP: `famvacay-web` (or `127.0.0.1`)
+   - Forward Hostname / IP: `famvacay-web`
    - Forward Port: `3000`
    - Enable: **Cache Assets**, **Block Common Exploits**, **Websockets Support**.
 2. **SSL:**
@@ -320,7 +320,7 @@ In the Nginx Proxy Manager UI:
 
 ```caddyfile
 famvacay.us {
-    reverse_proxy 127.0.0.1:3000 {
+    reverse_proxy famvacay-web:3000 {
         header_up Host {host}
         header_up X-Forwarded-Host {host}
         header_up X-Forwarded-Proto {scheme}
@@ -346,7 +346,7 @@ Both the FamVacay application and the self-hosted Umami analytics service join t
    - **Protocol**: HTTP
    - **Public Domain**: e.g., `analytics.famvacay.us` or `umami.kurz.casa`
 
-If using Pangolin's Newt connector with Docker labels, you can declare proxy resources directly in `docker-compose.yml` or bind a host port (`UMAMI_PORT=3001` in `.env`) if your proxy runs in host network mode.
+If using Pangolin's Newt connector with Docker labels, you can declare proxy resources directly in `docker-compose.yml`.
 
 ---
 
