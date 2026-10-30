@@ -7,43 +7,40 @@ This document outlines the architectural patterns, data models, authentication f
 ## High-Level Topology
 
 ```
-                      +-----------------------------------+
-                      |   Host Reverse Proxy (TLS / 443)  |
-                      |   Traefik / Nginx / NPM / Caddy   |
-                      +-----------------+-----------------+
-                                        | Plain HTTP (Port 3000)
-                                        | Headers: X-Forwarded-Host, Proto, For
-                                        v
-+-----------------------------------------------------------------------------------+
-| Container Network: proxy-network                                                  |
-|                                                                                   |
-|   +---------------------------------------------------------------------------+   |
-|   | Next.js Standalone Container (famvacay-web, UID 10001: nextjs)           |   |
-|   |                                                                           |   |
-|   |  * Proxy Header Resolver (src/lib/proxy/headers.ts)                       |   |
-|   |  * Multi-Provider NextAuth & WebAuthn / Passkeys (src/lib/auth/)          |   |
-|   |  * Account & Credential Management (src/app/api/account/)                 |   |
-|   |  * Dynamic Airport & Flight Corridor Engine (airport-service.ts)          |   |
-|   |  * Forward Geocoding Engine (src/lib/geo/geocoding.ts)                    |   |
-|   |  * Multi-Destination Resolver (src/lib/optimizer/destinations.ts)         |   |
-|   |  * CSP Vacation Optimizer Engine (src/lib/optimizer/engine.ts)            |   |
-|   |  * Internationalization Context & Catalogs (src/lib/i18n/)                |   |
-|   +-------------------------------------+-------------------------------------+   |
-+-----------------------------------------|-----------------------------------------+
-                                          |
-+-----------------------------------------|-----------------------------------------+
-| Container Network: backend-internal (internal: true, zero host exposure)          |
-|                                         |                                         |
-|         +-------------------------------+-------------------------------+         |
-|         |                                                               |         |
-|         v                                                               v         |
-|  +--------------------+                                         +---------------+ |
-|  | PostgreSQL 16      |                                         | Redis 7       | |
-|  | Prisma Schema      |                                         | Cache Engine  | |
-|  | Port 5432 (expose) |                                         | Port 6379     | |
-|  +--------------------+                                         +---------------+ |
+                 +--------------------------------------------------+
+                 |  Reverse Proxy (TLS / 443)                       |
+                 |  Traefik / Nginx / NPM / Caddy / Pangolin        |
+                 +------------+----------------------+--------------+
+                              | app domain           | analytics domain (optional)
+                              | plain HTTP :3000     | plain HTTP :3000
++-----------------------------|----------------------|------------------------------+
+| proxy-network (external)    v                      v                              |
+|   +--------------------------------------+   +-------------------------------+   |
+|   | famvacay-web (Next.js standalone,    |   | famvacay-umami                |   |
+|   | UID 10001, read-only root fs)        |-->| cookieless analytics          |   |
+|   |  * Proxy headers (src/lib/proxy/)    |   | (/stats/* proxied first-party |   |
+|   |  * NextAuth + passkeys (src/lib/auth)|   |  by the web app)              |   |
+|   |  * Optimizer (src/lib/optimizer/)    |   +---------------+---------------+   |
+|   |  * Airports, routes, geocoding       |                   |                   |
+|   |  * Dataset refresh (src/lib/datasets)|                   |                   |
+|   |  * i18n (src/lib/i18n/)              |                   |                   |
+|   +------------------+-------------------+                   |                   |
++----------------------|---------------------------------------|-------------------+
+                       |                                       |
++----------------------|---------------------------------------|-------------------+
+| backend-internal (internal: true - no host ports, no internet)                    |
+|                      v                                       v                   |
+|   +-------------------+   +-----------------------------------------------+      |
+|   | Valkey 9          |   | PostgreSQL 16                                 |      |
+|   | cache, rate limits|   |  famvacay_db (app)  +  famvacay_umami (Umami) |      |
+|   +-------------------+   +-----------------------------------------------+      |
+|                              ^ one-shot on every start:                          |
+|                              |  db-init (creates Umami's database if missing)    |
+|                              |  migrate (prisma migrate deploy)                  |
 +-----------------------------------------------------------------------------------+
 ```
+
+The web app reaches the internet (holiday calendars, geocoding, routing, dataset sources) through `proxy-network`; `backend-internal` has no outbound access.
 
 ---
 
@@ -58,7 +55,8 @@ This document outlines the architectural patterns, data models, authentication f
 2. **CSRF Protection in Next.js Server Actions**:
    - `next.config.js` sets `experimental.serverActions.allowedOrigins` dynamically based on `APP_URL` and `ALLOWED_ORIGINS`.
 3. **Database & Cache Isolation**:
-   - In `docker-compose.yml`, the `backend-internal` network uses `internal: true`. PostgreSQL and Redis use `expose:` instead of `ports:` to block direct host access.
+   - In `docker-compose.yml`, the `backend-internal` network uses `internal: true`. PostgreSQL and Valkey use `expose:` instead of `ports:` to block direct host access.
+   - Every service sets `no-new-privileges`; the web app, Umami and `db-init` additionally drop all capabilities and run with a read-only root filesystem.
 
 ---
 
@@ -70,7 +68,7 @@ The multi-user system is implemented via NextAuth with JWT sessions and Prisma A
 - **Passkeys & WebAuthn**: Supported via `@simplewebauthn/server` and `@simplewebauthn/browser`.
   - Registration Options: `POST /api/auth/passkeys/register-options`
   - Verification & Persistence: `POST /api/auth/passkeys/verify-registration`
-  - Challenges are stored in Redis with a 5-minute TTL.
+  - Challenges are stored in the cache (Valkey) with a 5-minute TTL.
 - **Social Logins**: OAuth2 integration with Google (`GoogleProvider`) and Apple (`AppleProvider`).
 - **Account Linking**: Users can connect multiple login mechanisms to a single profile.
 - **Account Management & Credential Lifecycle (`src/app/api/account/`)**:
@@ -88,107 +86,28 @@ The multi-user system is implemented via NextAuth with JWT sessions and Prisma A
 
 ## Flat Shared Family Data Model (`prisma/schema.prisma`)
 
-FamVacay employs a flat, shared family profile data model where all adult family members hold equal administrative rights:
+FamVacay uses a flat, shared family profile: every adult linked to a profile through a `FamilyMembership` has the same rights. The schema itself is the reference (`prisma/schema.prisma`); the models by purpose:
 
-```prisma
-model User {
-  id            String             @id @default(uuid())
-  name          String?
-  email         String?            @unique
-  emailVerified DateTime?
-  passwordHash  String?
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
-  passkeys      Authenticator[]
-  memberships   FamilyMembership[]
-  sentInvites   FamilyInvite[]     @relation("SentInvites")
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-}
+| Area | Models | Notes |
+|---|---|---|
+| Accounts | `User`, `Account`, `Session`, `VerificationToken`, `Authenticator` | NextAuth (Prisma adapter) plus WebAuthn passkeys. |
+| Family | `FamilyProfile`, `FamilyMembership`, `FamilyMember`, `FamilyAirport`, `BlackoutPeriod` | Home location, school region, preferences (cabin class, overland travel time, scoring weights incl. excluded countries), members with birth dates and per-child school regions, preferred departure airports, recurring blackouts. |
+| Invitations | `FamilyInvite` | Schema only - inviting further adults has no UI or API yet. |
+| Searches & sharing | `TripSearch`, `TripPlan`, `BlackoutDate`, `SharedTripBoard`, `SharedCandidate` | Shared boards store only derived, non-identifying fields (no address, coordinates or exact birth dates) and expire. |
+| Reference data | `Place`, `Airport`, `GeneratedDataset` | `GeneratedDataset` holds the background-refreshed datasets (airports, routes, climate, city names, traffic, holiday appeal). |
 
-model FamilyProfile {
-  id                    String             @id @default(uuid())
-  familyName            String?
-  homeLocation          String             // Postal code / City / Address
-  homeLat               Float?
-  homeLon               Float?
-  federalState          String             // e.g. "DE-BW"
-  originAirports        String[]           // e.g. ["STR", "FKB", "FRA", "CDG"]
-  maxDrivingHours       Float?             @default(2.5)
-  preferredCabinClass   String?            @default("ECONOMY")
-  climatePreference     String?            @default("MODERATE")
-  passportCheckRequired Boolean            @default(false)
-  travelModes           String[]           @default(["FLIGHT", "CAR"])
-  membersCount          Int                @default(1)
-  memberships           FamilyMembership[]
-  invites               FamilyInvite[]
-  members               FamilyMember[]
-  blackoutPeriods       BlackoutPeriod[]
-  airports              FamilyAirport[]
-  searches              TripSearch[]
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
-}
-
-model FamilyMembership {
-  id              String        @id @default(uuid())
-  userId          String
-  familyProfileId String
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
-  role            String        @default("MEMBER") // Equal rights for all adult members
-  createdAt       DateTime      @default(now())
-
-  @@unique([userId, familyProfileId])
-}
-
-model FamilyInvite {
-  id              String        @id @default(uuid())
-  familyProfileId String
-  familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
-  email           String
-  token           String        @unique
-  senderId        String
-  sender          User          @relation("SentInvites", fields: [senderId], references: [id], onDelete: Cascade)
-  expiresAt       DateTime
-  acceptedAt      DateTime?
-  createdAt       DateTime      @default(now())
-}
-
-model FamilyMember {
-  id              String        @id @default(uuid())
-  familyProfileId String
-  familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
-  firstName       String?
-  role            String        // "PARENT", "CHILD", "INFANT", "OTHER"
-  birthDate       DateTime      @db.Date
-  schoolRequired  Boolean       @default(false)
-}
-
-model BlackoutPeriod {
-  id              String        @id @default(uuid())
-  familyProfileId String
-  familyProfile   FamilyProfile @relation(fields: [familyProfileId], references: [id], onDelete: Cascade)
-  startDate       DateTime      @db.Date
-  endDate         DateTime      @db.Date
-  reason          String?
-  recurrence      String?       // "NONE", "YEARLY"
-}
-```
+Database changes always come with a migration in `prisma/migrations/`, applied by the `migrate` service (`prisma migrate deploy`).
 
 ---
 
 ## Regional Subdivisions & International School Calendars
 
-The system coordinates jurisdictional school calendars across administrative subdivisions (`src/lib/regions/subdivisions.ts`):
+Countries and their subdivisions come from ISO 3166-1/2 (`iso-3166-2`, `i18n-iso-countries`) for all 249 countries (`src/lib/regions/subdivisions.ts`); there is no fixed country list.
 
-- **Germany (`DE`)**: Complete coverage of all 16 federal states (`DE-BW`, `DE-BY`, `DE-BE`, `DE-BB`, `DE-HB`, `DE-HH`, `DE-HE`, `DE-MV`, `DE-NI`, `DE-NW`, `DE-RP`, `DE-SL`, `DE-SN`, `DE-ST`, `DE-SH`, `DE-TH`).
-- **Austria (`AT`)**: All 9 Bundesländer (`AT-1` through `AT-9`).
-- **Switzerland (`CH`)**: 10 primary Cantons (`CH-ZH`, `CH-BE`, `CH-BS`, `CH-BL`, `CH-GE`, `CH-VD`, etc.).
-- **France (`FR`)**: Academic zones and administrative regions (`FR-IDF`, `FR-ARA`, `FR-GES`, etc.).
-- **Spain (`ES`)**: Autonomous communities (`ES-MD`, `ES-CT`, `ES-AN`, `ES-VC`, etc.).
-- **Italy (`IT`)**: Regional administrative authorities (`IT-LOM`, `IT-LAZ`, `IT-VEN`, etc.).
+- **School holidays** are read per subdivision from the [OpenHolidays API](https://www.openholidaysapi.org) wherever it has data (most of Europe, e.g. all 16 German federal states, Austria, Switzerland, Belgium, the Netherlands, Poland). Each child can have their own school region, and windows must fit every child's calendar.
+- **Public holidays** come from OpenHolidays, with [Nager.Date](https://date.nager.at) and the bundled `date-holidays` package as fallbacks for countries outside its coverage.
+- **Regions without school-holiday data** get an honest coverage notice in the results instead of invented dates.
+- **Source markets** (when Europe's big markets such as DE, GB, FR, NL are on holiday - crowds and prices) use OpenHolidays plus typical national calendars for markets it does not fully cover (`src/lib/holidays/source-markets.ts`).
 
 ---
 
@@ -198,7 +117,7 @@ Departure hubs and distance metrics are managed by a unified airport service (`s
 
 1. **Exact Coordinate Geocoding & Postal Code Resolution (`src/lib/geo/geocoding.ts`)**:
    - Departure distances are calculated strictly from the user's specific starting coordinates (`departureLat`, `departureLon`), rather than regional capital centroids.
-   - The geocoding service resolves postal codes, municipalities, and metropolitan locations dynamically worldwide via OpenStreetMap Nominatim with a secondary Photon Komoot API fallback and a Redis caching layer.
+   - The geocoding service resolves postal codes, municipalities, and metropolitan locations dynamically worldwide via OpenStreetMap Nominatim with a secondary Photon Komoot API fallback and a 7-day cache.
    - All static local dictionaries and mock example fixtures have been eliminated, ensuring location resolution handles any postal code, city, or territory dynamically worldwide.
    - Strict place verification ensures unverified free-text locations trigger validation warnings before submission.
 2. **Geodesic Distance Calculation (`geolib`)**:
@@ -216,7 +135,9 @@ Departure hubs and distance metrics are managed by a unified airport service (`s
    - Binational and regional facilities display accurate nomenclature (for example, `BSL` displays as "EuroAirport Basel-Mulhouse-Freiburg / Basel-Mülhausen" rather than simply "Mulhouse").
    - Batch lookup via `/api/airports/search?codes=...&locale=...` ensures airport chip badges and suggestion lists remain synchronized.
 6. **Worldwide Custom Airport Search**:
-   - Full in-memory index of 5,600+ IATA airports worldwide via `airport-data`. Users can search and select any commercial airport by city name, airport name, or 3-letter IATA code.
+   - In-memory index of about 4,000 commercial passenger airports worldwide (OurAirports, scheduled service only, refreshed in the background - see [Data Sources](../README.md#data-sources)). Users can search and select any of them by city name, airport name, or 3-letter IATA code.
+7. **Real Route Network**:
+   - Non-stop and connecting flights are resolved over the routes that actually exist (`src/lib/airports/flight-routes.ts`, from Wikipedia's "Airlines and destinations" tables with OpenFlights as fill-in): fewest stops first, then the shortest total distance. Through flights, ended routes and aircraft range are taken into account.
 
 ---
 
@@ -233,7 +154,7 @@ The vacation planner provides universal global place resolution, entity taxonomy
      - `airport`: Specific commercial passenger airports.
 2. **Dynamic Debounced Typeahead Suggestions (`GET /api/destinations/search`)**:
    - The destination selector replaces static dropdown presets with active debounced typeahead search (250ms debounce threshold, triggering from 2 keystrokes).
-   - Queries dynamically resolve destinations worldwide via multi-stage matching across official ISO-3166 datasets, global commercial passenger airports, and OpenStreetMap Nominatim/Photon geocoding with localized names (`en`, `de`, `fr`, `es`, `it`), aliases, and fuzzy tokens, backed by Redis caching.
+   - Queries dynamically resolve destinations worldwide via multi-stage matching across official ISO-3166 datasets, global commercial passenger airports, and OpenStreetMap Nominatim/Photon geocoding with localized names (`en`, `de`, `fr`, `es`, `it`), aliases, and fuzzy tokens, backed by the cache.
    - Dynamic geocoding resolves coordinates and automatically maps closest commercial passenger airports within a 350 km radius for any location on Earth.
    - Suggestions render with categorized badge metadata (Island, Country, City, Region, Airport).
 3. **Hierarchical Regional Containment Detection (`checkRegionalContainment`)**:
@@ -245,7 +166,7 @@ The vacation planner provides universal global place resolution, entity taxonomy
 5. **Complete Elimination of Hardcoded Place & Destination Catalogs**:
    - Massive static constants such as `GLOBAL_DESTINATION_ENTITIES`, `GLOBAL_PLACES_CATALOG`, `CANONICAL_DESTINATIONS`, `DESTINATION_MAPPINGS`, `LOCALIZED_AIRPORT_METADATA`, and `SUPPORTED_ORIGIN_AIRPORTS` have been completely eliminated from the codebase.
    - All place resolution, destination autocompletion, entity category classification, and airport corridor mapping are performed dynamically via runtime OpenStreetMap Nominatim/Photon geocoding, official ISO-3166-1/2 registries (`i18n-iso-countries`, `iso-3166-2`), and the global commercial passenger airport dataset in `src/lib/airports/airport-service.ts`.
-   - Dynamic query results are cached in Redis with a 7-day TTL for fast response times and rate-limit compliance.
+   - Dynamic query results are cached (Valkey) with a 7-day TTL for fast response times and rate-limit compliance.
 
 ---
 
@@ -303,8 +224,11 @@ The booking portal architecture (`src/lib/pricing/portals.ts`) provides a modula
 
 ## Climate & Weather Assessment Architecture
 
-The weather model (`src/lib/optimizer/weather.ts`) provides continuous physical climate estimation, dynamic per-location event analysis, and seasonal risk evaluation without hardcoded place dictionaries:
+The weather model (`src/lib/optimizer/weather.ts`) combines measured climate normals with a physical model, dynamic per-location event analysis, and seasonal risk evaluation without hardcoded place dictionaries:
 
+0. **Measured Climate Normals (`getClimateNormals`)**:
+   - For every destination airport, monthly mean temperature, daily range and precipitation come from [NASA POWER](https://power.larc.nasa.gov) climatology, and rainy days and hours of rain per rainy day from the [Open-Meteo](https://open-meteo.com/) archive (`climate-normals` dataset, refreshed in the background).
+   - The physical model below is the fallback for places without measured normals (e.g. picked towns away from an airport).
 1. **Continuous Solar & Radiative Climatological Model (`getEstimatedClimate`)**:
    - Calculates solar declination and noon solar elevation angles as continuous functions of day-of-year and latitude.
    - Computes baseline temperature, annual amplitude, and seasonal cycles from insolation physics without arbitrary geographic bounding boxes.
@@ -332,7 +256,7 @@ The pricing engine implements a decoupled provider pattern (`src/lib/pricing/`):
 1. **Provider Architecture (`FlightPriceProvider`)**:
    - `FlightPriceProvider`: Defines standard contract for flight quotes, lodging estimates, total cost aggregation, and deep link generation.
    - Decommissioned Amadeus Deprecation (ADR 0002): Legacy Amadeus flight search APIs decommissioned on 17 July 2026 have been eliminated.
-   - `BenchmarkFlightProvider`: Dynamic pricing model computing seasonal market fares, passenger age tier multipliers, cabin class factors, and arbitrage differentials with 12-hour Redis caching.
+   - Benchmark pricing (`src/lib/pricing/pricing-service.ts`): seasonal market fares from distance and demand (school holidays at home and in Europe's big source markets), passenger age tier multipliers, cabin class factors and departure arbitrage. Prices are estimates and labelled as such; there is no live fare source (ADR 0002).
 2. **Actionable UI Integration (`BookingDealsPopover`)**:
    - Result cards include an interactive portal deals popover providing itemized cost breakdowns and one-click direct booking navigation across active providers.
 
@@ -358,14 +282,15 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
    Child ages are computed dynamically relative to the candidate window's departure date:
    $$\text{Age at Trip} = \lfloor(\text{startDate} - \text{birthDate}) / \text{1 year}\rfloor$$
    Fare tiers and school attendance requirements adjust dynamically:
-   - Infant: $< 2$ years ($10\%$ base fare)
-   - Child: $2 - 11$ years ($75\%$ base fare)
+   - Infant: $< 2$ years ($10\%$ base fare, lap fee)
+   - Child: $2 - 11$ years ($95\%$ base fare below 4,500 km, where low-cost and leisure carriers dominate; $75\%$ on long haul)
    - Teen / Adult: $\ge 12$ years ($100\%$ base fare)
+   A child who turns 2 during the trip flies out as an infant and back as a child.
 6. **Travel Comfort & Profile Logistics Integration**:
-   Preferences defined in the Family Profile are integrated directly into scoring and cost calculation:
-   - **Cabin Class Multipliers**: `preferredCabinClass` scales flight base fares (`ECONOMY`: $1.0\times$, `PREMIUM_ECONOMY`: $1.4\times$, `BUSINESS`: $2.4\times$).
-   - **Max Driving Radius**: Airport surface distances exceeding `maxDrivingHours` (converted at 85 km/h driving baseline) incur escalating penalties in `travelFrictionIndex`.
-   - **Climate Preferences**: User preferences (`TROPICAL_WARM`, `MODERATE`, `MILD_COOL`) adjust the `weatherIndex` score bonus and tolerance curves.
+   Preferences defined in the Family Profile or the search form are integrated directly into scoring and cost calculation:
+   - **Cabin Class Multipliers**: `preferredCabinClass` scales flight base fares (`ECONOMY`: $1.0\times$, `PREMIUM_ECONOMY`: $1.45\times$, `BUSINESS`: $2.4\times$).
+   - **Overland Travel Time**: the drive to the departure airport is estimated at 85 km/h (the profile's saved airports additionally get real road distances from OSRM in the background); car, train and bus trips longer than the chosen maximum overland travel time are left out.
+   - **Flight Stops**: the maximum number of stops limits the routes considered.
 7. **Weather Scoring vs. Hard Rejection**:
    Seasonal weather conditions (temperature, precipitation, hurricane risk) are factored into continuous scoring ($0.0 - 1.0$) rather than dropping valid vacation candidates outright.
 8. **Realistic Family Trip Cost Calculation**:
@@ -386,7 +311,7 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
      - *Songkran Festival*: New Year nationwide water festival evaluated via official public holiday calendars (mid-April).
      - *Oktoberfest*: Regional autumn festival peak evaluated dynamically for administrative subdivisions (e.g. Bavaria `DE-BY`).
 10. **Flight Arbitrage Detection**:
-    Evaluates departure airports located in neighboring jurisdictions where schools remain in session, factoring a $30\%$ price advantage.
+    Evaluates departure airports located in neighboring jurisdictions where schools remain in session, factoring a $\approx 28\%$ price advantage.
 11. **Parental Leave Minimization**:
     Calculates consumed PTO:
     $$\text{PTO\\_days\\_consumed} = \text{total\\_weekdays} - \text{public\\_holidays}$$
@@ -414,8 +339,16 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
 | `GET` | `/api/family-profile` | Retrieve shared family profile and member roster |
 | `POST` | `/api/family-profile` | Create or update shared family profile |
 | `GET` | `/api/locations/geocode` | Autocomplete and geocode departure location |
+| `GET` | `/api/locations/reverse` | Town for a coordinate pair (the "My location" button) |
 | `GET` | `/api/destinations/search` | Dynamic global destination and place search with entity taxonomy |
 | `GET` | `/api/airports/search` | Search airports by query, proximity coordinates, or flight corridor destinations |
-| `POST` | `/api/vacations/optimize` | Execute CSP vacation optimization engine |
+| `GET` | `/api/safety/discovery-blocked` | Countries flex search never proposes because of travel advisories |
+| `POST` | `/api/vacations/optimize` | Execute the vacation optimization engine (`discoveryScope: "extended"` for the second, background tier; a cached full result is returned directly with `X-Famvac-Scope: extended`) |
+| `POST` | `/api/vacations/share` | Store a search as a shared trip board (non-identifying fields only) and return its short code |
+| `GET` | `/api/vacations/share` | Load a shared trip board by its short code |
+| `GET` | `/api/public-config` | Runtime settings the browser needs (cookie banner mode, Umami website ID) |
+| `GET`, `POST` | `/stats/*` | First-party proxy to Umami (tracker script and event collection) |
 | `GET` | `/api/health` | Liveness probe: returns HTTP 200 without downstream dependency checks |
-| `GET` | `/api/ready` | Readiness probe: validates PostgreSQL and Redis cache connectivity |
+| `GET` | `/api/ready` | Readiness probe: validates PostgreSQL and cache connectivity |
+
+Rate limits (per client, kept in the cache) protect sign-in (per IP and per email), registration, sharing and the optimizer (`src/lib/security/rate-limit.ts`).

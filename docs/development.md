@@ -9,9 +9,20 @@ This guide details local environment prerequisites, installation steps, and inst
 - **Node.js**: `v26.x` or higher (Active LTS recommended)
 - **Package Manager**: `pnpm` (enable via `corepack enable`; version is pinned by `packageManager` in `package.json`)
 - **Database & Cache**:
-  - PostgreSQL 16+
+  - PostgreSQL 16
   - Valkey 8+ / Redis 7+
-- **Docker & Docker Compose** (Optional for local containerized development)
+- **Docker** (optional: the quickest way to get the database and cache, see below)
+
+> [!TIP]
+> No PostgreSQL or Valkey installed? Run both in throwaway containers, reachable only from this
+> machine and matching the values below:
+>
+> ```bash
+> docker run -d --name famvacay-dev-postgres -p 127.0.0.1:5432:5432 \
+>   -e POSTGRES_USER=famvacay -e POSTGRES_PASSWORD=famvacay_secure_password -e POSTGRES_DB=famvacay_db \
+>   postgres:16-alpine
+> docker run -d --name famvacay-dev-valkey -p 127.0.0.1:6379:6379 valkey/valkey:9-alpine
+> ```
 
 ---
 
@@ -29,8 +40,9 @@ Copy the template configuration file:
 cp .env.example .env
 ```
 
-Ensure the following variables are configured for local development:
+`.env.example` is written for production. Change these values for local development:
 ```env
+NODE_ENV=development
 APP_URL=http://localhost:3000
 ALLOWED_ORIGINS=localhost:3000
 DATABASE_URL=postgresql://famvacay:famvacay_secure_password@localhost:5432/famvacay_db?schema=public
@@ -46,11 +58,17 @@ pnpm install --frozen-lockfile
 ```
 
 ### 4. Database Initialization & Migrations
-Generate the Prisma Client and run the database migrations:
+Generate the Prisma Client (into `src/generated/prisma`, gitignored) and apply the database migrations:
 ```bash
 pnpm run prisma:generate
 pnpm run prisma:migrate
 ```
+
+`prisma:migrate` runs `prisma migrate deploy`. When you change `prisma/schema.prisma`, create the migration with `pnpm exec prisma migrate dev --name <change>` and commit it.
+
+> [!NOTE]
+> On Windows, `prisma generate` can fail with `EPERM` while the dev server holds the query engine
+> open. The types are regenerated anyway; stop the dev server if it keeps failing.
 
 ---
 
@@ -69,6 +87,11 @@ To test the standalone production build locally:
 pnpm run build
 pnpm run start
 ```
+
+> [!WARNING]
+> The standalone build currently fails on **Windows** at request time (`e.hasOwnProperty is not a
+> function`). Linux, macOS and the Docker image are not affected - on Windows, test the production
+> build with Docker (`docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build`).
 
 ---
 

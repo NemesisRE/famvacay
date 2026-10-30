@@ -16,6 +16,17 @@ describe('Operational Readiness & Health Probes', () => {
     expect(body.timestamp).toBeDefined();
   });
 
+  it('GET /api/health reports the release tag baked into the image', async () => {
+    vi.resetModules();
+    vi.stubEnv('APP_VERSION', 'v1.2.3');
+    try {
+      const { GET } = await import('@/app/api/health/route');
+      expect((await (await GET()).json()).version).toBe('1.2.3');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('GET /api/ready returns 200 OK when database and cache are operational', async () => {
     // Mock prisma $queryRaw to succeed
     vi.spyOn(prisma, '$queryRaw').mockResolvedValueOnce([{ '?column?': 1 }]);

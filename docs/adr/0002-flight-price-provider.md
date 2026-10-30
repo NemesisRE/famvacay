@@ -22,7 +22,7 @@ We implement a pluggable, provider-agnostic interface `FlightPriceProvider`:
    }
    ```
 2. **Provider Strategy:**
-   - Provide an extensible adapter architecture with support for external flight API providers (e.g. Duffel, Skyscanner, or custom API endpoints configured via `FLIGHT_PROVIDER_URL` and `FLIGHT_PROVIDER_API_KEY`).
+   - Provide an extensible adapter architecture for external flight API providers (e.g. Duffel, Skyscanner, or a custom endpoint). No such adapter or configuration variable exists yet; see the update below.
    - Ship a resilient, high-performance **Benchmark Estimation Provider** (`BenchmarkFlightProvider`) based on geodesic distance, seasonality curves, fuel index, and passenger age-tier multipliers.
    - Implement a mandatory Redis caching layer with key format `flights:v1:${origin}_${destination}_${departureDate}_${returnDate}_${paxKey}` and a 12-hour TTL.
 3. **Honest User Presentation:**
@@ -39,8 +39,8 @@ We implement a pluggable, provider-agnostic interface `FlightPriceProvider`:
   `TequilaPricingProvider`, `getConfiguredLivePricingProvider`, `POST /api/pricing/live-enrich` and
   the "Live verified" price badge). Amadeus Self-Service is decommissioned and Tequila is restricted
   to approved partners, so the hooks could never return a live quote.
-- **Added:** a real airline route network for flight logistics. `scripts/generate-flight-routes.js`
-  (`npm run generate:flight-routes`) builds `src/lib/airports/data/flight-routes.json` from the
+- **Added:** a real airline route network for flight logistics. `scripts/generate-flight-routes.ts`
+  (`pnpm run generate:flight-routes`) builds `src/lib/airports/data/flight-routes.json` from the
   OpenFlights route database (Open Database License). Non-stop vs. connecting flights and the
   connecting airports are resolved over routes that actually exist (fewest stops, then shortest
   total distance); airports without route data fall back to the distance/hub heuristic.

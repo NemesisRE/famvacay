@@ -22,6 +22,9 @@ In early 2024, Redis shifted from the open-source BSD license to dual RSALv2 / S
    - Document the licensing differences in `docs/dependencies.md` and `docs/architecture.md`.
    - Valkey is recommended for users and organizations requiring strict OSI-compliant open-source governance (BSD-3-Clause).
 
+## Update (2026-10-30)
+Docker Compose ships `valkey/valkey:9-alpine` (digest-pinned, updated by Renovate); the Kubernetes manifests use the same image. Data persisted by Valkey 8 loads unchanged in Valkey 9. Any Redis-protocol server still works through `VALKEY_URL` / `DRAGONFLY_URL` / `REDIS_URL`.
+
 ## Consequences
 - Total operational flexibility for self-hosters and enterprise operators.
 - Seamless connection string compatibility without code divergence.

@@ -15,6 +15,10 @@
   "pinDigests": true,
   "minimumReleaseAge": "1 day",
   "internalChecksFilter": "strict",
+  "kubernetes": {
+    "managerFilePatterns": ["/^k8s/.+\\.ya?ml$/"]
+  },
+  "ignoreDeps": ["famvacay"],
   "labels": ["dependencies", "automated"],
   "vulnerabilityAlerts": {
     "enabled": true,

@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
+import packageJson from '../../../../package.json';
 
 export const dynamic = 'force-dynamic';
+
+// Release images get the tag (v1.2.3) as APP_VERSION at build time; elsewhere package.json's version
+const VERSION = (process.env.APP_VERSION || packageJson.version).replace(/^v/, '');
 
 /**
  * Liveness Probe: GET /api/health
@@ -11,7 +15,7 @@ export async function GET() {
   return NextResponse.json(
     {
       status: 'ok',
-      version: '1.0.0',
+      version: VERSION,
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
     },
