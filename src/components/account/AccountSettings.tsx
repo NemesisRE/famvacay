@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { startRegistration } from '@simplewebauthn/browser';
 import {
@@ -18,18 +19,22 @@ import {
 import { useI18n } from '@/lib/i18n/i18n-context';
 
 export function AccountSettings() {
-  const { data: session } = useSession();
-  const { t } = useI18n();
+  const { data: session, update: updateSession } = useSession();
+  const { t, locale } = useI18n();
 
   const [loading, setLoading] = useState(true);
   const [accountInfo, setAccountInfo] = useState<{
     hasPassword: boolean;
     linkedProviders: string[];
     passkeysCount: number;
+    emailVerified: boolean;
+    mailEnabled: boolean;
   }>({
     hasPassword: false,
     linkedProviders: [],
     passkeysCount: 0,
+    emailVerified: false,
+    mailEnabled: false,
   });
 
   const [passkeys, setPasskeys] = useState<any[]>([]);
@@ -38,6 +43,27 @@ export function AccountSettings() {
   const [email, setEmail] = useState('');
   const [updatingEmail, setUpdatingEmail] = useState(false);
   const [emailMsg, setEmailMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [resendingVerification, setResendingVerification] = useState(false);
+
+  // Outcome of a confirmation link (/api/auth/verify-email redirects here with ?email=...)
+  const emailLinkStatus = useSearchParams().get('email');
+  const [shownLinkStatus, setShownLinkStatus] = useState<string | null>(null);
+  if (emailLinkStatus && emailLinkStatus !== shownLinkStatus) {
+    setShownLinkStatus(emailLinkStatus);
+    const linkMessages: Record<string, { type: 'success' | 'error'; text: string }> = {
+      verified: { type: 'success', text: t.account.emailVerifiedNotice },
+      changed: { type: 'success', text: t.account.emailUpdateSuccess },
+      expired: { type: 'error', text: t.account.emailVerifyExpired },
+      taken: { type: 'error', text: t.account.emailTaken },
+      invalid: { type: 'error', text: t.account.emailVerifyInvalid },
+    };
+    setEmailMsg(linkMessages[emailLinkStatus] ?? linkMessages.invalid);
+  }
+  // A confirmed address change: the session (and the form) pick up the new address
+  useEffect(() => {
+    if (emailLinkStatus === 'changed') void updateSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per link outcome
+  }, [emailLinkStatus]);
 
   // Password form
   const [currentPassword, setCurrentPassword] = useState('');
@@ -69,6 +95,8 @@ export function AccountSettings() {
         hasPassword: data.account.hasPassword,
         linkedProviders: data.account.linkedProviders || [],
         passkeysCount: data.account.passkeysCount || 0,
+        emailVerified: Boolean(data.account.emailVerified),
+        mailEnabled: Boolean(data.account.mailEnabled),
       });
     }
     if (data.passkeys) setPasskeys(data.passkeys);
@@ -120,7 +148,7 @@ export function AccountSettings() {
       const res = await fetch('/api/account/email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, locale }),
       });
 
       const data = await res.json();
@@ -128,11 +156,42 @@ export function AccountSettings() {
         throw new Error(data.error || 'Failed to update email.');
       }
 
-      setEmailMsg({ type: 'success', text: t.account.emailUpdateSuccess });
+      // With mail configured the new address must be confirmed first: the form shows the current one
+      if (data.pending) {
+        setEmail(sessionEmail);
+        setEmailMsg({ type: 'success', text: t.account.emailChangePending.replace('{email}', data.email) });
+      } else {
+        setEmailMsg({ type: 'success', text: t.account.emailUpdateSuccess });
+        void fetchAccountData();
+      }
     } catch (err: any) {
       setEmailMsg({ type: 'error', text: err.message });
     } finally {
       setUpdatingEmail(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    try {
+      setResendingVerification(true);
+      setEmailMsg(null);
+      const res = await fetch('/api/account/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locale }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to send the link.');
+      if (data.alreadyVerified) {
+        setEmailMsg({ type: 'success', text: t.account.emailVerifiedNotice });
+        void fetchAccountData();
+      } else {
+        setEmailMsg({ type: 'success', text: t.account.verificationSent });
+      }
+    } catch (err: any) {
+      setEmailMsg({ type: 'error', text: err.message });
+    } finally {
+      setResendingVerification(false);
     }
   };
 
@@ -286,7 +345,34 @@ export function AccountSettings() {
         <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
           <Mail className="w-4 h-4 text-teal-600 dark:text-teal-400" />
           <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{t.account.emailSecTitle}</h3>
+          {/* Confirmation status only where this server can send mail */}
+          {!loading && accountInfo.mailEnabled && (
+            <span
+              data-testid="email-verification-badge"
+              className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                accountInfo.emailVerified
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
+                  : 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800/60'
+              }`}
+            >
+              {accountInfo.emailVerified ? t.account.emailVerifiedBadge : t.account.emailUnverifiedBadge}
+            </span>
+          )}
         </div>
+
+        {!loading && accountInfo.mailEnabled && !accountInfo.emailVerified && (
+          <div className="p-3 rounded-lg text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800/60 flex flex-col sm:flex-row sm:items-center gap-2">
+            <span className="flex-1">{t.account.emailUnverifiedHint}</span>
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              disabled={resendingVerification}
+              className="shrink-0 text-xs font-bold py-1.5 px-3 rounded-lg border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition disabled:opacity-50 cursor-pointer"
+            >
+              {t.account.resendVerificationBtn}
+            </button>
+          </div>
+        )}
 
         {emailMsg && (
           <div

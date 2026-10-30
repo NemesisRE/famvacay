@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Users,
   MapPin,
@@ -62,14 +62,16 @@ interface BlackoutRangeForm {
   coverageFactor?: number;
 }
 
-export default function FamilyProfilePage() {
+function FamilyProfileContent() {
   const { status } = useSession();
   const router = useRouter();
   const { t } = useI18n();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'account'>('profile');
+  // A confirmation link lands here with ?email=<outcome>: the account settings show it
+  const emailLinkStatus = useSearchParams().get('email');
+  const [activeTab, setActiveTab] = useState<'profile' | 'account'>(emailLinkStatus ? 'account' : 'profile');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [familyName, setFamilyName] = useState('');
@@ -916,5 +918,20 @@ export default function FamilyProfilePage() {
         )}
       </div>
     </div>
+  );
+}
+
+// useSearchParams needs a Suspense boundary on a prerendered page
+export default function FamilyProfilePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center py-16">
+          <span className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <FamilyProfileContent />
+    </Suspense>
   );
 }

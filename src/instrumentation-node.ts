@@ -40,3 +40,8 @@ void import('@/lib/datasets/scheduler')
 void import('@/lib/share/purge-expired-boards')
   .then(({ startExpiredBoardPurge }) => startExpiredBoardPurge())
   .catch((err) => console.warn('[share] could not start expired board purge:', err?.message || err));
+
+// Passport expiry reminders by mail (only when SMTP is configured)
+void import('@/lib/passport/reminders')
+  .then(({ startPassportReminders }) => startPassportReminders())
+  .catch((err) => console.warn('[passport] could not start expiry reminders:', err?.message || err));

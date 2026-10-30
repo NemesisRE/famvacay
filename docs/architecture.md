@@ -65,6 +65,9 @@ The web app reaches the internet (holiday calendars, geocoding, routing, dataset
 The multi-user system is implemented via NextAuth with JWT sessions and Prisma Adapter persistence:
 
 - **Email & Password**: Password hashes are salted and hashed using `bcrypt` (cost factor 12).
+- **Email Confirmation** (`src/lib/auth/email-verification.ts`, only with SMTP configured): a link after registration and before an address change takes effect (the new address must confirm it). Links are single use, expire after 24 hours and are stored only as SHA-256 hashes in NextAuth's `VerificationToken` table.
+- **Provider sign-in on an unconfirmed address**: Google and Apple confirm the address themselves. When they link to an account whose address was never confirmed, that account's password, passkeys and sessions are dropped - otherwise whoever registered someone else's address first would keep access once the real owner signs in with Google/Apple.
+- **Session revocation**: sessions are JWTs; `User.sessionVersion` is checked at most once a minute per session, and bumping it ends every older session. The same check keeps a changed address or name current in the session.
 - **Passkeys & WebAuthn**: Supported via `@simplewebauthn/server` and `@simplewebauthn/browser`.
   - Registration Options: `POST /api/auth/passkeys/register-options`
   - Verification & Persistence: `POST /api/auth/passkeys/verify-registration`
@@ -329,7 +332,9 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
 | `POST` | `/api/auth/passkeys/register-options` | Generate WebAuthn passkey registration options |
 | `POST` | `/api/auth/passkeys/verify-registration` | Verify and save WebAuthn passkey |
 | `GET` | `/api/auth/linked-accounts` | List linked authentication methods |
-| `POST` | `/api/account/email` | Update user email address with duplicate collision check |
+| `POST` | `/api/account/email` | Change the email address: with SMTP configured a confirmation link goes to the new address first |
+| `POST` | `/api/account/verify-email` | Send the confirmation link for the current address again |
+| `GET` | `/api/auth/verify-email` | Target of confirmation links; redirects to the account settings with the outcome |
 | `POST` | `/api/account/password` | Change account password with current password verification |
 | `GET` | `/api/account/passkeys` | List enrolled WebAuthn authenticators |
 | `DELETE` | `/api/account/passkeys` | Delete WebAuthn passkey with lockout protection |
@@ -351,4 +356,4 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
 | `GET` | `/api/health` | Liveness probe: returns HTTP 200 without downstream dependency checks |
 | `GET` | `/api/ready` | Readiness probe: validates PostgreSQL and cache connectivity |
 
-Rate limits (per client, kept in the cache) protect sign-in (per IP and per email), registration, sharing and the optimizer (`src/lib/security/rate-limit.ts`).
+Rate limits (per client, kept in the cache) protect sign-in (per IP and per email), registration, confirmation links, sending confirmation mails, sharing and the optimizer (`src/lib/security/rate-limit.ts`).

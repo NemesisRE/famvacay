@@ -20,6 +20,10 @@ export const RATE_LIMITS = {
   register: { bucket: 'register', limit: 5, windowSeconds: 60 * 60 },
   share: { bucket: 'share', limit: 30, windowSeconds: 10 * 60 },
   optimize: { bucket: 'optimize', limit: 60, windowSeconds: 10 * 60 },
+  // Confirmation links: guessing is hopeless (256-bit tokens), this only caps abuse of the endpoint
+  emailToken: { bucket: 'email-token', limit: 20, windowSeconds: 60 * 60 },
+  // Sending a new confirmation mail (resend, address change) - each one reaches a real mailbox
+  emailSend: { bucket: 'email-send', limit: 5, windowSeconds: 60 * 60 },
 } satisfies Record<string, RateLimitRule>;
 
 export interface RateLimitResult {

@@ -207,6 +207,18 @@ export async function POST(req: NextRequest) {
 
     // Replace members if provided
     if (Array.isArray(members)) {
+      // Members are recreated on every save: carry over which passport reminders were already
+      // mailed (same person and expiry date), or every save would send them again
+      const previousMembers = await prisma.familyMember.findMany({
+        where: { familyProfileId: profileId, passportExpiry: { not: null } },
+        select: { role: true, displayName: true, passportExpiry: true, passportRemindersSent: true },
+      });
+      const reminderKey = (role: string, name: string | null, expiry: Date | null) =>
+        `${role}|${name ?? ''}|${expiry ? expiry.toISOString().slice(0, 10) : ''}`;
+      const remindersSent = new Map(
+        previousMembers.map((m) => [reminderKey(m.role, m.displayName, m.passportExpiry), m.passportRemindersSent])
+      );
+
       await prisma.familyMember.deleteMany({
         where: { familyProfileId: profileId },
       });
@@ -218,20 +230,26 @@ export async function POST(req: NextRequest) {
       };
       if (members.length > 0) {
         await prisma.familyMember.createMany({
-          data: members.map((m: any) => ({
-            familyProfileId: profileId,
-            displayName: m.displayName?.trim() || m.firstName?.trim() || null,
-            firstName: m.firstName?.trim() || m.displayName?.trim() || null,
-            role: m.role || 'MEMBER',
-            birthDate: optionalDate(m.birthDate),
-            schoolRequired: Boolean(m.schoolRequired),
-            // Only a valid ISO 3166-2 code; empty means "follows the family's home region".
-            schoolSubdivision:
-              typeof m.schoolSubdivision === 'string' && /^[A-Z]{2}(-[A-Z0-9]{1,3})?$/i.test(m.schoolSubdivision.trim())
-                ? m.schoolSubdivision.trim().toUpperCase()
-                : null,
-            passportExpiry: optionalDate(m.passportExpiry),
-          })),
+          data: members.map((m: any) => {
+            const displayName = m.displayName?.trim() || m.firstName?.trim() || null;
+            const role = m.role || 'MEMBER';
+            const passportExpiry = optionalDate(m.passportExpiry);
+            return {
+              familyProfileId: profileId,
+              displayName,
+              firstName: m.firstName?.trim() || m.displayName?.trim() || null,
+              role,
+              birthDate: optionalDate(m.birthDate),
+              schoolRequired: Boolean(m.schoolRequired),
+              // Only a valid ISO 3166-2 code; empty means "follows the family's home region".
+              schoolSubdivision:
+                typeof m.schoolSubdivision === 'string' && /^[A-Z]{2}(-[A-Z0-9]{1,3})?$/i.test(m.schoolSubdivision.trim())
+                  ? m.schoolSubdivision.trim().toUpperCase()
+                  : null,
+              passportExpiry,
+              passportRemindersSent: remindersSent.get(reminderKey(role, displayName, passportExpiry)) ?? [],
+            };
+          }),
         });
       }
     }

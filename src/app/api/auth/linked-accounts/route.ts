@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth-options';
 import { prisma } from '@/lib/db/prisma';
+import { isMailConfigured } from '@/lib/mail/mailer';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,11 +39,15 @@ export async function GET() {
         email: true,
         name: true,
         passwordHash: true,
+        emailVerified: true,
       },
     });
 
     return NextResponse.json({
       hasPassword: Boolean(user?.passwordHash),
+      emailVerified: Boolean(user?.emailVerified),
+      // Without mail, addresses cannot be confirmed: the settings then show no status at all
+      mailEnabled: isMailConfigured(),
       linkedProviders: accounts.map((a) => a.provider),
       passkeysCount: passkeys.length,
       accounts,
