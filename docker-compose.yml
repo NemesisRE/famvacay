@@ -37,9 +37,6 @@ services:
     restart: unless-stopped
     expose:
       - "3000"
-    # Optional direct host port mapping if reverse proxy runs on host:
-    # ports:
-    #   - "${WEB_PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -238,9 +235,6 @@ services:
       - CLIENT_IP_HEADER=X-Forwarded-For
     expose:
       - "3000"
-    # Optional direct host port mapping if reverse proxy runs on host:
-    # ports:
-    #   - "${UMAMI_PORT:-3001}:3000"
     depends_on:
       # Its database must exist before Umami migrates it (created by db-init on every start)
       db-init:
