@@ -45,6 +45,7 @@ describe('Optimizer performance & payload bounds', () => {
     20000,
   );
 
+  // Runs the full wide search first: the same 20 s budget as above (5 s is too tight in a parallel run)
   it('representative selection keeps every month x duration bucket and the curation anchors', () => {
     const all = optimizeVacationWindows({ ...wideSearch, maxWindowsPerDestination: 0 }, {}, {});
     const kept = selectRepresentativeWindows(all, {
@@ -73,5 +74,5 @@ describe('Optimizer performance & payload bounds', () => {
       const best = Math.max(...list.map((w) => w.finalScore));
       expect(keptList.some((w) => w.finalScore === best)).toBe(true);
     }
-  });
+  }, 20000);
 });
