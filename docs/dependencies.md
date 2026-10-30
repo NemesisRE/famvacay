@@ -32,6 +32,7 @@ To keep packages up to date and reduce manual maintenance overhead, FamVacay use
 
 4. **Supply Chain Security**:
    - GitHub Actions workflows pin immutable commit SHAs with inline release tag comments (`pinDigests: true`).
+   - Releases must be at least one day old before Renovate proposes them (`minimumReleaseAge: "1 day"`, `internalChecksFilter: "strict"`). This matches pnpm's own `minimumReleaseAge` default: `pnpm install --frozen-lockfile` in CI rejects a lockfile with packages younger than a day (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`), so earlier PRs could only fail. Vulnerability fixes are exempt on the Renovate side; if one is younger than a day, add it to `minimumReleaseAgeExclude` in `pnpm-workspace.yaml`.
    - Pull requests automatically rebase when behind the base branch.
 
 ---
