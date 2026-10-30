@@ -50,8 +50,8 @@ cd famvacay
 # 2. Generate the session secret (the app refuses to start without a real one)
 echo "NEXTAUTH_SECRET=$(openssl rand -base64 32)" > .env
 
-# 3. Build and launch the full stack (PostgreSQL 16, Valkey 9, migrations, web app, Umami)
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+# 3. Launch the full stack (PostgreSQL 16, Valkey 9, migrations, web app, Umami)
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
 
 # 4. Open http://localhost:3000 (Umami: http://localhost:3001)
 ```

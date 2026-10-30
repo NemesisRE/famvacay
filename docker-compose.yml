@@ -3,17 +3,19 @@
 # Architecture:
 # - backend-internal: bridge, internal: true (zero host exposure or unauthorized outbound)
 # - proxy-network: external reverse proxy network (only web joins)
-# - One-shot migration service running from migrator target
+# - One-shot migration service running from the migrator image
 # ==============================================================================
 
 services:
   # One-shot database migration service
   migrate:
+    # Released image (FAMVACAY_VERSION: 1 = latest 1.x); `docker compose up --build` builds it from
+    # this checkout instead, and Compose also builds when the image cannot be pulled.
+    image: ghcr.io/nemesisre/famvacay-migrator:${FAMVACAY_VERSION:-1}
     build:
       context: .
       dockerfile: Dockerfile
       target: migrator
-    image: famvacay:migrator
     container_name: famvacay-migrate
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-famvacay}:${POSTGRES_PASSWORD:-famvacay_secure_password}@postgres:5432/${POSTGRES_DB:-famvacay_db}?schema=public
@@ -26,11 +28,11 @@ services:
 
   # Application runtime service
   web:
+    image: ghcr.io/nemesisre/famvacay:${FAMVACAY_VERSION:-1}
     build:
       context: .
       dockerfile: Dockerfile
       target: runner
-    image: famvacay:latest
     container_name: famvacay-web
     restart: unless-stopped
     expose:

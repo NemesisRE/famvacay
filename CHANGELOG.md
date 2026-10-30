@@ -65,7 +65,8 @@ First stable release.
   or Ingress, NetworkPolicy, PodDisruptionBudget).
 - Liveness (`/api/health`) and readiness (`/api/ready`) probes, graceful shutdown, rate limiting,
   reverse-proxy header hardening (`TRUST_PROXY`, `TRUSTED_PROXY_HOPS`, RFC 7239).
-- Multi-arch release images (`linux/amd64`, `linux/arm64`) on GitHub Container Registry;
+- Multi-arch release images (`linux/amd64`, `linux/arm64`) for the app and the database
+  migrations on GitHub Container Registry, used by Docker Compose and Kubernetes (no local build);
   release notes drafted from conventional pull request titles; Renovate with digest pinning and a
   one-day minimum release age.
 

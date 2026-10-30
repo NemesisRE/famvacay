@@ -52,6 +52,8 @@ RUN pnpm run build
 # ------------------------------------------------------------------------------
 FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS migrator
 WORKDIR /app
+# Links the published image to the repository on ghcr.io (description, permissions)
+LABEL org.opencontainers.image.source="https://github.com/NemesisRE/famvacay"       org.opencontainers.image.description="FamVacay database migrations (prisma migrate deploy)"       org.opencontainers.image.licenses="AGPL-3.0"
 
 RUN apk add --no-cache openssl libc6-compat
 
@@ -83,6 +85,7 @@ CMD ["migrate", "deploy"]
 # ------------------------------------------------------------------------------
 FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS runner
 WORKDIR /app
+LABEL org.opencontainers.image.source="https://github.com/NemesisRE/famvacay"       org.opencontainers.image.description="FamVacay - family vacation optimizer"       org.opencontainers.image.licenses="AGPL-3.0"
 
 
 ENV NODE_ENV=production
