@@ -52,15 +52,10 @@ To eliminate hardcoded airport arrays and fixed coordinates, FamVacay integrates
 ### 3. `iso-3166-2`, `i18n-iso-countries`, `date-holidays`
 - Countries and subdivisions worldwide with localized names, and an offline public-holiday rule set used when the holiday APIs have no data.
 
-### 4. OpenStreetMap Nominatim & Photon Geocoding
-- Forward geocoding for departure locations and destinations via the public `nominatim.openstreetmap.org` server, with the public Photon server (`photon.komoot.io`) as fallback; reverse geocoding for "My location" via Nominatim.
+### 4. Photon & OpenStreetMap Nominatim Geocoding
+- Forward geocoding while typing (departure location, destinations) via [Photon](https://photon.komoot.io) - the public server by default, a self-hosted one via `PHOTON_API_URL` - biased towards the home country chosen in the form. Names come in English, German or French where the public server has them, in the local language otherwise.
+- Reverse geocoding for the "My location" button via the public Nominatim server, one request per click. Nominatim is never used for autocomplete: its [usage policy](https://operations.osmfoundation.org/policies/nominatim/) forbids that (see [ADR 0003](adr/0003-geocoding-provider.md)).
 - Results are cached for 7 days.
-
-> [!WARNING]
-> The departure and destination fields search as you type, and both go to the public Nominatim
-> server first. Nominatim's [usage policy](https://operations.osmfoundation.org/policies/nominatim/)
-> does not allow autocomplete. [ADR 0003](adr/0003-geocoding-provider.md) decided on Photon (and
-> `PHOTON_API_URL`) for autocomplete; the code does not follow it yet.
 
 ---
 

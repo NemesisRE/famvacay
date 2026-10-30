@@ -72,8 +72,6 @@ First stable release.
 ### Known limitations
 
 - Prices are estimates, not live fares (no free flight-pricing API exists for self-hosting).
-- Location autocomplete queries the public OpenStreetMap Nominatim server first, which its usage
-  policy does not allow for autocomplete; `PHOTON_API_URL` is not used yet (see ADR 0003).
 - Inviting further adults to a family profile exists in the database schema only.
 - Passport expiry dates are stored in the profile, but no validity warning is shown yet.
 - The standalone production build does not run on Windows (Docker and Linux are fine).

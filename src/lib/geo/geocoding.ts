@@ -1,4 +1,6 @@
 import { getCached, setCached } from '@/lib/cache/redis';
+import { getAllCommercialAirports } from '@/lib/airports/airport-service';
+import { GEOCODER_USER_AGENT, photonLanguage, photonSearch, resolveSubdivisionCode } from './photon';
 
 export interface GeocodedLocation {
   name: string;
@@ -14,18 +16,19 @@ export interface GeocodedLocation {
 
 /**
  * Universal Dynamic Geocoding Service.
- * Resolves cities, towns, administrative subdivisions, and postal codes worldwide
- * using live runtime geocoding services (OpenStreetMap Nominatim & Photon Komoot)
- * backed by a 7-day Redis caching layer. Zero hardcoded city or postal code dictionaries.
+ * Resolves cities, towns, administrative subdivisions, and postal codes worldwide via Photon
+ * (search as you type) and OpenStreetMap Nominatim (reverse lookups on a click only), backed by
+ * a 7-day cache. Zero hardcoded city or postal code dictionaries.
  */
-export async function geocodeLocation(rawQuery: string, language = 'en'): Promise<GeocodedLocation[]> {
+export async function geocodeLocation(rawQuery: string, language = 'en', countryHint?: string): Promise<GeocodedLocation[]> {
   const query = rawQuery.trim();
   if (!query || query.length < 2) {
     return [];
   }
 
   const lang = (language || 'en').slice(0, 2).toLowerCase();
-  const cacheKey = `geo:geocode:v2:${lang}:${query.toLowerCase()}`;
+  const country = countryHint && /^[a-z]{2}$/i.test(countryHint) ? countryHint.toUpperCase() : undefined;
+  const cacheKey = `geo:geocode:v3:${photonLanguage(lang)}:${country || '-'}:${query.toLowerCase()}`;
   const cached = await getCached<GeocodedLocation[]>(cacheKey);
   if (cached && cached.length > 0) {
     return cached;
@@ -33,134 +36,46 @@ export async function geocodeLocation(rawQuery: string, language = 'en'): Promis
 
   const results: GeocodedLocation[] = [];
 
-  // --- 1. Primary Engine: OpenStreetMap Nominatim ---
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+  // Photon only: this backs a search-as-you-type field (Nominatim's usage policy forbids that).
+  // Biased towards the home country chosen in the form, so a bare postcode lands there.
+  const bias = country ? getCountryCenter(country) : null;
+  const features = await photonSearch(query, { locale: lang, limit: 5, bias });
 
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-      query
-    )}&format=json&limit=5&addressdetails=1`;
-
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'FamVacay/1.0 (self-hosted family vacation optimizer)',
-        // Place names in the interface language (München / Munich), the others as fallback
-        'Accept-Language': `${lang},en;q=0.8,de;q=0.6`,
-      },
-    });
-
-    clearTimeout(timeout);
-
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        for (const item of data) {
-          const lat = parseFloat(item.lat);
-          const lon = parseFloat(item.lon);
-          if (isNaN(lat) || isNaN(lon)) continue;
-
-          const countryCode = (item.address?.country_code || '').toUpperCase();
-          const isoState = item.address?.['ISO3166-2-lvl4'];
-          const stateName = item.address?.state;
-
-          const townOrCity =
-            item.address?.city ||
-            item.address?.town ||
-            item.address?.village ||
-            item.address?.municipality ||
-            item.address?.suburb;
-
-          const postcode = item.address?.postcode;
-
-          let resolvedName = item.name;
-          if (townOrCity) {
-            resolvedName = postcode ? `${postcode} ${townOrCity}` : townOrCity;
-          } else if (postcode && item.name === postcode) {
-            const parts = (item.display_name || '').split(',').map((p: string) => p.trim());
-            if (parts.length > 1) {
-              resolvedName = `${postcode} ${parts[1]}`;
-            }
-          }
-
-          const cleanCity = townOrCity || item.name || '';
-
-          results.push({
-            name: resolvedName,
-            displayName: item.display_name,
-            city: cleanCity,
-            postcode,
-            lat,
-            lon,
-            countryCode,
-            stateCode: isoState,
-            stateName,
-          });
-        }
-      }
+  // The holiday region needs the ISO code, which only matches local names ("Bayern", not
+  // "Bavaria"; a city-state like Wien is its own region): for localized results that do not
+  // resolve, the same search once more in local names, matched by OSM id
+  const regionCode = (cc: string | undefined, p?: { state?: string; name?: string }) =>
+    p?.state ? resolveSubdivisionCode(cc, p.state) : resolveSubdivisionCode(cc, p?.name);
+  const localById = new Map<number, { state?: string; name?: string }>();
+  const unresolved = features.some((f) => !regionCode(f.properties.countrycode, f.properties));
+  if (unresolved && photonLanguage(lang) !== 'default') {
+    for (const f of await photonSearch(query, { locale: 'default', limit: 5, bias })) {
+      if (f.properties.osm_id !== undefined) localById.set(f.properties.osm_id, f.properties);
     }
-  } catch {
-    // Proceed to secondary geocoder fallback
   }
 
-  // --- 2. Secondary Engine Fallback: Photon Komoot Global Geocoder ---
-  if (results.length === 0) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3500);
+  for (const { lat, lon, properties: props } of features) {
+    const countryCode = (props.countrycode || '').toUpperCase();
+    // A town itself has no city property, a postcode area or street has the town in `city`; a
+    // postcode area is named after its code ("76131", city "Karlsruhe")
+    const isPostcodeArea = props.osm_value === 'postcode';
+    const townOrCity = props.city || props.town || props.village || (isPostcodeArea ? '' : props.name) || '';
+    const postcode = props.postcode || (isPostcodeArea ? props.name : undefined);
+    const resolvedName = postcode && townOrCity ? `${postcode} ${townOrCity}` : props.name || townOrCity;
 
-      const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`;
-
-      const photonRes = await fetch(photonUrl, {
-        signal: controller.signal,
-        headers: {
-          'User-Agent': 'FamVacay/1.0 (self-hosted family vacation optimizer)',
-        },
-      });
-
-      clearTimeout(timeout);
-
-      if (photonRes.ok) {
-        const photonData = await photonRes.json();
-        if (photonData?.features && Array.isArray(photonData.features)) {
-          for (const feat of photonData.features) {
-            const coords = feat.geometry?.coordinates;
-            if (!Array.isArray(coords) || coords.length < 2) continue;
-            const lon = coords[0];
-            const lat = coords[1];
-            if (isNaN(lat) || isNaN(lon)) continue;
-
-            const props = feat.properties || {};
-            const countryCode = (props.countrycode || '').toUpperCase();
-            const townOrCity = props.city || props.town || props.village || props.name || '';
-            const postcode = props.postcode;
-            const stateName = props.state;
-
-            const resolvedName = postcode && townOrCity ? `${postcode} ${townOrCity}` : props.name || townOrCity;
-            const displayNameParts = [
-              resolvedName,
-              props.county,
-              props.state,
-              props.country,
-            ].filter(Boolean);
-
-            results.push({
-              name: resolvedName,
-              displayName: displayNameParts.join(', '),
-              city: townOrCity,
-              postcode,
-              lat,
-              lon,
-              countryCode,
-              stateName,
-            });
-          }
-        }
-      }
-    } catch {
-      // Graceful termination
-    }
+    results.push({
+      name: resolvedName,
+      displayName: [resolvedName, props.county, props.state, props.country].filter(Boolean).join(', '),
+      city: townOrCity,
+      postcode,
+      lat,
+      lon,
+      countryCode,
+      stateCode:
+        regionCode(countryCode, props) ??
+        regionCode(countryCode, props.osm_id !== undefined ? localById.get(props.osm_id) : undefined),
+      stateName: props.state,
+    });
   }
 
   // Deduplicate results by coordinate proximity and name
@@ -180,6 +95,16 @@ export async function geocodeLocation(rawQuery: string, language = 'en'): Promis
   }
 
   return uniqueResults;
+}
+
+/** Rough center of a country (mean of its commercial airports), for the search bias */
+function getCountryCenter(countryCode: string): { lat: number; lon: number } | null {
+  const airports = getAllCommercialAirports().filter((a) => a.state?.startsWith(`${countryCode}-`));
+  if (airports.length === 0) return null;
+  return {
+    lat: airports.reduce((sum, a) => sum + a.lat, 0) / airports.length,
+    lon: airports.reduce((sum, a) => sum + a.lon, 0) / airports.length,
+  };
 }
 
 /**
@@ -222,7 +147,7 @@ export async function reverseGeocodeLocation(lat: number, lon: number, language 
       {
         signal: controller.signal,
         headers: {
-          'User-Agent': 'FamVacay/1.0 (self-hosted family vacation optimizer)',
+          'User-Agent': GEOCODER_USER_AGENT,
           'Accept-Language': lang,
         },
       }

@@ -117,7 +117,7 @@ Departure hubs and distance metrics are managed by a unified airport service (`s
 
 1. **Exact Coordinate Geocoding & Postal Code Resolution (`src/lib/geo/geocoding.ts`)**:
    - Departure distances are calculated strictly from the user's specific starting coordinates (`departureLat`, `departureLon`), rather than regional capital centroids.
-   - The geocoding service resolves postal codes, municipalities, and metropolitan locations dynamically worldwide via OpenStreetMap Nominatim with a secondary Photon Komoot API fallback and a 7-day cache.
+   - The geocoding service resolves postal codes, municipalities, and metropolitan locations dynamically worldwide via Photon (OpenStreetMap data, search as you type, biased towards the home country chosen in the form) and a 7-day cache. The holiday region is derived from the ISO 3166-2 names of the result. Reverse geocoding for "My location" uses OpenStreetMap Nominatim, once per click.
    - All static local dictionaries and mock example fixtures have been eliminated, ensuring location resolution handles any postal code, city, or territory dynamically worldwide.
    - Strict place verification ensures unverified free-text locations trigger validation warnings before submission.
 2. **Geodesic Distance Calculation (`geolib`)**:
@@ -154,7 +154,7 @@ The vacation planner provides universal global place resolution, entity taxonomy
      - `airport`: Specific commercial passenger airports.
 2. **Dynamic Debounced Typeahead Suggestions (`GET /api/destinations/search`)**:
    - The destination selector replaces static dropdown presets with active debounced typeahead search (250ms debounce threshold, triggering from 2 keystrokes).
-   - Queries dynamically resolve destinations worldwide via multi-stage matching across official ISO-3166 datasets, global commercial passenger airports, and OpenStreetMap Nominatim/Photon geocoding with localized names (`en`, `de`, `fr`, `es`, `it`), aliases, and fuzzy tokens, backed by the cache.
+   - Queries dynamically resolve destinations worldwide via multi-stage matching across official ISO-3166 datasets, global commercial passenger airports, and Photon geocoding (OpenStreetMap data) with localized names (`en`, `de`, `fr`, `es`, `it`), aliases, and fuzzy tokens, backed by the cache.
    - Dynamic geocoding resolves coordinates and automatically maps closest commercial passenger airports within a 350 km radius for any location on Earth.
    - Suggestions render with categorized badge metadata (Island, Country, City, Region, Airport).
 3. **Hierarchical Regional Containment Detection (`checkRegionalContainment`)**:
@@ -165,7 +165,7 @@ The vacation planner provides universal global place resolution, entity taxonomy
    - Open discovery hubs are presented only when no destination constraints are supplied.
 5. **Complete Elimination of Hardcoded Place & Destination Catalogs**:
    - Massive static constants such as `GLOBAL_DESTINATION_ENTITIES`, `GLOBAL_PLACES_CATALOG`, `CANONICAL_DESTINATIONS`, `DESTINATION_MAPPINGS`, `LOCALIZED_AIRPORT_METADATA`, and `SUPPORTED_ORIGIN_AIRPORTS` have been completely eliminated from the codebase.
-   - All place resolution, destination autocompletion, entity category classification, and airport corridor mapping are performed dynamically via runtime OpenStreetMap Nominatim/Photon geocoding, official ISO-3166-1/2 registries (`i18n-iso-countries`, `iso-3166-2`), and the global commercial passenger airport dataset in `src/lib/airports/airport-service.ts`.
+   - All place resolution, destination autocompletion, entity category classification, and airport corridor mapping are performed dynamically via runtime Photon geocoding (OpenStreetMap data), official ISO-3166-1/2 registries (`i18n-iso-countries`, `iso-3166-2`), and the global commercial passenger airport dataset in `src/lib/airports/airport-service.ts`.
    - Dynamic query results are cached (Valkey) with a 7-day TTL for fast response times and rate-limit compliance.
 
 ---

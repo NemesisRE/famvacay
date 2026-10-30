@@ -19,6 +19,8 @@ interface LocationInputProps {
   placeholder?: string;
   label?: string;
   className?: string;
+  /** Home country (ISO alpha-2) chosen in the form: matches there come first (postcodes!) */
+  countryHint?: string;
 }
 
 export function LocationInput({
@@ -27,8 +29,11 @@ export function LocationInput({
   placeholder,
   label,
   className = '',
+  countryHint,
 }: LocationInputProps) {
   const { t, locale } = useI18n();
+  const geocodeUrl = (q: string) =>
+    `/api/locations/geocode?q=${encodeURIComponent(q)}&locale=${locale}${countryHint ? `&country=${encodeURIComponent(countryHint)}` : ''}`;
   const [query, setQuery] = useState(value);
   const [locating, setLocating] = useState(false);
   const [rawResults, setResults] = useState<GeocodedLocation[]>([]);
@@ -59,7 +64,7 @@ export function LocationInput({
     const timer = setTimeout(async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/locations/geocode?q=${encodeURIComponent(query.trim())}&locale=${locale}`);
+        const res = await fetch(geocodeUrl(query.trim()));
         if (res.ok) {
           const data = await res.json();
           const list = data.locations || [];
@@ -77,7 +82,8 @@ export function LocationInput({
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [query, isFocused, locale]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- geocodeUrl only changes with locale/countryHint
+  }, [query, isFocused, locale, countryHint]);
 
   // Handle outside click or tap to close dropdown ONLY when dropdown is open
   useEffect(() => {
@@ -121,7 +127,7 @@ export function LocationInput({
     // Try verifying against API
     try {
       setLoading(true);
-      const res = await fetch(`/api/locations/geocode?q=${encodeURIComponent(q)}&locale=${locale}`);
+      const res = await fetch(geocodeUrl(q));
       if (res.ok) {
         const data = await res.json();
         if (data.locations && data.locations.length > 0) {

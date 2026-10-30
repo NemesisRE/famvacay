@@ -2127,6 +2127,7 @@ export default function HomePage() {
                   value={departureLocation}
                   onChange={handleLocationChange}
                   placeholder={t.home.departureLocationPlaceholder}
+                  countryHint={country}
                 />
 
                 <CountrySelect

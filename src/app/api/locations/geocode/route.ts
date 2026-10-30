@@ -12,7 +12,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, locations: [] });
     }
 
-    const locations = await geocodeLocation(query, searchParams.get('locale') || 'en');
+    // country: the home country chosen in the form, to prefer matches there (validated downstream)
+    const locations = await geocodeLocation(
+      query,
+      searchParams.get('locale') || 'en',
+      searchParams.get('country') || undefined
+    );
     return NextResponse.json({
       success: true,
       count: locations.length,
