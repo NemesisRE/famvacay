@@ -166,6 +166,25 @@ export async function POST(req: NextRequest) {
       .digest('hex');
     const cacheKey = `famvac:opt:${OPTIMIZER_CACHE_VERSION}:${queryHash}`;
 
+    // A first-tier search whose full (extended) result is already cached gets that one right away:
+    // the client then skips its background phase instead of swapping the list a moment later
+    if (!body.discoveryScope && !body.targetDestinations?.length) {
+      const extendedHash = crypto
+        .createHash('sha256')
+        .update(JSON.stringify({ ...body, discoveryScope: 'extended' }))
+        .digest('hex');
+      const cachedExtended = await getCached<OptimizeResponsePayload>(`famvac:opt:${OPTIMIZER_CACHE_VERSION}:${extendedHash}`);
+      if (cachedExtended) {
+        return NextResponse.json(cachedExtended, {
+          headers: {
+            'X-Famvac-Cache': 'HIT',
+            'X-Famvac-Scope': 'extended',
+            'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=30',
+          },
+        });
+      }
+    }
+
     const cachedResults = await getCached<OptimizeResponsePayload>(cacheKey);
     if (cachedResults) {
       return NextResponse.json(cachedResults, {

@@ -24,6 +24,8 @@ test.describe('FamVacay E2E User Journey', () => {
     // Verify results show up
     await expect(page.locator('text=/Optimal Vacation Windows|Optimale Urlaubsfenster|Optimale Urlaubszeiträume/i').first()).toBeVisible();
     await expect(page.locator('text=/windows found|reisefenster gefunden/i').first()).toBeVisible({ timeout: 90000 });
+    // Destinations are counted next to the windows ("110 / 113 Destinations")
+    await expect(page.getByTestId('results-destination-count')).toHaveText(/^\s*\d+ \/ [1-9]\d* (Destinations|Reiseziele)\s*$/);
   });
 });
 

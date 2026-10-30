@@ -21,6 +21,7 @@ import { CONTINENT_ORDER, type Continent } from '@/lib/geo/continents';
 export interface DestinationOption {
   code: string;
   name: string;
+  /** Timeframes found for this destination */
   count: number;
   /** ISO 3166-1 alpha-2, for grouping */
   countryCode?: string;
@@ -33,6 +34,7 @@ type ContinentKey = Continent | 'OTHER';
 
 interface DestinationGroup {
   continent: ContinentKey;
+  /** Destinations in the group (not timeframes) */
   count: number;
   codes: string[];
   countries: { name: string; count: number; codes: string[]; destinations: DestinationOption[] }[];
@@ -55,7 +57,7 @@ function groupDestinations(destinations: DestinationOption[], locale: string): D
         .sort(([a], [b]) => a.localeCompare(b, locale))
         .map(([name, list]) => ({
           name,
-          count: list.reduce((sum, d) => sum + d.count, 0),
+          count: list.length,
           codes: list.map((d) => d.code),
           destinations: list,
         }));
@@ -87,6 +89,7 @@ export interface DestinationFilterDropdownProps {
   destinations: DestinationOption[];
   selectedDestinations: string[]; // empty array means "ALL"
   onChange: (selected: string[]) => void;
+  /** Number of destinations */
   totalCount: number;
   className?: string;
 }
@@ -177,7 +180,7 @@ export function DestinationFilterDropdown({
     }
     if (selectedDestinations.length === 1) {
       const match = destinations.find((d) => d.code === selectedDestinations[0]);
-      return match ? `${match.name} (${match.count})` : selectedDestinations[0];
+      return match ? match.name : selectedDestinations[0];
     }
     const firstMatch = destinations.find((d) => d.code === selectedDestinations[0]);
     const firstName = firstMatch ? firstMatch.name : selectedDestinations[0];
@@ -363,6 +366,7 @@ export function DestinationFilterDropdown({
                                   <span className="truncate" title={dest.name}>{dest.name}</span>
                                 </div>
                                 <span
+                                  title={t.home.destGroupTimeframesFound.replace('{count}', String(dest.count))}
                                   className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-1.5 ${
                                     isSelected
                                       ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-900 dark:text-teal-200 font-bold'
