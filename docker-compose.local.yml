@@ -1,0 +1,30 @@
+# ==============================================================================
+# Local quick start override - for trying FamVacay on your own machine, NOT for production.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+#
+# Differences from the production setup (docker-compose.yml alone):
+# - proxy-network is created by Compose instead of being an external reverse-proxy network
+# - web (http://localhost:3000) and Umami (http://localhost:3001) are published on 127.0.0.1 only
+# - no reverse proxy in front, so forwarded headers are not trusted
+# Everything else (hardening, internal network, migrations) is the production definition.
+# Production deployments: see docs/setup.md.
+# ==============================================================================
+
+services:
+  web:
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    environment:
+      - APP_URL=http://localhost:${WEB_PORT:-3000}
+      - NEXTAUTH_URL=http://localhost:${WEB_PORT:-3000}
+      - TRUST_PROXY=false
+
+  umami:
+    ports:
+      - "127.0.0.1:${UMAMI_PORT:-3001}:3000"
+
+networks:
+  proxy-network:
+    external: false
+    name: famvacay-local

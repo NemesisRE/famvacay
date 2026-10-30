@@ -52,6 +52,8 @@ docker network create proxy-network
 
 or set `PROXY_NETWORK_NAME` in `.env` to the network your reverse proxy already uses (e.g. `traefik`, `pangolin`, `npm_default`). Deployment tools such as Komodo use the same `.env` value.
 
+Production runs `docker compose up -d` with `docker-compose.yml` alone. Do **not** add `docker-compose.local.yml` (the README's local quick start): it publishes plain-HTTP ports on `127.0.0.1`, disables `TRUST_PROXY` and forces `APP_URL` to `http://localhost`.
+
 ### 3.1 Traefik (v3)
 
 ```yaml
