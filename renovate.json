@@ -13,10 +13,13 @@
   "prConcurrentLimit": 5,
   "rebaseWhen": "behind-base-branch",
   "pinDigests": true,
+  "minimumReleaseAge": "1 day",
+  "internalChecksFilter": "strict",
   "labels": ["dependencies", "automated"],
   "vulnerabilityAlerts": {
     "enabled": true,
     "schedule": ["at any time"],
+    "minimumReleaseAge": null,
     "labels": ["security", "vulnerability"],
     "addLabels": ["security", "high-priority"]
   },
