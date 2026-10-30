@@ -13,9 +13,9 @@
     <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-6.0.3-blue?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
     <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16--alpine-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" /></a>
     <a href="https://www.prisma.io/"><img src="https://img.shields.io/badge/Prisma-7.10.1-2D3748?style=for-the-badge&logo=prisma&logoColor=white" alt="Prisma" /></a>
-    <a href="https://valkey.io/"><img src="https://img.shields.io/badge/Valkey_/_Redis-8_/_7-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Valkey" /></a>
+    <a href="https://valkey.io/"><img src="https://img.shields.io/badge/Valkey_/_Redis-9_/_7-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Valkey" /></a>
     <a href="Dockerfile"><img src="https://img.shields.io/badge/Docker-Multi--Arch-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" /></a>
-    <a href="docs/development.md"><img src="https://img.shields.io/badge/Coverage-92.8%25-brightgreen?style=for-the-badge&logo=vitest&logoColor=white" alt="Coverage" /></a>
+    <a href="docs/development.md"><img src="https://img.shields.io/badge/Coverage-93%25-brightgreen?style=for-the-badge&logo=vitest&logoColor=white" alt="Coverage" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL_v3-blue?style=for-the-badge&logo=gnu&logoColor=white" alt="License" /></a>
   </p>
 </div>
@@ -32,6 +32,12 @@ Engineered with modern cloud-agnostic standards, FamVacay runs seamlessly on hom
 
 ## Quick Start
 
+> [!IMPORTANT]
+> **Running FamVacay in production?** Follow the [Setup & Deployment Guide](docs/setup.md). A
+> public instance needs a TLS reverse proxy, your public `APP_URL`, real database and Umami
+> secrets, and the operator details for the imprint and privacy policy. There is deliberately no
+> copy-paste shortcut for it - the quick start below is for trying FamVacay on your own machine.
+
 ### Option A: Try it locally with Docker Compose
 
 For a look at FamVacay on your own machine - no reverse proxy, no domain, reachable only from this computer:
@@ -44,15 +50,16 @@ cd famvacay
 # 2. Generate the session secret (the app refuses to start without a real one)
 echo "NEXTAUTH_SECRET=$(openssl rand -base64 32)" > .env
 
-# 3. Launch the full stack (PostgreSQL 16, Valkey 8, migrations, web app, Umami)
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+# 3. Build and launch the full stack (PostgreSQL 16, Valkey 9, migrations, web app, Umami)
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 
 # 4. Open http://localhost:3000 (Umami: http://localhost:3001)
 ```
 
-`docker-compose.local.yml` only publishes the ports on `127.0.0.1` and lets Compose create the network a reverse proxy would otherwise provide. It is **not** a production setup.
-
-> **Running it for real?** A production deployment needs a TLS reverse proxy, your public `APP_URL`, real database and Umami secrets and the legal details for your imprint. Follow the [Setup & Deployment Guide](docs/setup.md) - there is deliberately no copy-paste shortcut for it.
+> [!NOTE]
+> `docker-compose.local.yml` publishes the ports on `127.0.0.1` only, serves plain HTTP and lets
+> Compose create the network a reverse proxy would otherwise provide. It is **not** a production
+> setup, and it uses the default database and Umami passwords from `docker-compose.yml`.
 
 ### Option B: Local Development
 
@@ -70,17 +77,19 @@ pnpm exec prisma migrate dev
 pnpm dev
 ```
 
+This needs a PostgreSQL and a Valkey/Redis instance of your own and a few adjusted values in `.env` - see the [Development Guide](docs/development.md).
+
 ---
 
 ## Key Features
 
 ### Smart School Holiday Enforcement
 
-When planning vacations with school-aged children, staying strictly within official school breaks is essential. FamVacay automatically references statutory school break schedules from the OpenHolidays API (cached for 30 days) and guarantees that vacation proposals fit within approved school holidays.
+When planning vacations with school-aged children, staying within official school breaks is essential. FamVacay references the statutory school break schedules of each child's school region from the OpenHolidays API (cached for 30 days) and first proposes windows that fit completely inside them. If the trip you want is longer than the break, the best-covering windows are still shown, clearly marked as needing a school exemption.
 
 ### Cross-Border Departure Arbitrage
 
-School holidays in neighboring federal states or countries rarely begin on the same date. FamVacay analyzes departure airports in adjacent jurisdictions (such as flying out of Frankfurt/Hessen while Baden-Württemberg is on summer break) to reveal savings of 25% to 45% compared to home airports in high season.
+School holidays in neighboring federal states or countries rarely begin on the same date. FamVacay analyzes departure airports in adjacent jurisdictions (such as flying out of Frankfurt/Hessen while Baden-Württemberg is on summer break), where flights are not priced for a holiday rush - the benchmark estimate assumes roughly 28% lower fares than from home airports in high season.
 
 ### PTO & Bridge Day Optimization
 
@@ -94,10 +103,11 @@ You receive clear suggestions for long getaways that require the lowest number o
 
 Every family is unique. In your dedicated Family Profile, you can:
 
-- Register participating family members and exact birth dates.
-- Automatically calculate airline pricing tiers: infants (<2 years at ~10% fare), children (2–11 years at ~75% fare), and teens/adults (12+ years at 100%).
-- Set travel comfort settings, including maximum driving radius to departure airports and cabin class preferences.
-- Track passport validity dates with automated warnings to prevent airport check-in surprises.
+- Register participating family members with their birth dates and school regions (names are optional).
+- Automatically calculate airline pricing tiers on the travel date: infants (<2 years at ~10% fare), children (2–11 years at ~95% on short and medium haul, ~75% on long haul), and teens/adults (12+ years at 100%).
+- Set travel comfort settings, including the maximum overland travel time and cabin class preferences.
+- Store recurring blackout periods and your preferred departure airports.
+- Share search results as a link with a trip board - without addresses, coordinates or exact birth dates.
 
 ### Authentication & Passkeys
 
@@ -124,7 +134,7 @@ FamVacay supports multiple languages with automatic browser language detection a
 
 Detailed technical guides, deployment blueprints, and dependency strategies are organized in the [`docs/`](docs/) directory:
 
-- [**Setup & Reverse Proxy Guide**](docs/setup.md): Prerequisites, local development, environment variables, and production reverse-proxy configurations (Pangolin, Traefik, Nginx, NPM, Caddy).
+- [**Setup & Deployment Guide**](docs/setup.md): Production deployment with Docker Compose or Kubernetes, all environment variables, reverse-proxy configurations (Pangolin, Traefik, Nginx, NPM, Caddy), updates and backups.
 - [**Development & Setup Guide**](docs/development.md): Workstation prerequisites, testing guidelines, and environment setup.
 - [**System Architecture & Technical Specifications**](docs/architecture.md): Topology diagrams, reverse proxy hardening, data models, authentication flows, and API reference.
 - [**Dependency Management & Repository Hygiene**](docs/dependencies.md): Renovate Bot update grouping, CI schema validation, and line-ending normalization rules.
@@ -136,9 +146,12 @@ Detailed technical guides, deployment blueprints, and dependency strategies are 
 
 Reference data is generated from open datasets by `src/lib/datasets/generators/`. The JSON bundled in the repo is only the seed: in production the app **refreshes it by itself in the background** — on first start and then on a schedule (monthly; climate quarterly, hourly while rain-duration data is still filling in) — sanity-checks every result (no malformed records, no source suddenly shrinking) and stores it in Postgres (`GeneratedDataset`), one replica at a time. No CI/CD is needed for that; set `DATASET_AUTO_REFRESH=false` to stay on the bundled data.
 
+> [!NOTE]
+> Prices are **benchmark estimates** (distance, season, school-holiday demand, passenger ages and cabin class), not live fares - no free flight-pricing API is available for self-hosted use (see [ADR 0002](docs/adr/0002-flight-price-provider.md)). The booking links open the real offers.
+
 The same generators run manually (`pnpm run generate:*`), and the weekly [`data-sync`](.github/workflows/data-sync.yml) workflow refreshes the bundled seed for new installs via a reviewed PR:
 
-- **Airports:** [airport-data](https://www.npmjs.com/package/airport-data) / [OpenFlights](https://openflights.org/data) (`pnpm run generate:airports-db`)
+- **Airports:** [OurAirports](https://ourairports.com/data/) (public domain) for the commercial airports with scheduled service, with the city names travellers know from [OpenFlights](https://openflights.org/data) via [airport-data](https://www.npmjs.com/package/airport-data) (`pnpm run generate:airports-db`)
 - **Airline route network:** The "Airlines and destinations" tables of [English Wikipedia](https://en.wikipedia.org)'s airport articles (CC BY-SA 4.0; only the routes are stored, matched to IATA codes via Wikidata), which include current seasonal and charter routes. The [OpenFlights route database](https://openflights.org/data) ([Open Database License](https://opendatacommons.org/licenses/odbl/1-0/), last updated 2014) fills in only between airports without a Wikipedia table (`pnpm run generate:flight-routes`).
 - **School holidays (home regions and Europe's big source markets):** [OpenHolidays API](https://www.openholidaysapi.org); markets it does not (fully) cover — United Kingdom, Italy, Spain, and incomplete years for France/Poland — use typical national calendars (`src/lib/holidays/source-markets.ts`).
 - **Climate normals (monthly temperature, daily range, rainfall):** [NASA POWER](https://power.larc.nasa.gov) climatology, public domain (`pnpm run generate:climate-normals`).

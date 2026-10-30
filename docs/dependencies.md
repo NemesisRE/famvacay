@@ -32,6 +32,7 @@ To keep packages up to date and reduce manual maintenance overhead, FamVacay use
 
 4. **Supply Chain Security**:
    - GitHub Actions workflows pin immutable commit SHAs with inline release tag comments (`pinDigests: true`).
+   - Container images are pinned by digest in the `Dockerfile`, `docker-compose.yml`, the CI services and the Kubernetes manifests in `k8s/` (the `kubernetes` manager is enabled for that folder). The app's own `famvacay` images are built from source and ignored.
    - Releases must be at least one day old before Renovate proposes them (`minimumReleaseAge: "1 day"`, `internalChecksFilter: "strict"`). This matches pnpm's own `minimumReleaseAge` default: `pnpm install --frozen-lockfile` in CI rejects a lockfile with packages younger than a day (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`), so earlier PRs could only fail. Vulnerability fixes are exempt on the Renovate side; if one is younger than a day, add it to `minimumReleaseAgeExclude` in `pnpm-workspace.yaml`.
    - Pull requests automatically rebase when behind the base branch.
 
@@ -39,20 +40,27 @@ To keep packages up to date and reduce manual maintenance overhead, FamVacay use
 
 ## External Geographical Datasets & Services
 
-To eliminate hardcoded airport arrays and fixed coordinates, FamVacay integrates open-source packages and geographical data providers:
+To eliminate hardcoded airport arrays and fixed coordinates, FamVacay integrates open-source packages and geographical data providers. The generated reference datasets and their sources are listed under [Data Sources](../README.md#data-sources).
 
 ### 1. `airport-data`
-- Provides an indexed worldwide dataset of 7,100+ airports and 5,600+ valid commercial 3-letter IATA airports.
-- Enables instant in-memory lookup by IATA code, city, airport name, or country without third-party rate limits.
+- The OpenFlights airport list (ODbL), pinned as a package. The airports generator takes the city names travellers know from it; the airports themselves come from OurAirports.
 
 ### 2. `geolib`
 - Performs geodesic distance calculations using the Great-Circle Haversine and Vincenty formulas.
 - Used to compute exact straight-line kilometers from user home coordinates to departure airports and between airports.
 
-### 3. OpenStreetMap Nominatim Geocoding
-- Provides forward geocoding for departure cities and addresses via `https://nominatim.openstreetmap.org/search`.
-- Integrated with Redis caching (24-hour TTL) to comply with Nominatim usage policies and provide sub-millisecond response times for repeated queries.
-- Bundles an offline European metropolitan index fallback for reliable operation in isolated or air-gapped environments.
+### 3. `iso-3166-2`, `i18n-iso-countries`, `date-holidays`
+- Countries and subdivisions worldwide with localized names, and an offline public-holiday rule set used when the holiday APIs have no data.
+
+### 4. OpenStreetMap Nominatim & Photon Geocoding
+- Forward geocoding for departure locations and destinations via the public `nominatim.openstreetmap.org` server, with the public Photon server (`photon.komoot.io`) as fallback; reverse geocoding for "My location" via Nominatim.
+- Results are cached for 7 days.
+
+> [!WARNING]
+> The departure and destination fields search as you type, and both go to the public Nominatim
+> server first. Nominatim's [usage policy](https://operations.osmfoundation.org/policies/nominatim/)
+> does not allow autocomplete. [ADR 0003](adr/0003-geocoding-provider.md) decided on Photon (and
+> `PHOTON_API_URL`) for autocomplete; the code does not follow it yet.
 
 ---
 
@@ -71,10 +79,8 @@ To ensure `renovate.json` syntax and schema remain valid:
 
 ## Known Blocked Major Upgrades
 
-Majors listed here were held back below Renovate's normal "latest major"
-target. Both were attempted and reverted during the pnpm/production-readiness
-migration after reproducing concrete breakage; re-attempt either only after
-confirming upstream has addressed the issue below.
+Majors listed here are held back below Renovate's normal "latest major"
+target. Re-attempt one only after confirming the issue below is resolved.
 
 ### TypeScript 7
 

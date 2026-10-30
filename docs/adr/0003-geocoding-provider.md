@@ -25,6 +25,15 @@ OpenStreetMap offers two primary geocoding technologies:
    - Provider classification tags (`osm_value`, `type`, `osm_key`) are dynamically mapped to canonical entity categories: `CITY`, `ISLAND`, `REGION`, `COUNTRY`, `OTHER`.
    - Client displays human-readable names (`"City, Region, Country"`), never raw coordinates or bare postal codes.
 
+## Implementation status (2026-10-30)
+
+> [!WARNING]
+> Not implemented as decided. `src/lib/geo/geocoding.ts` (departure autocomplete) and
+> `src/lib/geo/places.ts` (destination autocomplete) query the public Nominatim server first and
+> Photon only as a fallback, with hardcoded URLs - `PHOTON_API_URL` is validated but not read.
+> Photon results carry no ISO 3166-2 region code, which the departure field uses to preselect the
+> school region, so swapping the order needs that mapping first.
+
 ## Consequences
 - Complies 100% with OpenStreetMap Foundation usage policies.
 - Enables lightning-fast, debounced autocomplete with zero IP blocking risk.

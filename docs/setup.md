@@ -1,50 +1,51 @@
 # FamVacay Setup & Deployment Guide
 
-This guide covers prerequisites, local development, production deployment via Docker Compose and Kubernetes, and reverse proxy configuration.
+This guide covers a production deployment with Docker Compose or Kubernetes, every environment variable, reverse proxy configuration, updates and backups. For a quick look on your own machine, use the local quick start in the [README](../README.md#quick-start); for working on the code, see the [Development Guide](development.md).
 
 ---
 
 ## 1. Prerequisites
 
-- **Node.js:** Node 26 (Active LTS) or higher.
-- **Package Manager:** `pnpm` (enable via `corepack enable`; the pinned version is read from the `packageManager` field in `package.json`).
-- **PostgreSQL:** Version 15 or 16.
-- **Cache Engine:** Valkey 8 or Redis 7.
-- **Reverse Proxy:** An external TLS-terminating reverse proxy (Traefik, Nginx, Nginx Proxy Manager, Caddy, or Kubernetes Gateway).
+- **Docker Engine with Docker Compose v2**, or a Kubernetes cluster (see [5. Kubernetes](#5-kubernetes)).
+- **A TLS-terminating reverse proxy** (Traefik, Nginx, Nginx Proxy Manager, Caddy, Pangolin, or a Kubernetes Ingress/Gateway). FamVacay itself serves plain HTTP only.
+- **A domain** for the app, and optionally a second one for the Umami analytics dashboard.
+- The services in `docker-compose.yml` bring everything else: PostgreSQL 16, Valkey 9 (any Redis-compatible cache works), the migration job and Umami.
+
+Outbound internet access is needed at runtime: holiday calendars (OpenHolidays, Nager.Date), geocoding (OpenStreetMap Nominatim / Photon), driving times (OSRM), travel advisories and the background refresh of the reference data.
 
 ---
 
-## 2. Environment Variables Reference
+## 2. Production Deployment with Docker Compose
 
-| Variable | Type | Default | Description |
-|---|---|---|---|
-| `NODE_ENV` | String | `development` | Runtime environment (`development`, `production`, `test`). |
-| `PORT` | Number | `3000` | Port FamVacay listens on. |
-| `APP_URL` | URL | `http://localhost:3000` | **Required in production.** The canonical public URL (`https://famvacay.us`). All redirects, OAuth callbacks, and canonical URLs derive from this. |
-| `TRUST_PROXY` | Boolean | `false` | Set to `true` when running behind a trusted reverse proxy. Enables parsing of `X-Forwarded-*` and RFC 7239 `Forwarded` headers. |
-| `TRUSTED_PROXY_HOPS` | Number | `1` | Number of trusted reverse proxy hops between client and application. Used to extract client IP safely from the right-most untrusted entry. |
-| `DATABASE_URL` | String | (Required) | PostgreSQL connection string (e.g. `postgresql://user:pass@localhost:5432/famvacay_db?schema=public`). |
-| `VALKEY_URL` / `DRAGONFLY_URL` / `REDIS_URL` | String | `redis://localhost:6379` | Valkey / Dragonfly / Redis connection URL. Checked in that order; set whichever matches your cache engine (only one is required). |
-| `NEXTAUTH_SECRET` | String | (Required in prod) | Cryptographic secret for signing sessions and JWTs (`openssl rand -base64 32`). In production, startup fails fast unless this is set, at least 32 characters, and not the literal placeholder from `.env.example`. |
-| `NEXTAUTH_URL` | URL | `${APP_URL}` | Canonical NextAuth URL. |
-| `ALLOWED_ORIGINS` | String | (Optional) | Comma-separated list of additional allowed Server Action origins (e.g. `famvacay.us,localhost:3000`). |
-| `PHOTON_API_URL` | URL | `https://photon.komoot.io/api` | Geocoding autocomplete endpoint (default public Komoot or self-hosted Photon). |
-| `OPEN_HOLIDAYS_API_URL` | URL | `https://openholidaysapi.org` | OpenHolidays API endpoint. |
-| `NAGER_DATE_API_URL` | URL | `https://date.nager.at/api/v3` | Fallback public holiday API for regions outside OpenHolidays school break coverage. |
-| `OPEN_METEO_ARCHIVE_URL` | URL | `https://archive-api.open-meteo.com/v1/archive` | Open-Meteo historical climate archive. |
-| `GOOGLE_CLIENT_ID` | String | (Optional) | OAuth Client ID for Google login. |
-| `GOOGLE_CLIENT_SECRET` | String | (Optional) | OAuth Client Secret for Google login. |
-| `APPLE_CLIENT_ID` | String | (Optional) | OAuth Client ID for Apple login. |
-| `APPLE_CLIENT_SECRET` | String | (Optional) | OAuth Client Secret for Apple login. |
-| `PROXY_NETWORK_NAME` | String | `proxy-network` | Docker Compose only: name of the **external** Docker network shared with your reverse proxy (the web app and Umami join it). It must exist before `docker compose up` - see [3. Reverse Proxy Configuration](#3-reverse-proxy-configuration). |
+### 2.1 Configure
 
----
+```bash
+git clone https://github.com/NemesisRE/famvacay.git
+cd famvacay
+cp .env.example .env
+```
 
-## 3. Reverse Proxy Configuration
+Edit `.env`. At least these values must be set for a public instance:
 
-FamVacay serves plain HTTP on port `3000`. Your reverse proxy **must** terminate TLS, set `TRUST_PROXY=true`, and forward proxy headers accurately.
+| Variable | What to put in |
+|---|---|
+| `APP_URL`, `NEXTAUTH_URL` | Your public URL, e.g. `https://famvacay.example.org` |
+| `ALLOWED_ORIGINS` | Your domain, e.g. `famvacay.example.org` |
+| `NEXTAUTH_SECRET` | A random secret: `openssl rand -base64 32` |
+| `POSTGRES_PASSWORD` | A random password (also used by Umami for its database) |
+| `UMAMI_APP_SECRET` | A random secret: `openssl rand -base64 32` |
+| `LEGAL_*` | Operator details for the imprint and privacy policy (see [3.4](#34-imprint--privacy-policy)) |
+| `PROXY_NETWORK_NAME` | The Docker network of your reverse proxy (see [2.2](#22-proxy-network)) |
 
-**Proxy network (Docker Compose):** the web app and Umami join an *external* Docker network that your reverse proxy is also attached to. Compose never creates external networks - `docker compose up` fails with `network proxy-network declared as external, but could not be found` until it exists. Either create it once per host:
+> [!CAUTION]
+> Change the passwords **before the first start**. PostgreSQL stores `POSTGRES_PASSWORD` when it
+> initializes its data volume; changing the variable later does not change the password in the
+> database. The app refuses to start in production with the placeholder `NEXTAUTH_SECRET` from
+> `.env.example`, and it logs a warning while `DATABASE_URL` still uses the default password.
+
+### 2.2 Proxy network
+
+The web app and Umami join an *external* Docker network that your reverse proxy is also attached to. Compose never creates external networks - `docker compose up` fails with `network proxy-network declared as external, but could not be found` until it exists. Either create it once per host:
 
 ```bash
 docker network create proxy-network
@@ -52,9 +53,155 @@ docker network create proxy-network
 
 or set `PROXY_NETWORK_NAME` in `.env` to the network your reverse proxy already uses (e.g. `traefik`, `pangolin`, `npm_default`). Deployment tools such as Komodo use the same `.env` value.
 
-Production runs `docker compose up -d` with `docker-compose.yml` alone. Do **not** add `docker-compose.local.yml` (the README's local quick start): it publishes plain-HTTP ports on `127.0.0.1`, disables `TRUST_PROXY` and forces `APP_URL` to `http://localhost`.
+> [!WARNING]
+> Production runs `docker-compose.yml` **alone**. Do not add `docker-compose.local.yml` (the
+> README's local quick start): it publishes plain-HTTP ports on `127.0.0.1`, disables
+> `TRUST_PROXY` and forces `APP_URL` to `http://localhost`.
 
-### 3.1 Traefik (v3)
+### 2.3 Start
+
+```bash
+docker compose up -d --build
+```
+
+Compose builds the app image from the checked-out source and starts, in order: PostgreSQL, `db-init` (creates Umami's database if it is missing), `migrate` (applies the Prisma migrations), Valkey, Umami and the web app. Both one-shot services exit with code 0 when they are done. `docker compose ps` shows the web app as `healthy` once `/api/ready` reaches the database and the cache.
+
+Then point your reverse proxy at `famvacay-web:3000` (see [4. Reverse Proxy Configuration](#4-reverse-proxy-configuration)).
+
+### 2.4 Set up Umami analytics (optional)
+
+Analytics stay off until a website ID is configured.
+
+1. Route a second domain (e.g. `analytics.example.org`) to `famvacay-umami:3000` in your reverse proxy.
+2. Log in with Umami's default account `admin` / `umami` and **change the password right away**.
+3. Add a website for your app domain and copy its *Website ID*.
+4. Set `NEXT_PUBLIC_UMAMI_WEBSITE_ID` in `.env` and run `docker compose up -d` again.
+
+The tracker is served first-party through the app (`/stats/*`), so visitors' browsers never contact the Umami domain. How visitors are asked depends on `NEXT_PUBLIC_COOKIE_BANNER_MODE` (see [3.5](#35-cookie-banner--analytics)).
+
+### 2.5 Updates
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+The `migrate` service applies new database migrations on every start before the web app comes up. Read the [release notes](https://github.com/NemesisRE/famvacay/releases) before updating: breaking changes are listed there first.
+
+> [!NOTE]
+> Released versions are also published as multi-arch images (`linux/amd64`, `linux/arm64`) at
+> `ghcr.io/nemesisre/famvacay:<version>`. That is the app image only; the database migrations run
+> from the `migrator` build target of the `Dockerfile`, which `docker-compose.yml` builds for you.
+
+### 2.6 Backups
+
+All state lives in PostgreSQL (the cache can be lost at any time). Back up both databases, the app's and Umami's:
+
+```bash
+docker compose exec -T postgres pg_dump -U famvacay famvacay_db > famvacay_db.sql
+docker compose exec -T postgres pg_dump -U famvacay famvacay_umami > famvacay_umami.sql
+```
+
+(Use your `POSTGRES_USER`, `POSTGRES_DB` and `UMAMI_DB` values if you changed them.)
+
+> [!IMPORTANT]
+> PostgreSQL major upgrades (16 → 17/18) cannot reuse the existing data volume. They need a dump,
+> a fresh volume and a restore - which is why Renovate never proposes them automatically (see
+> [Dependency Management](dependencies.md#postgresql-major-versions-17-18)).
+
+---
+
+## 3. Environment Variables Reference
+
+Defaults are the application's own; where `docker-compose.yml` sets a different one, it is given as *Compose*.
+
+### 3.1 Core
+
+| Variable | Default | Description |
+|---|---|---|
+| `NODE_ENV` | `development` (Compose: `production`) | Runtime environment (`development`, `production`, `test`). |
+| `PORT` | `3000` | Port FamVacay listens on. |
+| `APP_URL` | `http://localhost:3000` | **Required in production.** The canonical public URL. Redirects, OAuth callbacks, passkey relying-party ID and canonical URLs derive from it. |
+| `NEXTAUTH_URL` | `${APP_URL}` | Canonical NextAuth URL; keep it equal to `APP_URL`. |
+| `NEXTAUTH_SECRET` | - | **Required in production.** Secret for signing sessions (`openssl rand -base64 32`). Startup fails unless it is set, at least 32 characters, and not the placeholder from `.env.example`. |
+| `ALLOWED_ORIGINS` | - | Comma-separated additional allowed origins for Server Actions (e.g. `famvacay.example.org`). |
+| `TRUST_PROXY` | `false` (Compose: `true`) | Set to `true` behind a trusted reverse proxy. Enables RFC 7239 `Forwarded` and `X-Forwarded-*` parsing. |
+| `TRUSTED_PROXY_HOPS` | `1` | Number of trusted proxy hops; the client IP is taken from the right-most untrusted entry. |
+
+### 3.2 Database & cache
+
+| Variable | Default | Description |
+|---|---|---|
+| `DATABASE_URL` | - (Compose: built from `POSTGRES_*`) | PostgreSQL connection string. Compose sets it for the app, so `.env` only needs it outside Compose. |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `famvacay` / `famvacay_secure_password` / `famvacay_db` | Compose only: credentials and database of the bundled PostgreSQL. Change the password before the first start. |
+| `VALKEY_URL` / `DRAGONFLY_URL` / `REDIS_URL` | `redis://localhost:6379` (Compose: `redis://cache:6379`) | Cache connection. Checked in that order; set the one matching your cache engine. |
+
+### 3.3 External services & data
+
+| Variable | Default | Description |
+|---|---|---|
+| `OPEN_HOLIDAYS_API_URL` | `https://openholidaysapi.org` | School and public holiday calendars. |
+| `NAGER_DATE_API_URL` | `https://date.nager.at/api/v3` | Public holidays for countries without OpenHolidays coverage. |
+| `PHOTON_API_URL` | `https://photon.komoot.io/api` | Reserved for a self-hosted Photon geocoder. The geocoder currently calls the public Nominatim and Photon servers directly and does not read this value yet. |
+| `OSRM_BASE_URL` | `https://router.project-osrm.org` | Routing service for driving times (public OSRM demo server by default, or your own instance). |
+| `OPEN_METEO_ARCHIVE_URL` | `https://archive-api.open-meteo.com/v1/archive` | Open-Meteo archive for the rain-duration data (free, non-commercial). |
+| `OPEN_METEO_API_KEY` | - | Paid Open-Meteo plan. With `LEGAL_OPERATION_MODE=commercial`, new rain-duration data is only fetched with a key (from the customer endpoint). |
+| `OPEN_METEO_CUSTOMER_ARCHIVE_URL` | `https://customer-archive-api.open-meteo.com/v1/archive` | Customer endpoint used with `OPEN_METEO_API_KEY`. |
+| `DATASET_AUTO_REFRESH` | on in production | `false` keeps the reference data bundled in the image instead of refreshing it in the background. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | - | Google sign-in; enabled only when both are set. |
+| `APPLE_CLIENT_ID` / `APPLE_CLIENT_SECRET` | - | Apple sign-in; enabled only when both are set. |
+
+### 3.4 Imprint & privacy policy
+
+The imprint (§5 DDG) and privacy policy (Art. 13/14 GDPR) are generated from these values. Unset values show a visible bracketed placeholder, so the build never fails - but a public instance must fill them in.
+
+| Variable | Default | Description |
+|---|---|---|
+| `LEGAL_OPERATION_MODE` | `private` | `private` or `commercial`. Commercial operation also changes which free data sources may be used (Open-Meteo). |
+| `LEGAL_OPERATOR_NAME` | placeholder | Name of the operator. |
+| `LEGAL_OPERATOR_STREET` | placeholder | Street and house number. |
+| `LEGAL_OPERATOR_POSTAL_CITY` | placeholder | Postal code and city. |
+| `LEGAL_OPERATOR_COUNTRY` | `Deutschland / Germany` | Country. |
+| `LEGAL_CONTACT_EMAIL` | `contact@example.invalid` | Contact email. |
+| `LEGAL_CONTACT_PHONE` | - | Contact phone (optional). |
+| `LEGAL_VAT_ID` | - | VAT ID (commercial operation). |
+| `LEGAL_HOSTING_PROVIDER_NAME` / `LEGAL_HOSTING_PROVIDER_ADDRESS` | placeholder | Hosting provider named in the privacy policy. |
+| `LEGAL_DPA_CONCLUDED` | `false` | `true` once a data processing agreement with the hosting provider is in place. |
+
+> [!IMPORTANT]
+> The generated texts are a starting point, not legal advice. Check them for your situation
+> before you open the instance to the public.
+
+### 3.5 Cookie banner & analytics
+
+| Variable | Default | Description |
+|---|---|---|
+| `NEXT_PUBLIC_COOKIE_BANNER_MODE` | `TRANSPARENCY_AND_CHOICE` | `TRANSPARENCY_AND_CHOICE`: cookieless analytics run until a visitor opts out. `STRICT_OPT_IN`: analytics only after consent. `NONE`: no banner (analytics run; visitors can still opt out via the footer link). |
+| `NEXT_PUBLIC_UMAMI_WEBSITE_ID` | - | Umami website ID; analytics are off while it is empty. Read at runtime, no rebuild needed. |
+| `NEXT_PUBLIC_UMAMI_SCRIPT_URL` | `/stats/script.js` | Tracker script URL (first-party proxy path). |
+| `UMAMI_INTERNAL_URL` | - (Compose: `http://umami:3000`) | Where the app's `/stats/*` proxy reaches Umami. |
+| `UMAMI_APP_SECRET` | `changeme-umami-secret-min32chars` | Compose only: Umami's own secret. |
+| `UMAMI_DB` | `famvacay_umami` | Compose only: Umami's database on the bundled PostgreSQL, created by `db-init`. |
+
+### 3.6 Docker Compose networking
+
+| Variable | Default | Description |
+|---|---|---|
+| `PROXY_NETWORK_NAME` | `proxy-network` | Name of the **external** Docker network shared with your reverse proxy (the web app and Umami join it). It must exist before `docker compose up` - see [2.2](#22-proxy-network). |
+| `WEB_PORT` / `UMAMI_PORT` | `3000` / `3001` | Host ports, used only by `docker-compose.local.yml` or after uncommenting the `ports:` entries in `docker-compose.yml` (for a reverse proxy running directly on the host). |
+
+---
+
+## 4. Reverse Proxy Configuration
+
+FamVacay serves plain HTTP on port `3000`. Your reverse proxy **must** terminate TLS, keep `TRUST_PROXY=true`, and forward the proxy headers accurately.
+
+> [!TIP]
+> A reverse proxy in a container on the proxy network reaches the app as `famvacay-web:3000`.
+> A proxy installed directly on the host (the Nginx and Caddy examples below use `127.0.0.1:3000`)
+> needs a host port: uncomment the `ports:` entry of the `web` service in `docker-compose.yml`.
+
+### 4.1 Traefik (v3)
 
 ```yaml
 http:
@@ -78,7 +225,7 @@ http:
 
 ---
 
-### 3.2 Nginx
+### 4.2 Nginx
 
 ```nginx
 server {
@@ -108,7 +255,7 @@ server {
 
 ---
 
-### 3.3 Nginx Proxy Manager (NPM)
+### 4.3 Nginx Proxy Manager (NPM)
 
 In the Nginx Proxy Manager UI:
 1. **Details:**
@@ -129,7 +276,7 @@ In the Nginx Proxy Manager UI:
 
 ---
 
-### 3.4 Caddy (v2)
+### 4.4 Caddy (v2)
 
 ```caddyfile
 famvacay.us {
@@ -143,7 +290,7 @@ famvacay.us {
 
 ---
 
-### 3.5 Pangolin (SASE / Tunneled Reverse Proxy)
+### 4.5 Pangolin (SASE / Tunneled Reverse Proxy)
 
 Both the FamVacay application and the self-hosted Umami analytics service join the external Docker network (`proxy-network` / `${PROXY_NETWORK_NAME}`):
 
@@ -163,34 +310,42 @@ If using Pangolin's Newt connector with Docker labels, you can declare proxy res
 
 ---
 
-## 4. Local Development
+## 5. Kubernetes
 
-```bash
-# 1. Clone repository
-git clone https://github.com/NemesisRE/famvacay.git
-cd famvacay
+The manifests in `k8s/base/` (Kustomize, with a `production` overlay in `k8s/overlays/production/`) deploy the same stack: the web app (2 replicas, 3 in the `production` overlay) with a PodDisruptionBudget, the migration Job, PostgreSQL (StatefulSet), Valkey, Umami, a NetworkPolicy, and both an Ingress and a Gateway API `HTTPRoute` - keep the one your cluster uses.
 
-# 2. Install dependencies (enable Corepack once per machine if needed)
-corepack enable
-pnpm install --frozen-lockfile
+1. **Images:** build both targets of the `Dockerfile` and push them to a registry your cluster can pull from:
 
-# 3. Configure environment
-cp .env.example .env
+   ```bash
+   docker buildx build --platform linux/amd64,linux/arm64 --target runner   -t registry.example.org/famvacay:1.0.0 --push .
+   docker buildx build --platform linux/amd64,linux/arm64 --target migrator -t registry.example.org/famvacay-migrator:1.0.0 --push .
+   ```
 
-# 4. Generate Prisma client & apply database schema
-pnpm exec prisma generate
-pnpm exec prisma migrate dev
+   Then point the manifests at them with an `images:` entry in your overlay (`famvacay:latest` → the runner image, `famvacay:migrator` → the migrator image). The released `ghcr.io/nemesisre/famvacay:<version>` image can replace the runner image.
+2. **Configuration:** set your domain and the `LEGAL_*` values in `k8s/base/configmap.yaml` (or an overlay patch) and replace every placeholder in `k8s/base/secret.yaml` - better: create the secret from a secret manager instead of committing it.
+3. **Umami database:** the PostgreSQL StatefulSet has no init scripts. Create Umami's database once before the first deploy:
 
-# 5. Start development server
-pnpm dev
-```
+   ```bash
+   kubectl exec -it famvacay-postgres-0 -- psql -U famvacay -d famvacay_db -c 'CREATE DATABASE famvacay_umami;'
+   ```
 
-Visit [http://localhost:3000](http://localhost:3000).
+   With the `production` overlay, add `-n production` (the overlay deploys into that namespace).
+
+4. **Deploy:** `kubectl apply -k k8s/overlays/production` (or `-k k8s/base` for the base alone). Run the migration Job again after every update, before rolling out the new web image.
+
+> [!NOTE]
+> The containers run as UID 10001 with a read-only root filesystem, no capabilities and
+> `runAsNonRoot`; the NetworkPolicy only admits traffic to the web app on port 3000.
 
 ---
 
-## 5. Health & Monitoring Endpoints
+## 6. Local Development
 
-- **Liveness:** `GET /api/health` — Returns `200 OK` if the process is up and running. Zero database or cache checks.
-- **Readiness:** `GET /api/ready` — Returns `200 OK` if database and cache stores are reachable and ready to process traffic. Returns `503 Service Unavailable` during dependency outages.
+See the [Development Guide](development.md) for running FamVacay from source with hot reload, the tests and the release process.
 
+---
+
+## 7. Health & Monitoring Endpoints
+
+- **Liveness:** `GET /api/health` - `200 OK` while the process is up. No database or cache checks, so a database outage never restarts the app.
+- **Readiness:** `GET /api/ready` - `200 OK` when PostgreSQL and the cache are reachable, `503 Service Unavailable` otherwise. Used by the Docker healthcheck and the Kubernetes readiness probe.
