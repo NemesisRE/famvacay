@@ -10,6 +10,7 @@ This guide covers a production deployment with Docker Compose or Kubernetes, eve
 - **A TLS-terminating reverse proxy** (Traefik, Nginx, Nginx Proxy Manager, Caddy, Pangolin, or a Kubernetes Ingress/Gateway). FamVacay itself serves plain HTTP only.
 - **A domain** for the app, and optionally a second one for the Umami analytics dashboard.
 - The services in `docker-compose.yml` bring everything else: PostgreSQL 16, Valkey 9 (any Redis-compatible cache works), the migration job and Umami.
+- **About 3 GB of RAM** for the whole stack. The web container is limited to 2 GB: a single search briefly needs up to ~1 GB of heap, so searches are computed one at a time and wait in a queue (interactive searches before background discovery).
 
 Outbound internet access is needed at runtime: holiday calendars (OpenHolidays, Nager.Date), geocoding (Photon, OpenStreetMap Nominatim), driving times (OSRM), travel advisories and the background refresh of the reference data.
 
@@ -152,6 +153,7 @@ Defaults are the application's own; where `docker-compose.yml` sets a different 
 | `ALLOWED_ORIGINS` | - | Comma-separated additional allowed origins for Server Actions (e.g. `famvacay.example.org`). |
 | `TRUST_PROXY` | `false` (Compose: `true`) | Set to `true` behind a trusted reverse proxy. Enables RFC 7239 `Forwarded` and `X-Forwarded-*` parsing. |
 | `TRUSTED_PROXY_HOPS` | `1` | Number of trusted proxy hops; the client IP is taken from the right-most untrusted entry. |
+| `OPTIMIZER_CONCURRENCY` | `1` | Searches computed at the same time per process. Each one briefly needs up to ~1 GB of heap: raise it only together with the memory limit. |
 
 ### 3.2 Database & cache
 
@@ -225,6 +227,7 @@ The imprint (§5 DDG) and privacy policy (Art. 13/14 GDPR) are generated from th
 |---|---|---|
 | `FAMVACAY_VERSION` | `1` | Release of the app and migrator images to run: `1` follows the latest 1.x release, `1.2.3` pins one. |
 | `PROXY_NETWORK_NAME` | `proxy-network` | Name of the **external** Docker network shared with your reverse proxy (the web app and Umami join it). It must exist before `docker compose up` - see [2.2](#22-proxy-network). |
+| `WEB_MEMORY_LIMIT` / `WEB_HEAP_MB` | `2048M` / `1536` | Memory limit of the web container and its Node.js heap (`--max-old-space-size`); keep the heap at about 75 % of the limit. |
 | `WEB_PORT` / `UMAMI_PORT` | `3000` / `3001` | Host ports, used only by `docker-compose.local.yml` or after uncommenting the `ports:` entries in `docker-compose.yml` (for a reverse proxy running directly on the host). |
 
 ---
