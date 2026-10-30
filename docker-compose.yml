@@ -113,7 +113,7 @@ services:
 
   # Database store (PostgreSQL 16 Alpine)
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab
     container_name: famvacay-postgres
     restart: unless-stopped
     environment:
@@ -154,7 +154,7 @@ services:
   # runs on an empty data volume, so a first start interrupted after initdb left Umami without
   # its database permanently. Same script as the initdb hook, over the network this time.
   db-init:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab
     container_name: famvacay-db-init
     entrypoint: ["/bin/sh", "/docker-entrypoint-initdb.d/01-create-umami-db.sh"]
     environment:
@@ -180,7 +180,7 @@ services:
 
   # Cache & Rate Limiting store (Valkey / Dragonfly / Redis wire-compatible)
   cache:
-    image: valkey/valkey:8-alpine
+    image: valkey/valkey:8-alpine@sha256:2602ace2be6569bc2bbb06f873776516ab9089821525be34f4305c67eb9db02a
     container_name: famvacay-cache
     restart: unless-stopped
     command: ["valkey-server", "--save", "60", "1", "--loglevel", "warning"]
@@ -214,7 +214,7 @@ services:
   # /stats/* rewrite proxy (next.config.js) and directly by reverse proxies (Pangolin, Traefik, etc.)
   # on proxy-network for the Umami administration dashboard.
   umami:
-    image: ghcr.io/umami-software/umami:3.4.1
+    image: ghcr.io/umami-software/umami:3.4.1@sha256:e69d1a7932e9dab0fc523edc7be1f3a53f3c261f57856fc2167ae74a8fc022e8
     container_name: famvacay-umami
     restart: unless-stopped
     environment:

@@ -101,7 +101,7 @@ jobs:
     # auth secret, so the job gets its own Postgres and Valkey like a real deployment
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:16-alpine@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab
         env:
           POSTGRES_USER: ci
           POSTGRES_PASSWORD: ci
@@ -114,7 +114,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
       cache:
-        image: valkey/valkey:8-alpine
+        image: valkey/valkey:8-alpine@sha256:2602ace2be6569bc2bbb06f873776516ab9089821525be34f4305c67eb9db02a
         ports:
           - 6379:6379
         options: >-
