@@ -349,7 +349,7 @@ export function FlightDetailsPopover({
                     const nextLayover = layovers[idx];
                     const segDurStr = `${Math.floor(seg.durationMinutes / 60)}h ${(seg.durationMinutes % 60).toString().padStart(2, '0')}m`;
                     return (
-                      <React.Fragment key={idx}>
+                      <React.Fragment key={`${seg.departureAirport}-${seg.arrivalAirport}`}>
                         <div className="p-2 rounded-lg bg-white dark:bg-slate-800/90 border border-amber-200/80 dark:border-amber-800/60 shadow-2xs">
                           <div className="flex items-center justify-between font-bold text-slate-800 dark:text-slate-200 text-[11px]">
                             <span>

@@ -244,7 +244,7 @@ export function CountryExclusionPicker({ value, onChange, id }: CountryExclusion
                 className="w-full py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition cursor-pointer"
               >
                 {t.common.done}
-                {value.length > 0 && ` (${value.length})`}
+                {value.length > 0 && <span>{` (${value.length})`}</span>}
               </button>
             </div>
           </div>

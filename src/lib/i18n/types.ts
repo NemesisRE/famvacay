@@ -716,6 +716,14 @@ export interface TranslationDictionary {
     keepChoosing: string;
     closeWithoutChange: string;
   };
+  /** Error boundary of the page content (src/app/error.tsx) */
+  errorPage: {
+    title: string;
+    body: string;
+    domHint: string;
+    retry: string;
+    reload: string;
+  };
   /** Outgoing mail (verification links, passport reminders) */
   mail: {
     verifySubject: string;

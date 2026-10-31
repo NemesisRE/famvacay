@@ -1,7 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useSyncExternalStore } from 'react';
-import { SupportedLocale, TranslationDictionary, DEFAULT_LOCALE } from './types';
+import React, { createContext, useCallback, useContext, useEffect, useSyncExternalStore } from 'react';
+import { SupportedLocale, TranslationDictionary } from './types';
+import { LOCALE_COOKIE, isSupportedLocale, readLocaleCookie, writeLocaleCookie } from './locale-negotiation';
 import { en } from './locales/en';
 import { de } from './locales/de';
 import { fr } from './locales/fr';
@@ -27,65 +28,53 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-/**
- * The language the app starts in: the saved choice, otherwise the browser's language. Exported for
- * code that runs before the provider has applied it (child effects run before the provider's).
- */
-export function detectBrowserLocale(): SupportedLocale {
-  if (typeof window === 'undefined') return DEFAULT_LOCALE;
-
-  try {
-    const stored = localStorage.getItem('famvacay_locale') as SupportedLocale;
-    if (stored && ['en', 'de', 'fr', 'es', 'it'].includes(stored)) {
-      return stored;
-    }
-  } catch {
-    // Gracefully handle private browsing or restricted storage access
-  }
-
-  try {
-    const browserLanguages = navigator.languages || (navigator.language ? [navigator.language] : []);
-    for (const lang of browserLanguages) {
-      const code = lang.split('-')[0].toLowerCase() as SupportedLocale;
-      if (['en', 'de', 'fr', 'es', 'it'].includes(code)) {
-        return code;
-      }
-    }
-  } catch {
-    // Non-critical language detection fallback
-  }
-
-  return DEFAULT_LOCALE;
-}
-
-// The active language as an external store: server render / hydration use the default, the client
-// the saved choice or browser language. A choice made in this visit also works when storage is blocked.
+// The active language as an external store. The server decides the first one (cookie, otherwise
+// Accept-Language - see locale-negotiation.ts) and hands it in as initialLocale, so server render and
+// hydration agree and the first HTML is already in the right language. A switch in this visit lives
+// here (and in the cookie for the next server render).
 let chosenLocale: SupportedLocale | null = null;
 const localeListeners = new Set<() => void>();
 function subscribeToLocale(listener: () => void) {
   localeListeners.add(listener);
   return () => localeListeners.delete(listener);
 }
-const getClientLocale = (): SupportedLocale => chosenLocale ?? detectBrowserLocale();
-const getServerLocale = (): SupportedLocale => DEFAULT_LOCALE;
 
-export function I18nProvider({ children }: { children: React.ReactNode }) {
+function chooseLocale(newLocale: SupportedLocale) {
+  chosenLocale = newLocale;
+  writeLocaleCookie(newLocale);
+  try {
+    localStorage.setItem(LOCALE_COOKIE, newLocale);
+  } catch {
+    // Ignore localStorage quota or access restrictions
+  }
+  localeListeners.forEach((listener) => listener());
+}
+
+export function I18nProvider({ children, initialLocale }: { children: React.ReactNode; initialLocale: SupportedLocale }) {
+  const getServerLocale = useCallback(() => initialLocale, [initialLocale]);
+  const getClientLocale = useCallback(() => chosenLocale ?? initialLocale, [initialLocale]);
   const locale = useSyncExternalStore(subscribeToLocale, getClientLocale, getServerLocale);
 
-  // Keep <html lang> in sync (screen readers, hyphenation) - a DOM update, no React state
+  // Keep <html lang> in sync after a switch (screen readers, hyphenation) - a DOM update, no React state
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
 
-  const setLocale = (newLocale: SupportedLocale) => {
-    chosenLocale = newLocale;
+  // Without the cookie the server guessed from Accept-Language: remember that guess - or, for
+  // visitors from before the cookie existed, their saved choice (switches once, then never again)
+  useEffect(() => {
+    if (readLocaleCookie()) return;
+    let stored: string | null = null;
     try {
-      localStorage.setItem('famvacay_locale', newLocale);
+      stored = localStorage.getItem(LOCALE_COOKIE);
     } catch {
-      // Ignore localStorage quota or access restrictions
+      // Private browsing / blocked storage
     }
-    localeListeners.forEach((listener) => listener());
-  };
+    if (isSupportedLocale(stored) && stored !== initialLocale) chooseLocale(stored);
+    else writeLocaleCookie(initialLocale);
+  }, [initialLocale]);
+
+  const setLocale = chooseLocale;
 
   const t = dictionaries[locale] || dictionaries.en;
 
