@@ -65,6 +65,27 @@ test.describe('Travel conditions form', () => {
     await expect(tile(/Long-Haul$/)).toHaveAttribute('aria-pressed', 'true');
   });
 
+  test('only the settings of the selected travel modes are shown', async ({ page }) => {
+    const tile = (name: RegExp) => page.getByRole('button', { name });
+    const distance = page.getByText('Travel Distance', { exact: true });
+
+    // Plane only: flight settings, distance and departure airports; no overland travel time
+    await tile(/^Plane/).click();
+    await expect(page.locator('#travel-cabin-class')).toBeVisible();
+    await expect(page.locator('#travel-max-travel-time')).toHaveCount(0);
+    await expect(distance).toBeVisible();
+    await expect(page.locator('#airport-search')).toBeVisible();
+
+    // Car only: travel time and drivetrain; no cabin class, distance or airports
+    await tile(/^Plane/).click();
+    await tile(/^Car/).click();
+    await expect(page.locator('#travel-max-travel-time')).toBeVisible();
+    await expect(page.locator('#travel-car-fuel')).toBeVisible();
+    await expect(page.locator('#travel-cabin-class')).toHaveCount(0);
+    await expect(distance).toHaveCount(0);
+    await expect(page.locator('#airport-search')).toHaveCount(0);
+  });
+
   test('calendar asks before dropping a month change without a day', async ({ page }) => {
     const trigger = page.locator('button:has(svg.lucide-calendar)').first();
     const prompt = page.getByTestId('calendar-unselected-prompt');

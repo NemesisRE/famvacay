@@ -88,7 +88,7 @@ import { SelectDropdown, type SelectDropdownOption } from '@/components/ui/selec
 import { ResultsPagination } from '@/components/results/ResultsPagination';
 import { OverlandTripDetailsPopover } from '@/components/travel/OverlandTripDetailsPopover';
 import { CountrySelect, SubdivisionSelect } from '@/components/forms/RegionSelectors';
-import { BoardTypeSelect, OverlandDurationSelect, OverlandModeIcons } from '@/components/forms/PreferenceSelects';
+import { BoardTypeSelect, OverlandModeIcons } from '@/components/forms/PreferenceSelects';
 import { toggleStyleSelection, toggleTravelModeSelection, toggleTravelDistance, readStyleSelection, readStoredStyleSelection, toOptimizerStyles, getClimateRelevance, ALL_TRAVEL_DISTANCES, type TravelDistance, type StyleSelection } from '@/lib/optimizer/style-selection';
 import { VacationStyleTiles, TravelDistanceTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
 import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/destination-points';
@@ -177,6 +177,9 @@ export default function HomePage() {
 
   // Same selection behaviour as the vacation styles (and the profile)
   const toggleVehicle = (vehicle: TravelVehicle) => setSelectedVehicles((prev) => toggleTravelModeSelection(prev, vehicle));
+  // Settings of a travel mode only show (and only reach the search) while the mode is selected
+  const usesPlane = selectedVehicles.includes('PLANE');
+  const usesOverland = selectedVehicles.some((v) => v !== 'PLANE');
 
   // Vacation style specific constraints: Minimum beach temperature & Winter sports / Snow guarantee
   const [minBeachTemp, setMinBeachTemp] = useState<number | undefined>(undefined);
@@ -1011,7 +1014,9 @@ export default function HomePage() {
       const childrenSchoolRegions = datedChildren.map((c) => c.schoolRegion || null);
 
       const hasDestinations = targetDestinations.length > 0;
-      const optimizerStyles = hasDestinations ? {} : toOptimizerStyles({ styles: selectedStyles, distances: travelDistances });
+      const optimizerStyles = hasDestinations
+        ? {}
+        : toOptimizerStyles({ styles: selectedStyles, distances: usesPlane ? travelDistances : ALL_TRAVEL_DISTANCES });
 
       const payload = {
         targetDestinations: hasDestinations ? targetDestinations : undefined,
@@ -1022,7 +1027,7 @@ export default function HomePage() {
         longRangeStyles: optimizerStyles.longRangeStyles?.length ? optimizerStyles.longRangeStyles : undefined,
         excludedCountries: (!hasDestinations && excludedCountries.length > 0) ? [...excludedCountries].sort() : undefined,
         preferredBoardType,
-        maxOverlandTravelMinutes: maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
+        maxOverlandTravelMinutes: usesOverland && maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
         maxFlightStops,
         carFuelType: selectedVehicles.includes('CAR') ? carFuelType : undefined,
         avoidExtremeHeat: heatFilter === 'AVOID_EXTREME_HEAT',
@@ -2236,19 +2241,24 @@ export default function HomePage() {
                       onRequireSnowChange={setRequireSnow}
                     />
 
-                    <div className="mt-4 mb-2.5 space-y-0.5">
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <Globe className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                        <span>{t.home.travelDistanceLabel}</span>
-                      </label>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                        {t.home.travelDistanceHint}
-                      </p>
-                    </div>
-                    <TravelDistanceTiles
-                      selectedDistances={travelDistances}
-                      onToggle={(distance) => setTravelDistances((prev) => toggleTravelDistance(prev, distance))}
-                    />
+                    {/* Long haul needs a flight: without the plane the distance is no choice */}
+                    {usesPlane && (
+                      <>
+                        <div className="mt-4 mb-2.5 space-y-0.5">
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <Globe className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                            <span>{t.home.travelDistanceLabel}</span>
+                          </label>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                            {t.home.travelDistanceHint}
+                          </p>
+                        </div>
+                        <TravelDistanceTiles
+                          selectedDistances={travelDistances}
+                          onToggle={(distance) => setTravelDistances((prev) => toggleTravelDistance(prev, distance))}
+                        />
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -2271,68 +2281,47 @@ export default function HomePage() {
                   onMaxFlightStopsChange={setMaxFlightStops}
                   carFuelType={carFuelType}
                   onCarFuelTypeChange={setCarFuelType}
+                  cabinClass={preferredCabinClass}
+                  onCabinClassChange={setPreferredCabinClass}
+                  maxOverlandHours={maxOverlandDurationHours}
+                  onMaxOverlandHoursChange={setMaxOverlandDurationHours}
                 />
               </div>
 
-              {/* Preferred Board Type & Max Overland Travel Time */}
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                    <Utensils className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                    <span>{t.home.filterByBoardType}</span>
-                  </label>
-                  <BoardTypeSelect value={preferredBoardType} onChange={setPreferredBoardType} />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                    <OverlandModeIcons />
-                    <span>{t.home.filterByOverlandDuration}</span>
-                  </label>
-                  <OverlandDurationSelect value={maxOverlandDurationHours} onChange={setMaxOverlandDurationHours} />
-                </div>
-              </div>
-
-              {/* Travel Comfort Preferences synced with Traveler Profile: cabin class, budget */}
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 min-h-[2.2em]">
-                    {t.profile.cabinClass}
-                  </label>
-                  <SelectDropdown
-                    variant="form"
-                    value={preferredCabinClass || 'ECONOMY'}
-                    onChange={(v) => setPreferredCabinClass(v)}
-                    options={[
-                      { value: 'ECONOMY', label: t.profile.economy },
-                      { value: 'PREMIUM_ECONOMY', label: t.profile.premiumEconomy },
-                      { value: 'BUSINESS', label: t.profile.business },
-                    ]}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-start gap-1.5 min-h-[2.2em]"
-                    title={t.home.maxBudgetLabel}
-                  >
-                    <Wallet className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                    <span>{t.home.maxBudgetLabel}</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="50"
-                    value={maxBudget ?? ''}
-                    onChange={(e) => setMaxBudget(e.target.value ? Number(e.target.value) : undefined)}
-                    placeholder={t.home.maxBudgetPlaceholder}
-                    className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100 placeholder:font-normal placeholder:text-slate-400"
-                  />
+              {/* Board & budget (the settings of the travel modes sit with the modes above); side by
+                  side only where the form column itself is wide enough */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 @container">
+                <div className="grid grid-cols-1 @lg:grid-cols-2 gap-3 items-end">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                      <Utensils className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>{t.home.filterByBoardType}</span>
+                    </label>
+                    <BoardTypeSelect value={preferredBoardType} onChange={setPreferredBoardType} />
+                  </div>
+                  <div>
+                    <label
+                      className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-start gap-1.5"
+                      title={t.home.maxBudgetLabel}
+                    >
+                      <Wallet className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                      <span>{t.home.maxBudgetLabel}</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="50"
+                      value={maxBudget ?? ''}
+                      onChange={(e) => setMaxBudget(e.target.value ? Number(e.target.value) : undefined)}
+                      placeholder={t.home.maxBudgetPlaceholder}
+                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100 placeholder:font-normal placeholder:text-slate-400"
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Step 3: Departure Airports (for Plane) or Overland Transit Note (for Car/Train/Bus) */}
-              {selectedVehicles.includes('PLANE') ? (
+              {usesPlane ? (
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                   <AirportSelector
                     selectedAirports={originAirports}

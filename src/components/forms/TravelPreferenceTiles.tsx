@@ -1,13 +1,13 @@
 'use client';
 
 import React from 'react';
-import { Compass, Sun, Mountain, Building2, Trees, Globe, Plane, Car, Train, Bus, Check, Thermometer, Snowflake } from 'lucide-react';
+import { Compass, Sun, Mountain, Building2, Trees, Globe, Plane, Car, Train, Bus, Check, Thermometer, Snowflake, Armchair } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import type { CarFuelType, DestinationType, TravelVehicle } from '@/lib/optimizer/types';
 import { isAllStylesSelection, isAllTravelDistances, type TravelDistance } from '@/lib/optimizer/style-selection';
 import { LONG_HAUL_KM } from '@/lib/optimizer/distance-bands';
 import { SelectDropdown } from '@/components/ui/select-dropdown';
-import { MinTemperatureSelect, SnowGuaranteeSelect } from './PreferenceSelects';
+import { CabinClassSelect, MinTemperatureSelect, OverlandDurationSelect, OverlandModeIcons, SnowGuaranteeSelect } from './PreferenceSelects';
 
 /**
  * Tile selectors shared by the search form and the profile, so both pages present vacation
@@ -50,6 +50,9 @@ export function SelectionTile({ icon: Icon, label, hint, isSelected, onToggle }:
 
 const GRID_CLASS = 'grid grid-cols-2 gap-2.5';
 const PANEL_CLASS = 'mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700';
+// Two settings side by side only where the panel itself (not the window) is wide enough: the
+// search form is a narrow column next to the results on tablets and small laptops
+const PANEL_GRID_CLASS = 'grid grid-cols-1 @lg:grid-cols-2 gap-3';
 const FIELD_LABEL_CLASS = 'text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5';
 
 interface VacationStyleTilesProps {
@@ -128,11 +131,20 @@ interface TravelModeTilesProps {
   onMaxFlightStopsChange: (stops: number | undefined) => void;
   carFuelType: CarFuelType | undefined;
   onCarFuelTypeChange: (fuel: CarFuelType | undefined) => void;
+  cabinClass: string | undefined;
+  onCabinClassChange: (cabinClass: string) => void;
+  maxOverlandHours: number | undefined;
+  onMaxOverlandHoursChange: (hours: number | undefined) => void;
   className?: string;
   /** Prefix for the ids of the settings below the tiles */
   idPrefix?: string;
 }
 
+/**
+ * The travel modes with the settings of the selected ones in a panel below: flight stops and
+ * cabin class for the plane, the maximum travel time for car, train and bus, the drivetrain
+ * for the car. A setting of an unselected mode is hidden (and its value kept).
+ */
 export function TravelModeTiles({
   selectedVehicles,
   onToggle,
@@ -140,12 +152,17 @@ export function TravelModeTiles({
   onMaxFlightStopsChange,
   carFuelType,
   onCarFuelTypeChange,
+  cabinClass,
+  onCabinClassChange,
+  maxOverlandHours,
+  onMaxOverlandHoursChange,
   className = GRID_CLASS,
   idPrefix = 'travel',
 }: TravelModeTilesProps) {
   const { t } = useI18n();
   const showPlane = selectedVehicles.includes('PLANE');
   const showCar = selectedVehicles.includes('CAR');
+  const showOverland = selectedVehicles.some((v) => v !== 'PLANE');
 
   const tiles: { type: TravelVehicle; label: string; hint: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { type: 'PLANE', label: t.home.vehiclePlane, hint: t.home.vehicleHintPlane, icon: Plane },
@@ -168,8 +185,8 @@ export function TravelModeTiles({
           />
         ))}
       </div>
-      {(showPlane || showCar) && (
-        <div className={`${PANEL_CLASS} grid grid-cols-1 sm:grid-cols-2 gap-3`}>
+      <div className={`${PANEL_CLASS} @container`}>
+        <div className={PANEL_GRID_CLASS}>
           {showPlane && (
             <div>
               <label htmlFor={`${idPrefix}-flight-stops`} className={FIELD_LABEL_CLASS}>
@@ -187,6 +204,24 @@ export function TravelModeTiles({
                   { value: '0', label: t.home.flightStopsDirectOnly },
                 ]}
               />
+            </div>
+          )}
+          {showPlane && (
+            <div>
+              <label htmlFor={`${idPrefix}-cabin-class`} className={FIELD_LABEL_CLASS}>
+                <Armchair className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                <span>{t.profile.cabinClass}</span>
+              </label>
+              <CabinClassSelect id={`${idPrefix}-cabin-class`} value={cabinClass} onChange={onCabinClassChange} />
+            </div>
+          )}
+          {showOverland && (
+            <div>
+              <label htmlFor={`${idPrefix}-max-travel-time`} className={FIELD_LABEL_CLASS}>
+                <OverlandModeIcons />
+                <span>{t.home.filterByOverlandDuration}</span>
+              </label>
+              <OverlandDurationSelect id={`${idPrefix}-max-travel-time`} value={maxOverlandHours} onChange={onMaxOverlandHoursChange} />
             </div>
           )}
           {showCar && (
@@ -211,7 +246,7 @@ export function TravelModeTiles({
             </div>
           )}
         </div>
-      )}
+      </div>
     </>
   );
 }
@@ -242,11 +277,11 @@ export function ClimatePreferencesPanel({
   const { t } = useI18n();
   if (!showBeach && !showAlpine) return null;
   return (
-    <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+    <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 @container">
       <span className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
         {t.home.climatePreferencesLabel}
       </span>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className={PANEL_GRID_CLASS}>
         {showBeach && (
           <div>
             <label htmlFor={`${idPrefix}-min-beach-temp`} className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
