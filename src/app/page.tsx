@@ -87,7 +87,7 @@ import { SelectDropdown, type SelectDropdownOption } from '@/components/ui/selec
 import { ResultsPagination } from '@/components/results/ResultsPagination';
 import { OverlandTripDetailsPopover } from '@/components/travel/OverlandTripDetailsPopover';
 import { CountrySelect, SubdivisionSelect } from '@/components/forms/RegionSelectors';
-import { BoardTypeSelect, OverlandDurationSelect } from '@/components/forms/PreferenceSelects';
+import { BoardTypeSelect, OverlandDurationSelect, OverlandModeIcons } from '@/components/forms/PreferenceSelects';
 import { isAllStylesSelection, toggleStyleSelection, toggleTravelModeSelection, readStoredStyles, getClimateRelevance } from '@/lib/optimizer/style-selection';
 import { VacationStyleTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
 import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/destination-points';
@@ -2279,7 +2279,7 @@ export default function HomePage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                    <Car className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                    <OverlandModeIcons />
                     <span>{t.home.filterByOverlandDuration}</span>
                   </label>
                   <OverlandDurationSelect value={maxOverlandDurationHours} onChange={setMaxOverlandDurationHours} />
@@ -3300,7 +3300,7 @@ export default function HomePage() {
                         {/* Max Overland Duration Filter */}
                         <div title={!overlandDurationApplicable ? t.home.filterNoOverland : undefined} className={`${!overlandDurationApplicable ? 'opacity-50 ' : ''}flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isOverlandDurationActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
                           <label className={`text-xs flex items-center gap-1.5 transition-colors ${isOverlandDurationActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                            <Car className={`w-3.5 h-3.5 ${isOverlandDurationActive ? 'text-teal-600' : 'text-teal-600'}`} />
+                            <OverlandModeIcons className="text-teal-600" />
                             <span>{t.home.filterByOverlandDuration}</span>
                             {!overlandDurationApplicable && (
                               <span className="font-normal text-[10px] text-slate-500 dark:text-slate-400">({t.home.filterNoOverland})</span>

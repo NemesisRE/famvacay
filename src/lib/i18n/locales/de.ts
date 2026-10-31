@@ -232,7 +232,7 @@ export const de: TranslationDictionary = {
     warningsFilterAll: 'Alle anzeigen',
     filterBySeasonalInfo: 'Saison-Information',
     seasonalInfoAll: 'Alle Reisezeiten',
-    filterByOverlandDuration: 'Max. Anreisezeit (Auto/Bahn/Bus)',
+    filterByOverlandDuration: 'Max. Anreisezeit',
     overlandDurationAny: 'Beliebige Anreisezeit',
     overlandDuration6h: 'Bis zu 6 Stunden',
     overlandDuration10h: 'Bis zu 10 Stunden',

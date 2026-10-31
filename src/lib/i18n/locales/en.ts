@@ -232,7 +232,7 @@ export const en: TranslationDictionary = {
     warningsFilterAll: 'Show all',
     filterBySeasonalInfo: 'Seasonal Information',
     seasonalInfoAll: 'All travel periods',
-    filterByOverlandDuration: 'Max Travel Time (Car/Train/Bus)',
+    filterByOverlandDuration: 'Max Travel Time',
     overlandDurationAny: 'Any travel time',
     overlandDuration6h: 'Up to 6 hours',
     overlandDuration10h: 'Up to 10 hours',

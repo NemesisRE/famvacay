@@ -27,7 +27,7 @@ import {
   SchoolRegionSelect,
   resolveRegionForCountry,
 } from '@/components/forms/RegionSelectors';
-import { BoardTypeSelect, OverlandDurationSelect } from '@/components/forms/PreferenceSelects';
+import { BoardTypeSelect, OverlandDurationSelect, OverlandModeIcons } from '@/components/forms/PreferenceSelects';
 import type { BoardType, CarFuelType, DestinationType, TravelVehicle } from '@/lib/optimizer/types';
 import { isAllStylesSelection, toggleStyleSelection, toggleTravelModeSelection, readStoredStyles, getClimateRelevance } from '@/lib/optimizer/style-selection';
 import { VacationStyleTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
@@ -581,7 +581,7 @@ function FamilyProfileContent() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <Car className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <OverlandModeIcons />
                   <span>{t.home.filterByOverlandDuration}</span>
                 </label>
                 <OverlandDurationSelect value={maxOverlandDurationHours} onChange={setMaxOverlandDurationHours} />
