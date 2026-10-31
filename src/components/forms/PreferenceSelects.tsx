@@ -1,5 +1,6 @@
 'use client';
 
+import { Bus, Car, Train } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import type { BoardType } from '@/lib/optimizer/types';
 import { SelectDropdown } from '@/components/ui/select-dropdown';
@@ -14,6 +15,24 @@ export const MIN_BEACH_TEMP_PRESETS = [20, 22, 24, 26, 28] as const;
  * Maximum overland travel-time presets in hours (search form and profile).
  */
 export const OVERLAND_DURATION_PRESETS = [4, 6, 8, 10, 14] as const;
+
+/**
+ * Car, train and bus icons in front of the overland travel-time label: they say which trips the
+ * limit applies to without a vehicle list in the text, which wrapped in the longer languages.
+ */
+export function OverlandModeIcons({ className = 'text-teal-600 dark:text-teal-400' }: { className?: string }) {
+  const { t } = useI18n();
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 shrink-0 ${className}`}
+      title={[t.home.vehicleCar, t.home.vehicleTrain, t.home.vehicleBus].join(' · ')}
+    >
+      <Car className="w-3.5 h-3.5" aria-hidden />
+      <Train className="w-3.5 h-3.5" aria-hidden />
+      <Bus className="w-3.5 h-3.5" aria-hidden />
+    </span>
+  );
+}
 
 export const BOARD_TYPE_OPTIONS: BoardType[] = ['ALL_INCLUSIVE', 'HALF_BOARD', 'BREAKFAST', 'ROOM_ONLY'];
 

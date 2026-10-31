@@ -55,6 +55,8 @@ export interface TranslationDictionary {
     homeStateLabel: string;
     destinationsLabel: string;
     destinationsPlaceholder: string;
+    destinationsAddMorePlaceholder: string;
+    clearSearch: string;
     destinationsHint: string;
     vacationKindLabel: string;
     vacationKindHint: string;
@@ -313,7 +315,10 @@ export interface TranslationDictionary {
     climatePreferencesLabel: string;
     longRangeStylePreference: string;
     longRangeStyleHint: string;
-    longRangeStyleAny: string;
+    longRangeKindBeach: string;
+    longRangeKindCity: string;
+    longRangeKindNature: string;
+    longRangeKindAlpine: string;
     railAirBadge: string;
     airportsFlexTitle: string;
     airportsFlexHint: string;
@@ -706,6 +711,13 @@ export interface TranslationDictionary {
     accommodationHeading: string;
     accommodation: Record<AccommodationBookingAction, string>;
     disclaimer: string;
+  };
+  /** Calendar popovers (src/components/calendar) */
+  calendar: {
+    noDaySelectedTitle: string;
+    noDaySelectedBody: string;
+    keepChoosing: string;
+    closeWithoutChange: string;
   };
   /** Error boundary of the page content (src/app/error.tsx) */
   errorPage: {
