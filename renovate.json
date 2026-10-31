@@ -8,7 +8,8 @@
     "security:openssf-scorecard"
   ],
   "timezone": "UTC",
-  "schedule": ["before 5am on Monday"],
+  "schedule": ["before 6am"],
+  "updateNotScheduled": true,
   "prHourlyLimit": 2,
   "prConcurrentLimit": 5,
   "rebaseWhen": "behind-base-branch",
@@ -63,7 +64,7 @@
     {
       "description": "Isolated review for major updates",
       "matchUpdateTypes": ["major"],
-      "schedule": ["before 5am on Monday"],
+      "schedule": ["before 6am on Monday"],
       "labels": ["dependencies", "major-update"]
     },
     {
