@@ -29,6 +29,14 @@ Self-hosted family vacation optimizer: Next.js 16 (App Router), React 19, Prisma
 - **Tests never call live services.** `tests/setup-unit.ts` mocks Nominatim, Photon, OpenHolidays, Open-Meteo and the travel advisories; extend it or stub `fetch` in the test. For database-backed logic, take an injectable `db` (see `src/lib/passport/reminders.ts`) so tests can pass in-memory fakes.
 - **Comments explain why**, matching the surrounding code; keep the existing style and naming.
 
+## Code conventions
+
+- Destination lookups go through `getDestinationPoint()` (`src/lib/geo/destination-points.ts`), not `getAirportByIata`: destinations can be overland places without an airport, and overland candidates use `originAirport: 'HOME'` (`OVERLAND_ORIGIN_CODE`) with no flight fields.
+- Safety: full travel warnings (Auswärtiges Amt / US level 4) are a hard ban in the engine, even for destinations the user names. Keep `src/lib/safety/advisory-store.ts` free of runtime imports - a failed `require` there once let banned countries through silently.
+- New profile preferences that the search only reads go into the `FamilyProfile.scoringWeights` JSON (like `excludedCountries`, `longRangeStyles`): no migration needed. The optimize cache key hashes the whole request, so new request fields need no cache version bump - only changed output does.
+- Route-handler tests mock `@/lib/db/prisma` with an in-memory fake (reuse `tests/helpers/fake-shared-board-prisma.ts`) and call the exported `GET`/`POST` directly; no database is needed.
+- Popovers use `src/components/ui/responsive-popover.tsx` (centered overlay on phones); the `animate-in` utilities live in `src/app/globals.css`, there is no animation plugin.
+
 ## Traps
 
 - Changing the optimizer's output or selection: bump `OPTIMIZER_CACHE_VERSION` in `src/app/api/vacations/optimize/route.ts`, or cached results from the old code are served for 10 minutes.
@@ -38,6 +46,8 @@ Self-hosted family vacation optimizer: Next.js 16 (App Router), React 19, Prisma
 - Mail is optional: everything must work without SMTP (`isMailConfigured()`); never log recipients.
 - Windows: the standalone build (`pnpm run start`) does not run there - test production builds with Docker. `prisma generate` may fail with EPERM while the dev server runs; the types still regenerate.
 - `next dev` rewrites the block at the top of this file; leave it and edit only below it.
+- Pull requests are squash-merged. Don't stack PRs on unmerged branches: their full CI only runs once they target `main`, and after the base is squashed they need `git rebase --onto`.
+- Release Drafter rewrites the draft release on every merge to `main`; hand-written release notes go in right before publishing.
 
 ## Where things are
 
