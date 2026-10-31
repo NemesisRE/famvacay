@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Plane, Search, X, ChevronDown, ChevronUp, Train, Check, Sparkles } from 'lucide-react';
+import { Plane, Search, X, ChevronDown, ChevronUp, Train, Check } from 'lucide-react';
+import { ComboboxField, COMBOBOX_INPUT_CLASS, COMBOBOX_INPUT_WRAP_CLASS, FlexibleChip, FlexibleResetLink, comboboxIds, useComboboxNavigation } from '@/components/ui/combobox';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
 export interface AirportItem {
@@ -44,6 +45,7 @@ export function AirportSelector({
   const [rawSearching, setSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Airport details cache for selected chips and suggestion synchronization
   const [airportDetails, setAirportDetails] = useState<Record<string, AirportItem>>({});
@@ -252,44 +254,48 @@ export function AirportSelector({
     return Array.from(map.values());
   }, [suggestions, selectedAirports, airportDetails]);
 
+  const listOpen = showDropdown && searchResults.length > 0;
+  const { activeIndex, setActiveIndex, onKeyDown } = useComboboxNavigation({
+    count: listOpen ? searchResults.length : 0,
+    isOpen: listOpen,
+    onOpen: () => {
+      if (searchResults.length > 0) setShowDropdown(true);
+    },
+    onClose: () => setShowDropdown(false),
+    onSelectIndex: (index) => handleSelectAirport(searchResults[index].code),
+    // Enter without a highlighted row takes the best match
+    onEnter: () => {
+      if (listOpen) handleSelectAirport(searchResults[0].code);
+    },
+    onBackspaceEmpty: () => {
+      if (selectedAirports.length > 0) handleRemoveAirport(selectedAirports[selectedAirports.length - 1]);
+    },
+  });
+  const ids = comboboxIds('airport-search');
+
   return (
     <div className={`space-y-3 ${className}`}>
-      {/* Selected Airport Chips */}
-      <div>
-        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
-          <span className="flex items-center gap-1.5">
+      {/* One field: the chosen airports and the search input - a click anywhere starts typing */}
+      <div ref={searchContainerRef}>
+        <div className="flex items-center justify-between mb-1.5">
+          <label htmlFor="airport-search" className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
             <Plane className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-            {t.home.airportsLabel}
-          </span>
-          {selectedAirports.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => onChange([])}
-              className="inline-flex items-center gap-1 text-[10px] font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-900 dark:hover:text-teal-300 cursor-pointer"
-              title={t.home.airportsFlexHint}
-            >
-              <Sparkles className="w-3 h-3" />
-              {t.home.airportsFlexButton}
-            </button>
-          ) : (
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">
-              {t.home.airportsFlexTitle}
-            </span>
+            <span>{t.home.airportsLabel}</span>
+          </label>
+          {selectedAirports.length > 0 && (
+            <FlexibleResetLink label={t.home.airportsFlexButton} title={t.home.airportsFlexHint} onClick={() => onChange([])} />
           )}
-        </label>
-        <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">{t.home.airportsHint}</p>
+        </div>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">
+          {selectedAirports.length === 0 ? t.home.airportsFlexHint : t.home.airportsHint}
+        </p>
 
-        <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-slate-50/80 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-          {selectedAirports.length === 0 ? (
-            <span className="flex items-start gap-2 text-xs text-teal-800 dark:text-teal-200">
-              <span className="inline-flex items-center gap-1 font-semibold px-2.5 py-1 rounded-lg bg-teal-600 text-white shadow-xs shrink-0">
-                <Sparkles className="w-3 h-3 text-teal-200" />
-                {t.home.airportsFlexTitle}
-              </span>
-              <span className="text-[11px] leading-snug text-slate-600 dark:text-slate-300 self-center">{t.home.airportsFlexHint}</span>
-            </span>
-          ) : (
-            selectedAirports.map((code) => {
+        <div className="relative">
+          <ComboboxField inputRef={inputRef}>
+            {selectedAirports.length === 0 && !searchQuery && (
+              <FlexibleChip label={t.home.airportsFlexTitle} title={t.home.airportsFlexHint} />
+            )}
+            {selectedAirports.map((code) => {
               const details = airportDetails[code];
               return (
                 <span
@@ -314,80 +320,97 @@ export function AirportSelector({
                   </button>
                 </span>
               );
-            })
-          )}
-        </div>
-      </div>
-
-      {/* Airport Search Input */}
-      <div ref={searchContainerRef} className="relative">
-        <div className="relative">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => {
-              if (searchResults.length > 0) setShowDropdown(true);
-            }}
-            placeholder={t.home.searchAirportsPlaceholder}
-            className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 pl-8 pr-8 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-teal-500 shadow-xs"
-          />
-          <Search className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-2.5 top-2.5" />
-          {searching && (
-            <span className="w-3.5 h-3.5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin absolute right-2.5 top-2.5" />
-          )}
-          {searchQuery && !searching && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery('');
-                setShowDropdown(false);
-              }}
-              className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        {/* Search Results Dropdown */}
-        {showDropdown && searchResults.length > 0 && (
-          <div className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700/60">
-            {searchResults.map((ap) => {
-              const isSelected = selectedAirports.includes(ap.code);
-              return (
-                <button
-                  key={ap.code}
-                  type="button"
-                  onClick={() => handleSelectAirport(ap.code)}
-                  className={`w-full text-left px-3 py-2 text-xs hover:bg-teal-50 dark:hover:bg-slate-700/70 transition-colors flex items-center justify-between cursor-pointer ${
-                    isSelected ? 'bg-teal-50/60 dark:bg-slate-700/50 font-semibold' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-bold text-teal-700 dark:text-teal-300 bg-teal-100 dark:bg-teal-950/60 px-1.5 py-0.5 rounded text-[11px]">
-                      {ap.code}
-                    </span>
-                    <div className="truncate">
-                      <span className="font-medium text-slate-800 dark:text-slate-100">{ap.city}</span>
-                      <span className="text-slate-400 dark:text-slate-400 ml-1">({ap.name})</span>
-                      <span className="text-slate-400 dark:text-slate-500 ml-1 text-[10px]">· {ap.country}</span>
-                    </div>
-                  </div>
-                  {isSelected ? (
-                    <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-[11px] font-semibold shrink-0">
-                      <Check className="w-3 h-3" /> {t.home.airportsSelectedLabel}
-                    </span>
-                  ) : (
-                    <span className="text-teal-600 dark:text-teal-400 text-[11px] font-semibold shrink-0">
-                      {t.home.airportsAdd}
-                    </span>
-                  )}
-                </button>
-              );
             })}
-          </div>
-        )}
+            <span className={COMBOBOX_INPUT_WRAP_CLASS}>
+              <Search className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 ml-1" />
+              <input
+                ref={inputRef}
+                id="airport-search"
+                type="text"
+                role="combobox"
+                aria-expanded={listOpen}
+                aria-controls={ids.listbox}
+                aria-autocomplete="list"
+                aria-activedescendant={activeIndex >= 0 ? ids.option(activeIndex) : undefined}
+                autoComplete="off"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => {
+                  if (searchResults.length > 0) setShowDropdown(true);
+                }}
+                onKeyDown={onKeyDown}
+                placeholder={t.home.searchAirportsPlaceholder}
+                className={COMBOBOX_INPUT_CLASS}
+              />
+              {searching && (
+                <span className="w-3.5 h-3.5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin shrink-0 mr-1" />
+              )}
+              {searchQuery && !searching && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setShowDropdown(false);
+                    inputRef.current?.focus();
+                  }}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer shrink-0"
+                  title={t.home.clearSearch}
+                  aria-label={t.home.clearSearch}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </span>
+          </ComboboxField>
+
+          {/* Search Results Dropdown */}
+          {listOpen && (
+            <div
+              id={ids.listbox}
+              role="listbox"
+              aria-label={t.home.airportsLabel}
+              className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700/60"
+            >
+              {searchResults.map((ap, index) => {
+                const isSelected = selectedAirports.includes(ap.code);
+                return (
+                  <div
+                    key={ap.code}
+                    id={ids.option(index)}
+                    role="option"
+                    aria-selected={activeIndex === index}
+                    onPointerDown={(e) => e.preventDefault()}
+                    onClick={() => handleSelectAirport(ap.code)}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center justify-between cursor-pointer ${
+                      activeIndex === index ? 'bg-teal-50 dark:bg-slate-700/70' : ''
+                    } ${isSelected ? 'font-semibold' : ''}`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-bold text-teal-700 dark:text-teal-300 bg-teal-100 dark:bg-teal-950/60 px-1.5 py-0.5 rounded text-[11px]">
+                        {ap.code}
+                      </span>
+                      <div className="truncate">
+                        <span className="font-medium text-slate-800 dark:text-slate-100">{ap.city}</span>
+                        <span className="text-slate-400 dark:text-slate-400 ml-1">({ap.name})</span>
+                        <span className="text-slate-400 dark:text-slate-500 ml-1 text-[10px]">· {ap.country}</span>
+                      </div>
+                    </div>
+                    {isSelected ? (
+                      <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-[11px] font-semibold shrink-0">
+                        <Check className="w-3 h-3" /> <span>{t.home.airportsSelectedLabel}</span>
+                      </span>
+                    ) : (
+                      <span className="text-teal-600 dark:text-teal-400 text-[11px] font-semibold shrink-0">
+                        {t.home.airportsAdd}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Collapsible Suggestions List */}

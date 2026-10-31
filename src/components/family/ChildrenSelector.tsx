@@ -121,8 +121,9 @@ export function ChildrenSelector({
                   />
                 </div>
 
-                {/* Single-line Badges: Age + Tier + School Status */}
-                <div className="order-3 basis-full sm:order-2 sm:basis-auto sm:flex-1 flex flex-wrap items-center gap-1.5 min-w-0 sm:justify-end pl-7 sm:pl-0">
+                {/* Badges (age, fare tier, school status) in a line of their own at every width: next to
+                    the date they wrapped in longer languages and pushed the delete button into its own row */}
+                <div className="order-3 basis-full flex flex-wrap items-center gap-1.5 min-w-0 pl-7">
                   <ChildAgeBadges age={age} />
 
                 </div>
@@ -130,7 +131,7 @@ export function ChildrenSelector({
                 <button
                   type="button"
                   onClick={() => handleRemoveChild(child.id)}
-                  className="order-2 ml-auto sm:order-3 sm:ml-0 p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors shrink-0 cursor-pointer"
+                  className="order-2 ml-auto p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors shrink-0 cursor-pointer"
                   title={t.home.removeChild}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
