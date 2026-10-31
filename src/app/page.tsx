@@ -35,6 +35,7 @@ import {
   Share2,
   Wallet,
   Ship,
+  Globe,
 } from 'lucide-react';
 import { differenceInYears, addDays } from 'date-fns';
 import { CandidateWindow, DestinationType, TravelVehicle, BoardType, CarFuelType } from '@/lib/optimizer/types';
@@ -88,8 +89,8 @@ import { ResultsPagination } from '@/components/results/ResultsPagination';
 import { OverlandTripDetailsPopover } from '@/components/travel/OverlandTripDetailsPopover';
 import { CountrySelect, SubdivisionSelect } from '@/components/forms/RegionSelectors';
 import { BoardTypeSelect, OverlandDurationSelect, OverlandModeIcons } from '@/components/forms/PreferenceSelects';
-import { isAllStylesSelection, toggleStyleSelection, toggleTravelModeSelection, readStoredStyles, getClimateRelevance } from '@/lib/optimizer/style-selection';
-import { VacationStyleTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
+import { toggleStyleSelection, toggleTravelModeSelection, toggleTravelDistance, readStyleSelection, readStoredStyleSelection, toOptimizerStyles, getClimateRelevance, ALL_TRAVEL_DISTANCES, type TravelDistance, type StyleSelection } from '@/lib/optimizer/style-selection';
+import { VacationStyleTiles, TravelDistanceTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
 import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/destination-points';
 import { passportWarningsForTrip, type PassportHolder } from '@/lib/passport/validity';
 import { DateRangePicker } from '@/components/calendar/DateRangePicker';
@@ -122,18 +123,19 @@ export default function HomePage() {
 
   // 2. Travel Destinations & Vacation Style State (default open/all discovery, multi-selectable)
   const [selectedStyles, setSelectedStyles] = useState<DestinationType[]>(['ALL']);
-  // Preferred kind of long-haul trip when the long-range style is selected (empty = any)
-  const [longRangeStyles, setLongRangeStyles] = useState<DestinationType[]>([]);
+  // How far the trip may go (short/medium haul, long haul); both = any distance
+  const [travelDistances, setTravelDistances] = useState<TravelDistance[]>([...ALL_TRAVEL_DISTANCES]);
+  const applyStyleSelection = ({ styles, distances }: StyleSelection) => {
+    setSelectedStyles(styles);
+    setTravelDistances(distances);
+  };
   const [targetDestinations, setTargetDestinations] = useState<string[]>([]);
   // ISO country codes open discovery never proposes
   const [excludedCountries, setExcludedCountries] = useState<string[]>([]);
 
-  const isAllStylesSelected = isAllStylesSelection(selectedStyles);
-
   // Minimum temperature / snow guarantee matter whenever beach / alpine destinations can be in
-  // the result: the style itself, "all styles", or a long-range search preferring that kind.
-  const climateRelevance = getClimateRelevance(selectedStyles, longRangeStyles);
-  const isLongRangeSelected = climateRelevance.isLongRangeSelected;
+  // the result: the style itself or "all styles", at any distance.
+  const climateRelevance = getClimateRelevance(selectedStyles);
   const isBeachClimateRelevant = climateRelevance.beach;
   const isAlpineClimateRelevant = climateRelevance.alpine;
 
@@ -355,7 +357,7 @@ export default function HomePage() {
         if (parsed.departureCoords) setDepartureCoords(parsed.departureCoords);
         if (parsed.country) setCountry(parsed.country);
         if (parsed.federalState) setFederalState(parsed.federalState);
-        if (Array.isArray(parsed.selectedStyles) && parsed.selectedStyles.length > 0) setSelectedStyles(parsed.selectedStyles);
+        applyStyleSelection(readStyleSelection({ styles: parsed.selectedStyles, longRangeStyles: parsed.longRangeStyles, travelDistances: parsed.travelDistances }));
         if (Array.isArray(parsed.targetDestinations)) setTargetDestinations(parsed.targetDestinations);
         if (Array.isArray(parsed.originAirports)) setOriginAirports(parsed.originAirports);
         if (typeof parsed.adultsCount === 'number') setAdultsCount(parsed.adultsCount);
@@ -372,7 +374,6 @@ export default function HomePage() {
         }
         if (typeof parsed.minBeachTemp === 'number') setMinBeachTemp(parsed.minBeachTemp);
         if (typeof parsed.requireSnow === 'boolean') setRequireSnow(parsed.requireSnow);
-        if (Array.isArray(parsed.longRangeStyles)) setLongRangeStyles(parsed.longRangeStyles);
         if (Array.isArray(parsed.excludedCountries)) setExcludedCountries(parsed.excludedCountries);
         if (Array.isArray(parsed.recurringBlackouts)) setRecurringBlackouts(parsed.recurringBlackouts);
         if (parsed.preferredBoardType) setPreferredBoardType(parsed.preferredBoardType);
@@ -476,7 +477,7 @@ export default function HomePage() {
                   if (formState.departureCoords) setDepartureCoords(formState.departureCoords);
                   if (formState.country) setCountry(formState.country);
                   if (formState.federalState) setFederalState(formState.federalState);
-                  if (Array.isArray(formState.selectedStyles) && formState.selectedStyles.length > 0) setSelectedStyles(formState.selectedStyles);
+                  applyStyleSelection(readStyleSelection({ styles: formState.selectedStyles, longRangeStyles: formState.longRangeStyles, travelDistances: formState.travelDistances }));
                   if (Array.isArray(formState.targetDestinations)) setTargetDestinations(formState.targetDestinations);
                   if (Array.isArray(formState.originAirports)) setOriginAirports(formState.originAirports);
                   if (typeof formState.adultsCount === 'number') setAdultsCount(formState.adultsCount);
@@ -490,7 +491,6 @@ export default function HomePage() {
                   if (formState.preferredBoardType) setPreferredBoardType(formState.preferredBoardType);
                   if (typeof formState.minBeachTemp === 'number') setMinBeachTemp(formState.minBeachTemp);
                   if (typeof formState.requireSnow === 'boolean') setRequireSnow(formState.requireSnow);
-                  if (Array.isArray(formState.longRangeStyles)) setLongRangeStyles(formState.longRangeStyles);
                   if (Array.isArray(formState.excludedCountries)) setExcludedCountries(formState.excludedCountries);
                   if (Array.isArray(formState.recurringBlackouts)) setRecurringBlackouts(formState.recurringBlackouts);
                   if (typeof formState.maxFlightStops === 'number') setMaxFlightStops(formState.maxFlightStops);
@@ -544,7 +544,7 @@ export default function HomePage() {
         travelVehicle: selectedVehicles[0] || 'PLANE',
         minBeachTemp,
         requireSnow,
-        longRangeStyles,
+        travelDistances,
         excludedCountries,
         recurringBlackouts,
         preferredBoardType,
@@ -577,7 +577,7 @@ export default function HomePage() {
     selectedVehicles,
     minBeachTemp,
     requireSnow,
-    longRangeStyles,
+    travelDistances,
     excludedCountries,
     recurringBlackouts,
     preferredBoardType,
@@ -725,7 +725,7 @@ export default function HomePage() {
     setDepartureLocation('');
     setDepartureCoords(null);
     setSelectedStyles(['ALL']);
-    setLongRangeStyles([]);
+    setTravelDistances([...ALL_TRAVEL_DISTANCES]);
     setTargetDestinations([]);
     setExcludedCountries([]);
     setOriginAirports([]);
@@ -876,10 +876,7 @@ export default function HomePage() {
               setPreferredBoardType(sw.preferredBoardType);
             }
             if (sw.preferredVacationStyles || sw.preferredVacationStyle) {
-              setSelectedStyles(readStoredStyles(sw));
-            }
-            if (Array.isArray(sw.longRangeStyles)) {
-              setLongRangeStyles(sw.longRangeStyles);
+              applyStyleSelection(readStoredStyleSelection(sw));
             }
             if (Array.isArray(sw.excludedCountries)) {
               setExcludedCountries(sw.excludedCountries);
@@ -1014,14 +1011,15 @@ export default function HomePage() {
       const childrenSchoolRegions = datedChildren.map((c) => c.schoolRegion || null);
 
       const hasDestinations = targetDestinations.length > 0;
+      const optimizerStyles = hasDestinations ? {} : toOptimizerStyles({ styles: selectedStyles, distances: travelDistances });
 
       const payload = {
         targetDestinations: hasDestinations ? targetDestinations : undefined,
-        destinationTypes: hasDestinations ? undefined : (isAllStylesSelected ? undefined : selectedStyles),
-        destinationType: hasDestinations ? undefined : (selectedStyles.length === 1 && !isAllStylesSelected ? selectedStyles[0] : undefined),
+        destinationTypes: optimizerStyles.destinationTypes,
+        destinationType: optimizerStyles.destinationTypes?.length === 1 ? optimizerStyles.destinationTypes[0] : undefined,
         minBeachTemp: (!hasDestinations && isBeachClimateRelevant) ? minBeachTemp : undefined,
         requireSnow: (!hasDestinations && isAlpineClimateRelevant) ? requireSnow : false,
-        longRangeStyles: (!hasDestinations && isLongRangeSelected && longRangeStyles.length > 0) ? longRangeStyles : undefined,
+        longRangeStyles: optimizerStyles.longRangeStyles?.length ? optimizerStyles.longRangeStyles : undefined,
         excludedCountries: (!hasDestinations && excludedCountries.length > 0) ? [...excludedCountries].sort() : undefined,
         preferredBoardType,
         maxOverlandTravelMinutes: maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
@@ -1101,7 +1099,7 @@ export default function HomePage() {
               preferredBoardType,
               minBeachTemp,
               requireSnow,
-              longRangeStyles,
+              travelDistances,
               excludedCountries,
               recurringBlackouts,
               maxFlightStops,
@@ -1215,7 +1213,7 @@ export default function HomePage() {
               preferredBoardType,
               minBeachTemp,
               requireSnow,
-              longRangeStyles,
+              travelDistances,
               excludedCountries,
               recurringBlackouts,
               maxFlightStops,
@@ -2227,12 +2225,7 @@ export default function HomePage() {
                         {t.home.vacationKindHint}
                       </p>
                     </div>
-                    <VacationStyleTiles
-                      selectedStyles={selectedStyles}
-                      onToggle={toggleVacationStyle}
-                      longRangeStyles={longRangeStyles}
-                      onLongRangeStylesChange={setLongRangeStyles}
-                    />
+                    <VacationStyleTiles selectedStyles={selectedStyles} onToggle={toggleVacationStyle} />
 
                     <ClimatePreferencesPanel
                       showBeach={isBeachClimateRelevant}
@@ -2241,6 +2234,20 @@ export default function HomePage() {
                       onMinBeachTempChange={setMinBeachTemp}
                       requireSnow={requireSnow}
                       onRequireSnowChange={setRequireSnow}
+                    />
+
+                    <div className="mt-4 mb-2.5 space-y-0.5">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                        <span>{t.home.travelDistanceLabel}</span>
+                      </label>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                        {t.home.travelDistanceHint}
+                      </p>
+                    </div>
+                    <TravelDistanceTiles
+                      selectedDistances={travelDistances}
+                      onToggle={(distance) => setTravelDistances((prev) => toggleTravelDistance(prev, distance))}
                     />
                   </div>
                 )}

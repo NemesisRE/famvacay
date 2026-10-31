@@ -33,7 +33,7 @@ Self-hosted family vacation optimizer: Next.js 16 (App Router), React 19, Prisma
 
 - Destination lookups go through `getDestinationPoint()` (`src/lib/geo/destination-points.ts`), not `getAirportByIata`: destinations can be overland places without an airport, and overland candidates use `originAirport: 'HOME'` (`OVERLAND_ORIGIN_CODE`) with no flight fields.
 - Safety: full travel warnings (Auswärtiges Amt / US level 4) are a hard ban in the engine, even for destinations the user names. Keep `src/lib/safety/advisory-store.ts` free of runtime imports - a failed `require` there once let banned countries through silently.
-- New profile preferences that the search only reads go into the `FamilyProfile.scoringWeights` JSON (like `excludedCountries`, `longRangeStyles`): no migration needed. The optimize cache key hashes the whole request, so new request fields need no cache version bump - only changed output does.
+- New profile preferences that the search only reads go into the `FamilyProfile.scoringWeights` JSON (like `excludedCountries`, `travelDistances`): no migration needed. The optimize cache key hashes the whole request, so new request fields need no cache version bump - only changed output does.
 - Route-handler tests mock `@/lib/db/prisma` with an in-memory fake (reuse `tests/helpers/fake-shared-board-prisma.ts`) and call the exported `GET`/`POST` directly; no database is needed.
 - Popovers use `src/components/ui/responsive-popover.tsx` (centered overlay on phones); the `animate-in` utilities live in `src/app/globals.css`, there is no animation plugin.
 

@@ -46,22 +46,23 @@ test.describe('Travel conditions form', () => {
     await expect(page.locator('#travel-car-fuel')).toBeVisible();
   });
 
-  test('long-haul kinds start all selected and toggle like the travel modes', async ({ page }) => {
-    await page.getByRole('button', { name: /^Long-Range & Exotic/ }).click();
-    const kinds = page.getByRole('group', { name: 'Kind of long-haul trip' });
-    const kind = (name: string) => kinds.getByRole('button', { name, exact: true });
-    for (const name of ['Beach', 'Cities', 'Nature', 'Mountains']) {
-      await expect(kind(name)).toHaveAttribute('aria-pressed', 'true');
+  test('vacation style and travel distance are separate choices that toggle like the travel modes', async ({ page }) => {
+    const tile = (name: RegExp) => page.getByRole('button', { name });
+    for (const name of [/^Beach & Sun/, /^Alpine & Mountains/, /^City & Culture/, /^Nature & Active/, /Short & medium haul/, /Long-Haul$/]) {
+      await expect(tile(name)).toHaveAttribute('aria-pressed', 'true');
     }
 
-    // All selected: a click picks only that kind
-    await kind('Cities').click();
-    await expect(kind('Cities')).toHaveAttribute('aria-pressed', 'true');
-    await expect(kind('Beach')).toHaveAttribute('aria-pressed', 'false');
+    // Long-haul beach: each choice picks one option, the other choice is untouched
+    await tile(/Long-Haul$/).click();
+    await expect(tile(/Short & medium haul/)).toHaveAttribute('aria-pressed', 'false');
+    await tile(/^Beach & Sun/).click();
+    await expect(tile(/^City & Culture/)).toHaveAttribute('aria-pressed', 'false');
+    await expect(tile(/Long-Haul$/)).toHaveAttribute('aria-pressed', 'true');
 
-    // Deselecting the last one falls back to all
-    await kind('Cities').click();
-    await expect(kind('Mountains')).toHaveAttribute('aria-pressed', 'true');
+    // Deselecting the last distance falls back to any distance
+    await tile(/Long-Haul$/).click();
+    await expect(tile(/Short & medium haul/)).toHaveAttribute('aria-pressed', 'true');
+    await expect(tile(/Long-Haul$/)).toHaveAttribute('aria-pressed', 'true');
   });
 
   test('calendar asks before dropping a month change without a day', async ({ page }) => {

@@ -18,6 +18,7 @@ import {
   Utensils,
   BookUser,
   Info,
+  Globe,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { getCountryCodeFromSubdivision } from '@/lib/regions/subdivisions';
@@ -29,8 +30,8 @@ import {
 } from '@/components/forms/RegionSelectors';
 import { BoardTypeSelect, OverlandDurationSelect, OverlandModeIcons } from '@/components/forms/PreferenceSelects';
 import type { BoardType, CarFuelType, DestinationType, TravelVehicle } from '@/lib/optimizer/types';
-import { isAllStylesSelection, toggleStyleSelection, toggleTravelModeSelection, readStoredStyles, getClimateRelevance } from '@/lib/optimizer/style-selection';
-import { VacationStyleTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
+import { isAllStylesSelection, toggleStyleSelection, toggleTravelModeSelection, toggleTravelDistance, readStoredStyleSelection, getClimateRelevance, ALL_TRAVEL_DISTANCES, type TravelDistance } from '@/lib/optimizer/style-selection';
+import { VacationStyleTiles, TravelDistanceTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
 import { ChildAgeBadges } from '@/components/family/ChildAgeBadges';
 import { differenceInYears } from 'date-fns';
 import { FORM_SELECT_CLASS } from '@/components/forms/RegionSelectors';
@@ -88,11 +89,10 @@ function FamilyProfileContent() {
   const [preferredBoardType, setPreferredBoardType] = useState<string>('ALL');
   const [maxOverlandDurationHours, setMaxOverlandDurationHours] = useState<number | undefined>(undefined);
   const [preferredVacationStyles, setPreferredVacationStyles] = useState<DestinationType[]>(['ALL']);
-  const [longRangeStyles, setLongRangeStyles] = useState<DestinationType[]>([]);
+  const [travelDistances, setTravelDistances] = useState<TravelDistance[]>([...ALL_TRAVEL_DISTANCES]);
   const [excludedCountries, setExcludedCountries] = useState<string[]>([]);
   const allStylesSelected = isAllStylesSelection(preferredVacationStyles);
-  const climateRelevance = getClimateRelevance(preferredVacationStyles, longRangeStyles);
-  const longRangeOnlySelected = climateRelevance.isLongRangeSelected;
+  const climateRelevance = getClimateRelevance(preferredVacationStyles);
   const [minBeachTemp, setMinBeachTemp] = useState<number | undefined>(undefined);
   const [requireSnow, setRequireSnow] = useState<boolean>(false);
   const [maxFlightStops, setMaxFlightStops] = useState<number | undefined>(undefined);
@@ -180,10 +180,9 @@ function FamilyProfileContent() {
               if (sw.preferredBoardType) {
                 setPreferredBoardType(sw.preferredBoardType);
               }
-              setPreferredVacationStyles(readStoredStyles(sw));
-              if (Array.isArray(sw.longRangeStyles)) {
-                setLongRangeStyles(sw.longRangeStyles);
-              }
+              const styleSelection = readStoredStyleSelection(sw);
+              setPreferredVacationStyles(styleSelection.styles);
+              setTravelDistances(styleSelection.distances);
               if (Array.isArray(sw.excludedCountries)) {
                 setExcludedCountries(sw.excludedCountries);
               }
@@ -331,7 +330,9 @@ function FamilyProfileContent() {
         preferredVacationStyles,
         // Legacy single value kept for older clients reading the profile
         preferredVacationStyle: allStylesSelected ? 'ALL' : preferredVacationStyles[0],
-        longRangeStyles: longRangeOnlySelected ? longRangeStyles : [],
+        travelDistances,
+        // Replaced by travelDistances; cleared so the old long-haul kinds are not read back
+        longRangeStyles: undefined,
         excludedCountries,
         recurringBlackouts,
         maxOverlandTravelMinutes: maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
@@ -534,9 +535,7 @@ function FamilyProfileContent() {
               <VacationStyleTiles
                 selectedStyles={preferredVacationStyles}
                 onToggle={(style) => setPreferredVacationStyles((prev) => toggleStyleSelection(prev, style))}
-                longRangeStyles={longRangeStyles}
-                onLongRangeStylesChange={setLongRangeStyles}
-                className="grid grid-cols-2 sm:grid-cols-3 gap-2.5"
+                className="grid grid-cols-2 sm:grid-cols-4 gap-2.5"
               />
               <ClimatePreferencesPanel
                 idPrefix="profile-climate"
@@ -546,6 +545,18 @@ function FamilyProfileContent() {
                 onMinBeachTempChange={setMinBeachTemp}
                 requireSnow={requireSnow}
                 onRequireSnowChange={setRequireSnow}
+              />
+
+              <div className="mt-4 mb-2.5 space-y-0.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <span>{t.home.travelDistanceLabel}</span>
+                </label>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{t.home.travelDistanceHint}</p>
+              </div>
+              <TravelDistanceTiles
+                selectedDistances={travelDistances}
+                onToggle={(distance) => setTravelDistances((prev) => toggleTravelDistance(prev, distance))}
               />
             </div>
 
