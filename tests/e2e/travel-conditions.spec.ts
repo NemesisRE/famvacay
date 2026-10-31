@@ -46,6 +46,24 @@ test.describe('Travel conditions form', () => {
     await expect(page.locator('#travel-car-fuel')).toBeVisible();
   });
 
+  test('long-haul kinds start all selected and toggle like the travel modes', async ({ page }) => {
+    await page.getByRole('button', { name: /^Long-Range & Exotic/ }).click();
+    const kinds = page.getByRole('group', { name: 'Kind of long-haul trip' });
+    const kind = (name: string) => kinds.getByRole('button', { name, exact: true });
+    for (const name of ['Beach', 'Cities', 'Nature', 'Mountains']) {
+      await expect(kind(name)).toHaveAttribute('aria-pressed', 'true');
+    }
+
+    // All selected: a click picks only that kind
+    await kind('Cities').click();
+    await expect(kind('Cities')).toHaveAttribute('aria-pressed', 'true');
+    await expect(kind('Beach')).toHaveAttribute('aria-pressed', 'false');
+
+    // Deselecting the last one falls back to all
+    await kind('Cities').click();
+    await expect(kind('Mountains')).toHaveAttribute('aria-pressed', 'true');
+  });
+
   test('calendar asks before dropping a month change without a day', async ({ page }) => {
     const trigger = page.locator('button:has(svg.lucide-calendar)').first();
     const prompt = page.getByTestId('calendar-unselected-prompt');

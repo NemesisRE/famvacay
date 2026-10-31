@@ -4,7 +4,7 @@ import React from 'react';
 import { Compass, Sun, Mountain, Building2, Trees, Globe, Plane, Car, Train, Bus, Check, Thermometer, Snowflake } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import type { CarFuelType, DestinationType, TravelVehicle } from '@/lib/optimizer/types';
-import { isAllStylesSelection, LONG_RANGE_STYLE_OPTIONS, toggleLongRangeStyle } from '@/lib/optimizer/style-selection';
+import { isAllStylesSelection, isAnyLongRangeStyle, toggleLongRangeStyle } from '@/lib/optimizer/style-selection';
 import { SelectDropdown } from '@/components/ui/select-dropdown';
 import { MinTemperatureSelect, SnowGuaranteeSelect } from './PreferenceSelects';
 
@@ -79,18 +79,14 @@ export function VacationStyleTiles({
     { type: 'NATURE', label: t.home.vacationKindNature, hint: t.home.styleHintNature, icon: Trees },
     { type: 'LONGRANGE', label: t.home.vacationKindLongrange, hint: t.home.styleHintLongrange, icon: Globe },
   ];
-  const longRangeLabels: Record<string, string> = {
-    BEACH: t.home.vacationKindBeach,
-    CITY: t.home.vacationKindCity,
-    NATURE: t.home.vacationKindNature,
-    ALPINE: t.home.vacationKindAlpine,
-  };
-  const chipClass = (active: boolean) =>
-    `px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer flex items-center gap-1 ${
-      active
-        ? 'bg-teal-600 text-white border-teal-600 shadow-2xs'
-        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-teal-300 dark:hover:border-teal-700'
-    }`;
+  // Short names, so the four kinds fit in one row in every language
+  const longRangeKinds: { type: DestinationType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { type: 'BEACH', label: t.home.longRangeKindBeach, icon: Sun },
+    { type: 'CITY', label: t.home.longRangeKindCity, icon: Building2 },
+    { type: 'NATURE', label: t.home.longRangeKindNature, icon: Trees },
+    { type: 'ALPINE', label: t.home.longRangeKindAlpine, icon: Mountain },
+  ];
+  const anyLongRange = isAnyLongRangeStyle(longRangeStyles);
 
   return (
     <>
@@ -113,27 +109,24 @@ export function VacationStyleTiles({
             <span>{t.home.longRangeStylePreference}</span>
           </span>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.home.longRangeStyleHint}</p>
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              aria-pressed={longRangeStyles.length === 0}
-              onClick={() => onLongRangeStylesChange([])}
-              className={chipClass(longRangeStyles.length === 0)}
-            >
-              <span>{t.home.longRangeStyleAny}</span>
-            </button>
-            {LONG_RANGE_STYLE_OPTIONS.map((style) => {
-              const active = longRangeStyles.includes(style);
+          {/* Like the travel modes: all selected = any kind; with all selected a tap picks only one */}
+          <div className="grid grid-cols-4 gap-1.5">
+            {longRangeKinds.map(({ type, label, icon: Icon }) => {
+              const active = anyLongRange || longRangeStyles.includes(type);
               return (
                 <button
-                  key={style}
+                  key={type}
                   type="button"
                   aria-pressed={active}
-                  onClick={() => onLongRangeStylesChange(toggleLongRangeStyle(longRangeStyles, style))}
-                  className={chipClass(active)}
+                  onClick={() => onLongRangeStylesChange(toggleLongRangeStyle(longRangeStyles, type))}
+                  className={`flex flex-col items-center justify-center gap-1 px-0.5 sm:px-1 py-2 rounded-lg border text-[10px] sm:text-[11px] font-semibold text-center leading-tight transition cursor-pointer min-w-0 ${
+                    active
+                      ? 'bg-teal-600 text-white border-teal-600 shadow-2xs'
+                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-teal-300 dark:hover:border-teal-700'
+                  }`}
                 >
-                  {active && <Check className="w-3 h-3 stroke-[2.5]" />}
-                  <span>{longRangeLabels[style]}</span>
+                  <Icon className={`w-3.5 h-3.5 shrink-0 ${active ? 'text-white' : 'text-teal-600 dark:text-teal-400'}`} />
+                  <span className="truncate max-w-full">{label}</span>
                 </button>
               );
             })}

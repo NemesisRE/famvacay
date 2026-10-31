@@ -315,7 +315,10 @@ export interface TranslationDictionary {
     climatePreferencesLabel: string;
     longRangeStylePreference: string;
     longRangeStyleHint: string;
-    longRangeStyleAny: string;
+    longRangeKindBeach: string;
+    longRangeKindCity: string;
+    longRangeKindNature: string;
+    longRangeKindAlpine: string;
     railAirBadge: string;
     airportsFlexTitle: string;
     airportsFlexHint: string;

@@ -7,6 +7,7 @@ import {
   toggleTravelModeSelection,
   isAllTravelModesSelection,
   toggleLongRangeStyle,
+  isAnyLongRangeStyle,
 } from '../style-selection';
 
 describe('Vacation style selection (search form & profile)', () => {
@@ -62,10 +63,18 @@ describe('travel mode selection (same behaviour as the vacation styles)', () => 
   });
 });
 
-describe('long-haul trip kinds', () => {
-  it('toggles kinds and treats all of them as "any"', () => {
+describe('long-haul trip kinds (same behaviour as the travel modes)', () => {
+  it('picks only the clicked kind when any kind is allowed', () => {
     expect(toggleLongRangeStyle([], 'BEACH')).toEqual(['BEACH']);
+    expect(toggleLongRangeStyle(['BEACH', 'CITY', 'NATURE', 'ALPINE'], 'CITY')).toEqual(['CITY']);
+  });
+
+  it('adds and removes kinds, and falls back to any', () => {
+    expect(toggleLongRangeStyle(['BEACH'], 'CITY')).toEqual(['BEACH', 'CITY']);
+    expect(toggleLongRangeStyle(['BEACH', 'CITY'], 'BEACH')).toEqual(['CITY']);
     expect(toggleLongRangeStyle(['BEACH'], 'BEACH')).toEqual([]);
     expect(toggleLongRangeStyle(['BEACH', 'CITY', 'NATURE'], 'ALPINE')).toEqual([]);
+    expect(isAnyLongRangeStyle([])).toBe(true);
+    expect(isAnyLongRangeStyle(['BEACH'])).toBe(false);
   });
 });

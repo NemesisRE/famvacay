@@ -74,10 +74,19 @@ export function toggleTravelModeSelection<T extends string>(prev: readonly T[], 
   return isAllTravelModesSelection(next) ? [...all] : next;
 }
 
-/** Kinds of long-haul trip; all of them selected is the same as "any" (an empty list) */
+/**
+ * Kinds of long-haul trip. An empty list means "any" and shows every kind as selected; the
+ * selection behaves like the travel modes: with all selected, a click picks only that kind;
+ * deselecting the last kind or selecting every kind means "any" again.
+ */
 export const LONG_RANGE_STYLE_OPTIONS: DestinationType[] = ['BEACH', 'CITY', 'NATURE', 'ALPINE'];
 
-export function toggleLongRangeStyle(current: DestinationType[], style: DestinationType): DestinationType[] {
+export function isAnyLongRangeStyle(current: readonly DestinationType[]): boolean {
+  return current.length === 0 || LONG_RANGE_STYLE_OPTIONS.every((s) => current.includes(s));
+}
+
+export function toggleLongRangeStyle(current: readonly DestinationType[], style: DestinationType): DestinationType[] {
+  if (isAnyLongRangeStyle(current)) return [style];
   const next = current.includes(style) ? current.filter((s) => s !== style) : [...current, style];
-  return next.length === LONG_RANGE_STYLE_OPTIONS.length ? [] : next;
+  return next.length === 0 || isAnyLongRangeStyle(next) ? [] : next;
 }

@@ -60,25 +60,31 @@ test.describe('Mobile Viewport & UI Responsiveness', () => {
     await page.getByRole('listbox').getByRole('option').filter({ hasNotText: 'No Guarantee' }).first().tap();
     await expect(snowSelect).not.toHaveText(/No Guarantee/);
 
-    // 5. Flight stops popover stays inside the viewport and updates the plane card
-    const flightStopsBtn = page.getByRole('button', { name: 'Any (Direct or Connecting)', exact: true });
-    await flightStopsBtn.tap();
-    const flightStopsPopover = page.getByRole('dialog', { name: 'Flight Transit Tolerance' });
-    await expect(flightStopsPopover).toBeVisible();
-    const flightBox = await flightStopsPopover.boundingBox();
-    if (flightBox) {
-      expect(flightBox.x).toBeGreaterThanOrEqual(0);
-      expect(flightBox.x + flightBox.width).toBeLessThanOrEqual(385);
+    // 5. Flight stops: a select below the travel tiles (no dropdown inside the plane tile); its list
+    //    stays inside the viewport
+    const flightStopsSelect = page.locator('#travel-flight-stops');
+    await flightStopsSelect.tap();
+    const stopsList = page.getByRole('listbox');
+    await expect(stopsList).toBeVisible();
+    const stopsBox = await stopsList.boundingBox();
+    if (stopsBox) {
+      expect(stopsBox.x).toBeGreaterThanOrEqual(0);
+      expect(stopsBox.x + stopsBox.width).toBeLessThanOrEqual(385);
     }
-    await flightStopsPopover.getByRole('button', { name: 'Direct Flights Only (0 Stops)' }).tap();
-    await expect(flightStopsPopover).not.toBeVisible();
-    await expect(page.getByRole('button', { name: /^Plane .*Non-Stop/ })).toBeVisible();
+    await stopsList.getByRole('option', { name: 'Direct Flights Only (0 Stops)' }).tap();
+    await expect(stopsList).not.toBeVisible();
+    await expect(flightStopsSelect).toHaveText(/Direct Flights Only/);
 
-    // 6. Car / Camper toggles off
+    // 6. Travel modes behave like the vacation styles: with all selected, a tap picks only that one;
+    //    tapping it again (the last one) selects all again
     const carCard = page.getByRole('button', { name: /^Car \/ Camper/ });
+    const planeCard = page.getByRole('button', { name: /^Plane/ });
     await expect(carCard).toHaveAttribute('aria-pressed', 'true');
     await carCard.tap();
-    await expect(carCard).toHaveAttribute('aria-pressed', 'false');
+    await expect(carCard).toHaveAttribute('aria-pressed', 'true');
+    await expect(planeCard).toHaveAttribute('aria-pressed', 'false');
+    await carCard.tap();
+    await expect(planeCard).toHaveAttribute('aria-pressed', 'true');
 
     // 7. Add a child: a birth date field and the "Add Child" button for the next one
     await page.getByRole('button', { name: '+ Add Child' }).tap();
