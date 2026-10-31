@@ -664,7 +664,7 @@ export const it: TranslationDictionary = {
       "Quando condividi dei risultati, viene creato un link che chiunque lo possieda può aprire senza accedere (art. 6, par. 1, lett. b GDPR, su tua richiesta). Contiene solo quanto serve a mostrare i risultati - valori derivati come l'età dei bambini, la regione di partenza e gli aeroporti, ma nessun nome, indirizzo, coordinata o data di nascita. I link condivisi vengono eliminati 30 giorni dopo la creazione.",
     storageSectionTitle: 'Cookie e memoria del browser',
     storageNotice:
-      "FamVacay memorizza sul tuo dispositivo solo ciò che è strettamente necessario (§ 25, c. 2, n. 2 TDDDG): i cookie di accesso (sessione, protezione CSRF, indirizzo di ritorno) e, nella memoria locale del browser, lingua e tema, l'ultimo modulo di ricerca con i risultati, i filtri, i portali di prenotazione preferiti e - se sono offerte statistiche - la tua scelta sulla privacy. La memoria locale resta sul tuo dispositivo; puoi cancellarla in qualsiasi momento nelle impostazioni del browser. Per funzionare come app installata e offline, il browser conserva anche una copia dei file del programma e delle pagine pubbliche di FamVacay (nessun dato personale).",
+      "FamVacay memorizza sul tuo dispositivo solo ciò che è strettamente necessario (§ 25, c. 2, n. 2 TDDDG): i cookie di accesso (sessione, protezione CSRF, indirizzo di ritorno), un cookie della lingua (perché le pagine arrivino subito nella tua lingua) e, nella memoria locale del browser, lingua e tema, l'ultimo modulo di ricerca con i risultati, i filtri, i portali di prenotazione preferiti e - se sono offerte statistiche - la tua scelta sulla privacy. La memoria locale resta sul tuo dispositivo; puoi cancellarla in qualsiasi momento nelle impostazioni del browser. Per funzionare come app installata e offline, il browser conserva anche una copia dei file del programma e delle pagine pubbliche di FamVacay (nessun dato personale).",
     retentionSectionTitle: 'Periodi di conservazione',
     retentionNotice:
       "I dati dell'account e del profilo familiare sono conservati fino alla cancellazione dell'account, che elimina tutti i dati collegati. Le sessioni di accesso scadono dopo 30 giorni. I link condivisi vengono eliminati 30 giorni dopo la creazione. Le ricerche di luoghi, vacanze e festività sono memorizzate nella cache del nostro server da 10 minuti a 30 giorni, senza riferimento alla tua persona. I log di accesso al server vengono eliminati dopo un breve periodo.",
@@ -783,6 +783,13 @@ export const it: TranslationDictionary = {
       COMPARE_PACKAGES: "Di solito incluso nel pacchetto.",
     },
     disclaimer: "Regola pratica basata su abitudini di prenotazione tipiche, non su prezzi in tempo reale.",
+  },
+  errorPage: {
+    title: 'Qualcosa è andato storto',
+    body: 'Questa parte della pagina non può essere mostrata. La tua ricerca e il tuo profilo sono al sicuro.',
+    domHint: 'Una traduzione del browser o un\'altra estensione ha modificato la pagina mentre si aggiornava. Disattiva la traduzione automatica per questo sito: FamVacay è disponibile nella tua lingua tramite il menu delle lingue.',
+    retry: 'Riprova',
+    reload: 'Ricarica la pagina',
   },
   mail: {
     verifySubject: 'Conferma il tuo indirizzo e-mail',

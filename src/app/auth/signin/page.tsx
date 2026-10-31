@@ -306,7 +306,7 @@ function SignInContent() {
               <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
             ) : (
               <>
-                {isRegisterMode ? t.auth.createBtn : t.auth.signInBtn}
+                <span>{isRegisterMode ? t.auth.createBtn : t.auth.signInBtn}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </>
             )}

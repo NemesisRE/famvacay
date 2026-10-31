@@ -348,7 +348,7 @@ export function MultiDestinationInput({
             ) : (
               <>
                 <Plus className="w-3 h-3" />
-                {t.home.addCustomDestination}
+                <span>{t.home.addCustomDestination}</span>
               </>
             )}
           </button>

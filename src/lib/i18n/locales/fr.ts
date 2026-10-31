@@ -664,7 +664,7 @@ export const fr: TranslationDictionary = {
       "Lorsque vous partagez des résultats, un lien est créé que toute personne le possédant peut ouvrir sans connexion (art. 6, par. 1, point b RGPD, à votre demande). Il ne contient que le nécessaire à l'affichage des résultats - des valeurs dérivées comme l'âge des enfants, la région et les aéroports de départ, mais aucun nom, adresse, coordonnée ni date de naissance. Les liens partagés sont supprimés 30 jours après leur création.",
     storageSectionTitle: 'Cookies et stockage du navigateur',
     storageNotice:
-      "FamVacay ne stocke sur votre appareil que ce qui est strictement nécessaire (§ 25, al. 2, n° 2 TDDDG) : les cookies de connexion (session, protection CSRF, adresse de retour) et, dans le stockage local du navigateur, la langue et le thème, votre dernier formulaire de recherche et ses résultats, les filtres, les portails de réservation préférés et - si des statistiques sont proposées - votre choix de confidentialité. Le stockage local reste sur votre appareil ; vous pouvez le supprimer à tout moment dans les paramètres du navigateur. Pour fonctionner comme application installée et hors ligne, votre navigateur conserve aussi une copie des fichiers du programme et des pages publiques de FamVacay (aucune donnée personnelle).",
+      "FamVacay ne stocke sur votre appareil que ce qui est strictement nécessaire (§ 25, al. 2, n° 2 TDDDG) : les cookies de connexion (session, protection CSRF, adresse de retour), un cookie de langue (pour que les pages arrivent directement dans votre langue) et, dans le stockage local du navigateur, la langue et le thème, votre dernier formulaire de recherche et ses résultats, les filtres, les portails de réservation préférés et - si des statistiques sont proposées - votre choix de confidentialité. Le stockage local reste sur votre appareil ; vous pouvez le supprimer à tout moment dans les paramètres du navigateur. Pour fonctionner comme application installée et hors ligne, votre navigateur conserve aussi une copie des fichiers du programme et des pages publiques de FamVacay (aucune donnée personnelle).",
     retentionSectionTitle: 'Durée de conservation',
     retentionNotice:
       "Les données du compte et du profil familial sont conservées jusqu'à la suppression de votre compte, qui efface toutes les données associées. Les sessions de connexion expirent après 30 jours. Les liens partagés sont supprimés 30 jours après leur création. Les recherches de lieux, de vacances et de jours fériés sont mises en cache sur notre serveur de 10 minutes à 30 jours, sans lien avec votre personne. Les journaux d'accès serveur sont supprimés après une courte période.",
@@ -783,6 +783,13 @@ export const fr: TranslationDictionary = {
       COMPARE_PACKAGES: "Généralement inclus dans le séjour tout compris.",
     },
     disclaimer: "Règle empirique basée sur des habitudes de réservation typiques, pas sur des prix en temps réel.",
+  },
+  errorPage: {
+    title: 'Une erreur s\'est produite',
+    body: 'Cette partie de la page n\'a pas pu être affichée. Votre recherche et votre profil sont intacts.',
+    domHint: 'Une traduction du navigateur ou une autre extension a modifié la page pendant sa mise à jour. Désactivez la traduction automatique pour ce site - FamVacay est disponible dans votre langue via le menu des langues.',
+    retry: 'Réessayer',
+    reload: 'Recharger la page',
   },
   mail: {
     verifySubject: 'Confirmez votre adresse e-mail',

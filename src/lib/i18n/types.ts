@@ -707,6 +707,14 @@ export interface TranslationDictionary {
     accommodation: Record<AccommodationBookingAction, string>;
     disclaimer: string;
   };
+  /** Error boundary of the page content (src/app/error.tsx) */
+  errorPage: {
+    title: string;
+    body: string;
+    domHint: string;
+    retry: string;
+    reload: string;
+  };
   /** Outgoing mail (verification links, passport reminders) */
   mail: {
     verifySubject: string;
