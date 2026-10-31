@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Compass, Search, X, Plus, Sparkles, Globe, AlertCircle, Loader2 } from 'lucide-react';
-import { ComboboxField, COMBOBOX_INPUT_CLASS, FlexibleChip, FlexibleResetLink, comboboxIds, useComboboxNavigation } from '@/components/ui/combobox';
+import { ComboboxField, COMBOBOX_INPUT_CLASS, COMBOBOX_INPUT_WRAP_CLASS, FlexibleChip, FlexibleResetLink, comboboxIds, useComboboxNavigation } from '@/components/ui/combobox';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import {
   getDestinationEntity,
@@ -309,7 +309,7 @@ export function MultiDestinationInput({
               </span>
             );
           })}
-          <span className="flex items-center gap-1.5 flex-1 min-w-[10rem]">
+          <span className={COMBOBOX_INPUT_WRAP_CLASS}>
             {isSearching ? (
               <Loader2 className="w-3.5 h-3.5 text-teal-500 animate-spin shrink-0 ml-1" />
             ) : (

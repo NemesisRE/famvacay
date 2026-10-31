@@ -136,4 +136,10 @@ export function FlexibleResetLink({ label, onClick, title }: { label: string; on
 
 /** Input class for the field: 16 px on phones (no zoom on focus in iOS), compact from sm up */
 export const COMBOBOX_INPUT_CLASS =
-  'flex-1 min-w-[8rem] bg-transparent border-0 p-1 text-base sm:text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden';
+  'flex-1 min-w-0 bg-transparent border-0 p-1 text-base sm:text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden';
+
+/**
+ * Wrapper of icon + input + clear button: wide enough for the placeholder in every language
+ * ("Rechercher un aéroport…" at 16 px), otherwise it wraps below the chips instead of being cut.
+ */
+export const COMBOBOX_INPUT_WRAP_CLASS = 'flex items-center gap-1.5 flex-1 min-w-[min(100%,15rem)] sm:min-w-[min(100%,11rem)]';

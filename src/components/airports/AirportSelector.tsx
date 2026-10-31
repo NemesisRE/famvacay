@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Plane, Search, X, ChevronDown, ChevronUp, Train, Check } from 'lucide-react';
-import { ComboboxField, COMBOBOX_INPUT_CLASS, FlexibleChip, FlexibleResetLink, comboboxIds, useComboboxNavigation } from '@/components/ui/combobox';
+import { ComboboxField, COMBOBOX_INPUT_CLASS, COMBOBOX_INPUT_WRAP_CLASS, FlexibleChip, FlexibleResetLink, comboboxIds, useComboboxNavigation } from '@/components/ui/combobox';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
 export interface AirportItem {
@@ -321,7 +321,7 @@ export function AirportSelector({
                 </span>
               );
             })}
-            <span className="flex items-center gap-1.5 flex-1 min-w-[10rem]">
+            <span className={COMBOBOX_INPUT_WRAP_CLASS}>
               <Search className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 ml-1" />
               <input
                 ref={inputRef}
