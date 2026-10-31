@@ -88,7 +88,7 @@ import { ResultsPagination } from '@/components/results/ResultsPagination';
 import { OverlandTripDetailsPopover } from '@/components/travel/OverlandTripDetailsPopover';
 import { CountrySelect, SubdivisionSelect } from '@/components/forms/RegionSelectors';
 import { BoardTypeSelect, OverlandDurationSelect } from '@/components/forms/PreferenceSelects';
-import { isAllStylesSelection, toggleStyleSelection, readStoredStyles, getClimateRelevance } from '@/lib/optimizer/style-selection';
+import { isAllStylesSelection, toggleStyleSelection, toggleTravelModeSelection, readStoredStyles, getClimateRelevance } from '@/lib/optimizer/style-selection';
 import { VacationStyleTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
 import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/destination-points';
 import { passportWarningsForTrip, type PassportHolder } from '@/lib/passport/validity';
@@ -173,16 +173,8 @@ export default function HomePage() {
   const [maxBudget, setMaxBudget] = useState<number | undefined>(undefined);
   const [selectedVehicles, setSelectedVehicles] = useState<TravelVehicle[]>(['PLANE', 'CAR', 'TRAIN', 'BUS']);
 
-  const toggleVehicle = (vehicle: TravelVehicle) => {
-    setSelectedVehicles((prev) => {
-      if (prev.includes(vehicle)) {
-        // Pressing the only selected mode means 'no restriction': select every mode
-        if (prev.length === 1) return ['PLANE', 'CAR', 'TRAIN', 'BUS'];
-        return prev.filter((v) => v !== vehicle);
-      }
-      return [...prev, vehicle];
-    });
-  };
+  // Same selection behaviour as the vacation styles (and the profile)
+  const toggleVehicle = (vehicle: TravelVehicle) => setSelectedVehicles((prev) => toggleTravelModeSelection(prev, vehicle));
 
   // Vacation style specific constraints: Minimum beach temperature & Winter sports / Snow guarantee
   const [minBeachTemp, setMinBeachTemp] = useState<number | undefined>(undefined);

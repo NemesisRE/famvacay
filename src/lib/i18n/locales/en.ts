@@ -37,6 +37,8 @@ export const en: TranslationDictionary = {
     homeStateLabel: 'Federal State / Region (School Holidays)',
     destinationsLabel: 'Travel Destinations',
     destinationsPlaceholder: 'Add destination (e.g. Egypt, Hurghada, Bali, Mallorca)...',
+    destinationsAddMorePlaceholder: 'Add another destination…',
+    clearSearch: 'Clear search',
     destinationsHint: 'Add one or more countries, cities, or holiday regions. Leave empty to discover all destinations.',
     vacationKindLabel: 'Vacation Style',
     vacationKindHint: 'Select one or more styles or explore all flexibly',
@@ -783,6 +785,12 @@ export const en: TranslationDictionary = {
       COMPARE_PACKAGES: "Usually included in the package deal.",
     },
     disclaimer: "Rule of thumb based on typical booking patterns, not live prices.",
+  },
+  calendar: {
+    noDaySelectedTitle: 'No day selected yet',
+    noDaySelectedBody: 'You changed the month or year. Please select a day, or confirm that the change should be discarded.',
+    keepChoosing: 'Keep choosing',
+    closeWithoutChange: 'Close without change',
   },
   mail: {
     verifySubject: 'Confirm your email address',

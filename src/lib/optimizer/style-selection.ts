@@ -1,4 +1,4 @@
-import type { DestinationType } from './types';
+import type { DestinationType, TravelVehicle } from './types';
 
 /**
  * Vacation-style multi-selection shared by the search form and the profile, so both pages
@@ -51,4 +51,33 @@ export function getClimateRelevance(styles: DestinationType[], longRangeStyles: 
     beach: all || styles.includes('BEACH') || longRangeWants('BEACH'),
     alpine: all || styles.includes('ALPINE') || longRangeWants('ALPINE'),
   };
+}
+
+/**
+ * Travel modes behave like the vacation styles: with every mode selected (no restriction), a
+ * click picks only that mode; deselecting the last mode, or selecting every mode, means "all".
+ */
+export const ALL_TRAVEL_MODES: TravelVehicle[] = ['PLANE', 'CAR', 'TRAIN', 'BUS'];
+
+export function isAllTravelModesSelection(modes: readonly string[]): boolean {
+  return ALL_TRAVEL_MODES.every((m) => modes.includes(m));
+}
+
+export function toggleTravelModeSelection<T extends string>(prev: readonly T[], mode: T): T[] {
+  const all = ALL_TRAVEL_MODES as readonly string[] as T[];
+  if (isAllTravelModesSelection(prev)) return [mode];
+  if (prev.includes(mode)) {
+    const next = prev.filter((m) => m !== mode);
+    return next.length === 0 ? [...all] : next;
+  }
+  const next = [...prev, mode];
+  return isAllTravelModesSelection(next) ? [...all] : next;
+}
+
+/** Kinds of long-haul trip; all of them selected is the same as "any" (an empty list) */
+export const LONG_RANGE_STYLE_OPTIONS: DestinationType[] = ['BEACH', 'CITY', 'NATURE', 'ALPINE'];
+
+export function toggleLongRangeStyle(current: DestinationType[], style: DestinationType): DestinationType[] {
+  const next = current.includes(style) ? current.filter((s) => s !== style) : [...current, style];
+  return next.length === LONG_RANGE_STYLE_OPTIONS.length ? [] : next;
 }

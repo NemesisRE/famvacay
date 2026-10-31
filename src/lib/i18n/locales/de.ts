@@ -37,6 +37,8 @@ export const de: TranslationDictionary = {
     homeStateLabel: 'Bundesland / Region (Schulferien)',
     destinationsLabel: 'Reiseziele',
     destinationsPlaceholder: 'Ziel hinzufügen (z. B. Ägypten, Hurghada, Bali, Mallorca)...',
+    destinationsAddMorePlaceholder: 'Weiteres Reiseziel hinzufügen…',
+    clearSearch: 'Suche leeren',
     destinationsHint: 'Füge ein oder mehrere Länder, Städte oder Ferienregionen hinzu. Leer lassen, um alle Regionen zu durchsuchen.',
     vacationKindLabel: 'Art des Urlaubs',
     vacationKindHint: 'Einen oder mehrere Stile wählen oder flexibel alle entdecken',
@@ -783,6 +785,12 @@ export const de: TranslationDictionary = {
       COMPARE_PACKAGES: "Meist im Pauschalangebot enthalten.",
     },
     disclaimer: "Faustregel aus typischen Buchungsmustern, keine Live-Preise.",
+  },
+  calendar: {
+    noDaySelectedTitle: 'Noch kein Tag ausgewählt',
+    noDaySelectedBody: 'Du hast Monat oder Jahr geändert. Bitte wähle noch einen Tag aus, oder bestätige, dass die Änderung verworfen werden soll.',
+    keepChoosing: 'Weiter auswählen',
+    closeWithoutChange: 'Ohne Änderung schließen',
   },
   mail: {
     verifySubject: 'Bestätige deine E-Mail-Adresse',

@@ -37,6 +37,8 @@ export const it: TranslationDictionary = {
     homeStateLabel: 'Regione / Stato (Vacanze scolastiche)',
     destinationsLabel: 'Destinazioni di Viaggio',
     destinationsPlaceholder: 'Aggiungi destinazione (es. Egitto, Hurghada, Bali, Maiorca)...',
+    destinationsAddMorePlaceholder: 'Aggiungi un\'altra destinazione…',
+    clearSearch: 'Cancella ricerca',
     destinationsHint: 'Aggiungi uno o più paesi, città o regioni turistiche. Lascia vuoto per scoprire tutte le mete.',
     vacationKindLabel: 'Tipo di vacanza',
     vacationKindHint: 'Seleziona uno o più stili o esplora tutto con flessibilità',
@@ -783,6 +785,12 @@ export const it: TranslationDictionary = {
       COMPARE_PACKAGES: "Di solito incluso nel pacchetto.",
     },
     disclaimer: "Regola pratica basata su abitudini di prenotazione tipiche, non su prezzi in tempo reale.",
+  },
+  calendar: {
+    noDaySelectedTitle: 'Nessun giorno selezionato',
+    noDaySelectedBody: 'Hai cambiato mese o anno. Scegli un giorno oppure conferma che la modifica va scartata.',
+    keepChoosing: 'Continua a scegliere',
+    closeWithoutChange: 'Chiudi senza modifiche',
   },
   mail: {
     verifySubject: 'Conferma il tuo indirizzo e-mail',

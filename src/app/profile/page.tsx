@@ -29,7 +29,7 @@ import {
 } from '@/components/forms/RegionSelectors';
 import { BoardTypeSelect, OverlandDurationSelect } from '@/components/forms/PreferenceSelects';
 import type { BoardType, CarFuelType, DestinationType, TravelVehicle } from '@/lib/optimizer/types';
-import { isAllStylesSelection, toggleStyleSelection, readStoredStyles, getClimateRelevance } from '@/lib/optimizer/style-selection';
+import { isAllStylesSelection, toggleStyleSelection, toggleTravelModeSelection, readStoredStyles, getClimateRelevance } from '@/lib/optimizer/style-selection';
 import { VacationStyleTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
 import { ChildAgeBadges } from '@/components/family/ChildAgeBadges';
 import { differenceInYears } from 'date-fns';
@@ -106,18 +106,8 @@ function FamilyProfileContent() {
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  const toggleTravelMode = (mode: string) => {
-    if (travelModes.includes(mode)) {
-      if (travelModes.length > 1) {
-        setTravelModes(travelModes.filter((m) => m !== mode));
-      } else {
-        // Same as the search form: pressing the only selected mode selects every mode
-        setTravelModes(['PLANE', 'CAR', 'TRAIN', 'BUS']);
-      }
-    } else {
-      setTravelModes([...travelModes, mode]);
-    }
-  };
+  // Same selection behaviour as the vacation styles and the search form
+  const toggleTravelMode = (mode: string) => setTravelModes((prev) => toggleTravelModeSelection(prev, mode));
 
   const [members, setMembers] = useState<FamilyMemberForm[]>([
     { firstName: '', role: 'PARENT', birthDate: '', schoolRequired: false, passportExpiry: '' },

@@ -55,6 +55,8 @@ export interface TranslationDictionary {
     homeStateLabel: string;
     destinationsLabel: string;
     destinationsPlaceholder: string;
+    destinationsAddMorePlaceholder: string;
+    clearSearch: string;
     destinationsHint: string;
     vacationKindLabel: string;
     vacationKindHint: string;
@@ -706,6 +708,13 @@ export interface TranslationDictionary {
     accommodationHeading: string;
     accommodation: Record<AccommodationBookingAction, string>;
     disclaimer: string;
+  };
+  /** Calendar popovers (src/components/calendar) */
+  calendar: {
+    noDaySelectedTitle: string;
+    noDaySelectedBody: string;
+    keepChoosing: string;
+    closeWithoutChange: string;
   };
   /** Outgoing mail (verification links, passport reminders) */
   mail: {

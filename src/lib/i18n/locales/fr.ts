@@ -37,6 +37,8 @@ export const fr: TranslationDictionary = {
     homeStateLabel: 'Région / État d’origine (Calendrier scolaire)',
     destinationsLabel: 'Destinations de Voyage',
     destinationsPlaceholder: 'Ajouter une destination (ex. Égypte, Hurghada, Bali, Majorque)...',
+    destinationsAddMorePlaceholder: 'Ajouter une autre destination…',
+    clearSearch: 'Effacer la recherche',
     destinationsHint: 'Ajoute un ou plusieurs pays, villes ou régions de vacances. Laisse vide pour découvrir toutes les destinations.',
     vacationKindLabel: 'Type de vacances',
     vacationKindHint: 'Sélectionne un ou plusieurs styles ou explore tout avec flexibilité',
@@ -783,6 +785,12 @@ export const fr: TranslationDictionary = {
       COMPARE_PACKAGES: "Généralement inclus dans le séjour tout compris.",
     },
     disclaimer: "Règle empirique basée sur des habitudes de réservation typiques, pas sur des prix en temps réel.",
+  },
+  calendar: {
+    noDaySelectedTitle: 'Aucun jour sélectionné',
+    noDaySelectedBody: 'Vous avez changé le mois ou l\'année. Choisissez un jour, ou confirmez que la modification doit être abandonnée.',
+    keepChoosing: 'Continuer la sélection',
+    closeWithoutChange: 'Fermer sans modifier',
   },
   mail: {
     verifySubject: 'Confirmez votre adresse e-mail',

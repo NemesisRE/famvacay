@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import {
   useFloating,
   autoUpdate,
@@ -18,6 +17,8 @@ import { Calendar, X } from 'lucide-react';
 import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop, POPOVER_DISMISS_OPTIONS } from '@/components/ui/responsive-popover';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import type { SupportedLocale } from '@/lib/i18n/types';
+import { useCalendarGuard } from './dismiss-guard';
+import { UnselectedDayPrompt } from './UnselectedDayPrompt';
 
 const RDP_LOCALES: Record<SupportedLocale, typeof enUS> = { en: enUS, de, fr, es, it };
 
@@ -49,7 +50,9 @@ export interface DatePickerProps {
 /** Themed single-date picker: replaces the browser's native one, which ignores dark mode */
 export function DatePicker({ value, onChange, min, max, id, yearDropdown, clearable, className = '' }: DatePickerProps) {
   const { locale, t, formatDate } = useI18n();
-  const [isOpen, setIsOpen] = useState(false);
+  // Open state with the guard against dropping a navigated month/year (see dismiss-guard.ts)
+  const [guard, dispatch] = useCalendarGuard();
+  const isOpen = guard.open;
   const isSmallScreen = useIsSmallScreen();
   const selected = fromISO(value);
   const minDate = fromISO(min);
@@ -57,7 +60,8 @@ export function DatePicker({ value, onChange, min, max, id, yearDropdown, cleara
 
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
-    onOpenChange: setIsOpen,
+    // Outside press / Escape are close requests the guard may turn into a confirmation
+    onOpenChange: (open) => dispatch({ type: open ? 'open' : 'requestClose' }),
     middleware: [offset(6), flip({ padding: 12 }), shift({ padding: 12 })],
     whileElementsMounted: autoUpdate,
     placement: 'bottom-start',
@@ -80,7 +84,7 @@ export function DatePicker({ value, onChange, min, max, id, yearDropdown, cleara
         ref={refs.setReference}
         {...getReferenceProps()}
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={() => dispatch({ type: 'toggle' })}
         className="w-full flex items-center gap-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-xs hover:border-teal-400 dark:hover:border-teal-600 focus:outline-hidden focus:ring-2 focus:ring-teal-500 transition cursor-pointer text-left"
       >
         <Calendar className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
@@ -126,8 +130,9 @@ export function DatePicker({ value, onChange, min, max, id, yearDropdown, cleara
               onSelect={(date) => {
                 if (!date) return;
                 onChange(toISO(date));
-                setIsOpen(false);
+                dispatch({ type: 'select' });
               }}
+              onMonthChange={() => dispatch({ type: 'navigate' })}
               locale={RDP_LOCALES[locale] || enUS}
               disabled={disabled.length > 0 ? disabled : undefined}
               defaultMonth={selected || minDate || maxDate}
@@ -138,6 +143,12 @@ export function DatePicker({ value, onChange, min, max, id, yearDropdown, cleara
               endMonth={yearDropdown ? maxDate ?? new Date(now.getFullYear() + 15, 11) : maxDate}
               className={isSmallScreen ? 'rdp-themed rdp-touch' : 'rdp-themed'}
             />
+            {guard.confirming && (
+              <UnselectedDayPrompt
+                onKeepChoosing={() => dispatch({ type: 'keepChoosing' })}
+                onDiscard={() => dispatch({ type: 'discard' })}
+              />
+            )}
           </div>
         </FloatingPortal>
       )}
