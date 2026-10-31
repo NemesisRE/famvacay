@@ -784,6 +784,13 @@ export const fr: TranslationDictionary = {
     },
     disclaimer: "Règle empirique basée sur des habitudes de réservation typiques, pas sur des prix en temps réel.",
   },
+  errorPage: {
+    title: 'Une erreur s\'est produite',
+    body: 'Cette partie de la page n\'a pas pu être affichée. Votre recherche et votre profil sont intacts.',
+    domHint: 'Une traduction du navigateur ou une autre extension a modifié la page pendant sa mise à jour. Désactivez la traduction automatique pour ce site - FamVacay est disponible dans votre langue via le menu des langues.',
+    retry: 'Réessayer',
+    reload: 'Recharger la page',
+  },
   mail: {
     verifySubject: 'Confirmez votre adresse e-mail',
     verifyIntro: 'Veuillez confirmer que {email} est votre adresse pour FamVacay :',

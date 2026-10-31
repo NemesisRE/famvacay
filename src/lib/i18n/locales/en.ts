@@ -784,6 +784,13 @@ export const en: TranslationDictionary = {
     },
     disclaimer: "Rule of thumb based on typical booking patterns, not live prices.",
   },
+  errorPage: {
+    title: 'Something went wrong',
+    body: 'This part of the page could not be shown. Your search and profile are safe.',
+    domHint: 'A browser translation or another extension changed the page while it was updating. Please switch off automatic translation for this site - FamVacay is available in your language via the language menu.',
+    retry: 'Try again',
+    reload: 'Reload page',
+  },
   mail: {
     verifySubject: 'Confirm your email address',
     verifyIntro: 'Please confirm that {email} is your address for FamVacay:',

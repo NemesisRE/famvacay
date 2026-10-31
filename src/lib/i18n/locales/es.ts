@@ -784,6 +784,13 @@ export const es: TranslationDictionary = {
     },
     disclaimer: "Regla general basada en patrones de reserva típicos, no en precios en tiempo real.",
   },
+  errorPage: {
+    title: 'Algo ha salido mal',
+    body: 'Esta parte de la página no se ha podido mostrar. Tu búsqueda y tu perfil están a salvo.',
+    domHint: 'Una traducción del navegador u otra extensión ha modificado la página mientras se actualizaba. Desactiva la traducción automática para este sitio: FamVacay está disponible en tu idioma desde el menú de idiomas.',
+    retry: 'Intentar de nuevo',
+    reload: 'Recargar la página',
+  },
   mail: {
     verifySubject: 'Confirma tu dirección de correo',
     verifyIntro: 'Confirma que {email} es tu dirección para FamVacay:',

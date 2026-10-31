@@ -396,7 +396,7 @@ export function DestinationFilterDropdown({
                 className="w-full py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition cursor-pointer"
               >
                 {t.common.done}
-                {!isAllSelected && ` (${selectedDestinations.length})`}
+                {!isAllSelected && <span>{` (${selectedDestinations.length})`}</span>}
               </button>
             </div>
           </div>

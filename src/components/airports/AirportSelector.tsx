@@ -400,12 +400,12 @@ export function AirportSelector({
           {showSuggestions ? (
             <>
               <ChevronUp className="w-3.5 h-3.5" />
-              {t.home.hideSuggestions}
+              <span>{t.home.hideSuggestions}</span>
             </>
           ) : (
             <>
               <ChevronDown className="w-3.5 h-3.5" />
-              {t.home.showSuggestions.replace('{count}', String(synchronizedHubs.length))}
+              <span>{t.home.showSuggestions.replace('{count}', String(synchronizedHubs.length))}</span>
             </>
           )}
         </button>

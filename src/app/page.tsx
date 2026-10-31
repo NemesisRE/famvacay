@@ -2577,12 +2577,12 @@ export default function HomePage() {
                 {loading ? (
                   <>
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    {t.home.optimizing}
+                    <span>{t.home.optimizing}</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 text-yellow-300" />
-                    {t.home.runOptimization}
+                    <span>{t.home.runOptimization}</span>
                   </>
                 )}
               </button>

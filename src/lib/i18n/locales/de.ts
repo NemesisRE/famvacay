@@ -784,6 +784,13 @@ export const de: TranslationDictionary = {
     },
     disclaimer: "Faustregel aus typischen Buchungsmustern, keine Live-Preise.",
   },
+  errorPage: {
+    title: 'Etwas ist schiefgelaufen',
+    body: 'Dieser Teil der Seite konnte nicht angezeigt werden. Deine Suche und dein Profil sind sicher.',
+    domHint: 'Eine Browser-Übersetzung oder eine andere Erweiterung hat die Seite verändert, während sie aktualisiert wurde. Bitte schalte die automatische Übersetzung für diese Seite aus - FamVacay gibt es über das Sprachmenü in deiner Sprache.',
+    retry: 'Erneut versuchen',
+    reload: 'Seite neu laden',
+  },
   mail: {
     verifySubject: 'Bestätige deine E-Mail-Adresse',
     verifyIntro: 'Bitte bestätige, dass {email} deine Adresse für FamVacay ist:',

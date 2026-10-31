@@ -784,6 +784,13 @@ export const it: TranslationDictionary = {
     },
     disclaimer: "Regola pratica basata su abitudini di prenotazione tipiche, non su prezzi in tempo reale.",
   },
+  errorPage: {
+    title: 'Qualcosa è andato storto',
+    body: 'Questa parte della pagina non può essere mostrata. La tua ricerca e il tuo profilo sono al sicuro.',
+    domHint: 'Una traduzione del browser o un\'altra estensione ha modificato la pagina mentre si aggiornava. Disattiva la traduzione automatica per questo sito: FamVacay è disponibile nella tua lingua tramite il menu delle lingue.',
+    retry: 'Riprova',
+    reload: 'Ricarica la pagina',
+  },
   mail: {
     verifySubject: 'Conferma il tuo indirizzo e-mail',
     verifyIntro: 'Conferma che {email} è il tuo indirizzo per FamVacay:',

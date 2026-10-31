@@ -12,6 +12,7 @@ import { UmamiAnalytics } from '@/components/analytics/UmamiAnalytics';
 import { ServiceWorkerRegistration } from '@/components/pwa/ServiceWorkerRegistration';
 import { ThemeSync } from '@/components/theme/ThemeSync';
 import { THEME_INIT_SCRIPT } from '@/lib/theme';
+import { getRequestLocale } from '@/lib/i18n/server-locale';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.APP_URL || 'https://famvacay.us'),
@@ -28,6 +29,9 @@ export const metadata: Metadata = {
     ],
     apple: '/icons/apple-touch-icon.png',
   },
+  // The app is translated itself: browser translation would rewrite React-managed text nodes
+  // (wrapping them in <font>) and crash the next DOM update with removeChild/insertBefore errors
+  other: { google: 'notranslate' },
 };
 
 export const viewport: Viewport = {
@@ -37,13 +41,15 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Rendered in the visitor's language from the first byte (cookie, otherwise Accept-Language)
+  const locale = await getRequestLocale();
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} translate="no" className="notranslate" suppressHydrationWarning>
       <head>
         {/* Theme before first paint (no flash); ThemeSync keeps it once React has taken over */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
@@ -51,7 +57,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased flex flex-col transition-colors">
         <ThemeSync />
         <AuthProvider>
-          <I18nProvider>
+          <I18nProvider initialLocale={locale}>
             <ConsentUiProvider>
               <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50 transition-colors">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">

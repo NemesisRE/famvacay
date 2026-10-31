@@ -903,12 +903,12 @@ function FamilyProfileContent() {
               {saving ? (
                 <>
                   <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  {t.profile.saving}
+                  <span>{t.profile.saving}</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  {t.profile.saveProfile}
+                  <span>{t.profile.saveProfile}</span>
                 </>
               )}
             </button>
