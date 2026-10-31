@@ -27,7 +27,9 @@ To keep packages up to date and reduce manual maintenance overhead, FamVacay use
    - Tagged with `security` and `high-priority` labels.
 
 3. **Rate Limits & Schedules**:
-   - Routine non-security updates are scheduled outside working hours: `before 5am on Monday`.
+   - New pull requests for routine updates are opened every day before 06:00 UTC (`before 6am`); major updates only on Mondays (`before 6am on Monday`).
+   - Existing pull requests are rebased at any time (`updateNotScheduled: true`), so they never wait for the next window.
+   - Minor and patch updates merge themselves once CI passes (`:automergeMinor`); majors, pins and digest updates are reviewed by hand.
    - Limits: 2 PRs per hour, maximum 5 concurrent open PRs.
 
 4. **Supply Chain Security**:
