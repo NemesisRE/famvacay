@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import packageJson from '../../../../package.json';
 
 export const dynamic = 'force-dynamic';
 
-// Release images get the tag (v1.2.3) as APP_VERSION at build time; elsewhere package.json's version
-const VERSION = (process.env.APP_VERSION || packageJson.version).replace(/^v/, '');
+// Release images get the tag (v1.2.3) as APP_VERSION at build time. Everything else (dev server,
+// self-built images) is "dev": package.json is never bumped on release, so its version would be stale.
+const VERSION = process.env.APP_VERSION ? process.env.APP_VERSION.replace(/^v/, '') : 'dev';
 
 /**
  * Liveness Probe: GET /api/health
