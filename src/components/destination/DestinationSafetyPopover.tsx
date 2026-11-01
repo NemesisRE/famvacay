@@ -147,6 +147,8 @@ export function DestinationSafetyPopover({
     ...getAdvisorySourceUrls(),
     ...(safety.germanAdvisoryUrl && { germanAdvisoryUrl: safety.germanAdvisoryUrl }),
     ...(safety.usAdvisoryUrl && { usAdvisoryUrl: safety.usAdvisoryUrl }),
+    ...(safety.caAdvisoryUrl && { caAdvisoryUrl: safety.caAdvisoryUrl }),
+    ...(safety.auAdvisoryUrl && { auAdvisoryUrl: safety.auAdvisoryUrl }),
   };
 
   return (
@@ -266,7 +268,29 @@ export function DestinationSafetyPopover({
                 <SourceLink href={sourceUrls.usAdvisoryUrl} label={t.home.safetyUsLink} />
               </div>
 
-              {/* 3. Specific Risks & Contextual Notes (if any) */}
+              {/* 3. Canada and Australia, only when they publish a rating for this country */}
+              {([
+                ['ca', safety.caAdvisoryLevel, safety.caAdvisoryTitle, t.home.safetyCaLevel, sourceUrls.caAdvisoryUrl, t.home.safetyCaLink],
+                ['au', safety.auAdvisoryLevel, safety.auAdvisoryTitle, t.home.safetyAuLevel, sourceUrls.auAdvisoryUrl, t.home.safetyAuLink],
+              ] as const).map(([key, level, title, label, href, linkLabel]) =>
+                level ? (
+                  <div key={key} className="bg-slate-50/80 dark:bg-slate-800/80 rounded-xl p-3 border border-slate-200/80 dark:border-slate-700 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <Shield className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                        {label}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${level === 1 ? TONE.green : level === 2 ? TONE.amber : level === 3 ? TONE.orange : TONE.rose}`}>
+                        {t.home.safetyUsLevelChip.replace('{level}', String(level))}
+                      </span>
+                    </div>
+                    {title && <p className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold">{title}</p>}
+                    <SourceLink href={href} label={linkLabel} />
+                  </div>
+                ) : null
+              )}
+
+              {/* 4. Specific Risks & Contextual Notes (if any) */}
               {safety.conflictZone && (
                 <div className="bg-amber-50/80 dark:bg-amber-950/40 rounded-xl p-3 border border-amber-200 dark:border-amber-800/70 text-amber-900 dark:text-amber-200 space-y-1">
                   <span className="text-[11px] font-bold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">

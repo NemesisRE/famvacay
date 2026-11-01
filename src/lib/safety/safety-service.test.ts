@@ -3,8 +3,10 @@ import {
   isDestinationSafeForVacation,
   getDestinationSafetyAssessment,
   refreshTravelAdvisories,
+  parseCanadaAdvisories,
+  parseSmartravellerAdvisories,
 } from './safety-service';
-import { getAdvisorySourceUrls } from './advisory-store';
+import { getAdvisorySourceUrls, peakAdvisoryLevel } from './advisory-store';
 
 describe('Destination Safety & Security Service (Auswärtiges Amt & US State Dept Live APIs)', () => {
   beforeAll(async () => {
@@ -112,11 +114,58 @@ describe('getAdvisorySourceUrls', () => {
     ).toEqual({
       germanAdvisoryUrl: 'https://www.auswaertiges-amt.de/de/ReiseUndSicherheit/reise-und-sicherheitshinweise/201558',
       usAdvisoryUrl: 'https://travel.state.gov/content/tsg_aem/us/en/home/international-travel/travel-advisories/destination.tha.html',
+      caAdvisoryUrl: 'https://travel.gc.ca/travelling/advisories',
+      auAdvisoryUrl: 'https://www.smartraveller.gov.au/destinations',
     });
     expect(getAdvisorySourceUrls()).toEqual({
       germanAdvisoryUrl: 'https://www.auswaertiges-amt.de/de/ReiseUndSicherheit/reise-und-sicherheitshinweise',
       usAdvisoryUrl: 'https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories.html',
+      caAdvisoryUrl: 'https://travel.gc.ca/travelling/advisories',
+      auAdvisoryUrl: 'https://www.smartraveller.gov.au/destinations',
     });
   });
 });
 
+
+describe('Canada and Australia advisories', () => {
+  it('normalizes Canadian states 0-3 and skips regional entries', () => {
+    const list = parseCanadaAdvisories({
+      data: {
+        AF: { 'country-iso': 'AF', 'advisory-state': 3, eng: { 'url-slug': 'afghanistan', 'advisory-text': 'Avoid all travel' } },
+        AL: { 'country-iso': 'AL', 'advisory-state': 0, eng: { 'url-slug': 'albania!', 'advisory-text': 'Exercise normal security precautions' } },
+        'PT-20': { 'country-iso': 'PT', 'advisory-state': 2, eng: { 'url-slug': 'azores' } },
+      },
+    });
+    expect(list).toEqual([
+      { iso: 'AF', level: 4, title: 'Avoid all travel', url: 'https://travel.gc.ca/destinations/afghanistan' },
+      { iso: 'AL', level: 1, title: 'Exercise normal security precautions', url: undefined },
+    ]);
+    expect(parseCanadaAdvisories(null)).toEqual([]);
+  });
+
+  it('maps Smartraveller levels and ignores non-countries and foreign links', () => {
+    const list = parseSmartravellerAdvisories([
+      { title: 'Afghanistan', field_overall_advice_level: 'Do not travel', field_url: 'https://evil.example/x' },
+      { title: 'Spain', field_overall_advice_level: 'Reconsider your need to travel', field_url: 'https://www.smartraveller.gov.au/destinations/europe/spain' },
+      { title: 'Atlantis', field_overall_advice_level: 'Exercise normal safety precautions' },
+      { title: 'Japan', field_overall_advice_level: 'unknown wording' },
+    ]);
+    expect(list.map((x) => [x.iso, x.level, Boolean(x.url)])).toEqual([['AF', 4, false], ['ES', 3, true]]);
+  });
+
+  it('caps the extra sources at level 3 so they never become a hard ban', () => {
+    expect(peakAdvisoryLevel({ usStateDeptLevel: 1, caLevel: 4, auLevel: 4 })).toBe(3);
+    expect(peakAdvisoryLevel({ usStateDeptLevel: 4, caLevel: 1 })).toBe(4);
+    expect(peakAdvisoryLevel({ usStateDeptLevel: 2 })).toBe(2);
+  });
+
+  it('merges them into the live assessment', async () => {
+    await refreshTravelAdvisories(true);
+    const uae = getDestinationSafetyAssessment('DXB', 'AE');
+    expect(uae.caAdvisoryLevel).toBe(2);
+    expect(uae.caAdvisoryUrl).toBe('https://travel.gc.ca/destinations/united-arab-emirates');
+    const spain = getDestinationSafetyAssessment('PMI', 'ES');
+    expect(spain.auAdvisoryLevel).toBe(1);
+    expect(spain.advisoryLevel).toBeLessThanOrEqual(2);
+  });
+});

@@ -456,6 +456,27 @@ global.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Res
       });
     }
 
+    // 6b. Global Affairs Canada and Australian Smartraveller mocks (same shapes as the live feeds)
+    if (urlStr.includes('data.international.gc.ca/travel-voyage')) {
+      const ca = (iso: string, state: number, text: string, slug: string) => ({
+        'country-iso': iso, 'advisory-state': state, eng: { 'url-slug': slug, 'advisory-text': text },
+      });
+      return new Response(JSON.stringify({ data: {
+        ES: ca('ES', 0, 'Exercise normal security precautions', 'spain'),
+        JP: ca('JP', 0, 'Exercise normal security precautions', 'japan'),
+        AE: ca('AE', 1, 'Exercise a high degree of caution', 'united-arab-emirates'),
+        UA: ca('UA', 3, 'Avoid all travel', 'ukraine'),
+        'PT-20': ca('PT', 2, 'Avoid non-essential travel', 'azores'),
+      } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (urlStr.includes('smartraveller.gov.au/destinations-export')) {
+      return new Response(JSON.stringify([
+        { title: 'Spain', field_overall_advice_level: 'Exercise normal safety precautions', field_url: 'https://www.smartraveller.gov.au/destinations/europe/spain' },
+        { title: 'Japan', field_overall_advice_level: 'Exercise normal safety precautions', field_url: 'https://www.smartraveller.gov.au/destinations/asia/japan' },
+        { title: 'Ukraine', field_overall_advice_level: 'Do not travel', field_url: 'https://www.smartraveller.gov.au/destinations/europe/ukraine' },
+      ]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+
     // 6. US Department of State Travel Advisories Mock
     if (urlStr.includes('cadataapi.state.gov') || urlStr.includes('travel.state.gov')) {
       const mockUs = [
