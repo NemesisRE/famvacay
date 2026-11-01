@@ -1,12 +1,13 @@
 'use client';
 
 import React from 'react';
-import { Compass, Sun, Mountain, Building2, Trees, Globe, Plane, Car, Train, Bus, Check, Thermometer, Snowflake } from 'lucide-react';
+import { Compass, Sun, Mountain, Building2, Trees, Globe, Plane, Car, Train, Bus, Check, Thermometer, Snowflake, Armchair } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import type { CarFuelType, DestinationType, TravelVehicle } from '@/lib/optimizer/types';
-import { isAllStylesSelection, isAnyLongRangeStyle, toggleLongRangeStyle } from '@/lib/optimizer/style-selection';
+import { isAllStylesSelection, isAllTravelDistances, type TravelDistance } from '@/lib/optimizer/style-selection';
+import { LONG_HAUL_KM } from '@/lib/optimizer/distance-bands';
 import { SelectDropdown } from '@/components/ui/select-dropdown';
-import { MinTemperatureSelect, SnowGuaranteeSelect } from './PreferenceSelects';
+import { CabinClassSelect, MinTemperatureSelect, OverlandDurationSelect, OverlandModeIcons, SnowGuaranteeSelect } from './PreferenceSelects';
 
 /**
  * Tile selectors shared by the search form and the profile, so both pages present vacation
@@ -22,7 +23,7 @@ interface SelectionTileProps {
 }
 
 /**
- * A plain toggle. Sub-settings of a tile (flight stops, car drivetrain, kind of long-haul trip)
+ * A plain toggle. Sub-settings of a tile (flight stops, car drivetrain)
  * live in a panel below the grid: a dropdown inside a tile went unnoticed.
  */
 export function SelectionTile({ icon: Icon, label, hint, isSelected, onToggle }: SelectionTileProps) {
@@ -49,91 +50,77 @@ export function SelectionTile({ icon: Icon, label, hint, isSelected, onToggle }:
 
 const GRID_CLASS = 'grid grid-cols-2 gap-2.5';
 const PANEL_CLASS = 'mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700';
+// Two settings side by side only where the panel itself (not the window) is wide enough: the
+// search form is a narrow column next to the results on tablets and small laptops
+const PANEL_GRID_CLASS = 'grid grid-cols-1 @lg:grid-cols-2 gap-3';
 const FIELD_LABEL_CLASS = 'text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5';
 
 interface VacationStyleTilesProps {
   selectedStyles: DestinationType[];
   onToggle: (style: DestinationType) => void;
-  longRangeStyles: DestinationType[];
-  onLongRangeStylesChange: (styles: DestinationType[]) => void;
   className?: string;
 }
 
-export function VacationStyleTiles({
-  selectedStyles,
-  onToggle,
-  longRangeStyles,
-  onLongRangeStylesChange,
-  className = GRID_CLASS,
-}: VacationStyleTilesProps) {
+/** What the holiday should be like; like the travel modes, all selected means any style. */
+export function VacationStyleTiles({ selectedStyles, onToggle, className = GRID_CLASS }: VacationStyleTilesProps) {
   const { t } = useI18n();
   const isAll = isAllStylesSelection(selectedStyles);
-  // The kind of long-haul trip only narrows a search that picked long-haul trips explicitly
-  const showLongRange = !isAll && selectedStyles.includes('LONGRANGE');
 
   const tiles: { type: DestinationType; label: string; hint: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { type: 'ALL', label: t.home.vacationKindAll, hint: t.home.styleHintAll, icon: Compass },
     { type: 'BEACH', label: t.home.vacationKindBeach, hint: t.home.styleHintBeach, icon: Sun },
     { type: 'ALPINE', label: t.home.vacationKindAlpine, hint: t.home.styleHintAlpine, icon: Mountain },
     { type: 'CITY', label: t.home.vacationKindCity, hint: t.home.styleHintCity, icon: Building2 },
     { type: 'NATURE', label: t.home.vacationKindNature, hint: t.home.styleHintNature, icon: Trees },
-    { type: 'LONGRANGE', label: t.home.vacationKindLongrange, hint: t.home.styleHintLongrange, icon: Globe },
   ];
-  // Short names, so the four kinds fit in one row in every language
-  const longRangeKinds: { type: DestinationType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { type: 'BEACH', label: t.home.longRangeKindBeach, icon: Sun },
-    { type: 'CITY', label: t.home.longRangeKindCity, icon: Building2 },
-    { type: 'NATURE', label: t.home.longRangeKindNature, icon: Trees },
-    { type: 'ALPINE', label: t.home.longRangeKindAlpine, icon: Mountain },
-  ];
-  const anyLongRange = isAnyLongRangeStyle(longRangeStyles);
 
   return (
-    <>
-      <div className={className}>
-        {tiles.map((tile) => (
-          <SelectionTile
-            key={tile.type}
-            icon={tile.icon}
-            label={tile.label}
-            hint={tile.hint}
-            isSelected={isAll || selectedStyles.includes(tile.type)}
-            onToggle={() => onToggle(tile.type)}
-          />
-        ))}
-      </div>
-      {showLongRange && (
-        <div className={`${PANEL_CLASS} space-y-2`} role="group" aria-labelledby="long-range-style-label">
-          <span id="long-range-style-label" className={FIELD_LABEL_CLASS}>
-            <Globe className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-            <span>{t.home.longRangeStylePreference}</span>
-          </span>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.home.longRangeStyleHint}</p>
-          {/* Like the travel modes: all selected = any kind; with all selected a tap picks only one */}
-          <div className="grid grid-cols-4 gap-1.5">
-            {longRangeKinds.map(({ type, label, icon: Icon }) => {
-              const active = anyLongRange || longRangeStyles.includes(type);
-              return (
-                <button
-                  key={type}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => onLongRangeStylesChange(toggleLongRangeStyle(longRangeStyles, type))}
-                  className={`flex flex-col items-center justify-center gap-1 px-0.5 sm:px-1 py-2 rounded-lg border text-[10px] sm:text-[11px] font-semibold text-center leading-tight transition cursor-pointer min-w-0 ${
-                    active
-                      ? 'bg-teal-600 text-white border-teal-600 shadow-2xs'
-                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-teal-300 dark:hover:border-teal-700'
-                  }`}
-                >
-                  <Icon className={`w-3.5 h-3.5 shrink-0 ${active ? 'text-white' : 'text-teal-600 dark:text-teal-400'}`} />
-                  <span className="truncate max-w-full">{label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </>
+    <div className={className}>
+      {tiles.map((tile) => (
+        <SelectionTile
+          key={tile.type}
+          icon={tile.icon}
+          label={tile.label}
+          hint={tile.hint}
+          isSelected={isAll || selectedStyles.includes(tile.type)}
+          onToggle={() => onToggle(tile.type)}
+        />
+      ))}
+    </div>
+  );
+}
+
+interface TravelDistanceTilesProps {
+  selectedDistances: TravelDistance[];
+  onToggle: (distance: TravelDistance) => void;
+  className?: string;
+}
+
+/**
+ * How far the trip may go, independent of the style: short/medium haul (up to LONG_HAUL_KM) and
+ * long haul. Both selected means any distance.
+ */
+export function TravelDistanceTiles({ selectedDistances, onToggle, className = GRID_CLASS }: TravelDistanceTilesProps) {
+  const { t, locale } = useI18n();
+  const km = LONG_HAUL_KM.toLocaleString(locale);
+  const isAll = isAllTravelDistances(selectedDistances);
+  const tiles: { type: TravelDistance; label: string; hint: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { type: 'NEARBY', label: t.home.travelDistanceNearbyRange.replace('{km}', km), hint: t.home.travelDistanceNearby, icon: Compass },
+    { type: 'LONGHAUL', label: t.home.travelDistanceLongHaulRange.replace('{km}', km), hint: t.home.vacationKindLongrange, icon: Globe },
+  ];
+
+  return (
+    <div className={className}>
+      {tiles.map((tile) => (
+        <SelectionTile
+          key={tile.type}
+          icon={tile.icon}
+          label={tile.label}
+          hint={tile.hint}
+          isSelected={isAll || selectedDistances.includes(tile.type)}
+          onToggle={() => onToggle(tile.type)}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -144,11 +131,20 @@ interface TravelModeTilesProps {
   onMaxFlightStopsChange: (stops: number | undefined) => void;
   carFuelType: CarFuelType | undefined;
   onCarFuelTypeChange: (fuel: CarFuelType | undefined) => void;
+  cabinClass: string | undefined;
+  onCabinClassChange: (cabinClass: string) => void;
+  maxOverlandHours: number | undefined;
+  onMaxOverlandHoursChange: (hours: number | undefined) => void;
   className?: string;
   /** Prefix for the ids of the settings below the tiles */
   idPrefix?: string;
 }
 
+/**
+ * The travel modes with the settings of the selected ones in a panel below: flight stops and
+ * cabin class for the plane, the maximum travel time for car, train and bus, the drivetrain
+ * for the car. A setting of an unselected mode is hidden (and its value kept).
+ */
 export function TravelModeTiles({
   selectedVehicles,
   onToggle,
@@ -156,12 +152,17 @@ export function TravelModeTiles({
   onMaxFlightStopsChange,
   carFuelType,
   onCarFuelTypeChange,
+  cabinClass,
+  onCabinClassChange,
+  maxOverlandHours,
+  onMaxOverlandHoursChange,
   className = GRID_CLASS,
   idPrefix = 'travel',
 }: TravelModeTilesProps) {
   const { t } = useI18n();
   const showPlane = selectedVehicles.includes('PLANE');
   const showCar = selectedVehicles.includes('CAR');
+  const showOverland = selectedVehicles.some((v) => v !== 'PLANE');
 
   const tiles: { type: TravelVehicle; label: string; hint: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { type: 'PLANE', label: t.home.vehiclePlane, hint: t.home.vehicleHintPlane, icon: Plane },
@@ -184,8 +185,8 @@ export function TravelModeTiles({
           />
         ))}
       </div>
-      {(showPlane || showCar) && (
-        <div className={`${PANEL_CLASS} grid grid-cols-1 sm:grid-cols-2 gap-3`}>
+      <div className={`${PANEL_CLASS} @container`}>
+        <div className={PANEL_GRID_CLASS}>
           {showPlane && (
             <div>
               <label htmlFor={`${idPrefix}-flight-stops`} className={FIELD_LABEL_CLASS}>
@@ -203,6 +204,24 @@ export function TravelModeTiles({
                   { value: '0', label: t.home.flightStopsDirectOnly },
                 ]}
               />
+            </div>
+          )}
+          {showPlane && (
+            <div>
+              <label htmlFor={`${idPrefix}-cabin-class`} className={FIELD_LABEL_CLASS}>
+                <Armchair className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                <span>{t.profile.cabinClass}</span>
+              </label>
+              <CabinClassSelect id={`${idPrefix}-cabin-class`} value={cabinClass} onChange={onCabinClassChange} />
+            </div>
+          )}
+          {showOverland && (
+            <div>
+              <label htmlFor={`${idPrefix}-max-travel-time`} className={FIELD_LABEL_CLASS}>
+                <OverlandModeIcons />
+                <span>{t.home.filterByOverlandDuration}</span>
+              </label>
+              <OverlandDurationSelect id={`${idPrefix}-max-travel-time`} value={maxOverlandHours} onChange={onMaxOverlandHoursChange} />
             </div>
           )}
           {showCar && (
@@ -227,7 +246,7 @@ export function TravelModeTiles({
             </div>
           )}
         </div>
-      )}
+      </div>
     </>
   );
 }
@@ -258,11 +277,11 @@ export function ClimatePreferencesPanel({
   const { t } = useI18n();
   if (!showBeach && !showAlpine) return null;
   return (
-    <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+    <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 @container">
       <span className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
         {t.home.climatePreferencesLabel}
       </span>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className={PANEL_GRID_CLASS}>
         {showBeach && (
           <div>
             <label htmlFor={`${idPrefix}-min-beach-temp`} className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">

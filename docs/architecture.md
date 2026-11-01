@@ -294,6 +294,7 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
    - **Cabin Class Multipliers**: `preferredCabinClass` scales flight base fares (`ECONOMY`: $1.0\times$, `PREMIUM_ECONOMY`: $1.45\times$, `BUSINESS`: $2.4\times$).
    - **Overland Travel Time**: the drive to the departure airport is estimated at 85 km/h (the profile's saved airports additionally get real road distances from OSRM in the background); car, train and bus trips longer than the chosen maximum overland travel time are left out.
    - **Flight Stops**: the maximum number of stops limits the routes considered.
+   - **Vacation Style & Travel Distance**: the form asks two separate questions, what the holiday should be like (beach, mountains, city, nature) and how far it may go (short/medium haul up to `LONG_HAUL_KM`, long haul). `toOptimizerStyles` (`src/lib/optimizer/style-selection.ts`) turns them into the engine's request: short/medium haul sends the styles alone (which keeps long-haul places out), long haul sends `LONGRANGE` narrowed by `longRangeStyles`, and any distance sends both. Selections saved before the split (`LONGRANGE` as a style) are converted by `readStyleSelection`.
 7. **Weather Scoring vs. Hard Rejection**:
    Seasonal weather conditions (temperature, precipitation, hurricane risk) are factored into continuous scoring ($0.0 - 1.0$) rather than dropping valid vacation candidates outright.
 8. **Realistic Family Trip Cost Calculation**:
