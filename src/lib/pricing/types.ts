@@ -37,6 +37,8 @@ export interface PricingLodgingQuote {
   propertyType?: string; // e.g. 'Family Resort', 'Apartment', 'Boutique Hotel'
   boardType?: import('../optimizer/types').BoardType;
   mealPlanValue?: number;
+  /** Value of the included meals per adult/child and night at the destination's price level */
+  mealPlanRates?: import('./meal-plan-value').MealPlanRates;
 }
 
 export interface DeepLinkUrls {
@@ -52,6 +54,7 @@ export interface AggregatedTripPricing {
   pricePerPerson: number;
   boardType?: import('../optimizer/types').BoardType;
   mealPlanValue?: number;
+  mealPlanRates?: import('./meal-plan-value').MealPlanRates;
   effectiveCost?: number;
   providerSource: string; // 'PortalAggregator' | 'AmadeusLive' | 'BenchmarkEstimator'
   isCachedBenchmark: boolean;
@@ -74,6 +77,7 @@ export interface TravelPricingProvider {
     party: PricingPartyComposition;
     isArbitrage?: boolean;
     preferredBoardType?: import('../optimizer/types').BoardType;
+    homeCountry?: string;
   }): Promise<AggregatedTripPricing>;
 }
 

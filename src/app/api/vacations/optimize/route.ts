@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 
 // Bump whenever the optimizer's output shape or selection logic changes, so results cached
 // by an older build are not served after a deploy.
-const OPTIMIZER_CACHE_VERSION = 'v16';
+const OPTIMIZER_CACHE_VERSION = 'v17';
 
 interface OptimizeResponsePayload {
   success: true;

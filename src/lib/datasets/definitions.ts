@@ -5,6 +5,7 @@ import flightRoutesSeed from '@/lib/airports/data/flight-routes.json';
 import climateNormalsSeed from '@/lib/optimizer/data/climate-normals.json';
 import holidayAppealSeed from '@/lib/optimizer/data/holiday-appeal.json';
 import destinationNamesSeed from '@/lib/geo/data/destination-names.json';
+import priceLevelsSeed from '@/lib/pricing/data/price-levels.json';
 import { resolveOpenMeteoAccess } from '@/lib/integrations/open-meteo-access';
 import { getDataset, type DatasetName } from './store';
 import type { AirportRecord, GeneratorContext } from './generators/common';
@@ -14,6 +15,7 @@ import { generateAirportTraffic } from './generators/airport-traffic';
 import { generateCityNames } from './generators/city-names';
 import { generateClimateNormals, type ClimateGeneratorState } from './generators/climate-normals';
 import { generateHolidayData, HOLIDAY_APPEAL_ROW_LENGTH, type HolidayData } from './generators/holiday-appeal';
+import { generatePriceLevels } from './generators/price-levels';
 
 /**
  * The refreshable reference datasets, in dependency order (routes, traffic, names, holiday appeal and climate
@@ -162,6 +164,17 @@ export const DATASET_DEFINITIONS: DatasetDefinition[] = [
       )
         ? notShrunk(data, before, 0, 0.7)
         : 'invalid destination names',
+  },
+  {
+    // Country price levels (World Bank), independent of the airport list
+    name: 'price-levels',
+    seed: priceLevelsSeed,
+    refreshIntervalMs: 90 * DAY_MS,
+    run: async (ctx) => ({ data: await generatePriceLevels(ctx) }),
+    validate: (data, before) =>
+      everyValue(data, (v, k) => /^[A-Z]{2}$/.test(k) && typeof v === 'number' && v >= 0.05 && v <= 5)
+        ? notShrunk(data, before, 150, 0.8)
+        : 'invalid price levels',
   },
   {
     name: 'climate-normals',

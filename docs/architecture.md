@@ -97,7 +97,7 @@ FamVacay uses a flat, shared family profile: every adult linked to a profile thr
 | Family | `FamilyProfile`, `FamilyMembership`, `FamilyMember`, `FamilyAirport`, `BlackoutPeriod` | Home location, school region, preferences (cabin class, overland travel time, scoring weights incl. excluded countries), members with birth dates and per-child school regions, preferred departure airports, recurring blackouts. |
 | Invitations | `FamilyInvite` | Schema only - inviting further adults has no UI or API yet. |
 | Searches & sharing | `TripSearch`, `TripPlan`, `BlackoutDate`, `SharedTripBoard`, `SharedCandidate` | Shared boards store only derived, non-identifying fields (no address, coordinates or exact birth dates) and expire. |
-| Reference data | `Place`, `Airport`, `GeneratedDataset` | `GeneratedDataset` holds the background-refreshed datasets (airports, routes, climate, city names, traffic, holiday appeal). |
+| Reference data | `Place`, `Airport`, `GeneratedDataset` | `GeneratedDataset` holds the background-refreshed datasets (airports, routes, climate, city names, traffic, holiday appeal, price levels). |
 
 Database changes always come with a migration in `prisma/migrations/`, applied by the `migrate` service (`prisma migrate deploy`).
 
@@ -260,6 +260,7 @@ The pricing engine implements a decoupled provider pattern (`src/lib/pricing/`):
    - `FlightPriceProvider`: Defines standard contract for flight quotes, lodging estimates, total cost aggregation, and deep link generation.
    - Decommissioned Amadeus Deprecation (ADR 0002): Legacy Amadeus flight search APIs decommissioned on 17 July 2026 have been eliminated.
    - Benchmark pricing (`src/lib/pricing/pricing-service.ts`): seasonal market fares from distance and demand (school holidays at home and in Europe's big source markets), passenger age tier multipliers, cabin class factors and departure arbitrage. Prices are estimates and labelled as such; there is no live fare source (ADR 0002).
+   - Catering advantage (`src/lib/pricing/meal-plan-value.ts`): what the meals of the board type are worth at the destination - base values per adult and child and night for Mediterranean prices, scaled by the country's price level from the `price-levels` dataset (World Bank PPP for private consumption / exchange rate), dampened because resort meals stay closer to international prices. 75 % of it is credited against the trip price for ranking; the shown price stays the full price.
 2. **Actionable UI Integration (`BookingDealsPopover`)**:
    - Result cards include an interactive portal deals popover providing itemized cost breakdowns and one-click direct booking navigation across active providers.
 

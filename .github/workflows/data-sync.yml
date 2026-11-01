@@ -2,7 +2,7 @@ name: Scheduled Data Sync
 
 # The app's airport/city/flight-route/climate reference data (src/lib/airports/data/*.json)
 # is generated ahead of time from public upstream sources (OurAirports, OpenFlights,
-# Wikidata, NASA POWER, Open-Meteo) and committed into the repo rather than fetched at request time.
+# Wikidata, NASA POWER, Open-Meteo, World Bank) and committed into the repo rather than fetched at request time.
 # This workflow re-runs those generators on a schedule and opens a PR with whatever
 # changed, so the data stays current without ever pushing unreviewed changes to main.
 on:
@@ -67,6 +67,10 @@ jobs:
         continue-on-error: true
         run: pnpm run generate:holiday-appeal
 
+      - name: Regenerate price levels (World Bank)
+        continue-on-error: true
+        run: pnpm run generate:price-levels
+
       # Rain-duration data (Open-Meteo free tier) fills in gradually: each run keeps what is
       # already published and adds what fits into the time cap, staying inside the job timeout.
       - name: Regenerate climate normals
@@ -88,7 +92,7 @@ jobs:
             Automated weekly refresh of the generated reference data under
             `src/lib/airports/data/`, produced by the `generate:*` scripts in
             `package.json` from their public upstream sources (OurAirports,
-            OpenFlights, Wikidata, Wikivoyage, NASA POWER, Open-Meteo).
+            OpenFlights, Wikidata, Wikivoyage, NASA POWER, Open-Meteo, World Bank).
 
             Typecheck and the full test suite ran against the regenerated data
             before this PR was opened. Review the diff for unexpected swings

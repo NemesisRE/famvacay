@@ -28,6 +28,7 @@ Self-hosted family vacation optimizer: Next.js 16 (App Router), React 19, Prisma
 - **No hardcoded catalogs** of places, airports, countries or holidays: data comes from the generated datasets (`src/lib/datasets/`), ISO 3166 packages and the geocoder.
 - **Tests never call live services.** `tests/setup-unit.ts` mocks Nominatim, Photon, OpenHolidays, Open-Meteo and the travel advisories; extend it or stub `fetch` in the test. For database-backed logic, take an injectable `db` (see `src/lib/passport/reminders.ts`) so tests can pass in-memory fakes.
 - **Comments explain why**, matching the surrounding code; keep the existing style and naming.
+- **No European bias in UI texts:** the app is used worldwide. Explanations and general texts either relate to the user's starting location (home country, departure point) or are phrased neutrally - no "Mediterranean prices", no European-only examples. Internal calibrations may name their reference in code comments only.
 
 ## Code conventions
 

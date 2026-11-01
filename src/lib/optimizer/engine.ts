@@ -1074,6 +1074,7 @@ export function optimizeVacationWindows(
               cabinClass: (userProfile.preferredCabinClass as any) || 'ECONOMY',
             },
             preferredBoardType: input.preferredBoardType,
+            homeCountry,
           });
           const pricingDetails = applyDemandAdjustment(
             toOverlandPricing(basePricing, ov.vehicle, vehicleDetails.estimatedTravelCost, pCostMultiplier, travelers),
@@ -1143,6 +1144,7 @@ export function optimizeVacationWindows(
             },
             isArbitrage: Boolean(arbitrage?.note),
             preferredBoardType: input.preferredBoardType,
+            homeCountry,
           }), demandFactor, true, travelers);
 
           // Rail-and-fly: the round-trip train ride to the hub is part of the trip cost

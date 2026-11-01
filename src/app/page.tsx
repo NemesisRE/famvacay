@@ -1896,7 +1896,7 @@ export default function HomePage() {
             })()}
             {Boolean(win.effectiveCost) && win.boardType === 'ALL_INCLUSIVE' && typeof win.mealPlanValue === 'number' && win.mealPlanValue > 0 ? (
               <div className="mt-0.5 flex sm:justify-end">
-                <MealPlanValuePopover mealPlanValue={win.mealPlanValue} durationDays={win.durationDays} />
+                <MealPlanValuePopover mealPlanValue={win.mealPlanValue} durationDays={win.durationDays} rates={win.pricingDetails?.mealPlanRates} />
               </div>
             ) : null}
           </div>
