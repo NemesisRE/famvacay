@@ -34,7 +34,7 @@ export interface UserProfileInput {
   departureLon?: number;
   originAirports: string[]; // e.g. ["STR", "FKB", "FRA", "CDG"]
   federalState: string;     // e.g. "DE-BW"
-  workweekDays?: number[];  // [1, 2, 3, 4, 5] for Mon-Fri
+  workweekDays?: number[];  // ISO weekdays (1 = Monday); omitted = the home country's usual week
   adults?: number;          // Number of adult travelers (defaults to 2)
   childrenAges: number[];    // e.g. [1, 7, 14]
   childrenBirthDates?: string[]; // ISO date YYYY-MM-DD
@@ -179,10 +179,19 @@ export interface CandidateWindow {
   publicHolidaysCount: number;
   ptoDaysConsumed: number;
   ptoEfficiencyRatio: number; // (durationDays / ptoDaysConsumed) normalized
+  /** Workdays the PTO numbers count (ISO weekdays, 1 = Monday): the family's own or their country's usual week */
+  workweekDays?: number[];
   /**
-   * The same window for a six-day workweek (Mon-Sat), shown next to the five-day numbers: every
-   * Saturday is a workday there, and a public holiday on a Saturday saves a PTO day.
+   * The same window for six-day weeks, shown next to a five-day week: one variant (Monday-Saturday)
+   * where Sunday is a day off, both possible ones where the weekend is e.g. Friday/Saturday.
    */
+  workweekVariants?: {
+    days: number[];
+    ptoDaysConsumed: number;
+    publicHolidaysCount: number;
+    ptoEfficiencyRatio: number;
+  }[];
+  /** @deprecated results from before workweekVariants (always Monday-Saturday); shared links may still hold it */
   sixDayWorkweek?: {
     ptoDaysConsumed: number;
     publicHolidaysCount: number;

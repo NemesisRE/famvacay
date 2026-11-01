@@ -191,12 +191,14 @@ describe('CSP Optimizer - Edge Cases & Core Engine', () => {
       expect(w.scoreBreakdown.priceIndex).toBeGreaterThanOrEqual(0);
     });
 
-    // Every window also carries the six-day workweek (Mon-Sat): its Saturdays cost PTO as well,
-    // so it never needs fewer PTO days than the five-day week
+    // A family in Germany works Monday-Friday by default; every window also carries the six-day
+    // week (Monday-Saturday), whose Saturdays cost PTO as well - never fewer PTO days
     results.forEach((w) => {
-      expect(w.sixDayWorkweek).toBeDefined();
-      expect(w.sixDayWorkweek!.ptoDaysConsumed).toBeGreaterThanOrEqual(w.ptoDaysConsumed);
-      expect(w.sixDayWorkweek!.publicHolidaysCount).toBeGreaterThanOrEqual(w.publicHolidaysCount);
+      expect(w.workweekDays).toEqual([1, 2, 3, 4, 5]);
+      expect(w.workweekVariants?.map((v) => v.days)).toEqual([[1, 2, 3, 4, 5, 6]]);
+      const six = w.workweekVariants![0];
+      expect(six.ptoDaysConsumed).toBeGreaterThanOrEqual(w.ptoDaysConsumed);
+      expect(six.publicHolidaysCount).toBeGreaterThanOrEqual(w.publicHolidaysCount);
     });
 
     // Results should be sorted descending by finalScore
