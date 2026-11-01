@@ -34,6 +34,30 @@ export function OverlandModeIcons({ className = 'text-teal-600 dark:text-teal-40
   );
 }
 
+interface CabinClassSelectProps {
+  value: string | undefined;
+  onChange: (cabinClass: string) => void;
+  id?: string;
+}
+
+/** Preferred cabin class (search form and profile); no value means economy. */
+export function CabinClassSelect({ value, onChange, id }: CabinClassSelectProps) {
+  const { t } = useI18n();
+  return (
+    <SelectDropdown
+      id={id}
+      variant="form"
+      value={value || 'ECONOMY'}
+      onChange={onChange}
+      options={[
+        { value: 'ECONOMY', label: t.profile.economy },
+        { value: 'PREMIUM_ECONOMY', label: t.profile.premiumEconomy },
+        { value: 'BUSINESS', label: t.profile.business },
+      ]}
+    />
+  );
+}
+
 export const BOARD_TYPE_OPTIONS: BoardType[] = ['ALL_INCLUSIVE', 'HALF_BOARD', 'BREAKFAST', 'ROOM_ONLY'];
 
 interface MinTemperatureSelectProps {

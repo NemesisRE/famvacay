@@ -18,6 +18,7 @@ import {
   Utensils,
   BookUser,
   Info,
+  Globe,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { getCountryCodeFromSubdivision } from '@/lib/regions/subdivisions';
@@ -27,10 +28,10 @@ import {
   SchoolRegionSelect,
   resolveRegionForCountry,
 } from '@/components/forms/RegionSelectors';
-import { BoardTypeSelect, OverlandDurationSelect, OverlandModeIcons } from '@/components/forms/PreferenceSelects';
+import { BoardTypeSelect } from '@/components/forms/PreferenceSelects';
 import type { BoardType, CarFuelType, DestinationType, TravelVehicle } from '@/lib/optimizer/types';
-import { isAllStylesSelection, toggleStyleSelection, toggleTravelModeSelection, readStoredStyles, getClimateRelevance } from '@/lib/optimizer/style-selection';
-import { VacationStyleTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
+import { isAllStylesSelection, toggleStyleSelection, toggleTravelModeSelection, toggleTravelDistance, readStoredStyleSelection, getClimateRelevance, ALL_TRAVEL_DISTANCES, type TravelDistance } from '@/lib/optimizer/style-selection';
+import { VacationStyleTiles, TravelDistanceTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
 import { ChildAgeBadges } from '@/components/family/ChildAgeBadges';
 import { differenceInYears } from 'date-fns';
 import { FORM_SELECT_CLASS } from '@/components/forms/RegionSelectors';
@@ -88,11 +89,12 @@ function FamilyProfileContent() {
   const [preferredBoardType, setPreferredBoardType] = useState<string>('ALL');
   const [maxOverlandDurationHours, setMaxOverlandDurationHours] = useState<number | undefined>(undefined);
   const [preferredVacationStyles, setPreferredVacationStyles] = useState<DestinationType[]>(['ALL']);
-  const [longRangeStyles, setLongRangeStyles] = useState<DestinationType[]>([]);
+  const [travelDistances, setTravelDistances] = useState<TravelDistance[]>([...ALL_TRAVEL_DISTANCES]);
   const [excludedCountries, setExcludedCountries] = useState<string[]>([]);
   const allStylesSelected = isAllStylesSelection(preferredVacationStyles);
-  const climateRelevance = getClimateRelevance(preferredVacationStyles, longRangeStyles);
-  const longRangeOnlySelected = climateRelevance.isLongRangeSelected;
+  const climateRelevance = getClimateRelevance(preferredVacationStyles);
+  // Flight-only parts (distance, departure airports) only show while the plane is selected
+  const usesPlane = travelModes.includes('PLANE');
   const [minBeachTemp, setMinBeachTemp] = useState<number | undefined>(undefined);
   const [requireSnow, setRequireSnow] = useState<boolean>(false);
   const [maxFlightStops, setMaxFlightStops] = useState<number | undefined>(undefined);
@@ -180,10 +182,9 @@ function FamilyProfileContent() {
               if (sw.preferredBoardType) {
                 setPreferredBoardType(sw.preferredBoardType);
               }
-              setPreferredVacationStyles(readStoredStyles(sw));
-              if (Array.isArray(sw.longRangeStyles)) {
-                setLongRangeStyles(sw.longRangeStyles);
-              }
+              const styleSelection = readStoredStyleSelection(sw);
+              setPreferredVacationStyles(styleSelection.styles);
+              setTravelDistances(styleSelection.distances);
               if (Array.isArray(sw.excludedCountries)) {
                 setExcludedCountries(sw.excludedCountries);
               }
@@ -331,7 +332,9 @@ function FamilyProfileContent() {
         preferredVacationStyles,
         // Legacy single value kept for older clients reading the profile
         preferredVacationStyle: allStylesSelected ? 'ALL' : preferredVacationStyles[0],
-        longRangeStyles: longRangeOnlySelected ? longRangeStyles : [],
+        travelDistances,
+        // Replaced by travelDistances; cleared so the old long-haul kinds are not read back
+        longRangeStyles: undefined,
         excludedCountries,
         recurringBlackouts,
         maxOverlandTravelMinutes: maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
@@ -454,7 +457,7 @@ function FamilyProfileContent() {
               <MapPin className="w-4 h-4 text-teal-600 dark:text-teal-400" />
               {t.profile.sec1Title}
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="h-5 flex items-center text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   {t.profile.familyName}
@@ -534,9 +537,7 @@ function FamilyProfileContent() {
               <VacationStyleTiles
                 selectedStyles={preferredVacationStyles}
                 onToggle={(style) => setPreferredVacationStyles((prev) => toggleStyleSelection(prev, style))}
-                longRangeStyles={longRangeStyles}
-                onLongRangeStylesChange={setLongRangeStyles}
-                className="grid grid-cols-2 sm:grid-cols-3 gap-2.5"
+                className="grid grid-cols-2 md:grid-cols-4 gap-2.5"
               />
               <ClimatePreferencesPanel
                 idPrefix="profile-climate"
@@ -547,6 +548,23 @@ function FamilyProfileContent() {
                 requireSnow={requireSnow}
                 onRequireSnowChange={setRequireSnow}
               />
+
+              {/* Long haul needs a flight: without the plane the distance is no choice */}
+              {usesPlane && (
+                <>
+                  <div className="mt-4 mb-2.5 space-y-0.5">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                      <span>{t.home.travelDistanceLabel}</span>
+                    </label>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{t.home.travelDistanceHint}</p>
+                  </div>
+                  <TravelDistanceTiles
+                    selectedDistances={travelDistances}
+                    onToggle={(distance) => setTravelDistances((prev) => toggleTravelDistance(prev, distance))}
+                  />
+                </>
+              )}
             </div>
 
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -564,71 +582,55 @@ function FamilyProfileContent() {
                 onMaxFlightStopsChange={setMaxFlightStops}
                 carFuelType={carFuelType}
                 onCarFuelTypeChange={setCarFuelType}
-                className="grid grid-cols-2 sm:grid-cols-4 gap-2.5"
+                cabinClass={preferredCabinClass}
+                onCabinClassChange={setPreferredCabinClass}
+                maxOverlandHours={maxOverlandDurationHours}
+                onMaxOverlandHoursChange={setMaxOverlandDurationHours}
+                className="grid grid-cols-2 md:grid-cols-4 gap-2.5"
               />
             </div>
 
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <Utensils className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                  <span>{t.home.filterByBoardType}</span>
-                </label>
-                <BoardTypeSelect
-                  value={preferredBoardType === 'ALL' ? undefined : (preferredBoardType as BoardType)}
-                  onChange={(value) => setPreferredBoardType(value || 'ALL')}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <OverlandModeIcons />
-                  <span>{t.home.filterByOverlandDuration}</span>
-                </label>
-                <OverlandDurationSelect value={maxOverlandDurationHours} onChange={setMaxOverlandDurationHours} />
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  {t.profile.cabinClass}
-                </label>
-                <SelectDropdown
-                  variant="form"
-                  value={preferredCabinClass}
-                  onChange={(v) => setPreferredCabinClass(v)}
-                  options={[
-                    { value: 'ECONOMY', label: t.profile.economy },
-                    { value: 'PREMIUM_ECONOMY', label: t.profile.premiumEconomy },
-                    { value: 'BUSINESS', label: t.profile.business },
-                  ]}
-                />
+            {/* Board (the settings of the travel modes sit with the modes above) */}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 @container">
+              <div className="grid grid-cols-1 @lg:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Utensils className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>{t.home.filterByBoardType}</span>
+                  </label>
+                  <BoardTypeSelect
+                    value={preferredBoardType === 'ALL' ? undefined : (preferredBoardType as BoardType)}
+                    onChange={(value) => setPreferredBoardType(value || 'ALL')}
+                  />
+                </div>
               </div>
             </div>
 
             {/* Departure airports, after the comfort settings - same position as on the search form */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-              <AirportSelector
-                selectedAirports={originAirports}
-                onChange={setOriginAirports}
-                coordinates={departureCoords}
-              />
-              {originAirports.some((code) => airportRoadRouting[code]) && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {originAirports
-                    .filter((code) => airportRoadRouting[code])
-                    .map((code) => (
-                      <span
-                        key={code}
-                        className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-                        title={t.profile.drivingTimeHint}
-                      >
-                        {code}: ~{airportRoadRouting[code].drivingMinutes} min ({airportRoadRouting[code].drivingKm} km)
-                      </span>
-                    ))}
-                </div>
-              )}
-            </div>
+            {usesPlane && (
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <AirportSelector
+                  selectedAirports={originAirports}
+                  onChange={setOriginAirports}
+                  coordinates={departureCoords}
+                />
+                {originAirports.some((code) => airportRoadRouting[code]) && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {originAirports
+                      .filter((code) => airportRoadRouting[code])
+                      .map((code) => (
+                        <span
+                          key={code}
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                          title={t.profile.drivingTimeHint}
+                        >
+                          {code}: ~{airportRoadRouting[code].drivingMinutes} min ({airportRoadRouting[code].drivingKm} km)
+                        </span>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Section 3 */}
@@ -662,9 +664,9 @@ function FamilyProfileContent() {
               {members.map((member, index) => (
                 <div
                   key={index}
-                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-12 gap-3 items-start"
+                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-12 gap-3 items-start"
                 >
-                  <div className="order-1 sm:order-0 sm:col-span-3">
+                  <div className="order-1 lg:order-0 lg:col-span-2">
                     <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
                       {t.profile.name}
                     </label>
@@ -677,7 +679,7 @@ function FamilyProfileContent() {
                     />
                   </div>
 
-                  <div className="order-3 col-span-2 sm:order-0 sm:col-span-2">
+                  <div className="order-3 col-span-2 lg:order-0 lg:col-span-3">
                     <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
                       {t.profile.role}
                     </label>
@@ -694,7 +696,7 @@ function FamilyProfileContent() {
                     />
                   </div>
 
-                  <div className="order-3 col-span-2 sm:order-0 sm:col-span-3">
+                  <div className="order-3 col-span-2 lg:order-0 lg:col-span-3">
                     <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
                       {t.profile.birthDate}
                     </label>
@@ -707,7 +709,7 @@ function FamilyProfileContent() {
                     />
                   </div>
 
-                  <div className="order-3 col-span-2 sm:order-0 sm:col-span-3">
+                  <div className="order-3 col-span-2 lg:order-0 lg:col-span-3">
                     <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
                       {t.profile.passportExpiry}
                     </label>
@@ -720,7 +722,7 @@ function FamilyProfileContent() {
                   </div>
 
                   {/* Phones: next to the name field (it used to get a row of its own) */}
-                  <div className="order-1 self-end sm:self-auto sm:order-0 sm:col-span-1 flex justify-end sm:mt-[15px]">
+                  <div className="order-1 self-end lg:self-auto lg:order-0 lg:col-span-1 flex justify-end lg:mt-[15px]">
                     <button
                       type="button"
                       onClick={() => removeMember(index)}
@@ -736,19 +738,19 @@ function FamilyProfileContent() {
                       leaves dead space under role/birth date/passport expiry. On phones it must
                       span both columns: in the narrow delete-button column it squeezed the name field. */}
                   {(member.role === 'CHILD' || member.role === 'INFANT') && (
-                    <div className="order-2 col-span-2 sm:order-0 sm:col-span-12 -mt-2">
+                    <div className="order-2 col-span-2 lg:order-0 lg:col-span-12 -mt-2">
                       <p className="text-[10px] text-slate-400 dark:text-slate-500">{t.profile.childNameHint}</p>
                     </div>
                   )}
 
                   {(member.role === 'CHILD' || member.role === 'INFANT') && member.birthDate && (
-                    <div className="order-3 col-span-2 sm:order-0 sm:col-span-12 flex flex-wrap items-center gap-1.5">
+                    <div className="order-3 col-span-2 lg:order-0 lg:col-span-12 flex flex-wrap items-center gap-1.5">
                       <ChildAgeBadges age={Math.max(0, differenceInYears(new Date(), new Date(member.birthDate)))} />
                     </div>
                   )}
 
                   {(member.role === 'CHILD' || member.role === 'INFANT') && (
-                    <div className="order-3 col-span-2 sm:order-0 sm:col-span-12">
+                    <div className="order-3 col-span-2 lg:order-0 lg:col-span-12">
                       <SchoolRegionSelect
                         homeRegion={federalState}
                         value={member.schoolSubdivision}

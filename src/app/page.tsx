@@ -35,6 +35,7 @@ import {
   Share2,
   Wallet,
   Ship,
+  Globe,
 } from 'lucide-react';
 import { differenceInYears, addDays } from 'date-fns';
 import { CandidateWindow, DestinationType, TravelVehicle, BoardType, CarFuelType } from '@/lib/optimizer/types';
@@ -87,9 +88,9 @@ import { SelectDropdown, type SelectDropdownOption } from '@/components/ui/selec
 import { ResultsPagination } from '@/components/results/ResultsPagination';
 import { OverlandTripDetailsPopover } from '@/components/travel/OverlandTripDetailsPopover';
 import { CountrySelect, SubdivisionSelect } from '@/components/forms/RegionSelectors';
-import { BoardTypeSelect, OverlandDurationSelect, OverlandModeIcons } from '@/components/forms/PreferenceSelects';
-import { isAllStylesSelection, toggleStyleSelection, toggleTravelModeSelection, readStoredStyles, getClimateRelevance } from '@/lib/optimizer/style-selection';
-import { VacationStyleTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
+import { BoardTypeSelect, OverlandModeIcons } from '@/components/forms/PreferenceSelects';
+import { toggleStyleSelection, toggleTravelModeSelection, toggleTravelDistance, readStyleSelection, readStoredStyleSelection, toOptimizerStyles, getClimateRelevance, ALL_TRAVEL_DISTANCES, type TravelDistance, type StyleSelection } from '@/lib/optimizer/style-selection';
+import { VacationStyleTiles, TravelDistanceTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
 import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/destination-points';
 import { passportWarningsForTrip, type PassportHolder } from '@/lib/passport/validity';
 import { DateRangePicker } from '@/components/calendar/DateRangePicker';
@@ -122,18 +123,19 @@ export default function HomePage() {
 
   // 2. Travel Destinations & Vacation Style State (default open/all discovery, multi-selectable)
   const [selectedStyles, setSelectedStyles] = useState<DestinationType[]>(['ALL']);
-  // Preferred kind of long-haul trip when the long-range style is selected (empty = any)
-  const [longRangeStyles, setLongRangeStyles] = useState<DestinationType[]>([]);
+  // How far the trip may go (short/medium haul, long haul); both = any distance
+  const [travelDistances, setTravelDistances] = useState<TravelDistance[]>([...ALL_TRAVEL_DISTANCES]);
+  const applyStyleSelection = ({ styles, distances }: StyleSelection) => {
+    setSelectedStyles(styles);
+    setTravelDistances(distances);
+  };
   const [targetDestinations, setTargetDestinations] = useState<string[]>([]);
   // ISO country codes open discovery never proposes
   const [excludedCountries, setExcludedCountries] = useState<string[]>([]);
 
-  const isAllStylesSelected = isAllStylesSelection(selectedStyles);
-
   // Minimum temperature / snow guarantee matter whenever beach / alpine destinations can be in
-  // the result: the style itself, "all styles", or a long-range search preferring that kind.
-  const climateRelevance = getClimateRelevance(selectedStyles, longRangeStyles);
-  const isLongRangeSelected = climateRelevance.isLongRangeSelected;
+  // the result: the style itself or "all styles", at any distance.
+  const climateRelevance = getClimateRelevance(selectedStyles);
   const isBeachClimateRelevant = climateRelevance.beach;
   const isAlpineClimateRelevant = climateRelevance.alpine;
 
@@ -175,6 +177,9 @@ export default function HomePage() {
 
   // Same selection behaviour as the vacation styles (and the profile)
   const toggleVehicle = (vehicle: TravelVehicle) => setSelectedVehicles((prev) => toggleTravelModeSelection(prev, vehicle));
+  // Settings of a travel mode only show (and only reach the search) while the mode is selected
+  const usesPlane = selectedVehicles.includes('PLANE');
+  const usesOverland = selectedVehicles.some((v) => v !== 'PLANE');
 
   // Vacation style specific constraints: Minimum beach temperature & Winter sports / Snow guarantee
   const [minBeachTemp, setMinBeachTemp] = useState<number | undefined>(undefined);
@@ -355,7 +360,7 @@ export default function HomePage() {
         if (parsed.departureCoords) setDepartureCoords(parsed.departureCoords);
         if (parsed.country) setCountry(parsed.country);
         if (parsed.federalState) setFederalState(parsed.federalState);
-        if (Array.isArray(parsed.selectedStyles) && parsed.selectedStyles.length > 0) setSelectedStyles(parsed.selectedStyles);
+        applyStyleSelection(readStyleSelection({ styles: parsed.selectedStyles, longRangeStyles: parsed.longRangeStyles, travelDistances: parsed.travelDistances }));
         if (Array.isArray(parsed.targetDestinations)) setTargetDestinations(parsed.targetDestinations);
         if (Array.isArray(parsed.originAirports)) setOriginAirports(parsed.originAirports);
         if (typeof parsed.adultsCount === 'number') setAdultsCount(parsed.adultsCount);
@@ -372,7 +377,6 @@ export default function HomePage() {
         }
         if (typeof parsed.minBeachTemp === 'number') setMinBeachTemp(parsed.minBeachTemp);
         if (typeof parsed.requireSnow === 'boolean') setRequireSnow(parsed.requireSnow);
-        if (Array.isArray(parsed.longRangeStyles)) setLongRangeStyles(parsed.longRangeStyles);
         if (Array.isArray(parsed.excludedCountries)) setExcludedCountries(parsed.excludedCountries);
         if (Array.isArray(parsed.recurringBlackouts)) setRecurringBlackouts(parsed.recurringBlackouts);
         if (parsed.preferredBoardType) setPreferredBoardType(parsed.preferredBoardType);
@@ -476,7 +480,7 @@ export default function HomePage() {
                   if (formState.departureCoords) setDepartureCoords(formState.departureCoords);
                   if (formState.country) setCountry(formState.country);
                   if (formState.federalState) setFederalState(formState.federalState);
-                  if (Array.isArray(formState.selectedStyles) && formState.selectedStyles.length > 0) setSelectedStyles(formState.selectedStyles);
+                  applyStyleSelection(readStyleSelection({ styles: formState.selectedStyles, longRangeStyles: formState.longRangeStyles, travelDistances: formState.travelDistances }));
                   if (Array.isArray(formState.targetDestinations)) setTargetDestinations(formState.targetDestinations);
                   if (Array.isArray(formState.originAirports)) setOriginAirports(formState.originAirports);
                   if (typeof formState.adultsCount === 'number') setAdultsCount(formState.adultsCount);
@@ -490,7 +494,6 @@ export default function HomePage() {
                   if (formState.preferredBoardType) setPreferredBoardType(formState.preferredBoardType);
                   if (typeof formState.minBeachTemp === 'number') setMinBeachTemp(formState.minBeachTemp);
                   if (typeof formState.requireSnow === 'boolean') setRequireSnow(formState.requireSnow);
-                  if (Array.isArray(formState.longRangeStyles)) setLongRangeStyles(formState.longRangeStyles);
                   if (Array.isArray(formState.excludedCountries)) setExcludedCountries(formState.excludedCountries);
                   if (Array.isArray(formState.recurringBlackouts)) setRecurringBlackouts(formState.recurringBlackouts);
                   if (typeof formState.maxFlightStops === 'number') setMaxFlightStops(formState.maxFlightStops);
@@ -544,7 +547,7 @@ export default function HomePage() {
         travelVehicle: selectedVehicles[0] || 'PLANE',
         minBeachTemp,
         requireSnow,
-        longRangeStyles,
+        travelDistances,
         excludedCountries,
         recurringBlackouts,
         preferredBoardType,
@@ -577,7 +580,7 @@ export default function HomePage() {
     selectedVehicles,
     minBeachTemp,
     requireSnow,
-    longRangeStyles,
+    travelDistances,
     excludedCountries,
     recurringBlackouts,
     preferredBoardType,
@@ -725,7 +728,7 @@ export default function HomePage() {
     setDepartureLocation('');
     setDepartureCoords(null);
     setSelectedStyles(['ALL']);
-    setLongRangeStyles([]);
+    setTravelDistances([...ALL_TRAVEL_DISTANCES]);
     setTargetDestinations([]);
     setExcludedCountries([]);
     setOriginAirports([]);
@@ -876,10 +879,7 @@ export default function HomePage() {
               setPreferredBoardType(sw.preferredBoardType);
             }
             if (sw.preferredVacationStyles || sw.preferredVacationStyle) {
-              setSelectedStyles(readStoredStyles(sw));
-            }
-            if (Array.isArray(sw.longRangeStyles)) {
-              setLongRangeStyles(sw.longRangeStyles);
+              applyStyleSelection(readStoredStyleSelection(sw));
             }
             if (Array.isArray(sw.excludedCountries)) {
               setExcludedCountries(sw.excludedCountries);
@@ -1014,17 +1014,20 @@ export default function HomePage() {
       const childrenSchoolRegions = datedChildren.map((c) => c.schoolRegion || null);
 
       const hasDestinations = targetDestinations.length > 0;
+      const optimizerStyles = hasDestinations
+        ? {}
+        : toOptimizerStyles({ styles: selectedStyles, distances: usesPlane ? travelDistances : ALL_TRAVEL_DISTANCES });
 
       const payload = {
         targetDestinations: hasDestinations ? targetDestinations : undefined,
-        destinationTypes: hasDestinations ? undefined : (isAllStylesSelected ? undefined : selectedStyles),
-        destinationType: hasDestinations ? undefined : (selectedStyles.length === 1 && !isAllStylesSelected ? selectedStyles[0] : undefined),
+        destinationTypes: optimizerStyles.destinationTypes,
+        destinationType: optimizerStyles.destinationTypes?.length === 1 ? optimizerStyles.destinationTypes[0] : undefined,
         minBeachTemp: (!hasDestinations && isBeachClimateRelevant) ? minBeachTemp : undefined,
         requireSnow: (!hasDestinations && isAlpineClimateRelevant) ? requireSnow : false,
-        longRangeStyles: (!hasDestinations && isLongRangeSelected && longRangeStyles.length > 0) ? longRangeStyles : undefined,
+        longRangeStyles: optimizerStyles.longRangeStyles?.length ? optimizerStyles.longRangeStyles : undefined,
         excludedCountries: (!hasDestinations && excludedCountries.length > 0) ? [...excludedCountries].sort() : undefined,
         preferredBoardType,
-        maxOverlandTravelMinutes: maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
+        maxOverlandTravelMinutes: usesOverland && maxOverlandDurationHours ? maxOverlandDurationHours * 60 : undefined,
         maxFlightStops,
         carFuelType: selectedVehicles.includes('CAR') ? carFuelType : undefined,
         avoidExtremeHeat: heatFilter === 'AVOID_EXTREME_HEAT',
@@ -1101,7 +1104,7 @@ export default function HomePage() {
               preferredBoardType,
               minBeachTemp,
               requireSnow,
-              longRangeStyles,
+              travelDistances,
               excludedCountries,
               recurringBlackouts,
               maxFlightStops,
@@ -1215,7 +1218,7 @@ export default function HomePage() {
               preferredBoardType,
               minBeachTemp,
               requireSnow,
-              longRangeStyles,
+              travelDistances,
               excludedCountries,
               recurringBlackouts,
               maxFlightStops,
@@ -2227,12 +2230,7 @@ export default function HomePage() {
                         {t.home.vacationKindHint}
                       </p>
                     </div>
-                    <VacationStyleTiles
-                      selectedStyles={selectedStyles}
-                      onToggle={toggleVacationStyle}
-                      longRangeStyles={longRangeStyles}
-                      onLongRangeStylesChange={setLongRangeStyles}
-                    />
+                    <VacationStyleTiles selectedStyles={selectedStyles} onToggle={toggleVacationStyle} />
 
                     <ClimatePreferencesPanel
                       showBeach={isBeachClimateRelevant}
@@ -2242,6 +2240,25 @@ export default function HomePage() {
                       requireSnow={requireSnow}
                       onRequireSnowChange={setRequireSnow}
                     />
+
+                    {/* Long haul needs a flight: without the plane the distance is no choice */}
+                    {usesPlane && (
+                      <>
+                        <div className="mt-4 mb-2.5 space-y-0.5">
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <Globe className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                            <span>{t.home.travelDistanceLabel}</span>
+                          </label>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                            {t.home.travelDistanceHint}
+                          </p>
+                        </div>
+                        <TravelDistanceTiles
+                          selectedDistances={travelDistances}
+                          onToggle={(distance) => setTravelDistances((prev) => toggleTravelDistance(prev, distance))}
+                        />
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -2264,68 +2281,47 @@ export default function HomePage() {
                   onMaxFlightStopsChange={setMaxFlightStops}
                   carFuelType={carFuelType}
                   onCarFuelTypeChange={setCarFuelType}
+                  cabinClass={preferredCabinClass}
+                  onCabinClassChange={setPreferredCabinClass}
+                  maxOverlandHours={maxOverlandDurationHours}
+                  onMaxOverlandHoursChange={setMaxOverlandDurationHours}
                 />
               </div>
 
-              {/* Preferred Board Type & Max Overland Travel Time */}
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                    <Utensils className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                    <span>{t.home.filterByBoardType}</span>
-                  </label>
-                  <BoardTypeSelect value={preferredBoardType} onChange={setPreferredBoardType} />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                    <OverlandModeIcons />
-                    <span>{t.home.filterByOverlandDuration}</span>
-                  </label>
-                  <OverlandDurationSelect value={maxOverlandDurationHours} onChange={setMaxOverlandDurationHours} />
-                </div>
-              </div>
-
-              {/* Travel Comfort Preferences synced with Traveler Profile: cabin class, budget */}
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 min-h-[2.2em]">
-                    {t.profile.cabinClass}
-                  </label>
-                  <SelectDropdown
-                    variant="form"
-                    value={preferredCabinClass || 'ECONOMY'}
-                    onChange={(v) => setPreferredCabinClass(v)}
-                    options={[
-                      { value: 'ECONOMY', label: t.profile.economy },
-                      { value: 'PREMIUM_ECONOMY', label: t.profile.premiumEconomy },
-                      { value: 'BUSINESS', label: t.profile.business },
-                    ]}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-start gap-1.5 min-h-[2.2em]"
-                    title={t.home.maxBudgetLabel}
-                  >
-                    <Wallet className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                    <span>{t.home.maxBudgetLabel}</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="50"
-                    value={maxBudget ?? ''}
-                    onChange={(e) => setMaxBudget(e.target.value ? Number(e.target.value) : undefined)}
-                    placeholder={t.home.maxBudgetPlaceholder}
-                    className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100 placeholder:font-normal placeholder:text-slate-400"
-                  />
+              {/* Board & budget (the settings of the travel modes sit with the modes above); side by
+                  side only where the form column itself is wide enough */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 @container">
+                <div className="grid grid-cols-1 @lg:grid-cols-2 gap-3 items-end">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                      <Utensils className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>{t.home.filterByBoardType}</span>
+                    </label>
+                    <BoardTypeSelect value={preferredBoardType} onChange={setPreferredBoardType} />
+                  </div>
+                  <div>
+                    <label
+                      className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-start gap-1.5"
+                      title={t.home.maxBudgetLabel}
+                    >
+                      <Wallet className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                      <span>{t.home.maxBudgetLabel}</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="50"
+                      value={maxBudget ?? ''}
+                      onChange={(e) => setMaxBudget(e.target.value ? Number(e.target.value) : undefined)}
+                      placeholder={t.home.maxBudgetPlaceholder}
+                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium text-slate-800 dark:text-slate-100 placeholder:font-normal placeholder:text-slate-400"
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Step 3: Departure Airports (for Plane) or Overland Transit Note (for Car/Train/Bus) */}
-              {selectedVehicles.includes('PLANE') ? (
+              {usesPlane ? (
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                   <AirportSelector
                     selectedAirports={originAirports}
