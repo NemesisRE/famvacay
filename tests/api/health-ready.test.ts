@@ -11,7 +11,8 @@ describe('Operational Readiness & Health Probes', () => {
 
     const body = await res.json();
     expect(body.status).toBe('ok');
-    expect(body.version).toBe('1.0.0');
+    // No release tag in tests: an untagged build reports "dev"
+    expect(body.version).toBe('dev');
     expect(typeof body.uptime).toBe('number');
     expect(body.timestamp).toBeDefined();
   });

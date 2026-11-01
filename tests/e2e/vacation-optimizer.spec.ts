@@ -8,7 +8,8 @@ test.describe('FamVacay E2E User Journey', () => {
     const healthResponse = await page.request.get('/api/health');
     expect(healthResponse.status()).toBe(200);
     const healthJson = await healthResponse.json();
-    expect(healthJson.version).toBe('1.0.0');
+    // The E2E build has no release tag
+    expect(healthJson.version).toBe('dev');
 
     // Visit home page
     await page.goto('/');
