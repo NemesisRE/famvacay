@@ -252,6 +252,17 @@ The weather model (`src/lib/optimizer/weather.ts`) combines measured climate nor
 
 ---
 
+## Holiday Calendar Tab
+
+Next to the destination and list views, the results offer a **Calendar** tab (`src/components/results/HolidayCalendarView.tsx`, data from `/api/holidays/calendar`, `src/lib/holidays/holiday-calendar.ts`) for the travel period:
+
+- **Country:** how many school regions of the home country are on holiday each day (OpenHolidays, one cached call per country and year), coloured like the ADAC "Feriendichte" chart (0 / up to a quarter / up to ~56 % / more of the regions), with public holidays marked. A year counts as known only once most regions have their summer break published, so unpublished years show as such instead of "no holidays".
+- **Your location:** the school holidays of the children's school regions (else the home region), public holidays at home (date-holidays, in the user's language), the home country's weekend and the blackouts of the search.
+
+Countries OpenHolidays does not cover get a note and only their public holidays.
+
+---
+
 ## Modular Travel Pricing Architecture
 
 The pricing engine implements a decoupled provider pattern (`src/lib/pricing/`):
