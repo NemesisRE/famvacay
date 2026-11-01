@@ -36,6 +36,7 @@ import {
   Wallet,
   Ship,
   Globe,
+  CalendarDays,
 } from 'lucide-react';
 import { differenceInYears, addDays } from 'date-fns';
 import { CandidateWindow, DestinationType, TravelVehicle, BoardType, CarFuelType } from '@/lib/optimizer/types';
@@ -98,6 +99,12 @@ import { DateRangePicker } from '@/components/calendar/DateRangePicker';
 import { getCategoryBadges, getVehicleBadge } from '@/components/ui/badge-styles';
 import { replaceUrlKeepingHistoryEntry } from '@/lib/navigation/history-entries';
 import { pushHistoryStep, goBackHistoryStep } from '@/lib/navigation/use-history-back';
+import { HolidayCalendarView } from '@/components/results/HolidayCalendarView';
+
+/** Views of the results: grouped by destination, a flat list, or the holiday calendar of the travel period */
+type ResultsViewMode = 'destination' | 'list' | 'calendar';
+const isResultsViewMode = (value: unknown): value is ResultsViewMode =>
+  value === 'destination' || value === 'list' || value === 'calendar';
 
 /** Background results this soon after the first ones are merged directly instead of offered */
 const INSTANT_BACKGROUND_MS = 1500;
@@ -236,7 +243,7 @@ export default function HomePage() {
   const [shareFallbackUrl, setShareFallbackUrl] = useState<string | null>(null);
   const [shareError, setShareError] = useState(false);
 
-  const [viewMode, setViewMode] = useState<'list' | 'destination'>('destination');
+  const [viewMode, setViewMode] = useState<ResultsViewMode>('destination');
   const [selectedDestinationsList, setSelectedDestinationsList] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [maxCostFilter, setMaxCostFilter] = useState<number | undefined>(undefined);
@@ -251,7 +258,7 @@ export default function HomePage() {
   // Browser history steps of the in-app views (Back returns to the previous one)
   const resultsStepRef = useRef<number | null>(null);
   const listJumpStepRef = useRef<number | null>(null);
-  const viewStepRef = useRef<{ id: number; previous: 'list' | 'destination' } | null>(null);
+  const viewStepRef = useRef<{ id: number; previous: ResultsViewMode } | null>(null);
   // Filters and page in effect before "show all in list", restored by the back button
   const [filtersBeforeListJump, setFiltersBeforeListJump] = useState<{
     destinations: string[];
@@ -397,7 +404,7 @@ export default function HomePage() {
       const savedFilters = localStorage.getItem('famvac_filter_settings');
       if (savedFilters) {
         const parsed = JSON.parse(savedFilters);
-        if (parsed.viewMode === 'list' || parsed.viewMode === 'destination') setViewMode(parsed.viewMode);
+        if (isResultsViewMode(parsed.viewMode)) setViewMode(parsed.viewMode);
         if (Array.isArray(parsed.selectedDestinationsList)) setSelectedDestinationsList(parsed.selectedDestinationsList);
         if (parsed.selectedMonth) setSelectedMonth(parsed.selectedMonth);
         if (parsed.maxCostFilter !== undefined) setMaxCostFilter(parsed.maxCostFilter);
@@ -433,7 +440,7 @@ export default function HomePage() {
 
       // URL parameters take precedence over localStorage for direct links & sharing
       const urlView = urlParams.get('view');
-      if (urlView === 'list' || urlView === 'destination') {
+      if (isResultsViewMode(urlView)) {
         setViewMode(urlView);
       }
       const urlDest = urlParams.get('dest');
@@ -1392,6 +1399,28 @@ export default function HomePage() {
     return filteredResults.slice(startIdx, startIdx + pageSize);
   }, [filteredResults, currentPage, pageSize]);
 
+  // Calendar tab: school regions of the children of school age at the start of the travel period
+  // (else the home region), and the blackouts of the search
+  const calendarSchoolRegions = useMemo(() => {
+    const start = earliestDate ? new Date(earliestDate) : new Date();
+    const regions = childrenList
+      .filter((c) => {
+        const birth = new Date(c.birthDate);
+        return !isNaN(birth.getTime()) && differenceInYears(start, birth) >= 6;
+      })
+      .map((c) => c.schoolRegion || federalState);
+    return [...new Set(regions)];
+  }, [childrenList, earliestDate, federalState]);
+  const calendarBlackouts = useMemo(
+    () => [
+      ...searchBlackouts.filter((b) => b.startDate && b.endDate),
+      ...(earliestDate && latestDate
+        ? resolveSpecialHolidayPeriods(recurringBlackouts, earliestDate, latestDate, locale).map((h) => ({ startDate: h.startDate, endDate: h.endDate, reason: h.name }))
+        : []),
+    ],
+    [searchBlackouts, recurringBlackouts, earliestDate, latestDate, locale]
+  );
+
   const scrollToResultsTop = () =>
     requestAnimationFrame(() => {
       document.getElementById('results-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1431,7 +1460,7 @@ export default function HomePage() {
 
   // Group view <-> list view; switching back to the previous view goes back instead of stacking
   // another history step
-  const switchViewMode = (next: 'list' | 'destination') => {
+  const switchViewMode = (next: ResultsViewMode) => {
     if (next === viewMode) return;
     const step = viewStepRef.current;
     if (step && step.previous === next) {
@@ -2759,7 +2788,7 @@ export default function HomePage() {
 
                   {/* Right: View Mode Switcher (icons only at lg, where the results column is narrowest) */}
                   <div className="flex items-center">
-                    <div className="grid grid-cols-2 w-full sm:w-auto sm:inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700">
+                    <div className="grid grid-cols-3 w-full sm:w-auto sm:inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700">
                       <button
                         title={t.home.viewModeDestination}
                         type="button"
@@ -2785,6 +2814,19 @@ export default function HomePage() {
                       >
                         <List className="hidden sm:block w-3.5 h-3.5" />
                         <span className="whitespace-nowrap lg:sr-only xl:not-sr-only">{t.home.viewModeList}</span>
+                      </button>
+                      <button
+                        title={t.home.calendarTab}
+                        type="button"
+                        onClick={() => switchViewMode('calendar')}
+                        className={`px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                          viewMode === 'calendar'
+                            ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-2xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                        }`}
+                      >
+                        <CalendarDays className="hidden sm:block w-3.5 h-3.5" />
+                        <span className="whitespace-nowrap lg:sr-only xl:not-sr-only">{t.home.calendarTab}</span>
                       </button>
                     </div>
                   </div>
@@ -3538,7 +3580,15 @@ export default function HomePage() {
               </div>
 
               <div id="results-top" className="scroll-mt-24" aria-hidden="true" />
-              {filteredResults.length === 0 ? (
+              {viewMode === 'calendar' ? (
+                <HolidayCalendarView
+                  homeRegion={federalState}
+                  schoolRegions={calendarSchoolRegions}
+                  earliestDate={earliestDate}
+                  latestDate={latestDate}
+                  blackouts={calendarBlackouts}
+                />
+              ) : filteredResults.length === 0 ? (
                 <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 p-8 text-center text-slate-500 dark:text-slate-400 text-xs">
                   {t.home.noFilteredResults}
                 </div>
