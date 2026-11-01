@@ -16,21 +16,24 @@ import { Info, Utensils, X } from 'lucide-react';
 import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop, viewportFit, POPOVER_DISMISS_OPTIONS } from '@/components/ui/responsive-popover';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { useHistoryBack } from '@/lib/navigation/use-history-back';
-import { MEAL_PLAN_DAILY_VALUE, MEAL_VALUE_CREDIT_SHARE } from '@/lib/pricing/meal-plan-value';
+import { MEAL_PLAN_DAILY_VALUE, MEAL_VALUE_CREDIT_SHARE, type MealPlanRates } from '@/lib/pricing/meal-plan-value';
 
 interface MealPlanValuePopoverProps {
   /** Estimated value of the included meals for the whole stay, in euros */
   mealPlanValue: number;
   /** Length of the trip in days (the stay has one night less) */
   durationDays: number;
+  /** Rates at the destination's price level (results from before it existed: the base rates) */
+  rates?: MealPlanRates;
   className?: string;
 }
 
 /**
  * The catering advantage of an all-inclusive stay as a button that explains it: what the included
- * meals are worth (per adult and child and night), and how much of it counts for ranking.
+ * meals are worth at the destination (per adult and child and night, at the local price level),
+ * and how much of it counts for ranking.
  */
-export function MealPlanValuePopover({ mealPlanValue, durationDays, className = '' }: MealPlanValuePopoverProps) {
+export function MealPlanValuePopover({ mealPlanValue, durationDays, rates: localRates, className = '' }: MealPlanValuePopoverProps) {
   const { t, locale } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   // The Back button closes it instead of leaving the page
@@ -52,7 +55,7 @@ export function MealPlanValuePopover({ mealPlanValue, durationDays, className = 
   const euros = (value: number) => Math.round(value).toLocaleString(locale);
   // Same nights as the pricing (pricing-service): one less than the days of the trip
   const nights = Math.max(1, durationDays - 1);
-  const rates = MEAL_PLAN_DAILY_VALUE.ALL_INCLUSIVE;
+  const rates = localRates ?? { ...MEAL_PLAN_DAILY_VALUE.ALL_INCLUSIVE, priceFactor: 1 };
   const titleId = useId();
 
   return (
@@ -101,6 +104,9 @@ export function MealPlanValuePopover({ mealPlanValue, durationDays, className = 
             <div className="pt-3 space-y-2.5 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
               <p>{t.home.mealValueExplainWhat}</p>
               <p>{t.home.mealValueExplainRates.replace('{adult}', euros(rates.adult)).replace('{child}', euros(rates.child))}</p>
+              {rates.priceFactor !== 1 && (
+                <p>{t.home.mealValueExplainLocal.replace('{percent}', String(Math.round(rates.priceFactor * 100)))}</p>
+              )}
               <div className="rounded-lg bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800/60 px-2.5 py-2 font-mono text-[11px] text-center text-emerald-900 dark:text-emerald-200">
                 {t.home.mealValueExplainTotal
                   .replace('{perNight}', euros(mealPlanValue / nights))

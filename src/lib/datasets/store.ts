@@ -21,7 +21,8 @@ export type DatasetName =
   | 'flight-routes'
   | 'climate-normals'
   | 'holiday-appeal'
-  | 'destination-names';
+  | 'destination-names'
+  | 'price-levels';
 
 interface PublishedDataset {
   data: unknown;

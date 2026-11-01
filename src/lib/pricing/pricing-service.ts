@@ -7,7 +7,8 @@ import {
   TravelPricingProvider,
 } from './types';
 import { BoardType } from '../optimizer/types';
-import { MEAL_PLAN_DAILY_VALUE, MEAL_VALUE_CREDIT_SHARE } from './meal-plan-value';
+import { localMealPlanRates, MEAL_VALUE_CREDIT_SHARE } from './meal-plan-value';
+import { destinationCountryCode, getCountryPriceLevel } from './price-levels';
 import { calculatePassengerCostMultiplier } from '../optimizer/child-tiers';
 import { getAirportByIata, calculateGeodesicDistanceKm } from '../airports/airport-service';
 import { getDestinationPoint } from '../geo/destination-points';
@@ -225,15 +226,20 @@ export function calculatePackageTourComparison(
   };
 }
 
+/**
+ * Daily value of the included meals for the party, at the destination's price level (World Bank,
+ * USA = 1; omitted = the Mediterranean reference the base values stand for).
+ */
 export function calculateMealPlanDailyValue(
   boardType: BoardType,
   adults: number,
-  childrenAges: number[]
-): { dailyAdult: number; dailyChild: number; totalDaily: number } {
-  const { adult: dailyAdult, child: dailyChild } = MEAL_PLAN_DAILY_VALUE[boardType] ?? MEAL_PLAN_DAILY_VALUE.ROOM_ONLY;
+  childrenAges: number[],
+  priceLevel?: number
+): { dailyAdult: number; dailyChild: number; totalDaily: number; priceFactor: number } {
+  const { adult: dailyAdult, child: dailyChild, priceFactor } = localMealPlanRates(boardType, priceLevel);
   const childCount = childrenAges.length;
   const totalDaily = adults * dailyAdult + childCount * dailyChild;
-  return { dailyAdult, dailyChild, totalDaily };
+  return { dailyAdult, dailyChild, totalDaily, priceFactor };
 }
 
 /**
@@ -405,8 +411,15 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
       curDate.setDate(curDate.getDate() + 1);
     }
     const boardType = resolveDestinationBoardType(destinationAirport, params.preferredBoardType);
-    const mealValueMeta = calculateMealPlanDailyValue(boardType, party.adults || 2, party.childrenAges || []);
+    // Meals cost what they cost at the destination: a full board is worth less in Thailand than in Greece
+    const mealValueMeta = calculateMealPlanDailyValue(
+      boardType,
+      party.adults || 2,
+      party.childrenAges || [],
+      getCountryPriceLevel(destinationCountryCode(destAirport))
+    );
     const totalMealValue = mealValueMeta.totalDaily * nights;
+    const mealPlanRates = { adult: mealValueMeta.dailyAdult, child: mealValueMeta.dailyChild, priceFactor: mealValueMeta.priceFactor };
 
     // Adjust rate if user explicitly chose an upgraded/downgraded board type
     if (params.preferredBoardType) {
@@ -435,6 +448,7 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
       propertyType: roomOccupancy.propertyType,
       boardType,
       mealPlanValue: totalMealValue,
+      mealPlanRates,
     };
 
     const totalCost = totalFlightCost + totalLodgingCost;
@@ -477,6 +491,7 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
       pricePerPerson,
       boardType,
       mealPlanValue: totalMealValue,
+      mealPlanRates,
       effectiveCost,
       providerSource: 'PortalAggregator',
       isCachedBenchmark: true,

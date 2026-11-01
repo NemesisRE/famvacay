@@ -30,7 +30,8 @@
     "generate:flight-routes": "tsx scripts/generate-flight-routes.ts",
     "generate:airport-traffic": "tsx scripts/generate-airport-traffic.ts",
     "generate:climate-normals": "tsx scripts/generate-climate-normals.ts",
-    "generate:holiday-appeal": "tsx scripts/generate-holiday-appeal.ts"
+    "generate:holiday-appeal": "tsx scripts/generate-holiday-appeal.ts",
+    "generate:price-levels": "tsx scripts/generate-price-levels.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
