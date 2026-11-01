@@ -9,6 +9,8 @@ import {
 import { BoardType } from '../optimizer/types';
 import { localMealPlanRates, mealPricePercentOfHome, MEAL_VALUE_CREDIT_SHARE, type MealPlanRates } from './meal-plan-value';
 import { destinationCountryCode, getCountryPriceLevel } from './price-levels';
+import { hotelNightlyRate } from './hotel-rates';
+import { getResortPremium } from './tourism-spend';
 import { countryWeekend, isoWeekday } from '../holidays/workweek';
 import { calculatePassengerCostMultiplier } from '../optimizer/child-tiers';
 import { getAirportByIata, calculateGeodesicDistanceKm } from '../airports/airport-service';
@@ -386,25 +388,15 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
     };
 
     // 2. Destination living cost & hotel tier
-    const destCode = destinationAirport.toUpperCase();
-    const HIGH_COST_DESTINATIONS = new Set([
-      'ZRH', 'GVA', 'DXB', 'LHR', 'KEF', 'SEZ', 'MLE', 'MIA', 'SIN', 'JFK', 'SFO',
-      'SBH', 'AXA', 'PLS', 'BGI', 'GCM', 'STT', 'EIS', 'AUA', 'NAS', 'SXM'
-    ]);
-    const UPPER_MEDIUM_DESTINATIONS = new Set(['INN', 'SZG', 'MUC', 'AMS', 'CDG', 'VIE', 'BZO', 'EDI', 'OSL', 'BGO', 'CPH', 'DUB', 'CUR', 'BON', 'PTP', 'FDF']);
-    const BUDGET_DESTINATIONS = new Set(['AYT', 'HRG', 'AAC', 'BKK', 'PRG', 'LIS', 'ATH', 'PDL', 'TRN', 'KLU', 'DJE', 'RAK', 'BAQ', 'CTG', 'ADZ']);
-
-    let nightlyRate = 120; // Default Mediterranean / European leisure standard
-    if (HIGH_COST_DESTINATIONS.has(destCode)) {
-      nightlyRate = isPeakSummer ? 260 : (isShoulder ? 200 : 180);
-    } else if (UPPER_MEDIUM_DESTINATIONS.has(destCode)) {
-      nightlyRate = isPeakSummer ? 180 : (isShoulder ? 140 : 125);
-    } else if (BUDGET_DESTINATIONS.has(destCode)) {
-      nightlyRate = isPeakSummer ? 110 : (isShoulder ? 85 : 70);
-    } else {
-      // Standard Mediterranean / coastal resort (PMI, TFS, LPA, HER, AGP, FAO, BCN, FCO, CFU, RHO, ACE, FNC, DBV, PUJ, SDQ, POP, LRM)
-      nightlyRate = isPeakSummer ? 155 : (isShoulder ? 115 : 95);
-    }
+    // Rooms follow the destination country's price level (World Bank dataset) instead of
+    // hand-picked lists of expensive and cheap airports
+    const destinationCountry = destinationCountryCode(destAirport);
+    const destinationPriceLevel = getCountryPriceLevel(destinationCountry);
+    let nightlyRate = hotelNightlyRate(
+      destinationPriceLevel,
+      isPeakSummer ? 'PEAK' : (isShoulder ? 'SHOULDER' : 'OFF'),
+      getResortPremium(destinationCountry)
+    );
 
     // Non-linear room occupancy topology: hotels enforce strict occupancy cliffs
     // (family studio / 2-bedroom suite) rather than smooth linear per-head scaling.
@@ -427,7 +419,6 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
     }
     const boardType = resolveDestinationBoardType(destinationAirport, params.preferredBoardType);
     // Meals cost what they cost at the destination: a full board is worth less in Thailand than in Greece
-    const destinationPriceLevel = getCountryPriceLevel(destinationCountryCode(destAirport));
     const mealValueMeta = calculateMealPlanDailyValue(boardType, party.adults || 2, party.childrenAges || [], destinationPriceLevel);
     const totalMealValue = mealValueMeta.totalDaily * nights;
     const homePercent = mealPricePercentOfHome(destinationPriceLevel, getCountryPriceLevel(params.homeCountry));
