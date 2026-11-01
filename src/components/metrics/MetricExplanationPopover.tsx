@@ -363,9 +363,9 @@ interface WorkweekColumn {
 }
 
 /**
- * PTO days of the trip for the family's workweek (their own or their country's usual one, e.g.
- * Sunday-Thursday) and the six-day weeks next to it: the extra workday costs PTO, and a public
- * holiday on it saves one. Columns are labelled with the actual weekdays.
+ * PTO days of the trip for the usual week of the home country (a best guess, e.g. Sunday-Thursday)
+ * and the five- or six-day weeks next to it, as travellers in one party may work different weeks.
+ * Columns are labelled with the actual weekdays.
  */
 function WorkweekComparison({ window: win }: { window: CandidateWindow }) {
   const { t, locale } = useI18n();

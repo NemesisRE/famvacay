@@ -418,9 +418,6 @@ export interface TranslationDictionary {
     workweekSixDayHint: string;
     workweekYours: string;
     workweekOwnHint: string;
-    workdaysLabel: string;
-    workdaysHint: string;
-    workdaysReset: string;
     ptoRatio: string;
     score: string;
     cachedBenchmark: string;
