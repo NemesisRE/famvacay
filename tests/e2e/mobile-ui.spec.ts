@@ -34,11 +34,12 @@ test.describe('Mobile Viewport & UI Responsiveness', () => {
     await expect(menu).not.toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 
-    // 2. Moving holidays appear only once a blackout period is being added
-    const easterHolidayBtn = page.getByRole('button', { name: 'Easter', exact: true });
-    await expect(easterHolidayBtn).not.toBeVisible();
+    // 2. The holidays of the home region appear only once a blackout period is being added
+    const holidaysTitle = page.getByText('Holidays in your home region');
+    await expect(holidaysTitle).not.toBeVisible();
     await page.getByRole('button', { name: '+ Add Blackout Period' }).tap();
-    await expect(easterHolidayBtn).toBeVisible();
+    await expect(holidaysTitle).toBeVisible();
+    await expect(holidaysTitle.locator('xpath=..').locator('button[aria-pressed]').first()).toBeVisible();
 
     // 3. Beach temperature picker stays inside the mobile viewport
     const tempSelect = page.getByRole('combobox', { name: 'Minimum Temperature (Beach)' });

@@ -282,6 +282,7 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
    Merges persistent profile blackouts with ad-hoc search blackouts:
    $$\text{Blackouts} = \text{ProfileBlackouts} \cup \text{SearchBlackouts}$$
    Any candidate window overlapping any blackout range is pruned.
+   Recurring holiday blackouts are the public holidays of the home region (`src/lib/holidays/holiday-periods.ts`, date-holidays rules): Eid al-Fitr and Eid al-Adha in Saudi Arabia, Rosh Hashanah in Israel, the Spring Festival in China, Easter in Germany - never a fixed calendar of Christian feasts. Holidays up to three days apart form one period; each is selected by country and rule (`SA:30 Ramadan P4D`), so the choice holds every year, and the dates for the travel period come from `/api/holidays/blackout-options`.
 5. **Dynamic Date-Relative Child Age & Fare Tier Calculation**:
    Child ages are computed dynamically relative to the candidate window's departure date:
    $$\text{Age at Trip} = \lfloor(\text{startDate} - \text{birthDate}) / \text{1 year}\rfloor$$

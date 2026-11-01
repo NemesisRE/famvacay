@@ -82,7 +82,7 @@ import {
   type ResultFilterKey,
   type ResultFilterState,
 } from '@/lib/results/result-filters';
-import { resolveSpecialHolidayPeriods, type SpecialHolidayId } from '@/lib/holidays/special-dates';
+import { migrateHolidayBlackoutIds, resolveSelectedHolidayBlackouts } from '@/lib/holidays/holiday-blackout-ids';
 import { HolidayBlackoutToggles } from '@/components/forms/HolidayBlackoutToggles';
 import { ResultsCountPopover } from '@/components/results/ResultsCountPopover';
 import { SelectDropdown, type SelectDropdownOption } from '@/components/ui/select-dropdown';
@@ -194,7 +194,7 @@ export default function HomePage() {
 
   // 7. Blackout Dates (Starts empty by default, loaded from profile if configured)
   // Year-independent holiday blackouts (Easter, Pentecost...): dates are calculated for the travel period
-  const [recurringBlackouts, setRecurringBlackouts] = useState<SpecialHolidayId[]>([]);
+  const [recurringBlackouts, setRecurringBlackouts] = useState<string[]>([]);
   const [searchBlackouts, setSearchBlackouts] = useState<
     { startDate: string; endDate: string; reason?: string }[]
   >([]);
@@ -385,7 +385,7 @@ export default function HomePage() {
         if (typeof parsed.minBeachTemp === 'number') setMinBeachTemp(parsed.minBeachTemp);
         if (typeof parsed.requireSnow === 'boolean') setRequireSnow(parsed.requireSnow);
         if (Array.isArray(parsed.excludedCountries)) setExcludedCountries(parsed.excludedCountries);
-        if (Array.isArray(parsed.recurringBlackouts)) setRecurringBlackouts(parsed.recurringBlackouts);
+        if (Array.isArray(parsed.recurringBlackouts)) setRecurringBlackouts(migrateHolidayBlackoutIds(parsed.recurringBlackouts, parsed.federalState || ''));
         if (parsed.preferredBoardType) setPreferredBoardType(parsed.preferredBoardType);
         if (typeof parsed.maxOverlandDurationHours === 'number') setMaxOverlandDurationHours(parsed.maxOverlandDurationHours);
         if (typeof parsed.maxFlightStops === 'number') setMaxFlightStops(parsed.maxFlightStops);
@@ -502,7 +502,7 @@ export default function HomePage() {
                   if (typeof formState.minBeachTemp === 'number') setMinBeachTemp(formState.minBeachTemp);
                   if (typeof formState.requireSnow === 'boolean') setRequireSnow(formState.requireSnow);
                   if (Array.isArray(formState.excludedCountries)) setExcludedCountries(formState.excludedCountries);
-                  if (Array.isArray(formState.recurringBlackouts)) setRecurringBlackouts(formState.recurringBlackouts);
+                  if (Array.isArray(formState.recurringBlackouts)) setRecurringBlackouts(migrateHolidayBlackoutIds(formState.recurringBlackouts, formState.federalState || ''));
                   if (typeof formState.maxFlightStops === 'number') setMaxFlightStops(formState.maxFlightStops);
                   if (['PETROL', 'DIESEL', 'ELECTRIC'].includes(formState.carFuelType)) setCarFuelType(formState.carFuelType);
                   if (typeof formState.maxOverlandDurationHours === 'number') setMaxOverlandDurationHours(formState.maxOverlandDurationHours);
@@ -892,7 +892,7 @@ export default function HomePage() {
               setExcludedCountries(sw.excludedCountries);
             }
             if (Array.isArray(sw.recurringBlackouts)) {
-              setRecurringBlackouts(sw.recurringBlackouts);
+              setRecurringBlackouts(migrateHolidayBlackoutIds(sw.recurringBlackouts, p.federalState || ''));
             }
             if ((p.maxTravelHours === null || p.maxTravelHours === undefined) && sw.maxOverlandTravelMinutes) {
               setMaxOverlandDurationHours(Math.round(sw.maxOverlandTravelMinutes / 60));
@@ -1008,7 +1008,8 @@ export default function HomePage() {
 
     try {
       const validBlackouts = searchBlackouts.filter((b) => b.startDate && b.endDate);
-      const holidayBlackouts = resolveSpecialHolidayPeriods(recurringBlackouts, earliestDate, latestDate, locale).map((h) => ({
+      // The chosen holidays of the home region, dated for the travel period
+      const holidayBlackouts = (await resolveSelectedHolidayBlackouts(recurringBlackouts, federalState, earliestDate, latestDate, locale)).map((h) => ({
         startDate: h.startDate,
         endDate: h.endDate,
         reason: h.name,
@@ -2532,12 +2533,13 @@ export default function HomePage() {
                   <HolidayBlackoutToggles
                     selected={recurringBlackouts}
                     onChange={setRecurringBlackouts}
+                    region={federalState}
                     earliestDate={earliestDate}
                     latestDate={latestDate}
                     expanded={isAddingBlackout}
                   />
 
-                  {/* Manual blackout ranges (the holiday toggles above cover Easter, Pentecost etc.) */}
+                  {/* Manual blackout ranges (the holiday toggles above cover the public holidays of the home region) */}
                   {searchBlackouts.length === 0 && !isAddingBlackout ? (
                     <div className="p-2.5 bg-amber-50/50 dark:bg-amber-950/10 rounded-xl border border-dashed border-amber-300 dark:border-amber-800/60 text-center">
                       {recurringBlackouts.length === 0 && (
