@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import {
   useFloating,
   autoUpdate,
@@ -30,6 +30,7 @@ import {
 import { CandidateWindow } from '@/lib/optimizer/types';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { getSafetyTexts } from '@/components/destination/DestinationSafetyPopover';
+import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 interface MetricExplanationPopoverProps {
   window: CandidateWindow;
@@ -46,6 +47,8 @@ export function MetricExplanationPopover({
 }: MetricExplanationPopoverProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+  // The Back button closes it instead of leaving the page
+  useHistoryBack(isOpen, () => setIsOpen(false));
 
   const isSmallScreen = useIsSmallScreen();
 
@@ -163,7 +166,9 @@ export function MetricExplanationPopover({
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                     {t.home.vacationFactorExplainDesc}
                   </p>
-                  {win.publicHolidaysCount > 0 && (
+                  {win.sixDayWorkweek ? (
+                    <WorkweekComparison window={win} />
+                  ) : win.publicHolidaysCount > 0 && (
                     <div className="bg-emerald-50/80 dark:bg-emerald-950/40 rounded-lg p-2 border border-emerald-100 dark:border-emerald-800/60 flex items-center justify-between text-[11px] text-emerald-900 dark:text-emerald-200 mt-2">
                       <span className="font-semibold flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -345,6 +350,58 @@ export function MetricExplanationPopover({
           </div>
         </FloatingPortal>
       )}
+    </div>
+  );
+}
+
+/**
+ * PTO days of the trip for a five-day (Mon-Fri) and a six-day (Mon-Sat) workweek side by side:
+ * Saturdays cost a PTO day in the six-day week, and a public holiday on a Saturday saves one.
+ */
+function WorkweekComparison({ window: win }: { window: CandidateWindow }) {
+  const { t } = useI18n();
+  const titleId = useId();
+  const six = win.sixDayWorkweek;
+  if (!six) return null;
+  const rows: { label: string; five: string; six: string; highlight?: boolean }[] = [
+    { label: t.home.ptoConsumed, five: `${win.ptoDaysConsumed}`, six: `${six.ptoDaysConsumed}`, highlight: true },
+    { label: t.home.workweekHolidaysSaved, five: `${win.publicHolidaysCount}`, six: `${six.publicHolidaysCount}` },
+    { label: t.home.workweekFactor, five: `${win.ptoEfficiencyRatio}x`, six: `${six.ptoEfficiencyRatio}x` },
+  ];
+  return (
+    <div className="space-y-1.5 pt-1">
+      <p id={titleId} className="font-semibold text-[11px] text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+        <Calendar className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+        {t.home.workweekComparisonTitle}
+      </p>
+      <table
+        aria-labelledby={titleId}
+        className="w-full text-[11px] border-separate border-spacing-0 rounded-lg overflow-hidden border border-slate-200/80 dark:border-slate-700"
+      >
+        <thead>
+          <tr className="bg-white dark:bg-slate-900/70 text-slate-500 dark:text-slate-400">
+            <td />
+            <th scope="col" className="text-right font-semibold px-2 py-1">{t.home.workweekFiveDays}</th>
+            <th scope="col" className="text-right font-semibold px-2 py-1">{t.home.workweekSixDays}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.label} className="bg-white dark:bg-slate-900/70 border-t border-slate-100 dark:border-slate-800">
+              <th scope="row" className="text-left font-medium text-slate-600 dark:text-slate-300 px-2 py-1 border-t border-slate-100 dark:border-slate-800">
+                {row.label}
+              </th>
+              <td className={`text-right tabular-nums px-2 py-1 border-t border-slate-100 dark:border-slate-800 ${row.highlight ? 'font-bold text-indigo-600 dark:text-indigo-400' : 'font-semibold text-slate-800 dark:text-slate-100'}`}>
+                {row.five}
+              </td>
+              <td className={`text-right tabular-nums px-2 py-1 border-t border-slate-100 dark:border-slate-800 ${row.highlight ? 'font-bold text-indigo-600 dark:text-indigo-400' : 'font-semibold text-slate-800 dark:text-slate-100'}`}>
+                {row.six}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">{t.home.workweekSixDayHint}</p>
     </div>
   );
 }

@@ -19,6 +19,19 @@ export interface EffectivePtoCalculationResult extends PtoCalculationResult {
   overlappingClosureWeekdays: number;
 }
 
+/** Standard workweek (ISO weekdays): Monday to Friday. */
+export const FIVE_DAY_WORKWEEK = [1, 2, 3, 4, 5];
+/**
+ * Six-day workweek (retail, hospitality, healthcare): Monday to Saturday. A public holiday on a
+ * Saturday saves a PTO day here, while it saves none in the five-day week.
+ */
+export const SIX_DAY_WORKWEEK = [1, 2, 3, 4, 5, 6];
+
+export interface PtoCalculationOptions {
+  /** Look for ±1-3 day shifts that need fewer PTO days (default true) */
+  suggestShifts?: boolean;
+}
+
 export interface AdjacentShiftSuggestion {
   shiftDays: number; // e.g. -1, +1, -2, +2
   newStartDate: string;
@@ -32,7 +45,7 @@ export interface AdjacentShiftSuggestion {
  * Supports both JS getDay() (0=Sunday, 1=Monday...6=Saturday)
  * and ISO weekdays (1=Monday...7=Sunday).
  */
-export function isWorkday(date: Date, workweekDays: number[] = [1, 2, 3, 4, 5]): boolean {
+export function isWorkday(date: Date, workweekDays: number[] = FIVE_DAY_WORKWEEK): boolean {
   const jsDay = date.getDay(); // 0 is Sunday, 1 is Monday... 6 is Saturday
   const isoDay = jsDay === 0 ? 7 : jsDay;
 
@@ -48,7 +61,8 @@ export function calculatePtoDaysConsumed(
   startDateStr: string,
   endDateStr: string,
   publicHolidays: PublicHoliday[] = [],
-  workweekDays: number[] = [1, 2, 3, 4, 5]
+  workweekDays: number[] = FIVE_DAY_WORKWEEK,
+  options: PtoCalculationOptions = {}
 ): PtoCalculationResult {
   const start = parseISO(startDateStr);
   const end = parseISO(endDateStr);
@@ -75,13 +89,9 @@ export function calculatePtoDaysConsumed(
   const ptoDaysConsumed = Math.max(0, totalWeekdays - publicHolidaysCount);
 
   // Suggest adjacent shifts (±1–3 days) that reduce PTO via weekends and public holidays
-  const suggestedShifts = suggestAdjacentPtoShifts(
-    startDateStr,
-    endDateStr,
-    publicHolidays,
-    workweekDays,
-    ptoDaysConsumed
-  );
+  const suggestedShifts = options.suggestShifts === false
+    ? []
+    : suggestAdjacentPtoShifts(startDateStr, endDateStr, publicHolidays, workweekDays, ptoDaysConsumed);
 
   return {
     totalWeekdays,
@@ -105,10 +115,11 @@ export function calculateEffectivePtoDaysConsumed(
   startDateStr: string,
   endDateStr: string,
   publicHolidays: PublicHoliday[] = [],
-  workweekDays: number[] = [1, 2, 3, 4, 5],
-  childcareClosures: ChildcareClosurePeriod[] = []
+  workweekDays: number[] = FIVE_DAY_WORKWEEK,
+  childcareClosures: ChildcareClosurePeriod[] = [],
+  options: PtoCalculationOptions = {}
 ): EffectivePtoCalculationResult {
-  const base = calculatePtoDaysConsumed(startDateStr, endDateStr, publicHolidays, workweekDays);
+  const base = calculatePtoDaysConsumed(startDateStr, endDateStr, publicHolidays, workweekDays, options);
 
   if (childcareClosures.length === 0) {
     return {
@@ -164,7 +175,7 @@ export function suggestAdjacentPtoShifts(
   startDateStr: string,
   endDateStr: string,
   publicHolidays: PublicHoliday[],
-  workweekDays: number[] = [1, 2, 3, 4, 5],
+  workweekDays: number[] = FIVE_DAY_WORKWEEK,
   currentPto?: number
 ): AdjacentShiftSuggestion[] {
   const start = parseISO(startDateStr);

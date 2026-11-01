@@ -16,6 +16,7 @@ import { ChevronDown, Eye, X } from 'lucide-react';
 import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop, viewportFit, POPOVER_DISMISS_OPTIONS } from '@/components/ui/responsive-popover';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import type { ResultFilterKey } from '@/lib/results/result-filters';
+import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 export interface ResultsCountRow {
   key: ResultFilterKey;
@@ -50,6 +51,8 @@ export function ResultsCountPopover({
 }: ResultsCountPopoverProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+  // The Back button closes it instead of leaving the page
+  useHistoryBack(isOpen, () => setIsOpen(false));
   const isSmallScreen = useIsSmallScreen();
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,

@@ -244,6 +244,12 @@ export interface TranslationDictionary {
     filterByBoardType: string;
     allBoardTypes: string;
     boardTypeSavingsBadge: string;
+    mealValueShowDetails: string;
+    mealValueExplainWhat: string;
+    mealValueExplainRates: string;
+    mealValueExplainTotal: string;
+    mealValueExplainRanking: string;
+    mealValueExplainPrice: string;
     filterBySafety: string;
     safetyFilterLevel1: string;
     safetyFilterSafeOnly: string;
@@ -404,6 +410,12 @@ export interface TranslationDictionary {
     days: string;
     ptoConsumed: string;
     ptoSaved: string;
+    workweekComparisonTitle: string;
+    workweekFiveDays: string;
+    workweekSixDays: string;
+    workweekHolidaysSaved: string;
+    workweekFactor: string;
+    workweekSixDayHint: string;
     ptoRatio: string;
     score: string;
     cachedBenchmark: string;

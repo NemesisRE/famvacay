@@ -7,8 +7,8 @@ export type DisplayLocale = 'en' | 'de' | 'fr' | 'es' | 'it';
  * Localized display names of the place each airport serves, generated from Wikidata (see
  * src/lib/datasets/generators/city-names.ts; only names differing from the raw dataset city).
  *
- * Display-only: search and destination matching keep using the raw dataset names, so these
- * translations can never change which destination a query resolves to.
+ * Destination matching keeps using the raw dataset names, so these translations can never change
+ * which destination a query resolves to; the airport search also finds airports by them.
  */
 type CityNames = Record<string, Partial<Record<DisplayLocale, string>>>;
 
@@ -21,4 +21,10 @@ export function getLocalizedCityName(code: string, locale: string): string | und
   if (!entry) return undefined;
   const loc = (locale || 'en').slice(0, 2).toLowerCase() as DisplayLocale;
   return entry[loc] || entry.en;
+}
+
+/** Every localized name of the place an airport serves (for the airport search). */
+export function getAllLocalizedCityNames(code: string): string[] {
+  const entry = getDataset('city-names', cityNames as CityNames)[(code || '').toUpperCase()];
+  return entry ? Object.values(entry).filter((name): name is string => Boolean(name)) : [];
 }

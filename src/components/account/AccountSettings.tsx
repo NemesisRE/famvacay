@@ -17,6 +17,7 @@ import {
   Unlink,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
+import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 export function AccountSettings() {
   const { data: session, update: updateSession } = useSession();
@@ -78,6 +79,8 @@ export function AccountSettings() {
 
   // Delete modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  // The Back button closes the confirmation instead of leaving the page
+  useHistoryBack(showDeleteModal, () => setShowDeleteModal(false));
   const [deletingAccount, setDeletingAccount] = useState(false);
 
   // Loading (no state) and applying are separate, so the initial load only sets state once the data

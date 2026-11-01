@@ -319,6 +319,7 @@ The optimization engine (`src/lib/optimizer/engine.ts`) solves candidate windows
 11. **Parental Leave Minimization**:
     Calculates consumed PTO:
     $$\text{PTO\\_days\\_consumed} = \text{total\\_weekdays} - \text{public\\_holidays}$$
+    Scoring uses the five-day week (Mon-Fri). Every window also carries `sixDayWorkweek` (Mon-Sat, `SIX_DAY_WORKWEEK` in `src/lib/optimizer/pto-calculator.ts`), shown next to it in the PTO popover: Saturdays cost a PTO day there, and a public holiday on a Saturday saves one (in the five-day week it saves none).
 12. **Multi-Objective Scoring** (every index is 0-100, higher is better - the friction index is high for an easy trip, so it is added, not subtracted):
     $$\text{Score} = (w_1 \cdot \text{Price}) + (w_2 \cdot \text{Weather}) + (w_3 \cdot \text{PTO}) + (w_4 \cdot \text{Friction})$$
 

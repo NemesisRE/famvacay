@@ -17,6 +17,8 @@ import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop, POPOVER_D
 import { Check, ChevronDown, Search, X } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { CONTINENT_ORDER, getCountriesOfContinent } from '@/lib/geo/continents';
+import { useHistoryBack } from '@/lib/navigation/use-history-back';
+import { foldForSearch } from '@/lib/text/search-fold';
 
 let blockedRequest: Promise<string[]> | null = null;
 function loadSafetyBlockedCountries(): Promise<string[]> {
@@ -30,7 +32,7 @@ function loadSafetyBlockedCountries(): Promise<string[]> {
   return blockedRequest;
 }
 
-const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const fold = foldForSearch;
 
 export interface CountryExclusionPickerProps {
   /** ISO 3166-1 alpha-2 codes */
@@ -42,6 +44,8 @@ export interface CountryExclusionPickerProps {
 export function CountryExclusionPicker({ value, onChange, id }: CountryExclusionPickerProps) {
   const { t, locale } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+  // The Back button closes it instead of leaving the page
+  useHistoryBack(isOpen, () => setIsOpen(false));
   const [query, setQuery] = useState('');
   const [safetyBlocked, setSafetyBlocked] = useState<Set<string>>(() => new Set());
   const isSmallScreen = useIsSmallScreen();

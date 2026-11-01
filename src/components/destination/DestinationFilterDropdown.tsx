@@ -17,6 +17,8 @@ import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop, POPOVER_D
 import { ChevronDown, Check, Minus, X, Search } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { CONTINENT_ORDER, type Continent } from '@/lib/geo/continents';
+import { useHistoryBack } from '@/lib/navigation/use-history-back';
+import { foldForSearch } from '@/lib/text/search-fold';
 
 export interface DestinationOption {
   code: string;
@@ -103,6 +105,8 @@ export function DestinationFilterDropdown({
 }: DestinationFilterDropdownProps) {
   const { t, locale } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+  // The Back button closes it instead of leaving the page
+  useHistoryBack(isOpen, () => setIsOpen(false));
   const [searchQuery, setSearchQuery] = useState('');
 
   const isSmallScreen = useIsSmallScreen();
@@ -189,13 +193,14 @@ export function DestinationFilterDropdown({
 
   const filteredDestinations = useMemo(() => {
     if (!searchQuery.trim()) return destinations;
-    const q = searchQuery.toLowerCase();
+    // Umlauts and accents optional: "agypten" finds Ägypten, "malaga" Málaga
+    const q = foldForSearch(searchQuery);
     return destinations.filter(
       (d) =>
-        d.name.toLowerCase().includes(q) ||
-        d.code.toLowerCase().includes(q) ||
-        (d.countryName ?? '').toLowerCase().includes(q) ||
-        t.home.continentNames[d.continent ?? 'OTHER'].toLowerCase().includes(q)
+        foldForSearch(d.name).includes(q) ||
+        foldForSearch(d.code).includes(q) ||
+        foldForSearch(d.countryName ?? '').includes(q) ||
+        foldForSearch(t.home.continentNames[d.continent ?? 'OTHER']).includes(q)
     );
   }, [destinations, searchQuery, t]);
 
