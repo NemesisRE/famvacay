@@ -301,6 +301,8 @@ export interface TranslationDictionary {
     travelerCountOne: string;
     travelerCountOther: string;
     holidayBlackoutsHint: string;
+    holidayBlackoutsMore: string;
+    holidayBlackoutsFewer: string;
     holidayNotInTravelPeriod: string;
     dealsCompareProviders: string;
     dealsEstimateNote: string;

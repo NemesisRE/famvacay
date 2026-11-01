@@ -39,7 +39,7 @@ import { AirportSelector } from '@/components/airports/AirportSelector';
 import { LocationInput } from '@/components/geo/LocationInput';
 import { AccountSettings } from '@/components/account/AccountSettings';
 import { DateRangePicker } from '@/components/calendar/DateRangePicker';
-import type { SpecialHolidayId } from '@/lib/holidays/special-dates';
+import { migrateHolidayBlackoutIds } from '@/lib/holidays/holiday-blackout-ids';
 import { HolidayBlackoutToggles } from '@/components/forms/HolidayBlackoutToggles';
 import { resolveCountryAndRegion } from '@/lib/geo/location-helpers';
 import { SelectDropdown } from '@/components/ui/select-dropdown';
@@ -104,7 +104,7 @@ function FamilyProfileContent() {
   const [airportRoadRouting, setAirportRoadRouting] = useState<Record<string, { drivingMinutes: number; drivingKm: number }>>({});
   const [isAddingBlackout, setIsAddingBlackout] = useState(false);
   // Year-independent holiday blackouts, resolved for each search's travel period
-  const [recurringBlackouts, setRecurringBlackouts] = useState<SpecialHolidayId[]>([]);
+  const [recurringBlackouts, setRecurringBlackouts] = useState<string[]>([]);
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
@@ -189,7 +189,7 @@ function FamilyProfileContent() {
                 setExcludedCountries(sw.excludedCountries);
               }
               if (Array.isArray(sw.recurringBlackouts)) {
-                setRecurringBlackouts(sw.recurringBlackouts);
+                setRecurringBlackouts(migrateHolidayBlackoutIds(sw.recurringBlackouts, p.federalState || ''));
               }
               if ((p.maxTravelHours === null || p.maxTravelHours === undefined) && sw.maxOverlandTravelMinutes) {
                 setMaxOverlandDurationHours(Math.round(sw.maxOverlandTravelMinutes / 60));
@@ -789,7 +789,7 @@ function FamilyProfileContent() {
             <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.profile.blackoutDatesDesc}</p>
 
             <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/20 rounded-xl border border-amber-200/90 dark:border-amber-800/60 space-y-3">
-              <HolidayBlackoutToggles selected={recurringBlackouts} onChange={setRecurringBlackouts} expanded={isAddingBlackout} />
+              <HolidayBlackoutToggles selected={recurringBlackouts} onChange={setRecurringBlackouts} region={federalState} expanded={isAddingBlackout} />
               {blackoutRanges.length === 0 && !isAddingBlackout ? (
                 <div className="p-2.5 bg-amber-50/50 dark:bg-amber-950/10 rounded-xl border border-dashed border-amber-300 dark:border-amber-800/60 text-center">
                   {recurringBlackouts.length === 0 && (
