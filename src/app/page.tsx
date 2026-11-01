@@ -37,6 +37,8 @@ import {
   Ship,
   Globe,
   CalendarDays,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { differenceInYears, addDays } from 'date-fns';
 import { CandidateWindow, DestinationType, TravelVehicle, BoardType, CarFuelType } from '@/lib/optimizer/types';
@@ -223,6 +225,9 @@ export default function HomePage() {
   const [passportHolders, setPassportHolders] = useState<PassportHolder[]>([]);
   // Phones and tablets (form above results): the search form folds away after a search
   const [constraintsCollapsed, setConstraintsCollapsed] = useState(false);
+  // Desktop only (two-column layout): shrinks the form to a slim rail so the results get the width.
+  // Separate from constraintsCollapsed, which folds the form above the results on phones.
+  const [constraintsSideCollapsed, setConstraintsSideCollapsed] = useState(false);
   const searchRunRef = useRef(0);
   const backgroundAbortRef = useRef<AbortController | null>(null);
   // Background results wait here until the user asks for them, so the list never reshuffles while read
@@ -2167,10 +2172,28 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div
+        className={`grid grid-cols-1 gap-8 ${
+          constraintsSideCollapsed ? 'lg:grid-cols-[3rem_minmax(0,1fr)]' : 'lg:grid-cols-12'
+        }`}
+      >
         {/* Form column: heading above the card, like "Optimal vacation windows" */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="border-b border-slate-200 dark:border-slate-800 pb-2.5">
+        <div className={`space-y-4 ${constraintsSideCollapsed ? 'lg:col-span-1' : 'lg:col-span-5'}`}>
+          {constraintsSideCollapsed && (
+            <button
+              type="button"
+              onClick={() => setConstraintsSideCollapsed(false)}
+              aria-expanded={false}
+              aria-controls="search-constraints"
+              title={t.home.constraintsExpand}
+              aria-label={t.home.constraintsExpand}
+              className="hidden lg:flex w-12 flex-col items-center gap-3 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs text-teal-600 dark:text-teal-400 hover:border-teal-300 dark:hover:border-teal-700 transition-colors cursor-pointer"
+            >
+              <PanelLeftOpen className="w-5 h-5" aria-hidden="true" />
+              <Filter className="w-4 h-4 text-slate-400" aria-hidden="true" />
+            </button>
+          )}
+          <div className={`border-b border-slate-200 dark:border-slate-800 pb-2.5 ${constraintsSideCollapsed ? 'lg:hidden' : ''}`}>
             <div className="flex items-center justify-between min-h-9">
               <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">
                 {/* A toggle below the two-column layout; on wide screens the form always shows */}
@@ -2191,6 +2214,17 @@ export default function HomePage() {
                 </button>
               </h2>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConstraintsSideCollapsed(true)}
+                  aria-expanded={true}
+                  aria-controls="search-constraints"
+                  title={t.home.constraintsCollapse}
+                  aria-label={t.home.constraintsCollapse}
+                  className="hidden lg:inline-flex p-1 rounded text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  <PanelLeftClose className="w-4 h-4" aria-hidden="true" />
+                </button>
                 <button
                   type="button"
                   onClick={handleResetForm}
@@ -2259,7 +2293,7 @@ export default function HomePage() {
           <div
             id="search-constraints"
             className={`bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6 ${
-              constraintsCollapsed ? 'hidden lg:block' : ''
+              constraintsCollapsed ? (constraintsSideCollapsed ? 'hidden' : 'hidden lg:block') : constraintsSideCollapsed ? 'lg:hidden' : ''
             }`}
           >
 
@@ -2685,7 +2719,7 @@ export default function HomePage() {
         </div>
 
         {/* Results Stream */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className={`space-y-4 ${constraintsSideCollapsed ? 'lg:col-span-1' : 'lg:col-span-7'}`}>
           {/* One row like the form's heading (title left, action right), so both cards start level */}
           <div id="results-heading" className="border-b border-slate-200 dark:border-slate-800 pb-2.5 scroll-mt-20">
             <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2 min-h-9">
