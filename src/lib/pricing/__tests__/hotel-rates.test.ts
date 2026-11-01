@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hotelNightlyRate, hotelPriceFactor, resortPremium } from '../hotel-rates';
+import { hotelNightlyRate, hotelPriceFactor, resortPremium, resortPremiumFor } from '../hotel-rates';
 
 describe('hotel rates from country price levels', () => {
   it('ranks expensive countries above the reference and cheap ones below', () => {
@@ -30,5 +30,11 @@ describe('hotel rates from country price levels', () => {
     expect(resortPremium(undefined, 1000)).toBe(1);
     expect(resortPremium(100000, 1000)).toBe(1.4);
     expect(hotelNightlyRate(0.62, 'PEAK', 1.5)).toBeGreaterThan(hotelNightlyRate(0.62, 'PEAK'));
+  });
+
+  it('lifts island luxury destinations to their floor but keeps a higher data premium', () => {
+    expect(resortPremiumFor('mv', 1.1)).toBe(2);
+    expect(resortPremiumFor('MV', 2.5)).toBe(2.5);
+    expect(resortPremiumFor('ES', 1.04)).toBe(1.04);
   });
 });

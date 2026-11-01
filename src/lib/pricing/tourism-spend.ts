@@ -1,6 +1,6 @@
 import tourismSpend from './data/tourism-spend.json';
 import { getDataset } from '@/lib/datasets/store';
-import { resortPremium } from './hotel-rates';
+import { resortPremium, resortPremiumFor } from './hotel-rates';
 
 /** Median tourist spend per arrival over all countries: what a typical destination earns. */
 function typicalSpend(data: Record<string, number>): number | undefined {
@@ -12,5 +12,6 @@ function typicalSpend(data: Record<string, number>): number | undefined {
 export function getResortPremium(countryCode: string | undefined): number {
   if (!countryCode) return 1;
   const data = getDataset('tourism-spend', tourismSpend as Record<string, number>);
-  return resortPremium(data[countryCode.toUpperCase()], typicalSpend(data));
+  const code = countryCode.toUpperCase();
+  return resortPremiumFor(code, resortPremium(data[code], typicalSpend(data)));
 }

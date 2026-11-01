@@ -44,6 +44,33 @@ export function resortPremium(spendPerArrival: number | undefined, typicalSpend:
   return Math.round(Math.min(MAX_RESORT_PREMIUM, premium) * 100) / 100;
 }
 
+/**
+ * Minimum resort premium for destinations whose holiday prices tourism statistics cannot show:
+ * island and luxury-resort destinations with a low national price level, cruise-heavy arrival
+ * counts or tiny samples (Maldives, Bahamas). Calibration, not a place catalog: it only lifts
+ * the rate, the data-driven premium wins where it is higher. Keys are ISO 3166 alpha-2.
+ */
+export const HIGH_TIER_RESORT_PREMIUM: Record<string, number> = {
+  MV: 2.0, // Maldives: one resort per island, rates start at luxury level
+  SC: 2.0, // Seychelles
+  PF: 2.0, // French Polynesia
+  BS: 1.5, // Bahamas: cruise passengers dilute spend per arrival
+  BB: 1.3,
+  AG: 1.5,
+  LC: 1.5,
+  GD: 1.3,
+  KY: 1.5,
+  BM: 1.4,
+  MU: 1.5, // Mauritius
+  FJ: 1.4,
+  MO: 1.3,
+};
+
+/** Resort premium of a country: the tourism data, lifted to the high-tier floor where one applies. */
+export function resortPremiumFor(countryCode: string, dataPremium: number): number {
+  return Math.max(dataPremium, HIGH_TIER_RESORT_PREMIUM[countryCode.toUpperCase()] ?? 1);
+}
+
 /** Nightly rate in euros for a destination country price level, season and resort premium. */
 export function hotelNightlyRate(priceLevel: number | undefined, season: HotelSeason, premium = 1): number {
   return Math.round(BASE_NIGHTLY_RATE[season] * hotelPriceFactor(priceLevel) * premium);
