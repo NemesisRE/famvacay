@@ -103,7 +103,6 @@ const NO_DATA: Swatch = {
 const PERSONAL = {
   blackout: { className: 'bg-slate-600 dark:bg-slate-400', textClassName: 'text-white dark:text-slate-900' },
   free: { className: 'bg-teal-600', textClassName: 'text-white' },
-  someFree: { className: 'bg-teal-200 dark:bg-teal-800', textClassName: 'text-teal-900 dark:text-teal-100' },
   school: { className: 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600', textClassName: 'text-slate-500 dark:text-slate-400' },
   weekend: { className: 'bg-slate-200 dark:bg-slate-700', textClassName: 'text-slate-500 dark:text-slate-400' },
 } satisfies Record<string, Swatch>;
@@ -111,7 +110,7 @@ const PERSONAL = {
 /**
  * The "Calendar" results tab: every day of the travel period, either how many school regions of
  * the home country are on holiday (crowds and prices, like the ADAC "Feriendichte" chart) or the
- * family's own view - their children's school holidays rated the same way by how many *other*
+ * family's own view - the days all their children are off, rated the same way by how many *other*
  * regions are off at the same time (early August in Baden-Württemberg is crowded, early September
  * quiet), public holidays at home and their blackouts.
  */
@@ -198,13 +197,13 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
         label: t.home.calendarOtherRegionsCount.replace('{count}', String(d.otherRegionsOnHoliday)).replace('{total}', String(otherTotal)),
       };
     }
-    if (d.onHoliday.length > 0) {
-      return { ...PERSONAL.someFree, label: `${t.home.calendarLegendSomeFree}: ${d.onHoliday.map(regionName).join(', ')}` };
-    }
+    // A trip needs every child to be off: days only some of them are off look like any other day
+    // (the tooltip still names who is off)
+    const partly = d.onHoliday.length > 0 ? ` · ${t.home.calendarLegendSomeFree}: ${d.onHoliday.map(regionName).join(', ')}` : '';
     // No school on the home country's weekend (Saturday/Sunday, Friday/Saturday...)
     const isoDay = ((new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7) + 1;
-    if (weekend.includes(isoDay)) return { ...PERSONAL.weekend, label: t.home.calendarLegendWeekend };
-    return { ...PERSONAL.school, label: t.home.calendarLegendSchoolDay };
+    if (weekend.includes(isoDay)) return { ...PERSONAL.weekend, label: t.home.calendarLegendWeekend + partly };
+    return { ...PERSONAL.school, label: t.home.calendarLegendSchoolDay + partly };
   };
 
   const noSchoolData =
@@ -222,7 +221,6 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
       ? []
       : [
           ...(otherTotal === 0 ? [{ ...PERSONAL.free, label: t.home.calendarLegendAllFree }] : []),
-          ...((data?.schoolRegions?.length ?? 0) > 1 ? [{ ...PERSONAL.someFree, label: t.home.calendarLegendSomeFree }] : []),
           { ...PERSONAL.school, label: t.home.calendarLegendSchoolDay },
           { ...PERSONAL.weekend, label: t.home.calendarLegendWeekend },
           ...(blackouts.length > 0 ? [{ ...PERSONAL.blackout, label: t.home.calendarLegendBlackout }] : []),
@@ -237,11 +235,17 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
             <CalendarDays className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
             <span className="truncate">{view === 'country' ? t.home.calendarCountryTitle.replace('{country}', countryName) : t.home.calendarPersonalTitle}</span>
           </h3>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 min-h-[3.75em] line-clamp-3">
-            {view === 'country'
-              ? t.home.calendarCountryHint
-              : t.home.calendarPersonalHint.replace('{regions}', (schoolRegions.length > 0 ? schoolRegions : [homeRegion]).map(regionName).join(', '))}
-          </p>
+          {/* Both hints share one grid cell, the other one invisible: the box always fits the longer
+              text, so switching views neither cuts it off nor moves the calendar */}
+          <div className="grid text-[11px] text-slate-500 dark:text-slate-400">
+            {(['country', 'personal'] as const).map((v) => (
+              <p key={v} className={`[grid-area:1/1] ${view === v ? '' : 'invisible'}`} aria-hidden={view !== v}>
+                {v === 'country'
+                  ? t.home.calendarCountryHint
+                  : t.home.calendarPersonalHint.replace('{regions}', (schoolRegions.length > 0 ? schoolRegions : [homeRegion]).map(regionName).join(', '))}
+              </p>
+            ))}
+          </div>
         </div>
         <div role="group" aria-label={t.home.calendarTab} className="inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700 shrink-0">
           {(['country', 'personal'] as const).map((v) => (
