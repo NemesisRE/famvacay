@@ -5,14 +5,14 @@
   <p>Harmonize statutory school holiday calendars, discover departure arbitrage savings, and optimize PTO bridge days.</p>
 
   <p>
-    <a href="package.json"><img src="https://img.shields.io/badge/version-1.0.0-blue?style=for-the-badge&logo=git&logoColor=white" alt="Version" /></a>
+    <a href="https://github.com/NemesisRE/famvacay/releases/latest"><img src="https://img.shields.io/github/v/release/NemesisRE/famvacay?style=for-the-badge&logo=git&logoColor=white&label=version&color=blue" alt="Version" /></a>
     <a href="docs/dependencies.md"><img src="https://img.shields.io/badge/renovate-enabled-brightgreen?style=for-the-badge&logo=renovate&logoColor=white" alt="Renovate" /></a>
     <a href="https://pnpm.io/"><img src="https://img.shields.io/badge/pnpm-12-F69220?style=for-the-badge&logo=pnpm&logoColor=white" alt="pnpm" /></a>
     <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-26_LTS-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" /></a>
-    <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16.4.3-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js" /></a>
-    <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-6.0.3-blue?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
+    <a href="https://nextjs.org/"><img src="https://img.shields.io/github/package-json/dependency-version/NemesisRE/famvacay/next?style=for-the-badge&logo=next.js&logoColor=white&label=Next.js&color=black" alt="Next.js" /></a>
+    <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/github/package-json/dependency-version/NemesisRE/famvacay/dev/typescript?style=for-the-badge&logo=typescript&logoColor=white&label=TypeScript&color=blue" alt="TypeScript" /></a>
     <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16--alpine-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" /></a>
-    <a href="https://www.prisma.io/"><img src="https://img.shields.io/badge/Prisma-7.10.1-2D3748?style=for-the-badge&logo=prisma&logoColor=white" alt="Prisma" /></a>
+    <a href="https://www.prisma.io/"><img src="https://img.shields.io/github/package-json/dependency-version/NemesisRE/famvacay/dev/prisma?style=for-the-badge&logo=prisma&logoColor=white&label=Prisma&color=2D3748" alt="Prisma" /></a>
     <a href="https://valkey.io/"><img src="https://img.shields.io/badge/Valkey_/_Redis-9_/_7-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Valkey" /></a>
     <a href="Dockerfile"><img src="https://img.shields.io/badge/Docker-Multi--Arch-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" /></a>
     <a href="docs/development.md"><img src="https://img.shields.io/badge/Coverage-93%25-brightgreen?style=for-the-badge&logo=vitest&logoColor=white" alt="Coverage" /></a>
