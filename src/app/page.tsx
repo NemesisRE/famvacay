@@ -1006,6 +1006,11 @@ export default function HomePage() {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         });
       }
+    } else {
+      // Side by side: the form is long, so the results column may be scrolled out of view
+      requestAnimationFrame(() =>
+        document.getElementById('results-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      );
     }
     pendingBackgroundApplyRef.current = null;
     setBackgroundSearch({ status: 'idle' });
