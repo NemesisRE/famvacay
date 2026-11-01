@@ -35,3 +35,15 @@ describe('best stretch of each holiday block', () => {
     expect(best).toMatchObject({ start: '2027-08-08', end: '2027-08-14', otherRegions: 2 });
   });
 });
+
+describe('quietest periods without school children', () => {
+  it('finds the longest stretches outside all school holidays, in calendar order', async () => {
+    const { findQuietStretches } = await import('../best-holiday-days');
+    // 10 quiet days, 3 busy, 4 quiet (too short), 2 busy, 8 quiet
+    const counts = [...Array(10).fill(0), 3, 5, 3, 0, 0, 0, 0, 2, 2, ...Array(8).fill(0)];
+    expect(findQuietStretches(days('2027-06-01', counts))).toEqual([
+      { start: '2027-06-01', end: '2027-06-10', regions: 0 },
+      { start: '2027-06-20', end: '2027-06-27', regions: 0 },
+    ]);
+  });
+});

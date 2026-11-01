@@ -447,6 +447,9 @@ export interface TranslationDictionary {
     calendarCountryHint: string;
     calendarPersonalTitle: string;
     calendarPersonalHint: string;
+    calendarPersonalTitleNoKids: string;
+    calendarPersonalHintNoKids: string;
+    calendarQuietTitle: string;
     calendarRegionsCount: string;
     calendarRegionsLegend: string;
     calendarPersonalLegend: string;

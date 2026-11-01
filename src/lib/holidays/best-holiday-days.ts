@@ -76,3 +76,42 @@ export function findBestStretches(freeDays: FreeDay[]): BestStretch[] {
   }
   return result;
 }
+
+export interface QuietStretch {
+  start: string;
+  end: string;
+  /** School regions on holiday during the stretch */
+  regions: number;
+}
+
+/** A stretch worth a trip */
+const MIN_QUIET_DAYS = 7;
+const MAX_QUIET_STRETCHES = 6;
+
+/**
+ * Without school children every day is possible: the best times are the longest stretches with the
+ * fewest school regions on holiday (usually none - outside all school holidays), in calendar order.
+ */
+export function findQuietStretches(days: FreeDay[]): QuietStretch[] {
+  const known = [...days].filter((d) => d.otherRegions !== null).sort((a, b) => a.date.localeCompare(b.date));
+  if (known.length === 0) return [];
+  const min = Math.min(...known.map((d) => d.otherRegions!));
+  const runs: QuietStretch[] = [];
+  let current: QuietStretch | null = null;
+  for (const d of known) {
+    if (d.otherRegions === min && current && nextDay(current.end) === d.date) {
+      current.end = d.date;
+    } else if (d.otherRegions === min) {
+      current = { start: d.date, end: d.date, regions: min };
+      runs.push(current);
+    } else {
+      current = null;
+    }
+  }
+  const length = (r: QuietStretch) => (Date.parse(r.end) - Date.parse(r.start)) / 86_400_000 + 1;
+  return runs
+    .filter((r) => length(r) >= MIN_QUIET_DAYS)
+    .sort((a, b) => length(b) - length(a) || a.start.localeCompare(b.start))
+    .slice(0, MAX_QUIET_STRETCHES)
+    .sort((a, b) => a.start.localeCompare(b.start));
+}

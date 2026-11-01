@@ -5,7 +5,7 @@ import { CalendarDays, Info, Loader2, Star } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { countryWeekInfo, countryWeekend, weekdayName } from '@/lib/holidays/workweek';
 import { COUNTRIES, getLocalizedCountryName } from '@/lib/regions/subdivisions';
-import { findBestStretches } from '@/lib/holidays/best-holiday-days';
+import { findBestStretches, findQuietStretches } from '@/lib/holidays/best-holiday-days';
 
 type CalendarView = 'country' | 'personal';
 
@@ -167,6 +167,9 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
   const isBlackout = (date: string) => blackouts.some((b) => b.startDate && b.endDate && date >= b.startDate && date <= b.endDate);
   const longDate = (date: string) => formatDate(date, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
   const withoutData = data?.regionsWithoutData ?? [];
+  // No school-age children: not tied to any holidays, so every day is possible and rated by all
+  // regions on holiday - the best times are outside the school holidays
+  const noKids = shownView === 'personal' && !!data && !data.failed && (data.schoolRegions?.length ?? 0) === 0;
 
   const dayStyle = (date: string): Swatch & { label: string } => {
     const day = byDate.get(date);
@@ -183,6 +186,15 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
     }
     const d = day as PersonalDay | undefined;
     if (isBlackout(date)) return { ...PERSONAL.blackout, label: t.home.calendarLegendBlackout };
+    if (noKids) {
+      if (otherTotal === 0) return { ...NO_DATA, label: t.home.calendarLegendNoData };
+      if (!d || d.otherRegionsOnHoliday === null) return { ...UNKNOWN, label: t.home.calendarLegendUnknown };
+      const bucket = personalBuckets.find((b) => d.otherRegionsOnHoliday! <= b.max) ?? personalBuckets[personalBuckets.length - 1];
+      return {
+        ...bucket,
+        label: t.home.calendarRegionsCount.replace('{count}', String(d.otherRegionsOnHoliday)).replace('{total}', String(otherTotal)),
+      };
+    }
     if (d && d.onHoliday.length === 0 && d.unknown.length > 0 && d.unknown.every((r) => withoutData.includes(r))) {
       return { ...NO_DATA, label: t.home.calendarLegendNoData };
     }
@@ -210,7 +222,7 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
   // Personal view: the best stretch of every block of shared holiday days in the travel period (the
   // fewest other regions off), marked with a star and listed below the calendar
   const bestStretches =
-    shownView === 'personal' && data && otherTotal > 0
+    shownView === 'personal' && data && !noKids && otherTotal > 0
       ? findBestStretches(
           (data.days as PersonalDay[])
             .filter(
@@ -225,6 +237,14 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
         )
       : [];
   // Stars only where part of a break stands out; a break that is equally busy throughout gets none
+  const quietStretches =
+    noKids && data && otherTotal > 0
+      ? findQuietStretches(
+          (data.days as PersonalDay[])
+            .filter((d) => d.date >= earliestDate && d.date <= latestDate && !isBlackout(d.date))
+            .map((d) => ({ date: d.date, otherRegions: d.otherRegionsOnHoliday }))
+        )
+      : [];
   const isBestDay = (date: string) =>
     bestStretches.some((b) => (b.start !== b.blockStart || b.end !== b.blockEnd) && date >= b.start && date <= b.end);
   // "1.–11. Sept. 2027", "Sep 1 – 11, 2027": the year and month only once, per the user's language
@@ -234,7 +254,11 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
   const noSchoolData =
     !!data &&
     !data.failed &&
-    (shownView === 'country' ? totalRegions === 0 : withoutData.length > 0 && withoutData.length === (data.schoolRegions?.length ?? 0));
+    (shownView === 'country'
+      ? totalRegions === 0
+      : noKids
+        ? otherTotal === 0
+        : withoutData.length > 0 && withoutData.length === (data.schoolRegions?.length ?? 0));
   const showUnknown =
     !!data &&
     data.days.some((d) =>
@@ -244,6 +268,8 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
   const extraLegend: (Swatch & { label: string })[] =
     shownView === 'country'
       ? []
+      : noKids
+        ? [...(blackouts.length > 0 ? [{ ...PERSONAL.blackout, label: t.home.calendarLegendBlackout }] : [])]
       : [
           ...(otherTotal === 0 ? [{ ...PERSONAL.free, label: t.home.calendarLegendAllFree }] : []),
           { ...PERSONAL.school, label: t.home.calendarLegendSchoolDay },
@@ -258,7 +284,13 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
         <div className="space-y-0.5 min-w-0 flex-1 basis-64">
           <h3 id="holiday-calendar-title" className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1.5 min-w-0">
             <CalendarDays className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-            <span className="truncate">{view === 'country' ? t.home.calendarCountryTitle.replace('{country}', countryName) : t.home.calendarPersonalTitle}</span>
+            <span className="truncate">
+              {view === 'country'
+                ? t.home.calendarCountryTitle.replace('{country}', countryName)
+                : schoolRegions.length === 0
+                  ? t.home.calendarPersonalTitleNoKids
+                  : t.home.calendarPersonalTitle}
+            </span>
           </h3>
           {/* Both hints share one grid cell, the other one invisible: the box always fits the longer
               text, so switching views neither cuts it off nor moves the calendar */}
@@ -267,7 +299,9 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
               <p key={v} className={`[grid-area:1/1] ${view === v ? '' : 'invisible'}`} aria-hidden={view !== v}>
                 {v === 'country'
                   ? t.home.calendarCountryHint
-                  : t.home.calendarPersonalHint.replace('{regions}', (schoolRegions.length > 0 ? schoolRegions : [homeRegion]).map(regionName).join(', '))}
+                  : schoolRegions.length === 0
+                    ? t.home.calendarPersonalHintNoKids
+                    : t.home.calendarPersonalHint.replace('{regions}', schoolRegions.map(regionName).join(', '))}
               </p>
             ))}
           </div>
@@ -376,8 +410,28 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
         </div>
       )}
 
+      {quietStretches.length > 0 && (
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/70 dark:bg-emerald-950/30 p-3 space-y-1.5">
+          <h4 className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+            <Star aria-hidden="true" className="w-3.5 h-3.5 fill-white stroke-emerald-700 dark:stroke-emerald-300 stroke-[2.5]" />
+            {t.home.calendarQuietTitle}
+          </h4>
+          <ul className="space-y-1 text-[11px] text-emerald-950 dark:text-emerald-100">
+            {quietStretches.map((q) => (
+              <li key={q.start}>
+                <span className="font-semibold">{dateRange(q.start, q.end)}</span>
+                {' · '}
+                {t.home.calendarRegionsCount.replace('{count}', String(q.regions)).replace('{total}', String(otherTotal))}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-600 dark:text-slate-300 min-h-[2.75rem] content-start">
-        {scale.length > 0 && <span className="font-semibold">{shownView === 'country' ? t.home.calendarRegionsLegend : t.home.calendarPersonalLegend}</span>}
+        {scale.length > 0 && (
+          <span className="font-semibold">{shownView === 'country' || noKids ? t.home.calendarRegionsLegend : t.home.calendarPersonalLegend}</span>
+        )}
         {scale.map((b, i) => (
           <span key={`s${i}`} className="inline-flex items-center gap-1">
             <span aria-hidden="true" className={`w-3 h-3 rounded-[3px] ${b.className}`} />

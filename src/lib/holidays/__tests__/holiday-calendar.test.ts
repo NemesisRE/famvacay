@@ -71,9 +71,16 @@ describe('personal holiday calendar (children school regions, home public holida
     expect(day(cal.days, '2027-08-25').otherRegionsOnHoliday).toBe(1);
   });
 
-  it('uses the home region without school children and flags regions without data', async () => {
-    const cal = await getPersonalHolidayCalendar('XZ-9', [], '2027-07-01', '2027-07-02', 'en');
-    expect(cal.schoolRegions).toEqual(['XZ-9']);
+  it('without school children: no school regions, every region of the country counts', async () => {
+    const cal = await getPersonalHolidayCalendar('XA-1', [], '2027-07-01', '2027-08-01', 'en');
+    expect(cal.schoolRegions).toEqual([]);
+    expect(cal.otherRegionsTotal).toBe(3);
+    expect(day(cal.days, '2027-07-05')).toMatchObject({ onHoliday: [], unknown: [], otherRegionsOnHoliday: 1 });
+    expect(day(cal.days, '2027-08-01').otherRegionsOnHoliday).toBe(3);
+  });
+
+  it('flags school regions without any data', async () => {
+    const cal = await getPersonalHolidayCalendar('XZ-9', ['XZ-9'], '2027-07-01', '2027-07-02', 'en');
     expect(cal.regionsWithoutData).toEqual(['XZ-9']);
     expect(day(cal.days, '2027-07-01').unknown).toEqual(['XZ-9']);
   });

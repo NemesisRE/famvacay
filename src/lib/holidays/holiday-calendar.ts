@@ -7,8 +7,8 @@ import { resolveDateHolidaysRegion } from './date-holidays-cache';
  * Day-by-day holiday calendars for the "Calendar" results tab:
  * - country view: how many school regions of the home country are on holiday each day (like the
  *   ADAC "Feriendichte" chart, for any country OpenHolidays covers), plus nationwide public holidays
- * - personal view: the school holidays of the children's school regions (else the home region) and
- *   the public holidays of the home region
+ * - personal view: the school holidays of the children's school regions and the public holidays of
+ *   the home region; without school children every day is possible and rated by all regions off
  * Years without published school holidays are reported as unknown, never as "no holidays".
  */
 
@@ -125,7 +125,7 @@ async function buildCountryCalendar(country: string, from: string, to: string, l
 
 export interface PersonalCalendarDay {
   date: string;
-  /** School regions (of the children, else the home region) on holiday that day */
+  /** School regions of the children on holiday that day */
   onHoliday: string[];
   /**
    * Other school regions of the home country on holiday that day (crowds and prices while the
@@ -139,6 +139,7 @@ export interface PersonalCalendarDay {
 
 export interface PersonalCalendar {
   homeRegion: string;
+  /** School regions of the school-age children; empty = no school children (not tied to holidays) */
   schoolRegions: string[];
   /** School regions without any school holiday data (country not covered) */
   regionsWithoutData: string[];
@@ -155,7 +156,8 @@ export async function getPersonalHolidayCalendar(
   locale: string
 ): Promise<PersonalCalendar> {
   const home = homeRegion.toUpperCase();
-  const regions = [...new Set((schoolRegions.length > 0 ? schoolRegions : [home]).map((r) => r.toUpperCase()))];
+  // No fallback to the home region: a family without school children is free on every day
+  const regions = [...new Set(schoolRegions.map((r) => r.toUpperCase()))];
   const years = yearsBetween(from, to);
   const byRegion = await Promise.all(
     regions.map(async (region) => {
