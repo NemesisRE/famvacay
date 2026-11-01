@@ -52,6 +52,7 @@ import { MultiDestinationInput } from '@/components/destination/MultiDestination
 import { CountryExclusionPicker } from '@/components/destination/CountryExclusionPicker';
 import { DatePicker } from '@/components/calendar/DatePicker';
 import { ClimateDetailsPopover } from '@/components/climate/ClimateDetailsPopover';
+import { MealPlanValuePopover } from '@/components/pricing/MealPlanValuePopover';
 import { BookingDealsPopover } from '@/components/pricing/BookingDealsPopover';
 import { BackgroundSearchBanner, SearchLoadingPanel, type BackgroundSearchState } from '@/components/search/SearchProgress';
 import { BookingTimingBadge } from '@/components/pricing/BookingTimingAdvisor';
@@ -94,6 +95,8 @@ import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/des
 import { passportWarningsForTrip, type PassportHolder } from '@/lib/passport/validity';
 import { DateRangePicker } from '@/components/calendar/DateRangePicker';
 import { getCategoryBadges, getVehicleBadge } from '@/components/ui/badge-styles';
+import { replaceUrlKeepingHistoryEntry } from '@/lib/navigation/history-entries';
+import { pushHistoryStep, goBackHistoryStep } from '@/lib/navigation/use-history-back';
 
 /** Background results this soon after the first ones are merged directly instead of offered */
 const INSTANT_BACKGROUND_MS = 1500;
@@ -240,6 +243,10 @@ export default function HomePage() {
   const [destinationCurrentPage, setDestinationCurrentPage] = useState<number>(1);
   // Set when the list was opened from a destination group ("show all periods"), for the way back
   const [listReturnView, setListReturnView] = useState<'destination' | null>(null);
+  // Browser history steps of the in-app views (Back returns to the previous one)
+  const resultsStepRef = useRef<number | null>(null);
+  const listJumpStepRef = useRef<number | null>(null);
+  const viewStepRef = useRef<{ id: number; previous: 'list' | 'destination' } | null>(null);
   // Filters and page in effect before "show all in list", restored by the back button
   const [filtersBeforeListJump, setFiltersBeforeListJump] = useState<{
     destinations: string[];
@@ -692,7 +699,7 @@ export default function HomePage() {
       else params.delete('sort');
 
       const nextUrl = url.pathname + (params.toString() ? `?${params.toString()}` : '') + url.hash;
-      window.history.replaceState(null, '', nextUrl);
+      replaceUrlKeepingHistoryEntry(nextUrl);
     } catch {
       // Ignore URL replacement errors in restricted environments
     }
@@ -978,12 +985,20 @@ export default function HomePage() {
     // A newer search supersedes the background phase of the previous one
     const runId = ++searchRunRef.current;
     backgroundAbortRef.current?.abort();
-    // Below the two-column layout the results are under the form: fold it and go to the results
+    // Below the two-column layout the results are under the form: fold it and go to the results.
+    // Back returns to the form (once per stay on the results, not once per search).
     if (window.matchMedia('(max-width: 1023px)').matches) {
       setConstraintsCollapsed(true);
       requestAnimationFrame(() =>
         document.getElementById('results-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       );
+      if (resultsStepRef.current === null) {
+        resultsStepRef.current = pushHistoryStep(() => {
+          resultsStepRef.current = null;
+          setConstraintsCollapsed(false);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }
     }
     pendingBackgroundApplyRef.current = null;
     setBackgroundSearch({ status: 'idle' });
@@ -1117,7 +1132,7 @@ export default function HomePage() {
               setActiveShareId(shareData.shareId);
               const newUrl = new URL(window.location.href);
               newUrl.searchParams.set('s', shareData.shareId);
-              window.history.replaceState(null, '', newUrl.toString());
+              replaceUrlKeepingHistoryEntry(newUrl.toString());
             }
           })
           .catch(() => {});
@@ -1232,7 +1247,7 @@ export default function HomePage() {
           setActiveShareId(newShareId);
           const newUrl = new URL(window.location.href);
           newUrl.searchParams.set('s', newShareId);
-          window.history.replaceState(null, '', newUrl.toString());
+          replaceUrlKeepingHistoryEntry(newUrl.toString());
         }
       }
       if (!shareId) {
@@ -1378,7 +1393,8 @@ export default function HomePage() {
       document.getElementById('results-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
-  // "Show all periods" of a destination group: the list view filtered to that destination
+  // "Show all periods" of a destination group: the list view filtered to that destination.
+  // The browser Back button returns like the in-app back button.
   const showDestinationInList = (destinationCode: string) => {
     setFiltersBeforeListJump({ destinations: selectedDestinationsList, month: selectedMonth, destinationPage: destinationCurrentPage });
     setSelectedDestinationsList([destinationCode]);
@@ -1386,6 +1402,45 @@ export default function HomePage() {
     setViewMode('list');
     setCurrentPage(1);
     scrollToResultsTop();
+    listJumpStepRef.current = pushHistoryStep(() => {
+      listJumpStepRef.current = null;
+      returnFromListJumpRef.current();
+    });
+  };
+
+  // Undo what the jump set, return to the group view it came from
+  const returnFromListJump = () => {
+    if (!listReturnView) return;
+    setSelectedDestinationsList(filtersBeforeListJump?.destinations ?? []);
+    setSelectedMonth(filtersBeforeListJump?.month ?? 'ALL');
+    setDestinationPageToRestore(filtersBeforeListJump?.destinationPage ?? null);
+    setFiltersBeforeListJump(null);
+    setViewMode(listReturnView);
+    setListReturnView(null);
+    setCurrentPage(1);
+  };
+  // History steps run later: they need the current state, not the one from when they were pushed
+  const returnFromListJumpRef = useRef(returnFromListJump);
+  useEffect(() => {
+    returnFromListJumpRef.current = returnFromListJump;
+  });
+
+  // Group view <-> list view; switching back to the previous view goes back instead of stacking
+  // another history step
+  const switchViewMode = (next: 'list' | 'destination') => {
+    if (next === viewMode) return;
+    const step = viewStepRef.current;
+    if (step && step.previous === next) {
+      goBackHistoryStep(step.id);
+      return;
+    }
+    const previous = viewMode;
+    setViewMode(next);
+    const id = pushHistoryStep(() => {
+      viewStepRef.current = null;
+      setViewMode(previous);
+    });
+    viewStepRef.current = id === null ? null : { id, previous };
   };
 
   // Destination Groups
@@ -1837,9 +1892,8 @@ export default function HomePage() {
               );
             })()}
             {Boolean(win.effectiveCost) && win.boardType === 'ALL_INCLUSIVE' && typeof win.mealPlanValue === 'number' && win.mealPlanValue > 0 ? (
-              <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold sm:text-right mt-0.5 flex items-center gap-1 sm:justify-end">
-                <Utensils className="w-2.5 h-2.5" />
-                <span>{t.home.boardTypeSavingsBadge}: ~€{win.mealPlanValue}</span>
+              <div className="mt-0.5 flex sm:justify-end">
+                <MealPlanValuePopover mealPlanValue={win.mealPlanValue} durationDays={win.durationDays} />
               </div>
             ) : null}
           </div>
@@ -2711,7 +2765,7 @@ export default function HomePage() {
                       <button
                         title={t.home.viewModeDestination}
                         type="button"
-                        onClick={() => setViewMode('destination')}
+                        onClick={() => switchViewMode('destination')}
                         className={`px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition cursor-pointer ${
                           viewMode === 'destination'
                             ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-2xs'
@@ -2724,7 +2778,7 @@ export default function HomePage() {
                       <button
                         title={t.home.viewModeList}
                         type="button"
-                        onClick={() => setViewMode('list')}
+                        onClick={() => switchViewMode('list')}
                         className={`px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition cursor-pointer ${
                           viewMode === 'list'
                             ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-2xs'
@@ -3704,14 +3758,9 @@ export default function HomePage() {
                           <button
                             type="button"
                             onClick={() => {
-                              // Undo what the jump set, return to the group view it came from
-                              setSelectedDestinationsList(filtersBeforeListJump?.destinations ?? []);
-                              setSelectedMonth(filtersBeforeListJump?.month ?? 'ALL');
-                              setDestinationPageToRestore(filtersBeforeListJump?.destinationPage ?? null);
-                              setFiltersBeforeListJump(null);
-                              setViewMode(listReturnView);
-                              setListReturnView(null);
-                              setCurrentPage(1);
+                              // Through the browser history, so Back does not repeat it later
+                              if (listJumpStepRef.current !== null) goBackHistoryStep(listJumpStepRef.current);
+                              else returnFromListJump();
                             }}
                             className="px-2.5 py-1.5 rounded-lg bg-teal-600 text-white font-semibold hover:bg-teal-700 transition cursor-pointer"
                           >

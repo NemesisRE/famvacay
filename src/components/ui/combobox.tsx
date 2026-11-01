@@ -23,6 +23,15 @@ interface ComboboxNavigationOptions {
   onBackspaceEmpty?: () => void;
 }
 
+/**
+ * A key press that belongs to a text composition (dead keys for ^ ¨ ´, IME input, many phone
+ * keyboards): Enter confirms the composed letter there and Backspace edits it, so the field's
+ * own shortcuts must not act on it (they swallowed "Ä" or removed a chip).
+ */
+export function isImeComposing(e: React.KeyboardEvent): boolean {
+  return e.nativeEvent.isComposing || e.keyCode === 229;
+}
+
 export function useComboboxNavigation({
   count,
   isOpen,
@@ -43,6 +52,7 @@ export function useComboboxNavigation({
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (isImeComposing(e)) return;
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();

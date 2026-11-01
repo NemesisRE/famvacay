@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/responsive-popover';
 import { ChevronDown, Check } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
+import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 export interface SeasonalWarningOption {
   key: string;
@@ -49,6 +50,8 @@ export function SeasonalWarningFilterDropdown({
 }: SeasonalWarningFilterDropdownProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+  // The Back button closes it instead of leaving the page
+  useHistoryBack(isOpen, () => setIsOpen(false));
 
   const isSmallScreen = useIsSmallScreen();
 

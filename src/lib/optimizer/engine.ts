@@ -10,7 +10,7 @@ import {
   TravelVehicle,
   WeatherAssessment,
 } from './types';
-import { calculateEffectivePtoDaysConsumed, ChildcareClosurePeriod } from './pto-calculator';
+import { calculateEffectivePtoDaysConsumed, ChildcareClosurePeriod, SIX_DAY_WORKWEEK } from './pto-calculator';
 import { applyChildcareArbitrageWarnings } from './childcare-arbitrage';
 import { calculatePassengerCostMultiplier } from './child-tiers';
 import {
@@ -48,6 +48,7 @@ import {
 } from '../holidays/source-markets';
 import { getCountryCodeFromSubdivision } from '../regions/subdivisions';
 import { getSynchronousTripPricing } from '../pricing/pricing-service';
+import { MEAL_VALUE_CREDIT_SHARE } from '../pricing/meal-plan-value';
 import {
   getAvailableVehicles,
   calculateVehicleMetrics,
@@ -353,6 +354,11 @@ function climateSettingApplies(input: TripPlanInput, style: 'BEACH' | 'ALPINE'):
     return prefs.length === 0 || prefs.includes(style);
   }
   return false;
+}
+
+/** Days away per PTO day; a trip without any PTO day counts as twice its length. */
+function calculatePtoEfficiencyRatio(durationDays: number, ptoDays: number): number {
+  return ptoDays > 0 ? Math.round((durationDays / ptoDays) * 10) / 10 : durationDays * 2;
 }
 
 export interface OptimizerContextOptions {
@@ -879,9 +885,21 @@ export function optimizeVacationWindows(
         (userProfile as any).workweekDays,
         childcareClosures
       );
-      const ptoEfficiencyRatio = ptoInfo.effectivePtoDaysConsumed > 0
-        ? Math.round((durationDays / ptoInfo.effectivePtoDaysConsumed) * 10) / 10
-        : durationDays * 2;
+      const ptoEfficiencyRatio = calculatePtoEfficiencyRatio(durationDays, ptoInfo.effectivePtoDaysConsumed);
+      // Shown next to the five-day numbers for families working Monday to Saturday
+      const sixDayPto = calculateEffectivePtoDaysConsumed(
+        startStr,
+        endStr,
+        homePublicHolidays,
+        SIX_DAY_WORKWEEK,
+        childcareClosures,
+        { suggestShifts: false }
+      );
+      const sixDayWorkweek = {
+        ptoDaysConsumed: sixDayPto.effectivePtoDaysConsumed,
+        publicHolidaysCount: sixDayPto.publicHolidaysCount,
+        ptoEfficiencyRatio: calculatePtoEfficiencyRatio(durationDays, sixDayPto.effectivePtoDaysConsumed),
+      };
 
       // Arbitrage check per departure airport: the fare advantage exists when the family's own
       // region is on holiday (peak demand at the home airports) while the departure airport's
@@ -1009,6 +1027,7 @@ export function optimizeVacationWindows(
           overlapsChildcareClosure: ptoInfo.overlappingClosureWeekdays > 0,
           hasYoungChildAtDeparture: hasYoungChild,
           ptoEfficiencyRatio,
+          sixDayWorkweek,
           suggestedShifts: ptoInfo.suggestedShifts,
           weather,
           seasonalWarning,
@@ -1133,7 +1152,7 @@ export function optimizeVacationWindows(
           const totalCost = pricingDetails.totalCost + railCost;
           const effectiveCost =
             (pricingDetails.effectiveCost ??
-              Math.max(0, pricingDetails.totalCost - Math.round((pricingDetails.mealPlanValue || 0) * 0.75))) + railCost;
+              Math.max(0, pricingDetails.totalCost - Math.round((pricingDetails.mealPlanValue || 0) * MEAL_VALUE_CREDIT_SHARE))) + railCost;
 
           // Budget check
           if (input.maxBudgetTotal && totalCost > input.maxBudgetTotal) {
@@ -1552,7 +1571,7 @@ function toOverlandPricing(
     },
     totalCost,
     pricePerPerson: Math.round(totalCost / Math.max(1, travelers)),
-    effectiveCost: Math.max(0, totalCost - Math.round((base.mealPlanValue || 0) * 0.75)),
+    effectiveCost: Math.max(0, totalCost - Math.round((base.mealPlanValue || 0) * MEAL_VALUE_CREDIT_SHARE)),
     deepLinks: { ...base.deepLinks, googleFlights: '', skyscanner: '' },
     packageTourDeal: undefined,
   };

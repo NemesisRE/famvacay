@@ -1,6 +1,7 @@
 import airportsData from './data/airports.json';
 import airportTrafficData from './data/airport-traffic.json';
-import { getLocalizedCityName } from './localized-city-names';
+import { getAllLocalizedCityNames, getLocalizedCityName } from './localized-city-names';
+import { foldForSearch, searchForms } from '@/lib/text/search-fold';
 import { derived, getDataset } from '@/lib/datasets/store';
 import { LONG_HAUL_KM } from '../optimizer/distance-bands';
 
@@ -120,6 +121,40 @@ const airportIndex = derived(() => {
   const byIata = new Map<string, DynamicAirport>();
   for (const a of list) byIata.set(a.code, a);
   return { list, byIata };
+});
+
+const SEARCH_LOCALES = ['en', 'de', 'fr', 'es', 'it'];
+
+/**
+ * Folded search text per airport: its names in every app language (München and Munich, Köln and
+ * Cologne), with and without umlaut transcription, so typing "Köln", "koln" or "Koeln" works in
+ * any UI language.
+ */
+const airportSearchIndex = derived(() => {
+  const { list } = airportIndex();
+  const countryNames = SEARCH_LOCALES.map((loc) => {
+    try {
+      return new Intl.DisplayNames([loc], { type: 'region' });
+    } catch {
+      return null;
+    }
+  });
+  const searchText = new Map<string, string>();
+  for (const a of list) {
+    const meta = LOCALIZED_AIRPORT_METADATA[a.code];
+    const countryCode = a.state?.split('-')[0];
+    const labels = [
+      a.name,
+      a.city,
+      a.country,
+      ...getAllLocalizedCityNames(a.code),
+      ...Object.values(meta?.city ?? {}),
+      ...Object.values(meta?.name ?? {}),
+      ...(countryCode && countryCode.length === 2 ? countryNames.map((names) => names?.of(countryCode)) : []),
+    ].filter((label): label is string => typeof label === 'string' && label.length > 0);
+    searchText.set(a.code, [...new Set(labels.flatMap(searchForms))].join(' | '));
+  }
+  return { list, searchText };
 });
 
 export function isCommercialPassengerAirport(airport: {
@@ -414,14 +449,13 @@ export function searchAirports(
 ): DynamicAirport[] {
   const q = query.trim().toUpperCase();
   if (!q) return [];
+  const folded = foldForSearch(query);
 
-  const matched = airportIndex().list.filter((a) => {
+  const { list, searchText } = airportSearchIndex();
+  const matched = list.filter((a) => {
     if (a.code === q) return true;
     if (a.code.startsWith(q)) return true;
-    if (a.city.toUpperCase().includes(q)) return true;
-    if (a.name.toUpperCase().includes(q)) return true;
-    if (a.country.toUpperCase().includes(q)) return true;
-    return false;
+    return Boolean(folded) && (searchText.get(a.code) ?? '').includes(folded);
   });
 
   const enriched = matched.map((a) => {

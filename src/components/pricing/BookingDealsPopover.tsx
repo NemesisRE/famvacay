@@ -43,6 +43,7 @@ import {
   getActivePortals,
   saveActivePortalIds,
 } from '@/lib/pricing/portals';
+import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 const PORTAL_BADGE_LABEL_KEYS = {
   hotels: 'portalBadgeHotels',
@@ -108,6 +109,8 @@ export function BookingDealsPopover({
 }: BookingDealsPopoverProps) {
   const { t, locale } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+  // The Back button closes it instead of leaving the page
+  useHistoryBack(isOpen, () => setIsOpen(false));
   const [showPortalSettings, setShowPortalSettings] = useState(false);
   // The country's default portals unless the user picked their own (for this country)
   const [customPortals, setCustomPortals] = useState<{ country: string | undefined; ids: string[] } | null>(null);

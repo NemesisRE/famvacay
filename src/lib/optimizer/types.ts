@@ -179,6 +179,15 @@ export interface CandidateWindow {
   publicHolidaysCount: number;
   ptoDaysConsumed: number;
   ptoEfficiencyRatio: number; // (durationDays / ptoDaysConsumed) normalized
+  /**
+   * The same window for a six-day workweek (Mon-Sat), shown next to the five-day numbers: every
+   * Saturday is a workday there, and a public holiday on a Saturday saves a PTO day.
+   */
+  sixDayWorkweek?: {
+    ptoDaysConsumed: number;
+    publicHolidaysCount: number;
+    ptoEfficiencyRatio: number;
+  };
   suggestedShifts?: import('./pto-calculator').AdjacentShiftSuggestion[];
   
   // Pricing metrics

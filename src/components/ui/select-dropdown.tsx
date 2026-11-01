@@ -16,6 +16,9 @@ import {
 import { Check, ChevronDown, Search, X } from 'lucide-react';
 import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop, POPOVER_DISMISS_OPTIONS } from '@/components/ui/responsive-popover';
 import { useI18n } from '@/lib/i18n/i18n-context';
+import { useHistoryBack } from '@/lib/navigation/use-history-back';
+import { foldForSearch } from '@/lib/text/search-fold';
+import { isImeComposing } from '@/components/ui/combobox';
 
 export interface SelectDropdownOption {
   value: string;
@@ -68,6 +71,8 @@ export function SelectDropdown({
 }: SelectDropdownProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+  // The Back button closes it instead of leaving the page
+  useHistoryBack(isOpen, () => setIsOpen(false));
   const [query, setQuery] = useState('');
   const isSmallScreen = useIsSmallScreen();
   const listRef = useRef<HTMLDivElement>(null);
@@ -101,8 +106,9 @@ export function SelectDropdown({
   const selected = options.find((o) => o.value === value);
   const showSearch = searchable ?? options.length > 12;
   const visibleOptions = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options;
+    // Umlauts and accents optional ("Baden-Wurttemberg" finds Baden-Württemberg)
+    const q = foldForSearch(query);
+    return q ? options.filter((o) => foldForSearch(o.label).includes(q)) : options;
   }, [options, query]);
 
   // Focus the selected option when opening (keyboard users continue with the arrow keys).
@@ -217,6 +223,7 @@ export function SelectDropdown({
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => {
+                    if (isImeComposing(e)) return;
                     if (e.key === 'Enter') {
                       e.preventDefault();
                       const first = visibleOptions.find((o) => !o.disabled);

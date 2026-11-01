@@ -26,6 +26,7 @@ import {
 import { DestinationSafetyAssessment } from '@/lib/safety/safety-service';
 import { getAdvisorySourceUrls } from '@/lib/safety/advisory-store';
 import { useI18n } from '@/lib/i18n/i18n-context';
+import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 interface DestinationSafetyPopoverProps {
   safety?: DestinationSafetyAssessment;
@@ -79,6 +80,8 @@ export function DestinationSafetyPopover({
 }: DestinationSafetyPopoverProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+  // The Back button closes it instead of leaving the page
+  useHistoryBack(isOpen, () => setIsOpen(false));
 
   const isSmallScreen = useIsSmallScreen();
 

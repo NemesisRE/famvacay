@@ -36,6 +36,8 @@ Self-hosted family vacation optimizer: Next.js 16 (App Router), React 19, Prisma
 - New profile preferences that the search only reads go into the `FamilyProfile.scoringWeights` JSON (like `excludedCountries`, `longRangeStyles`): no migration needed. The optimize cache key hashes the whole request, so new request fields need no cache version bump - only changed output does.
 - Route-handler tests mock `@/lib/db/prisma` with an in-memory fake (reuse `tests/helpers/fake-shared-board-prisma.ts`) and call the exported `GET`/`POST` directly; no database is needed.
 - Popovers use `src/components/ui/responsive-popover.tsx` (centered overlay on phones); the `animate-in` utilities live in `src/app/globals.css`, there is no animation plugin.
+- Every popover, modal or drawer calls `useHistoryBack(isOpen, close)` (`src/lib/navigation/use-history-back.ts`), so the browser/phone Back button closes it instead of leaving the page; in-app view switches use `pushHistoryStep`. URL updates go through `replaceUrlKeepingHistoryEntry`, never `history.replaceState(null, ...)`, which would drop an open overlay's entry.
+- Search matching folds text with `foldForSearch` (`src/lib/text/search-fold.ts`): case, accents and umlauts are optional, and input fields never strip non-ASCII letters.
 
 ## Traps
 

@@ -16,6 +16,7 @@ import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop, viewportF
 import { Sun, CloudRain, Waves, Thermometer, Sparkles, X, Snowflake } from 'lucide-react';
 import { WeatherAssessment } from '@/lib/optimizer/types';
 import { useI18n } from '@/lib/i18n/i18n-context';
+import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 interface ClimateDetailsPopoverProps {
   destinationAirport: string;
@@ -30,6 +31,8 @@ export function ClimateDetailsPopover({
 }: ClimateDetailsPopoverProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+  // The Back button closes it instead of leaving the page
+  useHistoryBack(isOpen, () => setIsOpen(false));
 
   const isSmallScreen = useIsSmallScreen();
 

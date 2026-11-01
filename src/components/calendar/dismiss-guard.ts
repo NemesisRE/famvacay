@@ -1,4 +1,5 @@
-import { useReducer } from 'react';
+import { useEffect, useReducer, useRef } from 'react';
+import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 /**
  * Calendar popovers must not silently drop a month/year the user navigated to: people pick a
@@ -44,6 +45,20 @@ export function calendarGuardReducer(state: CalendarGuardState, action: Calendar
   }
 }
 
+/**
+ * The guard state plus the Back button: Back is one more close request, so after a month change
+ * without a day it shows the prompt and keeps the calendar (and its history entry).
+ */
 export function useCalendarGuard() {
-  return useReducer(calendarGuardReducer, CLOSED_CALENDAR);
+  const [state, dispatch] = useReducer(calendarGuardReducer, CLOSED_CALENDAR);
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  });
+  useHistoryBack(state.open, () => {
+    const stays = calendarGuardReducer(stateRef.current, { type: 'requestClose' }).open;
+    dispatch({ type: 'requestClose' });
+    return !stays;
+  });
+  return [state, dispatch] as const;
 }

@@ -191,6 +191,14 @@ describe('CSP Optimizer - Edge Cases & Core Engine', () => {
       expect(w.scoreBreakdown.priceIndex).toBeGreaterThanOrEqual(0);
     });
 
+    // Every window also carries the six-day workweek (Mon-Sat): its Saturdays cost PTO as well,
+    // so it never needs fewer PTO days than the five-day week
+    results.forEach((w) => {
+      expect(w.sixDayWorkweek).toBeDefined();
+      expect(w.sixDayWorkweek!.ptoDaysConsumed).toBeGreaterThanOrEqual(w.ptoDaysConsumed);
+      expect(w.sixDayWorkweek!.publicHolidaysCount).toBeGreaterThanOrEqual(w.publicHolidaysCount);
+    });
+
     // Results should be sorted descending by finalScore
     for (let i = 0; i < results.length - 1; i++) {
       expect(results[i].finalScore).toBeGreaterThanOrEqual(results[i + 1].finalScore);

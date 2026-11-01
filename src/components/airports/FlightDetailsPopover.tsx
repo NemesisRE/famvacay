@@ -30,6 +30,7 @@ import { useI18n } from '@/lib/i18n/i18n-context';
 import { getAirportByIata, getLocalizedAirportDetails } from '@/lib/airports/airport-service';
 import type { FlightLayover, FlightSegment } from '@/lib/airports/flight-routes';
 import type { RailFeederLeg } from '@/lib/optimizer/types';
+import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 export interface FlightDetailsPopoverProps {
   originAirport: string;
@@ -98,6 +99,8 @@ export function FlightDetailsPopover({
 }: FlightDetailsPopoverProps) {
   const { t, locale } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+  // The Back button closes it instead of leaving the page
+  useHistoryBack(isOpen, () => setIsOpen(false));
 
   const origObj = originAirport ? getAirportByIata(originAirport) : null;
   const destObj = destinationAirport ? getAirportByIata(destinationAirport) : null;

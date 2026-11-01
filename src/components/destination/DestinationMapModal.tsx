@@ -14,6 +14,7 @@ import type { TravelVehicle } from '@/lib/optimizer/types';
 import type { DestinationType } from '@/lib/optimizer/types';
 import { CATEGORY_BADGE_CLASS, VEHICLE_BADGE_CLASS, getCategoryBadges, getVehicleBadge } from '@/components/ui/badge-styles';
 import { useI18n } from '@/lib/i18n/i18n-context';
+import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 export interface DestinationMapModalProps {
   isOpen: boolean;
@@ -47,6 +48,8 @@ export function DestinationMapModal({
 }: DestinationMapModalProps) {
   const { t, locale } = useI18n();
   const [mapProvider, setMapProvider] = useState<'google' | 'osm'>('google');
+  // The Back button closes the map instead of leaving the page
+  useHistoryBack(isOpen, onClose);
 
   // Handle escape key
   const handleKeyDown = useCallback(

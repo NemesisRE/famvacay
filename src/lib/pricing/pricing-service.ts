@@ -7,6 +7,7 @@ import {
   TravelPricingProvider,
 } from './types';
 import { BoardType } from '../optimizer/types';
+import { MEAL_PLAN_DAILY_VALUE, MEAL_VALUE_CREDIT_SHARE } from './meal-plan-value';
 import { calculatePassengerCostMultiplier } from '../optimizer/child-tiers';
 import { getAirportByIata, calculateGeodesicDistanceKm } from '../airports/airport-service';
 import { getDestinationPoint } from '../geo/destination-points';
@@ -229,29 +230,7 @@ export function calculateMealPlanDailyValue(
   adults: number,
   childrenAges: number[]
 ): { dailyAdult: number; dailyChild: number; totalDaily: number } {
-  let dailyAdult = 0;
-  let dailyChild = 0;
-
-  switch (boardType) {
-    case 'ALL_INCLUSIVE':
-      dailyAdult = 55;
-      dailyChild = 30;
-      break;
-    case 'HALF_BOARD':
-      dailyAdult = 32;
-      dailyChild = 18;
-      break;
-    case 'BREAKFAST':
-      dailyAdult = 14;
-      dailyChild = 8;
-      break;
-    case 'ROOM_ONLY':
-    default:
-      dailyAdult = 0;
-      dailyChild = 0;
-      break;
-  }
-
+  const { adult: dailyAdult, child: dailyChild } = MEAL_PLAN_DAILY_VALUE[boardType] ?? MEAL_PLAN_DAILY_VALUE.ROOM_ONLY;
   const childCount = childrenAges.length;
   const totalDaily = adults * dailyAdult + childCount * dailyChild;
   return { dailyAdult, dailyChild, totalDaily };
@@ -461,7 +440,7 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
     const totalCost = totalFlightCost + totalLodgingCost;
     const totalPassengers = Math.max(1, party.adults + party.childrenAges.length);
     const pricePerPerson = Math.round(totalCost / totalPassengers);
-    const effectiveCost = Math.max(0, totalCost - Math.round(totalMealValue * 0.75));
+    const effectiveCost = Math.max(0, totalCost - Math.round(totalMealValue * MEAL_VALUE_CREDIT_SHARE));
 
     const packageTourDeal = calculatePackageTourComparison(
       destinationAirport,

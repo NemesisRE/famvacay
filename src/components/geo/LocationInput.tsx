@@ -9,6 +9,7 @@ import {
   type BrowserLocationError,
   type GeocodedLocation,
 } from '@/lib/geo/location-helpers';
+import { isImeComposing } from '@/components/ui/combobox';
 
 // Same shape as the geocoding API (stateCode / stateName / countryCode)
 export type { GeocodedLocation };
@@ -235,6 +236,7 @@ export function LocationInput({
             }
           }}
           onKeyDown={(e) => {
+            if (isImeComposing(e)) return;
             if (e.key === 'Enter') {
               e.preventDefault();
               validateCurrentQuery();

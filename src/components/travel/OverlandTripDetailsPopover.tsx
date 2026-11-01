@@ -18,6 +18,7 @@ import { useI18n } from '@/lib/i18n/i18n-context';
 import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/destination-points';
 import type { TravelVehicle, VehicleTravelMetrics } from '@/lib/optimizer/types';
 import type { OverlandAccessClass } from '@/lib/optimizer/vehicles';
+import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 export interface OverlandTripDetailsPopoverProps {
   vehicle: Exclude<TravelVehicle, 'PLANE'>;
@@ -65,6 +66,8 @@ export function OverlandTripDetailsPopover({
 }: OverlandTripDetailsPopoverProps) {
   const { t, locale } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+  // The Back button closes it instead of leaving the page
+  useHistoryBack(isOpen, () => setIsOpen(false));
 
   const isSmallScreen = useIsSmallScreen();
 

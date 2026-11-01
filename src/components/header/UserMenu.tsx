@@ -8,11 +8,14 @@ import { useI18n } from '@/lib/i18n/i18n-context';
 import { SUPPORTED_LOCALES, SupportedLocale } from '@/lib/i18n/types';
 import { Settings, Sun, Moon, Globe, Check, Users, LogIn, LogOut } from 'lucide-react';
 import { useDarkTheme, useIsClient } from '@/lib/client-stores';
+import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 export function UserMenu() {
   const { data: session, status } = useSession();
   const { locale, setLocale, t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+  // The Back button closes it instead of leaving the page
+  useHistoryBack(isOpen, () => setIsOpen(false));
   // Theme: the class the layout's inline script applied; client flag without an effect
   const [isDark, setDark] = useDarkTheme();
   const mounted = useIsClient();
