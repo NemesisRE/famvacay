@@ -3,6 +3,9 @@
  * Dynamically ingests official government travel warnings from:
  * 1. Auswärtiges Amt Open Data API: https://www.auswaertiges-amt.de/opendata/travelwarning
  * 2. US Department of State Travel Advisories API: https://cadataapi.state.gov/api/TravelAdvisories
+ * 3. Global Affairs Canada open data: https://data.international.gc.ca/travel-voyage/index-alpha-eng.json
+ * 4. Australian Smartraveller export: https://www.smartraveller.gov.au/destinations-export
+ * Canada and Australia are optional extras: if they are unreachable the other sources still work.
  *
  * Features an intelligent cache with 6-hour TTL to prevent redundant requests and rate limits.
  */
@@ -16,6 +19,7 @@ import {
   registerAdvisoryRefresh,
   getAdvisoryStore,
   hasLiveAdvisories,
+  peakAdvisoryLevel,
   type AdvisoryCacheStore,
   type TravelAdvisoryCacheEntry,
 } from './advisory-store';
@@ -103,6 +107,98 @@ async function fetchAuswaertigesAmtWarnings(): Promise<Record<string, any> | nul
   return null;
 }
 
+/** Country name from a government feed to ISO alpha-2, including the feeds' own spellings */
+function isoFromCountryName(rawName: string): string | undefined {
+  const name = rawName.trim();
+  const found = countries.getAlpha2Code(name, 'en') || countries.getAlpha2Code(name, 'de');
+  if (found) return found;
+  const lower = name.toLowerCase();
+  if (lower.includes('bahamas')) return 'BS';
+  if (lower.includes('burma') || lower.includes('myanmar')) return 'MM';
+  if (lower.includes('russia')) return 'RU';
+  if (lower.includes('korea, north') || lower.includes('north korea')) return 'KP';
+  if (lower.includes('korea, south') || lower.includes('south korea')) return 'KR';
+  if (lower.includes('congo, democratic') || lower.includes('democratic republic of the congo')) return 'CD';
+  if (lower.includes('congo, republic') || lower.includes('republic of the congo')) return 'CG';
+  if (lower.includes('vatican')) return 'VA';
+  if (lower.includes('türkiye') || lower.includes('turkiye')) return 'TR';
+  if (lower.includes('czech')) return 'CZ';
+  if (lower.includes('timor')) return 'TL';
+  if (lower.includes('eswatini') || lower.includes('swaziland')) return 'SZ';
+  if (lower.includes('ivoire')) return 'CI';
+  return undefined;
+}
+
+export interface ExtraAdvisory {
+  iso: string;
+  level: 1 | 2 | 3 | 4;
+  title: string;
+  url?: string;
+}
+
+/** Global Affairs Canada: advisory-state 0 (normal) to 3 (avoid all travel) */
+export function parseCanadaAdvisories(json: unknown): ExtraAdvisory[] {
+  const data = (json as { data?: Record<string, any> } | null)?.data;
+  if (!data || typeof data !== 'object') return [];
+  const out: ExtraAdvisory[] = [];
+  for (const [key, item] of Object.entries(data)) {
+    // Regions use keys such as "PT-20" (Azores): never let one rate the whole country
+    if (!/^[A-Z]{2}$/.test(key)) continue;
+    const iso = typeof item?.['country-iso'] === 'string' ? item['country-iso'].toUpperCase() : '';
+    const state = item?.['advisory-state'];
+    if (iso !== key || !Number.isInteger(state) || state < 0 || state > 3) continue;
+    const slug = item?.eng?.['url-slug'];
+    out.push({
+      iso,
+      level: (state + 1) as 1 | 2 | 3 | 4,
+      title: String(item?.eng?.['advisory-text'] || ''),
+      url: typeof slug === 'string' && /^[a-z0-9-]+$/.test(slug) ? `https://travel.gc.ca/destinations/${slug}` : undefined,
+    });
+  }
+  return out;
+}
+
+const AU_LEVELS: Array<[RegExp, 1 | 2 | 3 | 4]> = [
+  [/do not travel/i, 4],
+  [/reconsider/i, 3],
+  [/high degree of caution/i, 2],
+  [/normal safety precautions/i, 1],
+];
+
+/** Smartraveller: overall advice level per destination (a destination name, not always a country) */
+export function parseSmartravellerAdvisories(json: unknown): ExtraAdvisory[] {
+  if (!Array.isArray(json)) return [];
+  const out: ExtraAdvisory[] = [];
+  for (const item of json) {
+    const title = typeof item?.title === 'string' ? item.title : '';
+    const text = typeof item?.field_overall_advice_level === 'string' ? item.field_overall_advice_level : '';
+    const level = AU_LEVELS.find(([re]) => re.test(text))?.[1];
+    const iso = title ? isoFromCountryName(title) : undefined;
+    if (!level || !iso) continue;
+    const url = typeof item.field_url === 'string' ? item.field_url : '';
+    out.push({
+      iso: iso.toUpperCase(),
+      level,
+      title: text,
+      url: url.startsWith('https://www.smartraveller.gov.au/') ? url : undefined,
+    });
+  }
+  return out;
+}
+
+async function fetchJson(url: string): Promise<unknown> {
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) FamVacay/1.0' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) return JSON.parse(await res.text());
+  } catch (err) {
+    console.warn(`[SafetyService] Advisory request to ${new URL(url).host} failed:`, err);
+  }
+  return null;
+}
+
 /**
  * Fetches US Department of State Travel Advisories using official JSON or XML/RSS feeds
  */
@@ -173,9 +269,11 @@ export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCa
 
   activeFetchPromise = (async () => {
     try {
-      const [aaData, usData] = await Promise.all([
+      const [aaData, usData, caData, auData] = await Promise.all([
         fetchAuswaertigesAmtWarnings(),
         fetchUSStateDeptAdvisories(),
+        fetchJson('https://data.international.gc.ca/travel-voyage/index-alpha-eng.json').then(parseCanadaAdvisories),
+        fetchJson('https://www.smartraveller.gov.au/destinations-export').then(parseSmartravellerAdvisories),
       ]);
 
       const entries: Record<string, TravelAdvisoryCacheEntry> = {};
@@ -228,20 +326,7 @@ export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCa
 
           // Extract country name from title prefix
           const rawCountryName = title.split(/\s*[-–]\s*Level/i)[0].trim();
-          let iso = countries.getAlpha2Code(rawCountryName, 'en') || countries.getAlpha2Code(rawCountryName, 'de');
-
-          // Fallback aliases for State Dept naming
-          if (!iso) {
-            const lower = rawCountryName.toLowerCase();
-            if (lower.includes('bahamas')) iso = 'BS';
-            else if (lower.includes('burma') || lower.includes('myanmar')) iso = 'MM';
-            else if (lower.includes('russia')) iso = 'RU';
-            else if (lower.includes('korea, north') || lower.includes('north korea')) iso = 'KP';
-            else if (lower.includes('korea, south') || lower.includes('south korea')) iso = 'KR';
-            else if (lower.includes('congo, democratic')) iso = 'CD';
-            else if (lower.includes('congo, republic')) iso = 'CG';
-            else if (lower.includes('vatican')) iso = 'VA';
-          }
+          const iso = isoFromCountryName(rawCountryName);
 
           if (iso) {
             const upperIso = iso.toUpperCase();
@@ -265,15 +350,38 @@ export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCa
         }
       }
 
-      // 3. Compute unified safety score and safe place rating
+      // 3. Canada and Australia (they only add to countries the main sources already know, or
+      // create an entry of their own when the others do not list the country)
+      const addExtra = (list: ExtraAdvisory[], key: 'ca' | 'au') => {
+        for (const item of list) {
+          const entry = entries[item.iso] || {
+            isoCode: item.iso,
+            countryName: countries.getName(item.iso, 'en') || item.iso,
+            hasGermanWarning: false,
+            hasGermanPartialWarning: false,
+            usStateDeptLevel: 1 as const,
+            isSafeForFamilies: true,
+            safetyScore: 85,
+          };
+          entry[`${key}Level`] = item.level;
+          entry[`${key}Title`] = item.title;
+          if (item.url) entry[`${key}Url`] = item.url;
+          entries[item.iso] = entry;
+        }
+      };
+      addExtra(caData, 'ca');
+      addExtra(auData, 'au');
+
+      // 4. Compute unified safety score and safe place rating
       for (const entry of Object.values(entries)) {
+        const peak = peakAdvisoryLevel(entry);
         if (entry.hasGermanWarning || entry.usStateDeptLevel === 4) {
           entry.isSafeForFamilies = false;
           entry.safetyScore = 20;
-        } else if (entry.usStateDeptLevel === 3) {
+        } else if (peak === 3) {
           entry.isSafeForFamilies = false;
           entry.safetyScore = 45;
-        } else if (entry.hasGermanPartialWarning || entry.usStateDeptLevel === 2) {
+        } else if (entry.hasGermanPartialWarning || peak === 2) {
           entry.isSafeForFamilies = true;
           entry.safetyScore = 75;
         } else {

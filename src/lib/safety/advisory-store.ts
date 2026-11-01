@@ -33,6 +33,13 @@ export interface DestinationSafetyAssessment {
   /** Official sources: the country page when known, otherwise the provider's overview */
   germanAdvisoryUrl?: string;
   usAdvisoryUrl?: string;
+  /** Further official sources (normalized 1-4); they can raise the level up to 3, never to a hard ban */
+  caAdvisoryLevel?: 1 | 2 | 3 | 4;
+  caAdvisoryTitle?: string;
+  caAdvisoryUrl?: string;
+  auAdvisoryLevel?: 1 | 2 | 3 | 4;
+  auAdvisoryTitle?: string;
+  auAdvisoryUrl?: string;
 }
 
 export interface TravelAdvisoryCacheEntry {
@@ -48,6 +55,14 @@ export interface TravelAdvisoryCacheEntry {
   usUrl?: string;
   isSafeForFamilies: boolean;
   safetyScore: number;
+  /** Global Affairs Canada, normalized 1 (normal precautions) to 4 (avoid all travel) */
+  caLevel?: 1 | 2 | 3 | 4;
+  caTitle?: string;
+  caUrl?: string;
+  /** Australian Smartraveller, normalized 1 (normal precautions) to 4 (do not travel) */
+  auLevel?: 1 | 2 | 3 | 4;
+  auTitle?: string;
+  auUrl?: string;
 }
 
 export interface AdvisoryCacheStore {
@@ -175,18 +190,34 @@ export function getCountriesBlockedFromDiscovery(): string[] {
     .sort();
 }
 
+/**
+ * Strictest US-style level across the US State Dept and the further sources. Canada and
+ * Australia are capped at 3 ("reconsider"): they steer discovery away, but only the German full
+ * warning and US level 4 remain a hard ban (see isDestinationBanned).
+ */
+export function peakAdvisoryLevel(
+  entry: Pick<TravelAdvisoryCacheEntry, 'usStateDeptLevel' | 'caLevel' | 'auLevel'>
+): 1 | 2 | 3 | 4 {
+  const others = Math.min(3, Math.max(entry.caLevel ?? 1, entry.auLevel ?? 1));
+  return Math.max(entry.usStateDeptLevel, others) as 1 | 2 | 3 | 4;
+}
+
 const AA_OVERVIEW_URL = 'https://www.auswaertiges-amt.de/de/ReiseUndSicherheit/reise-und-sicherheitshinweise';
 const US_OVERVIEW_URL = 'https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories.html';
+const CA_OVERVIEW_URL = 'https://travel.gc.ca/travelling/advisories';
+const AU_OVERVIEW_URL = 'https://www.smartraveller.gov.au/destinations';
 
 /** Links to the official advisories; the AA site resolves a page by its content id alone */
 export function getAdvisorySourceUrls(
-  entry?: Pick<TravelAdvisoryCacheEntry, 'germanContentId' | 'usUrl'>
-): Pick<DestinationSafetyAssessment, 'germanAdvisoryUrl' | 'usAdvisoryUrl'> {
+  entry?: Pick<TravelAdvisoryCacheEntry, 'germanContentId' | 'usUrl' | 'caUrl' | 'auUrl'>
+): Pick<DestinationSafetyAssessment, 'germanAdvisoryUrl' | 'usAdvisoryUrl' | 'caAdvisoryUrl' | 'auAdvisoryUrl'> {
   return {
     germanAdvisoryUrl: entry?.germanContentId
       ? `${AA_OVERVIEW_URL}/${entry.germanContentId}`
       : AA_OVERVIEW_URL,
     usAdvisoryUrl: entry?.usUrl || US_OVERVIEW_URL,
+    caAdvisoryUrl: entry?.caUrl || CA_OVERVIEW_URL,
+    auAdvisoryUrl: entry?.auUrl || AU_OVERVIEW_URL,
   };
 }
 
@@ -225,15 +256,18 @@ export function getDestinationSafetyAssessment(
 
   if (entry) {
     let level: SafetyLevel = 'SAFE';
-    let advisory: 1 | 2 | 3 | 4 = entry.usStateDeptLevel;
+    const peak = peakAdvisoryLevel(entry);
+    let advisory: 1 | 2 | 3 | 4 = peak;
+    // The US wording only describes the level when the US is what sets it
+    const usSetsLevel = entry.hasGermanWarning || peak === entry.usStateDeptLevel;
 
     if (entry.hasGermanWarning || entry.usStateDeptLevel === 4) {
       level = 'DANGER';
       advisory = 4;
-    } else if (entry.usStateDeptLevel === 3) {
+    } else if (peak === 3) {
       level = 'WARNING';
       advisory = 3;
-    } else if (entry.hasGermanPartialWarning || entry.usStateDeptLevel === 2) {
+    } else if (entry.hasGermanPartialWarning || peak === 2) {
       level = 'CAUTION';
       advisory = 2;
     }
@@ -261,14 +295,18 @@ export function getDestinationSafetyAssessment(
           : level === 'WARNING'
           ? 'Reisewarnung (Teilbereich)'
           : 'Reisewarnung',
-      source: 'Auswärtiges Amt & US State Dept',
-      warningDetails: entry.usTitle,
+      source: 'Auswärtiges Amt, US State Dept, Global Affairs Canada & Smartraveller',
+      warningDetails: usSetsLevel ? entry.usTitle : entry.caLevel === peak ? entry.caTitle : entry.auTitle,
       countryCode: iso,
       countryName: entry.countryName,
       hasGermanWarning: entry.hasGermanWarning,
       hasGermanPartialWarning: entry.hasGermanPartialWarning,
       usStateDeptLevel: entry.usStateDeptLevel,
-      advisoryTitle: entry.usTitle || defaultTitle,
+      advisoryTitle: (usSetsLevel && entry.usTitle) || defaultTitle,
+      caAdvisoryLevel: entry.caLevel,
+      caAdvisoryTitle: entry.caTitle,
+      auAdvisoryLevel: entry.auLevel,
+      auAdvisoryTitle: entry.auTitle,
       ...sourceUrls,
     };
   }
