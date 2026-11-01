@@ -4,8 +4,8 @@
  * The weekend of a country comes from the Unicode CLDR week data built into every JavaScript
  * engine (Intl.Locale week info): Saturday/Sunday in most countries, Friday/Saturday in Saudi
  * Arabia, Israel, Egypt or the Gulf states, Friday only in Iran, Thursday/Friday in Afghanistan.
- * People whose week differs from their country's (shift work, retail, six-day offices) set their
- * own workdays in the search form or profile.
+ * The usual week of the home country is a best guess - travellers in one party may work different
+ * weeks - so the PTO popover shows a five-day and a six-day week next to each other.
  */
 
 export const ALL_WEEKDAYS = [1, 2, 3, 4, 5, 6, 7];
@@ -74,16 +74,25 @@ export function isoWeekday(date: Date): number {
 }
 
 /**
- * Six-day weeks to compare a five-day week with: the five workdays plus one of the two days off.
- * Where Sunday is one of them it stays free (Monday-Saturday). Otherwise which day is the rest day
- * differs between countries sharing the same weekend (Israel works Sunday-Friday, the Gulf states
- * Saturday-Thursday), so both variants are offered.
+ * The weeks shown next to the usual one, so there is always a five-day and a six-day week:
+ * - usual five-day week: the six-day weeks - the five workdays plus one of the two days off. Where
+ *   Sunday is one of them it stays free (Monday-Saturday). Otherwise which day is the rest day
+ *   differs between countries sharing the same weekend (Israel works Sunday-Friday, the Gulf
+ *   states Saturday-Thursday), so both are offered.
+ * - usual six-day week (a single weekend day, e.g. Friday in Iran): the five-day week that also
+ *   frees the day before the weekend (Saturday-Wednesday in Iran, Monday-Friday in India).
  */
-export function sixDayVariants(workweek: number[]): number[][] {
-  if (workweek.length !== 5) return [];
+export function comparisonWorkweeks(workweek: number[]): number[][] {
   const daysOff = ALL_WEEKDAYS.filter((d) => !workweek.includes(d));
-  const candidates = daysOff.includes(7) ? daysOff.filter((d) => d !== 7) : daysOff;
-  return candidates.map((d) => [...workweek, d].sort((a, b) => a - b));
+  if (workweek.length === 5) {
+    const candidates = daysOff.includes(7) ? daysOff.filter((d) => d !== 7) : daysOff;
+    return candidates.map((d) => [...workweek, d].sort((x, y) => x - y));
+  }
+  if (workweek.length === 6) {
+    const dayBefore = daysOff[0] === 1 ? 7 : daysOff[0] - 1;
+    return [workweek.filter((d) => d !== dayBefore)];
+  }
+  return [];
 }
 
 /** The days in their order within the week, starting after the days off (Sunday-Thursday, not 1-4 + 7). */

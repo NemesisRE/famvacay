@@ -11,7 +11,7 @@ import {
   WeatherAssessment,
 } from './types';
 import { calculateEffectivePtoDaysConsumed, ChildcareClosurePeriod } from './pto-calculator';
-import { countryWeekend, isoWeekday, resolveWorkweek, sixDayVariants } from '../holidays/workweek';
+import { comparisonWorkweeks, countryWeekend, isoWeekday, resolveWorkweek } from '../holidays/workweek';
 import { applyChildcareArbitrageWarnings } from './childcare-arbitrage';
 import { calculatePassengerCostMultiplier } from './child-tiers';
 import {
@@ -611,8 +611,8 @@ export function optimizeVacationWindows(
   // even when they are not among the selected departure airports (e.g. Karlsruhe -> Munich by
   // ICE for a non-stop long-haul flight instead of FKB/STR + a short feeder flight to FRA/MUC).
   const homeCountry = homeState ? getCountryCodeFromSubdivision(homeState) : undefined;
-  // The family's own workdays, else the usual week of their home country (Sunday-Thursday in
-  // Saudi Arabia, Monday-Friday in Australia)
+  // Best guess from the home country (Sunday-Thursday in Saudi Arabia, Monday-Friday in Australia);
+  // the PTO popover shows a five-day and a six-day week next to it, as one party's members may differ
   const workweekDays = resolveWorkweek(userProfile.workweekDays, homeCountry);
   const railHubLegs: OriginLeg[] = [];
   if (planeSelected && input.railAirSuggestions !== false) {
@@ -892,9 +892,9 @@ export function optimizeVacationWindows(
         childcareClosures
       );
       const ptoEfficiencyRatio = calculatePtoEfficiencyRatio(durationDays, ptoInfo.effectivePtoDaysConsumed);
-      // Shown next to a five-day week for families working six days (Monday-Saturday, or both
-      // Sunday-Friday and Saturday-Thursday where the weekend is Friday/Saturday)
-      const workweekVariants = sixDayVariants(workweekDays).map((days) => {
+      // The other weeks shown next to it: six-day weeks next to a five-day one, a five-day week next
+      // to a six-day one
+      const workweekVariants = comparisonWorkweeks(workweekDays).map((days) => {
         const variant = calculateEffectivePtoDaysConsumed(startStr, endStr, homePublicHolidays, days, childcareClosures, {
           suggestShifts: false,
         });

@@ -4,7 +4,7 @@ import {
   defaultWorkweek,
   normalizeWorkweek,
   resolveWorkweek,
-  sixDayVariants,
+  comparisonWorkweeks,
   workweekLabel,
 } from '../workweek';
 import { expandSchoolHolidayWithWeekends, optimizeVacationWindows } from '@/lib/optimizer/engine';
@@ -28,19 +28,25 @@ describe('weekends and workweeks per country (CLDR week data)', () => {
     expect(defaultWorkweek('IR')).toEqual([1, 2, 3, 4, 6, 7]);
   });
 
-  it('prefers the family own workdays and accepts JS Sunday = 0', () => {
+  it('takes explicit workdays (API) before the country guess and accepts JS Sunday = 0', () => {
     expect(resolveWorkweek([0, 1, 2, 3, 4], 'DE')).toEqual([1, 2, 3, 4, 7]);
     expect(resolveWorkweek([], 'SA')).toEqual([1, 2, 3, 4, 7]);
     expect(normalizeWorkweek([9, 'x'])).toBeNull();
   });
 
   it('offers Monday-Saturday where Sunday is off, both six-day weeks where the weekend is Friday/Saturday', () => {
-    expect(sixDayVariants([1, 2, 3, 4, 5])).toEqual([[1, 2, 3, 4, 5, 6]]);
-    expect(sixDayVariants([1, 2, 3, 4, 7])).toEqual([
+    expect(comparisonWorkweeks([1, 2, 3, 4, 5])).toEqual([[1, 2, 3, 4, 5, 6]]);
+    expect(comparisonWorkweeks([1, 2, 3, 4, 7])).toEqual([
       [1, 2, 3, 4, 5, 7],
       [1, 2, 3, 4, 6, 7],
     ]);
-    expect(sixDayVariants([1, 2, 3, 4, 6, 7])).toEqual([]);
+  });
+
+  it('offers a five-day week next to a usual six-day week: the day before the weekend off too', () => {
+    // Iran (Friday off): Saturday-Wednesday; India (Sunday off): Monday-Friday
+    expect(comparisonWorkweeks(defaultWorkweek('IR'))).toEqual([[1, 2, 3, 6, 7]]);
+    expect(comparisonWorkweeks(defaultWorkweek('IN'))).toEqual([[1, 2, 3, 4, 5]]);
+    expect(comparisonWorkweeks([1, 2, 3, 4])).toEqual([]);
   });
 
   it('labels weeks across the end of the ISO week', () => {

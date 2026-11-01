@@ -179,11 +179,11 @@ export interface CandidateWindow {
   publicHolidaysCount: number;
   ptoDaysConsumed: number;
   ptoEfficiencyRatio: number; // (durationDays / ptoDaysConsumed) normalized
-  /** Workdays the PTO numbers count (ISO weekdays, 1 = Monday): the family's own or their country's usual week */
+  /** Workdays the PTO numbers count (ISO weekdays, 1 = Monday): the usual week of the home country */
   workweekDays?: number[];
   /**
-   * The same window for six-day weeks, shown next to a five-day week: one variant (Monday-Saturday)
-   * where Sunday is a day off, both possible ones where the weekend is e.g. Friday/Saturday.
+   * The same window for the other weeks shown next to it (see comparisonWorkweeks): six-day weeks
+   * next to a five-day week, a five-day week next to a six-day one.
    */
   workweekVariants?: {
     days: number[];
