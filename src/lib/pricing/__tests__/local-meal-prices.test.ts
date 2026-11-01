@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { mealPriceFactor, localMealPlanRates, MEAL_PLAN_DAILY_VALUE, MEAL_PRICE_REFERENCE_LEVEL } from '../meal-plan-value';
+import { mealPriceFactor, mealPricePercentOfHome, localMealPlanRates, MEAL_PLAN_DAILY_VALUE, MEAL_PRICE_REFERENCE_LEVEL } from '../meal-plan-value';
 import { calculateMealPlanDailyValue, getSynchronousTripPricing } from '../pricing-service';
 import { destinationCountryCode, getCountryPriceLevel } from '../price-levels';
 import { generatePriceLevels } from '@/lib/datasets/generators/price-levels';
@@ -61,6 +61,34 @@ describe('destination country and price-level data', () => {
     const heraklion = trip('HER');
     expect(bangkok.mealPlanRates!.adult).toBeLessThan(heraklion.mealPlanRates!.adult);
     expect(bangkok.mealPlanValue!).toBeLessThan(heraklion.mealPlanValue!);
+  });
+});
+
+describe('comparison with the home country (never a fixed region)', () => {
+  const thailandFrom = (homeCountry?: string) =>
+    getSynchronousTripPricing({
+      originAirport: 'SYD',
+      destinationAirport: 'BKK',
+      startDate: '2026-11-02',
+      endDate: '2026-11-12',
+      durationDays: 10,
+      party: { adults: 2, childrenAges: [6] },
+      preferredBoardType: 'ALL_INCLUSIVE',
+      homeCountry,
+    }).mealPlanRates!;
+
+  it('compares with the travellers own country, with the valuation dampening', () => {
+    const fromAustralia = thailandFrom('AU').homeComparison!;
+    const fromGermany = thailandFrom('DE').homeComparison!;
+    expect(fromAustralia.country).toBe('AU');
+    expect(fromAustralia.percent).toBe(mealPricePercentOfHome(getCountryPriceLevel('TH'), getCountryPriceLevel('AU')));
+    expect(fromAustralia.percent).toBeLessThan(100);
+    expect(fromGermany.percent).toBeLessThan(100);
+  });
+
+  it('gives no comparison without a known home country', () => {
+    expect(thailandFrom(undefined).homeComparison).toBeUndefined();
+    expect(thailandFrom('ZZ').homeComparison).toBeUndefined();
   });
 });
 

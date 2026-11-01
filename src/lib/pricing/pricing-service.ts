@@ -7,7 +7,7 @@ import {
   TravelPricingProvider,
 } from './types';
 import { BoardType } from '../optimizer/types';
-import { localMealPlanRates, MEAL_VALUE_CREDIT_SHARE } from './meal-plan-value';
+import { localMealPlanRates, mealPricePercentOfHome, MEAL_VALUE_CREDIT_SHARE, type MealPlanRates } from './meal-plan-value';
 import { destinationCountryCode, getCountryPriceLevel } from './price-levels';
 import { calculatePassengerCostMultiplier } from '../optimizer/child-tiers';
 import { getAirportByIata, calculateGeodesicDistanceKm } from '../airports/airport-service';
@@ -258,6 +258,8 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
     party: PricingPartyComposition;
     isArbitrage?: boolean;
     preferredBoardType?: BoardType;
+    /** ISO country of the travellers' home, for comparing destination prices with home */
+    homeCountry?: string;
   }): Promise<AggregatedTripPricing> {
     return this.calculatePricingSync(params);
   }
@@ -271,6 +273,8 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
     party: PricingPartyComposition;
     isArbitrage?: boolean;
     preferredBoardType?: BoardType;
+    /** ISO country of the travellers' home, for comparing destination prices with home */
+    homeCountry?: string;
   }): AggregatedTripPricing {
     const {
       originAirport,
@@ -412,14 +416,16 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
     }
     const boardType = resolveDestinationBoardType(destinationAirport, params.preferredBoardType);
     // Meals cost what they cost at the destination: a full board is worth less in Thailand than in Greece
-    const mealValueMeta = calculateMealPlanDailyValue(
-      boardType,
-      party.adults || 2,
-      party.childrenAges || [],
-      getCountryPriceLevel(destinationCountryCode(destAirport))
-    );
+    const destinationPriceLevel = getCountryPriceLevel(destinationCountryCode(destAirport));
+    const mealValueMeta = calculateMealPlanDailyValue(boardType, party.adults || 2, party.childrenAges || [], destinationPriceLevel);
     const totalMealValue = mealValueMeta.totalDaily * nights;
-    const mealPlanRates = { adult: mealValueMeta.dailyAdult, child: mealValueMeta.dailyChild, priceFactor: mealValueMeta.priceFactor };
+    const homePercent = mealPricePercentOfHome(destinationPriceLevel, getCountryPriceLevel(params.homeCountry));
+    const mealPlanRates: MealPlanRates = {
+      adult: mealValueMeta.dailyAdult,
+      child: mealValueMeta.dailyChild,
+      priceFactor: mealValueMeta.priceFactor,
+      ...(params.homeCountry && homePercent !== undefined ? { homeComparison: { country: params.homeCountry.toUpperCase(), percent: homePercent } } : {}),
+    };
 
     // Adjust rate if user explicitly chose an upgraded/downgraded board type
     if (params.preferredBoardType) {
@@ -517,6 +523,7 @@ export function getSynchronousTripPricing(params: {
   party: PricingPartyComposition;
   isArbitrage?: boolean;
   preferredBoardType?: BoardType;
+  homeCountry?: string;
 }): AggregatedTripPricing {
   const aggregator = new PortalAggregatorProvider();
   return aggregator.calculatePricingSync(params);

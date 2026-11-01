@@ -53,6 +53,13 @@ export function MealPlanValuePopover({ mealPlanValue, durationDays, rates: local
   ]);
 
   const euros = (value: number) => Math.round(value).toLocaleString(locale);
+  const countryName = (code: string) => {
+    try {
+      return new Intl.DisplayNames([locale], { type: 'region' }).of(code) ?? code;
+    } catch {
+      return code;
+    }
+  };
   // Same nights as the pricing (pricing-service): one less than the days of the trip
   const nights = Math.max(1, durationDays - 1);
   const rates = localRates ?? { ...MEAL_PLAN_DAILY_VALUE.ALL_INCLUSIVE, priceFactor: 1 };
@@ -104,8 +111,15 @@ export function MealPlanValuePopover({ mealPlanValue, durationDays, rates: local
             <div className="pt-3 space-y-2.5 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
               <p>{t.home.mealValueExplainWhat}</p>
               <p>{t.home.mealValueExplainRates.replace('{adult}', euros(rates.adult)).replace('{child}', euros(rates.child))}</p>
-              {rates.priceFactor !== 1 && (
-                <p>{t.home.mealValueExplainLocal.replace('{percent}', String(Math.round(rates.priceFactor * 100)))}</p>
+              {/* Compared with the travellers' own country, never with a fixed region */}
+              {rates.homeComparison ? (
+                <p>
+                  {t.home.mealValueExplainLocal
+                    .replace('{percent}', String(rates.homeComparison.percent))
+                    .replace('{country}', countryName(rates.homeComparison.country))}
+                </p>
+              ) : (
+                rates.priceFactor !== 1 && <p>{t.home.mealValueExplainLocalNeutral}</p>
               )}
               <div className="rounded-lg bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800/60 px-2.5 py-2 font-mono text-[11px] text-center text-emerald-900 dark:text-emerald-200">
                 {t.home.mealValueExplainTotal

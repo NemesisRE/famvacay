@@ -77,6 +77,7 @@ export interface TravelPricingProvider {
     party: PricingPartyComposition;
     isArbitrage?: boolean;
     preferredBoardType?: import('../optimizer/types').BoardType;
+    homeCountry?: string;
   }): Promise<AggregatedTripPricing>;
 }
 

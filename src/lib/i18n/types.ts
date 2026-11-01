@@ -248,6 +248,7 @@ export interface TranslationDictionary {
     mealValueExplainWhat: string;
     mealValueExplainRates: string;
     mealValueExplainLocal: string;
+    mealValueExplainLocalNeutral: string;
     mealValueExplainTotal: string;
     mealValueExplainRanking: string;
     mealValueExplainPrice: string;

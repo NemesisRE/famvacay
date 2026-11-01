@@ -20,8 +20,9 @@ export const MEAL_PLAN_DAILY_VALUE: Record<BoardType, { adult: number; child: nu
 export const MEAL_VALUE_CREDIT_SHARE = 0.75;
 
 /**
- * Price level (World Bank, USA = 1) the values above stand for: Mediterranean holiday countries
- * (Spain, Greece, Italy, Portugal are at about 0.65-0.75).
+ * Price level (World Bank, USA = 1) the values above were calibrated on: Mediterranean holiday
+ * countries (Spain, Greece, Italy, Portugal are at about 0.65-0.75). Internal only - texts compare
+ * with the user's home country, never with this reference.
  */
 export const MEAL_PRICE_REFERENCE_LEVEL = 0.7;
 
@@ -46,8 +47,19 @@ export interface MealPlanRates {
   adult: number;
   /** Euros per child and night at the destination */
   child: number;
-  /** Destination meal prices relative to the Mediterranean reference */
+  /** Destination meal prices relative to the base values (1 = base values) */
   priceFactor: number;
+  /** Holiday meals at the destination compared with the traveller's home country */
+  homeComparison?: { country: string; percent: number };
+}
+
+/**
+ * Holiday meals at the destination in percent of the same meals in the home country, with the
+ * same dampening as the valuation (shown to the user instead of the internal reference).
+ */
+export function mealPricePercentOfHome(destinationLevel: number | undefined, homeLevel: number | undefined): number | undefined {
+  if (!destinationLevel || !homeLevel) return undefined;
+  return Math.round(Math.pow(destinationLevel / homeLevel, LOCAL_PRICE_EXPONENT) * 100);
 }
 
 /** What the meals of a board type are worth at a destination with the given price level. */
