@@ -15,7 +15,8 @@ test('the calendar tab shows the holiday density of the country and the family v
     const view = new URL(route.request().url()).searchParams.get('view');
     const body =
       view === 'personal'
-        ? { homeRegion: 'DE-BW', schoolRegions: ['DE-BW'], regionsWithoutData: [], days: days('2027-07-01', 62, (d) => ({ onHoliday: d >= '2027-07-29' ? ['DE-BW'] : [], unknown: [] })) }
+        ? // No school children in this search: every day counts, rated by all regions on holiday
+          { homeRegion: 'DE-BW', schoolRegions: [], regionsWithoutData: [], otherRegionsTotal: 16, days: days('2027-07-01', 62, (_d, i) => ({ onHoliday: [], unknown: [], otherRegionsOnHoliday: i < 10 ? 0 : 12 })) }
         : { country: 'DE', totalRegions: 16, days: days('2027-07-01', 62, (_d, i) => ({ regionsOnHoliday: i % 17, ...(i === 0 ? { publicHoliday: 'Test Day' } : {}) })) };
     await route.fulfill({ json: body });
   });
@@ -44,8 +45,10 @@ test('the calendar tab shows the holiday density of the country and the family v
   expect(new URL(page.url()).searchParams.get('view')).toBe('calendar');
 
   await calendar.getByRole('button', { name: 'Your location' }).click();
-  await expect(calendar.getByRole('heading', { name: 'Your school holidays and public holidays' })).toBeVisible();
-  await expect(calendar.getByRole('listitem', { name: /July 29, 2027 · School holidays/ })).toBeVisible();
+  await expect(calendar.getByRole('heading', { name: 'Your best travel times' })).toBeVisible();
+  await expect(calendar.getByRole('listitem', { name: /July 20, 2027 · 12 of 16 regions on school holiday/ })).toBeVisible();
+  await expect(calendar.getByRole('heading', { name: 'Quietest periods' })).toBeVisible();
+  await expect(calendar.getByText(/Jul 1 – 10, 2027/)).toBeVisible();
 
   // Back returns to the previous view
   await page.goBack();
