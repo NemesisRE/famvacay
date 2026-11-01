@@ -92,6 +92,8 @@ import { CountrySelect, SubdivisionSelect } from '@/components/forms/RegionSelec
 import { BoardTypeSelect, OverlandModeIcons } from '@/components/forms/PreferenceSelects';
 import { toggleStyleSelection, toggleTravelModeSelection, toggleTravelDistance, readStyleSelection, readStoredStyleSelection, toOptimizerStyles, getClimateRelevance, ALL_TRAVEL_DISTANCES, type TravelDistance, type StyleSelection } from '@/lib/optimizer/style-selection';
 import { VacationStyleTiles, TravelDistanceTiles, TravelModeTiles, ClimatePreferencesPanel } from '@/components/forms/TravelPreferenceTiles';
+import { WorkdaysSelector } from '@/components/forms/WorkdaysSelector';
+import { normalizeWorkweek } from '@/lib/holidays/workweek';
 import { getDestinationPoint, getLocalizedDestinationLabel } from '@/lib/geo/destination-points';
 import { passportWarningsForTrip, type PassportHolder } from '@/lib/passport/validity';
 import { DateRangePicker } from '@/components/calendar/DateRangePicker';
@@ -128,6 +130,8 @@ export default function HomePage() {
   const [selectedStyles, setSelectedStyles] = useState<DestinationType[]>(['ALL']);
   // How far the trip may go (short/medium haul, long haul); both = any distance
   const [travelDistances, setTravelDistances] = useState<TravelDistance[]>([...ALL_TRAVEL_DISTANCES]);
+  // The family's own workdays (ISO weekdays), null = the usual week of the home country
+  const [workweekDays, setWorkweekDays] = useState<number[] | null>(null);
   const applyStyleSelection = ({ styles, distances }: StyleSelection) => {
     setSelectedStyles(styles);
     setTravelDistances(distances);
@@ -368,6 +372,7 @@ export default function HomePage() {
         if (parsed.country) setCountry(parsed.country);
         if (parsed.federalState) setFederalState(parsed.federalState);
         applyStyleSelection(readStyleSelection({ styles: parsed.selectedStyles, longRangeStyles: parsed.longRangeStyles, travelDistances: parsed.travelDistances }));
+        setWorkweekDays(normalizeWorkweek(parsed.workweekDays));
         if (Array.isArray(parsed.targetDestinations)) setTargetDestinations(parsed.targetDestinations);
         if (Array.isArray(parsed.originAirports)) setOriginAirports(parsed.originAirports);
         if (typeof parsed.adultsCount === 'number') setAdultsCount(parsed.adultsCount);
@@ -488,6 +493,7 @@ export default function HomePage() {
                   if (formState.country) setCountry(formState.country);
                   if (formState.federalState) setFederalState(formState.federalState);
                   applyStyleSelection(readStyleSelection({ styles: formState.selectedStyles, longRangeStyles: formState.longRangeStyles, travelDistances: formState.travelDistances }));
+                  setWorkweekDays(normalizeWorkweek(formState.workweekDays));
                   if (Array.isArray(formState.targetDestinations)) setTargetDestinations(formState.targetDestinations);
                   if (Array.isArray(formState.originAirports)) setOriginAirports(formState.originAirports);
                   if (typeof formState.adultsCount === 'number') setAdultsCount(formState.adultsCount);
@@ -555,6 +561,7 @@ export default function HomePage() {
         minBeachTemp,
         requireSnow,
         travelDistances,
+        workweekDays,
         excludedCountries,
         recurringBlackouts,
         preferredBoardType,
@@ -588,6 +595,7 @@ export default function HomePage() {
     minBeachTemp,
     requireSnow,
     travelDistances,
+    workweekDays,
     excludedCountries,
     recurringBlackouts,
     preferredBoardType,
@@ -736,6 +744,7 @@ export default function HomePage() {
     setDepartureCoords(null);
     setSelectedStyles(['ALL']);
     setTravelDistances([...ALL_TRAVEL_DISTANCES]);
+    setWorkweekDays(null);
     setTargetDestinations([]);
     setExcludedCountries([]);
     setOriginAirports([]);
@@ -865,6 +874,9 @@ export default function HomePage() {
             );
           }
 
+          if (Array.isArray(p.workweekDays)) {
+            setWorkweekDays(normalizeWorkweek(p.workweekDays));
+          }
           if (p.preferredCabinClass) {
             setPreferredCabinClass(p.preferredCabinClass);
           }
@@ -1070,6 +1082,8 @@ export default function HomePage() {
           preferredCabinClass,
           travelModes,
           maxFlightStops,
+          // Omitted: the engine takes the usual week of the home country
+          workweekDays: workweekDays ?? undefined,
         },
       };
 
@@ -1120,6 +1134,7 @@ export default function HomePage() {
               minBeachTemp,
               requireSnow,
               travelDistances,
+              workweekDays,
               excludedCountries,
               recurringBlackouts,
               maxFlightStops,
@@ -1234,6 +1249,7 @@ export default function HomePage() {
               minBeachTemp,
               requireSnow,
               travelDistances,
+              workweekDays,
               excludedCountries,
               recurringBlackouts,
               maxFlightStops,
@@ -2242,6 +2258,8 @@ export default function HomePage() {
                   <Info className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
                   <span>{t.home.holidayScopeNotice}</span>
                 </p>
+
+                <WorkdaysSelector value={workweekDays} country={country} onChange={setWorkweekDays} />
               </div>
 
               {/* Step 2: Travel Destinations & Vacation Style */}

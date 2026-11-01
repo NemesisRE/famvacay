@@ -413,11 +413,14 @@ export interface TranslationDictionary {
     ptoConsumed: string;
     ptoSaved: string;
     workweekComparisonTitle: string;
-    workweekFiveDays: string;
-    workweekSixDays: string;
     workweekHolidaysSaved: string;
     workweekFactor: string;
     workweekSixDayHint: string;
+    workweekYours: string;
+    workweekOwnHint: string;
+    workdaysLabel: string;
+    workdaysHint: string;
+    workdaysReset: string;
     ptoRatio: string;
     score: string;
     cachedBenchmark: string;

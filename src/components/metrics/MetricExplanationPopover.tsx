@@ -30,6 +30,7 @@ import {
 import { CandidateWindow } from '@/lib/optimizer/types';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { getSafetyTexts } from '@/components/destination/DestinationSafetyPopover';
+import { workweekLabel } from '@/lib/holidays/workweek';
 import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 interface MetricExplanationPopoverProps {
@@ -166,7 +167,7 @@ export function MetricExplanationPopover({
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                     {t.home.vacationFactorExplainDesc}
                   </p>
-                  {win.sixDayWorkweek ? (
+                  {win.workweekDays || win.sixDayWorkweek ? (
                     <WorkweekComparison window={win} />
                   ) : win.publicHolidaysCount > 0 && (
                     <div className="bg-emerald-50/80 dark:bg-emerald-950/40 rounded-lg p-2 border border-emerald-100 dark:border-emerald-800/60 flex items-center justify-between text-[11px] text-emerald-900 dark:text-emerald-200 mt-2">
@@ -354,20 +355,34 @@ export function MetricExplanationPopover({
   );
 }
 
+interface WorkweekColumn {
+  days: number[];
+  ptoDaysConsumed: number;
+  publicHolidaysCount: number;
+  ptoEfficiencyRatio: number;
+}
+
 /**
- * PTO days of the trip for a five-day (Mon-Fri) and a six-day (Mon-Sat) workweek side by side:
- * Saturdays cost a PTO day in the six-day week, and a public holiday on a Saturday saves one.
+ * PTO days of the trip for the family's workweek (their own or their country's usual one, e.g.
+ * Sunday-Thursday) and the six-day weeks next to it: the extra workday costs PTO, and a public
+ * holiday on it saves one. Columns are labelled with the actual weekdays.
  */
 function WorkweekComparison({ window: win }: { window: CandidateWindow }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const titleId = useId();
-  const six = win.sixDayWorkweek;
-  if (!six) return null;
-  const rows: { label: string; five: string; six: string; highlight?: boolean }[] = [
-    { label: t.home.ptoConsumed, five: `${win.ptoDaysConsumed}`, six: `${six.ptoDaysConsumed}`, highlight: true },
-    { label: t.home.workweekHolidaysSaved, five: `${win.publicHolidaysCount}`, six: `${six.publicHolidaysCount}` },
-    { label: t.home.workweekFactor, five: `${win.ptoEfficiencyRatio}x`, six: `${six.ptoEfficiencyRatio}x` },
+  // Results from before the workweek was stored: Monday-Friday next to Monday-Saturday
+  const ownDays = win.workweekDays ?? [1, 2, 3, 4, 5];
+  const variants = win.workweekVariants ?? (win.sixDayWorkweek ? [{ days: [1, 2, 3, 4, 5, 6], ...win.sixDayWorkweek }] : []);
+  const columns: WorkweekColumn[] = [
+    { days: ownDays, ptoDaysConsumed: win.ptoDaysConsumed, publicHolidaysCount: win.publicHolidaysCount, ptoEfficiencyRatio: win.ptoEfficiencyRatio },
+    ...variants,
   ];
+  const rows: { label: string; value: (c: WorkweekColumn) => string; highlight?: boolean }[] = [
+    { label: t.home.ptoConsumed, value: (c) => `${c.ptoDaysConsumed}`, highlight: true },
+    { label: t.home.workweekHolidaysSaved, value: (c) => `${c.publicHolidaysCount}` },
+    { label: t.home.workweekFactor, value: (c) => `${c.ptoEfficiencyRatio}x` },
+  ];
+  const cell = 'text-right tabular-nums px-2 py-1 border-t border-slate-100 dark:border-slate-800 whitespace-nowrap';
   return (
     <div className="space-y-1.5 pt-1">
       <p id={titleId} className="font-semibold text-[11px] text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
@@ -381,27 +396,35 @@ function WorkweekComparison({ window: win }: { window: CandidateWindow }) {
         <thead>
           <tr className="bg-white dark:bg-slate-900/70 text-slate-500 dark:text-slate-400">
             <td />
-            <th scope="col" className="text-right font-semibold px-2 py-1">{t.home.workweekFiveDays}</th>
-            <th scope="col" className="text-right font-semibold px-2 py-1">{t.home.workweekSixDays}</th>
+            {columns.map((c, i) => (
+              <th key={c.days.join()} scope="col" className="text-right font-semibold px-2 py-1 whitespace-nowrap">
+                {workweekLabel(c.days, locale)}
+                {i === 0 && variants.length > 0 && <span className="sr-only"> ({t.home.workweekYours})</span>}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.label} className="bg-white dark:bg-slate-900/70 border-t border-slate-100 dark:border-slate-800">
+            <tr key={row.label} className="bg-white dark:bg-slate-900/70">
               <th scope="row" className="text-left font-medium text-slate-600 dark:text-slate-300 px-2 py-1 border-t border-slate-100 dark:border-slate-800">
                 {row.label}
               </th>
-              <td className={`text-right tabular-nums px-2 py-1 border-t border-slate-100 dark:border-slate-800 ${row.highlight ? 'font-bold text-indigo-600 dark:text-indigo-400' : 'font-semibold text-slate-800 dark:text-slate-100'}`}>
-                {row.five}
-              </td>
-              <td className={`text-right tabular-nums px-2 py-1 border-t border-slate-100 dark:border-slate-800 ${row.highlight ? 'font-bold text-indigo-600 dark:text-indigo-400' : 'font-semibold text-slate-800 dark:text-slate-100'}`}>
-                {row.six}
-              </td>
+              {columns.map((c) => (
+                <td
+                  key={c.days.join()}
+                  className={`${cell} ${row.highlight ? 'font-bold text-indigo-600 dark:text-indigo-400' : 'font-semibold text-slate-800 dark:text-slate-100'}`}
+                >
+                  {row.value(c)}
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
       </table>
-      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">{t.home.workweekSixDayHint}</p>
+      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+        {variants.length > 0 ? t.home.workweekSixDayHint : t.home.workweekOwnHint}
+      </p>
     </div>
   );
 }

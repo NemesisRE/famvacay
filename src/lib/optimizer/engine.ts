@@ -10,7 +10,8 @@ import {
   TravelVehicle,
   WeatherAssessment,
 } from './types';
-import { calculateEffectivePtoDaysConsumed, ChildcareClosurePeriod, SIX_DAY_WORKWEEK } from './pto-calculator';
+import { calculateEffectivePtoDaysConsumed, ChildcareClosurePeriod } from './pto-calculator';
+import { countryWeekend, isoWeekday, resolveWorkweek, sixDayVariants } from '../holidays/workweek';
 import { applyChildcareArbitrageWarnings } from './childcare-arbitrage';
 import { calculatePassengerCostMultiplier } from './child-tiers';
 import {
@@ -86,30 +87,32 @@ export function overlapsWithBlackout(
 }
 
 /**
- * Expands official school holiday intervals with adjacent weekends.
- * In European schools, if a break starts on Monday (or Tuesday), the preceding weekend is school-free.
- * If a break ends on Friday (or Thursday), the following weekend is school-free.
+ * Expands official school holiday intervals with the adjacent weekend of the calendar's country
+ * (Saturday/Sunday, Friday/Saturday...): a break starting on the first (or second) school day of
+ * the week makes the weekend before it free too, one ending on the last (or second-to-last) school
+ * day the weekend after it.
  */
 export function expandSchoolHolidayWithWeekends(holiday: SchoolHoliday): { startDate: string; endDate: string } {
+  const weekend = countryWeekend(holiday.state?.split('-')[0]);
+  const isWeekend = (d: Date) => weekend.includes(isoWeekday(d));
   let start = parseISO(holiday.startDate);
   let end = parseISO(holiday.endDate);
 
-  const startDay = start.getDay(); // 0 is Sunday, 1 is Monday
-  if (startDay === 1) {
-    start = addDays(start, -2);
-  } else if (startDay === 2) {
-    start = addDays(start, -3);
-  } else if (startDay === 0) {
-    start = addDays(start, -1);
+  const dayBefore = addDays(start, -1);
+  if (isWeekend(start) || isWeekend(dayBefore)) {
+    while (isWeekend(addDays(start, -1))) start = addDays(start, -1);
+  } else if (isWeekend(addDays(dayBefore, -1))) {
+    // Starts on the second school day: the first one is bridged as well
+    start = dayBefore;
+    while (isWeekend(addDays(start, -1))) start = addDays(start, -1);
   }
 
-  const endDay = end.getDay(); // 5 is Friday
-  if (endDay === 5) {
-    end = addDays(end, 2);
-  } else if (endDay === 4) {
-    end = addDays(end, 3);
-  } else if (endDay === 6) {
-    end = addDays(end, 1);
+  const dayAfter = addDays(end, 1);
+  if (isWeekend(end) || isWeekend(dayAfter)) {
+    while (isWeekend(addDays(end, 1))) end = addDays(end, 1);
+  } else if (isWeekend(addDays(dayAfter, 1))) {
+    end = dayAfter;
+    while (isWeekend(addDays(end, 1))) end = addDays(end, 1);
   }
 
   return {
@@ -608,6 +611,9 @@ export function optimizeVacationWindows(
   // even when they are not among the selected departure airports (e.g. Karlsruhe -> Munich by
   // ICE for a non-stop long-haul flight instead of FKB/STR + a short feeder flight to FRA/MUC).
   const homeCountry = homeState ? getCountryCodeFromSubdivision(homeState) : undefined;
+  // The family's own workdays, else the usual week of their home country (Sunday-Thursday in
+  // Saudi Arabia, Monday-Friday in Australia)
+  const workweekDays = resolveWorkweek(userProfile.workweekDays, homeCountry);
   const railHubLegs: OriginLeg[] = [];
   if (planeSelected && input.railAirSuggestions !== false) {
     for (const hub of PRIMARY_GATEWAY_HUBS) {
@@ -882,24 +888,23 @@ export function optimizeVacationWindows(
         startStr,
         endStr,
         homePublicHolidays,
-        (userProfile as any).workweekDays,
+        workweekDays,
         childcareClosures
       );
       const ptoEfficiencyRatio = calculatePtoEfficiencyRatio(durationDays, ptoInfo.effectivePtoDaysConsumed);
-      // Shown next to the five-day numbers for families working Monday to Saturday
-      const sixDayPto = calculateEffectivePtoDaysConsumed(
-        startStr,
-        endStr,
-        homePublicHolidays,
-        SIX_DAY_WORKWEEK,
-        childcareClosures,
-        { suggestShifts: false }
-      );
-      const sixDayWorkweek = {
-        ptoDaysConsumed: sixDayPto.effectivePtoDaysConsumed,
-        publicHolidaysCount: sixDayPto.publicHolidaysCount,
-        ptoEfficiencyRatio: calculatePtoEfficiencyRatio(durationDays, sixDayPto.effectivePtoDaysConsumed),
-      };
+      // Shown next to a five-day week for families working six days (Monday-Saturday, or both
+      // Sunday-Friday and Saturday-Thursday where the weekend is Friday/Saturday)
+      const workweekVariants = sixDayVariants(workweekDays).map((days) => {
+        const variant = calculateEffectivePtoDaysConsumed(startStr, endStr, homePublicHolidays, days, childcareClosures, {
+          suggestShifts: false,
+        });
+        return {
+          days,
+          ptoDaysConsumed: variant.effectivePtoDaysConsumed,
+          publicHolidaysCount: variant.publicHolidaysCount,
+          ptoEfficiencyRatio: calculatePtoEfficiencyRatio(durationDays, variant.effectivePtoDaysConsumed),
+        };
+      });
 
       // Arbitrage check per departure airport: the fare advantage exists when the family's own
       // region is on holiday (peak demand at the home airports) while the departure airport's
@@ -1027,7 +1032,8 @@ export function optimizeVacationWindows(
           overlapsChildcareClosure: ptoInfo.overlappingClosureWeekdays > 0,
           hasYoungChildAtDeparture: hasYoungChild,
           ptoEfficiencyRatio,
-          sixDayWorkweek,
+          workweekDays,
+          workweekVariants,
           suggestedShifts: ptoInfo.suggestedShifts,
           weather,
           seasonalWarning,

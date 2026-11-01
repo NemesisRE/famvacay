@@ -45,6 +45,8 @@ import { resolveCountryAndRegion } from '@/lib/geo/location-helpers';
 import { SelectDropdown } from '@/components/ui/select-dropdown';
 import { CountryExclusionPicker } from '@/components/destination/CountryExclusionPicker';
 import { DatePicker } from '@/components/calendar/DatePicker';
+import { WorkdaysSelector } from '@/components/forms/WorkdaysSelector';
+import { normalizeWorkweek } from '@/lib/holidays/workweek';
 
 interface FamilyMemberForm {
   firstName: string;
@@ -81,6 +83,8 @@ function FamilyProfileContent() {
   const [homeLocation, setHomeLocation] = useState('');
   const [departureCoords, setDepartureCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [country, setCountry] = useState('DE');
+  // Own workdays (ISO weekdays), null = the usual week of the home country
+  const [workweekDays, setWorkweekDays] = useState<number[] | null>(null);
   const [federalState, setFederalState] = useState('DE-BW');
   const [originAirports, setOriginAirports] = useState<string[]>([]);
   const [preferredCabinClass, setPreferredCabinClass] = useState('ECONOMY');
@@ -169,6 +173,7 @@ function FamilyProfileContent() {
               setAirportRoadRouting(routing);
             }
             setPreferredCabinClass(p.preferredCabinClass || 'ECONOMY');
+            setWorkweekDays(normalizeWorkweek(p.workweekDays));
             setPassportCheckRequired(p.passportCheckRequired ?? true);
             if (Array.isArray(p.travelModes) && p.travelModes.length > 0) {
               setTravelModes(p.travelModes);
@@ -351,6 +356,8 @@ function FamilyProfileContent() {
           familyName,
           homeLocation,
           federalState,
+          // Empty: the usual week of the home country, which follows a change of country
+          workweekDays: workweekDays ?? [],
           originAirports,
           maxTravelHours: maxOverlandDurationHours,
           preferredCabinClass,
@@ -502,6 +509,7 @@ function FamilyProfileContent() {
               <Info className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
               <span>{t.home.holidayScopeNotice}</span>
             </p>
+            <WorkdaysSelector value={workweekDays} country={country} onChange={setWorkweekDays} idPrefix="profile-workdays" />
           </div>
 
           {/* Section 2: Vacation & travel preferences - same order and controls as the search form */}

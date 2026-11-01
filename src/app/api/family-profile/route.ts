@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth-options';
 import { prisma } from '@/lib/db/prisma';
 import { resolveFamilyAirportRoadRouting } from '@/lib/geo/osrm';
+import { normalizeWorkweek } from '@/lib/holidays/workweek';
 
 export const dynamic = 'force-dynamic';
 
@@ -142,7 +143,8 @@ export async function POST(req: NextRequest) {
       federalState,
       holidayCountry: holidayCountry || 'DE',
       holidaySubdivision: holidaySubdivision || federalState,
-      workweekDays: Array.isArray(workweekDays) && workweekDays.length > 0 ? workweekDays : [1, 2, 3, 4, 5],
+      // Empty = the usual week of the home country (resolved when searching, so it follows the country)
+      workweekDays: normalizeWorkweek(workweekDays) ?? [],
       originAirports: Array.isArray(originAirports) ? originAirports : [],
       maxTravelHours: maxTravelHours !== undefined ? Number(maxTravelHours) : null,
       preferredCabinClass: preferredCabinClass || 'ECONOMY',

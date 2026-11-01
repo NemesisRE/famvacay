@@ -100,7 +100,7 @@ model FamilyProfile {
   federalState          String             // Holiday subdivision code (e.g., "DE-BW", "FR-IDF")
   holidayCountry        String?            @default("DE")
   holidaySubdivision    String?
-  workweekDays          Int[]              @default([1, 2, 3, 4, 5]) // Mon(1) - Fri(5)
+  workweekDays          Int[]              @default([]) // Own workdays (ISO, 1 = Monday); empty = the home country's usual week
   originAirports        String[]           @default([])
   maxDrivingHours       Float?             @default(2.5)
   maxTravelHours        Float?

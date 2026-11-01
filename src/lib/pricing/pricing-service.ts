@@ -9,6 +9,7 @@ import {
 import { BoardType } from '../optimizer/types';
 import { localMealPlanRates, mealPricePercentOfHome, MEAL_VALUE_CREDIT_SHARE, type MealPlanRates } from './meal-plan-value';
 import { destinationCountryCode, getCountryPriceLevel } from './price-levels';
+import { countryWeekend, isoWeekday } from '../holidays/workweek';
 import { calculatePassengerCostMultiplier } from '../optimizer/child-tiers';
 import { getAirportByIata, calculateGeodesicDistanceKm } from '../airports/airport-service';
 import { getDestinationPoint } from '../geo/destination-points';
@@ -74,9 +75,15 @@ export function generateBookingComLink(
  * - Friday: ~18% higher fares (weekend outbound rush)
  * - Saturday: ~25% higher fares (peak family turnover)
  * - Sunday: ~22% higher fares (peak return / leisure outbound)
+ * The pattern follows the travellers' weekend (ISO weekdays; Saturday/Sunday by default): where the
+ * weekend is Friday/Saturday, Thursday is the "Friday" and Saturday the "Sunday".
  */
-export function getFlightDayOfWeekMultiplier(dateStr: string): number {
-  const d = new Date(dateStr).getDay();
+export function getFlightDayOfWeekMultiplier(dateStr: string, weekend: number[] = [6, 7]): number {
+  // Shift the week so that the last weekend day lands on Sunday
+  const lastWeekendDay = weekend.find((d) => !weekend.includes((d % 7) + 1)) ?? 7;
+  const iso = isoWeekday(new Date(dateStr));
+  const shifted = ((iso - 1 + (7 - lastWeekendDay)) % 7) + 1;
+  const d = shifted % 7; // back to getDay() numbering (0 = Sunday)
   switch (d) {
     case 2: // Tuesday
     case 3: // Wednesday
@@ -327,9 +334,10 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
       baseFlightFare = isPeakSummer ? 860 : (isShoulder ? 640 : (isWinterPeak ? 740 : 590));
     }
 
-    // Day-of-week flight demand factor & holiday surge
-    const outboundDOW = getFlightDayOfWeekMultiplier(startDate);
-    const returnDOW = getFlightDayOfWeekMultiplier(endDate);
+    // Day-of-week flight demand factor (the travellers' weekend) & holiday surge
+    const travellersWeekend = countryWeekend(params.homeCountry ?? origAirport?.state?.split('-')[0]);
+    const outboundDOW = getFlightDayOfWeekMultiplier(startDate, travellersWeekend);
+    const returnDOW = getFlightDayOfWeekMultiplier(endDate, travellersWeekend);
     const flightDOWMultiplier = Math.round(((outboundDOW + returnDOW) / 2) * 100) / 100;
     const holidaySurge = getHolidaySurgeMultiplier(startDate, endDate);
     const isMidweekSaving = flightDOWMultiplier <= 0.92;
@@ -405,13 +413,16 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
 
     const nights = Math.max(1, durationDays - 1);
 
-    // Count weekend nights (Friday & Saturday nights command higher rates)
+    // Count weekend nights - the nights before the destination's weekend days (Friday & Saturday
+    // nights where the weekend is Saturday/Sunday, Thursday & Friday nights where it is Friday/Saturday)
+    const destinationWeekend = countryWeekend(destinationCountryCode(destAirport));
     let weekendNights = 0;
     const curDate = new Date(startDate);
     const endDateObj = new Date(endDate);
     while (curDate < endDateObj) {
-      const d = curDate.getDay();
-      if (d === 5 || d === 6) weekendNights++;
+      const nextDay = new Date(curDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      if (destinationWeekend.includes(isoWeekday(nextDay))) weekendNights++;
       curDate.setDate(curDate.getDate() + 1);
     }
     const boardType = resolveDestinationBoardType(destinationAirport, params.preferredBoardType);
