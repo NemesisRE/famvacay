@@ -10,6 +10,7 @@ import { BoardType } from '../optimizer/types';
 import { localMealPlanRates, mealPricePercentOfHome, MEAL_VALUE_CREDIT_SHARE, type MealPlanRates } from './meal-plan-value';
 import { destinationCountryCode, getCountryPriceLevel } from './price-levels';
 import { hotelNightlyRate } from './hotel-rates';
+import { getResortPremium } from './tourism-spend';
 import { countryWeekend, isoWeekday } from '../holidays/workweek';
 import { calculatePassengerCostMultiplier } from '../optimizer/child-tiers';
 import { getAirportByIata, calculateGeodesicDistanceKm } from '../airports/airport-service';
@@ -389,8 +390,13 @@ export class PortalAggregatorProvider implements TravelPricingProvider {
     // 2. Destination living cost & hotel tier
     // Rooms follow the destination country's price level (World Bank dataset) instead of
     // hand-picked lists of expensive and cheap airports
-    const destinationPriceLevel = getCountryPriceLevel(destinationCountryCode(destAirport));
-    let nightlyRate = hotelNightlyRate(destinationPriceLevel, isPeakSummer ? 'PEAK' : (isShoulder ? 'SHOULDER' : 'OFF'));
+    const destinationCountry = destinationCountryCode(destAirport);
+    const destinationPriceLevel = getCountryPriceLevel(destinationCountry);
+    let nightlyRate = hotelNightlyRate(
+      destinationPriceLevel,
+      isPeakSummer ? 'PEAK' : (isShoulder ? 'SHOULDER' : 'OFF'),
+      getResortPremium(destinationCountry)
+    );
 
     // Non-linear room occupancy topology: hotels enforce strict occupancy cliffs
     // (family studio / 2-bedroom suite) rather than smooth linear per-head scaling.

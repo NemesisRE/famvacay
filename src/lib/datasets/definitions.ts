@@ -16,6 +16,8 @@ import { generateCityNames } from './generators/city-names';
 import { generateClimateNormals, type ClimateGeneratorState } from './generators/climate-normals';
 import { generateHolidayData, HOLIDAY_APPEAL_ROW_LENGTH, type HolidayData } from './generators/holiday-appeal';
 import { generatePriceLevels } from './generators/price-levels';
+import { generateTourismSpend } from './generators/tourism-spend';
+import tourismSpendSeed from '@/lib/pricing/data/tourism-spend.json';
 
 /**
  * The refreshable reference datasets, in dependency order (routes, traffic, names, holiday appeal and climate
@@ -175,6 +177,18 @@ export const DATASET_DEFINITIONS: DatasetDefinition[] = [
       everyValue(data, (v, k) => /^[A-Z]{2}$/.test(k) && typeof v === 'number' && v >= 0.05 && v <= 5)
         ? notShrunk(data, before, 150, 0.8)
         : 'invalid price levels',
+  },
+  {
+    // Tourist spend per arrival (World Bank): where holidays cost more than the national price level
+    name: 'tourism-spend',
+    seed: tourismSpendSeed,
+    refreshIntervalMs: 90 * DAY_MS,
+    run: async (ctx) => ({ data: await generateTourismSpend(ctx) }),
+    validate: (data, before) =>
+      everyValue(data, (v, k) => /^[A-Z]{2}$/.test(k) && typeof v === 'number' && v >= 50 && v <= 20000)
+        // The bundled seed is filled by the data-sync workflow; until then an empty start is valid
+        ? notShrunk(data, before, sizeOf(before) === 0 ? 0 : 80, 0.8)
+        : 'invalid tourism spend',
   },
   {
     name: 'climate-normals',

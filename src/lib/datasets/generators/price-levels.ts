@@ -19,7 +19,7 @@ interface WorldBankPage<T> {
   pages: number;
 }
 
-async function fetchAllPages<T>(ctx: GeneratorContext, path: string): Promise<T[]> {
+export async function fetchAllPages<T>(ctx: GeneratorContext, path: string): Promise<T[]> {
   const rows: T[] = [];
   for (let page = 1; ; page++) {
     const url = `${API}/${path}${path.includes('?') ? '&' : '?'}format=json&per_page=${PER_PAGE}&page=${page}`;
@@ -34,7 +34,7 @@ async function fetchAllPages<T>(ctx: GeneratorContext, path: string): Promise<T[
   }
 }
 
-interface CountryRow {
+export interface CountryRow {
   iso2Code: string;
   region: { value: string };
 }
@@ -44,7 +44,7 @@ interface IndicatorRow {
   value: number | null;
 }
 
-async function latestValues(ctx: GeneratorContext, indicator: string): Promise<Map<string, number>> {
+export async function latestValues(ctx: GeneratorContext, indicator: string): Promise<Map<string, number>> {
   // mrnev=1: the most recent non-empty value per country
   const rows = await fetchAllPages<IndicatorRow>(ctx, `country/all/indicator/${indicator}?mrnev=1`);
   const values = new Map<string, number>();

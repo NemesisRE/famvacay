@@ -30,7 +30,21 @@ export function hotelPriceFactor(priceLevel: number | undefined): number {
   return Math.min(MAX_HOTEL_FACTOR, Math.max(MIN_HOTEL_FACTOR, factor));
 }
 
-/** Nightly rate in euros for a destination country price level and season. */
-export function hotelNightlyRate(priceLevel: number | undefined, season: HotelSeason): number {
-  return Math.round(BASE_NIGHTLY_RATE[season] * hotelPriceFactor(priceLevel));
+const RESORT_PREMIUM_EXPONENT = 0.4;
+const MAX_RESORT_PREMIUM = 1.7;
+
+/**
+ * Extra for destinations where holidays cost more than the national price level suggests (island
+ * resorts, luxury destinations): tourist spend per arrival relative to the typical country.
+ * Never below 1, because the price level already covers cheap countries.
+ */
+export function resortPremium(spendPerArrival: number | undefined, typicalSpend: number | undefined): number {
+  if (!spendPerArrival || !typicalSpend || spendPerArrival <= typicalSpend) return 1;
+  const premium = Math.pow(spendPerArrival / typicalSpend, RESORT_PREMIUM_EXPONENT);
+  return Math.round(Math.min(MAX_RESORT_PREMIUM, premium) * 100) / 100;
+}
+
+/** Nightly rate in euros for a destination country price level, season and resort premium. */
+export function hotelNightlyRate(priceLevel: number | undefined, season: HotelSeason, premium = 1): number {
+  return Math.round(BASE_NIGHTLY_RATE[season] * hotelPriceFactor(priceLevel) * premium);
 }
