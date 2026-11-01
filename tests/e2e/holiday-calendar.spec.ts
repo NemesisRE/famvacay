@@ -39,7 +39,8 @@ test('the calendar tab shows the holiday density of the country and the family v
   const calendar = page.locator('section[aria-labelledby="holiday-calendar-title"]');
   await expect(calendar.getByRole('heading', { name: /School holidays – Germany/ })).toBeVisible();
   await expect(calendar.getByRole('heading', { name: /July 2027/ })).toBeVisible();
-  await expect(calendar.getByRole('listitem', { name: /Thu, July 1, 2027 · 0 of 16 regions on school holiday · Public holiday: Test Day/ })).toBeVisible();
+  // The weekday abbreviation differs between browser engines: match the date and the content only
+  await expect(calendar.getByRole('listitem', { name: /July 1, 2027 · 0 of 16 regions on school holiday · Public holiday: Test Day/ })).toBeVisible();
   expect(new URL(page.url()).searchParams.get('view')).toBe('calendar');
 
   await calendar.getByRole('button', { name: 'Your location' }).click();
