@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, Info, Loader2 } from 'lucide-react';
+import { CalendarDays, Info, Loader2, Star } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
 import { countryWeekInfo, countryWeekend, weekdayName } from '@/lib/holidays/workweek';
 import { COUNTRIES, getLocalizedCountryName } from '@/lib/regions/subdivisions';
+import { findBestStretches } from '@/lib/holidays/best-holiday-days';
 
 type CalendarView = 'country' | 'personal';
 
@@ -206,6 +207,30 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
     return { ...PERSONAL.school, label: t.home.calendarLegendSchoolDay + partly };
   };
 
+  // Personal view: the best stretch of every block of shared holiday days in the travel period (the
+  // fewest other regions off), marked with a star and listed below the calendar
+  const bestStretches =
+    shownView === 'personal' && data && otherTotal > 0
+      ? findBestStretches(
+          (data.days as PersonalDay[])
+            .filter(
+              (d) =>
+                d.date >= earliestDate &&
+                d.date <= latestDate &&
+                !isBlackout(d.date) &&
+                d.onHoliday.length > 0 &&
+                d.onHoliday.length >= (data.schoolRegions?.length || 1)
+            )
+            .map((d) => ({ date: d.date, otherRegions: d.otherRegionsOnHoliday }))
+        )
+      : [];
+  // Stars only where part of a break stands out; a break that is equally busy throughout gets none
+  const isBestDay = (date: string) =>
+    bestStretches.some((b) => (b.start !== b.blockStart || b.end !== b.blockEnd) && date >= b.start && date <= b.end);
+  // "1.–11. Sept. 2027", "Sep 1 – 11, 2027": the year and month only once, per the user's language
+  const rangeFormat = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const dateRange = (start: string, end: string) => rangeFormat.formatRange(new Date(`${start}T00:00:00Z`), new Date(`${end}T00:00:00Z`));
+
   const noSchoolData =
     !!data &&
     !data.failed &&
@@ -302,7 +327,10 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
                     const inPeriod = date >= earliestDate && date <= latestDate;
                     const style = dayStyle(date);
                     const holiday = byDate.get(date)?.publicHoliday;
-                    const label = [longDate(date), style.label, holiday ? `${t.home.calendarLegendPublicHoliday}: ${holiday}` : ''].filter(Boolean).join(' · ');
+                    const best = isBestDay(date);
+                    const label = [longDate(date), style.label, best ? t.home.calendarBestDays : '', holiday ? `${t.home.calendarLegendPublicHoliday}: ${holiday}` : '']
+                      .filter(Boolean)
+                      .join(' · ');
                     return (
                       <span
                         key={date}
@@ -314,6 +342,9 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
                         } ${holiday ? 'ring-2 ring-inset ring-amber-500 dark:ring-amber-400' : ''}`}
                       >
                         <span aria-hidden="true">{i + 1}</span>
+                        {best && (
+                          <Star aria-hidden="true" className="absolute -top-1 -right-1 w-2.5 h-2.5 fill-white stroke-emerald-700 dark:stroke-emerald-300 stroke-[2.5]" />
+                        )}
                       </span>
                     );
                   })}
@@ -324,6 +355,27 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
         </div>
       </div>
 
+      {bestStretches.length > 0 && (
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/70 dark:bg-emerald-950/30 p-3 space-y-1.5">
+          <h4 className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+            <Star aria-hidden="true" className="w-3.5 h-3.5 fill-white stroke-emerald-700 dark:stroke-emerald-300 stroke-[2.5]" />
+            {t.home.calendarBestTitle}
+          </h4>
+          <ul className="space-y-1 text-[11px] text-emerald-950 dark:text-emerald-100">
+            {bestStretches.map((b) => (
+              <li key={b.start}>
+                <span className="font-semibold">{dateRange(b.start, b.end)}</span>
+                {' · '}
+                {t.home.calendarBestOthers
+                  .replace('{count}', b.maxOtherRegions > b.otherRegions ? `${b.otherRegions}–${b.maxOtherRegions}` : String(b.otherRegions))
+                  .replace('{total}', String(otherTotal))}
+                <span className="text-emerald-800/70 dark:text-emerald-300/70"> ({t.home.calendarBestBlock.replace('{range}', dateRange(b.blockStart, b.blockEnd))})</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-600 dark:text-slate-300 min-h-[2.75rem] content-start">
         {scale.length > 0 && <span className="font-semibold">{shownView === 'country' ? t.home.calendarRegionsLegend : t.home.calendarPersonalLegend}</span>}
         {scale.map((b, i) => (
@@ -332,6 +384,12 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
             {bucketLabel(scale, i)}
           </span>
         ))}
+        {bestStretches.length > 0 && (
+          <span className="inline-flex items-center gap-1">
+            <Star aria-hidden="true" className="w-3 h-3 fill-white stroke-emerald-700 dark:stroke-emerald-300 stroke-[2.5]" />
+            {t.home.calendarBestDays}
+          </span>
+        )}
         {extraLegend.map((item) => (
           <span key={item.label} className="inline-flex items-center gap-1">
             <span aria-hidden="true" className={`w-3 h-3 rounded-[3px] ${item.className}`} />

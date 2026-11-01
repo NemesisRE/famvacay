@@ -450,6 +450,10 @@ export interface TranslationDictionary {
     calendarRegionsCount: string;
     calendarRegionsLegend: string;
     calendarPersonalLegend: string;
+    calendarBestTitle: string;
+    calendarBestDays: string;
+    calendarBestOthers: string;
+    calendarBestBlock: string;
     calendarOtherRegionsCount: string;
     calendarLegendAllFree: string;
     calendarLegendSomeFree: string;
