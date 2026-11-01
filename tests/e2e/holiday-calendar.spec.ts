@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-test.use({ locale: 'en-US' });
+// Production builds register the service worker, whose requests bypass page.route stubs
+test.use({ locale: 'en-US', serviceWorkers: 'block' });
 
 // The calendar data comes from a stub, so the test does not depend on OpenHolidays
 const days = (from: string, count: number, make: (date: string, i: number) => object) =>
@@ -39,7 +40,6 @@ test('the calendar tab shows the holiday density of the country and the family v
   const calendar = page.locator('section[aria-labelledby="holiday-calendar-title"]');
   await expect(calendar.getByRole('heading', { name: /School holidays – Germany/ })).toBeVisible();
   await expect(calendar.getByRole('heading', { name: /July 2027/ })).toBeVisible();
-  // The weekday abbreviation differs between browser engines: match the date and the content only
   await expect(calendar.getByRole('listitem', { name: /July 1, 2027 · 0 of 16 regions on school holiday · Public holiday: Test Day/ })).toBeVisible();
   expect(new URL(page.url()).searchParams.get('view')).toBe('calendar');
 
