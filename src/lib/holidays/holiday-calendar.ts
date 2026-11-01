@@ -1,5 +1,5 @@
 import Holidays from 'date-holidays';
-import { getCountrySchoolHolidays, getSchoolHolidays } from '@/lib/integrations/open-holidays';
+import { getCountrySchoolHolidays, getSchoolHolidays, toOpenHolidaysSubdivision } from '@/lib/integrations/open-holidays';
 import { isCalendarYearComplete } from './source-markets';
 import { resolveDateHolidaysRegion } from './date-holidays-cache';
 
@@ -67,7 +67,18 @@ export interface CountryCalendar {
   days: CountryCalendarDay[];
 }
 
+interface CountryCalendarData extends CountryCalendar {
+  /** OpenHolidays region codes of the data, and which of them are on holiday per day */
+  regionCodes: string[];
+  activeByDate: Map<string, Set<string> | 'all'>;
+}
+
 export async function getCountryHolidayCalendar(country: string, from: string, to: string, locale: string): Promise<CountryCalendar> {
+  const { regionCodes: _codes, activeByDate: _active, ...calendar } = await buildCountryCalendar(country, from, to, locale);
+  return calendar;
+}
+
+async function buildCountryCalendar(country: string, from: string, to: string, locale: string): Promise<CountryCalendarData> {
   const code = country.toUpperCase();
   const years = yearsBetween(from, to);
   const periodsByYear = await Promise.all(years.map((y) => getCountrySchoolHolidays(code, y)));
@@ -92,6 +103,7 @@ export async function getCountryHolidayCalendar(country: string, from: string, t
   const totalRegions = regions.size > 0 ? regions.size : periods.length > 0 ? 1 : 0;
   const holidays = publicHolidayNames(code, years, locale);
 
+  const activeByDate = new Map<string, Set<string> | 'all'>();
   const days = eachDay(from, to).map((date) => {
     let regionsOnHoliday: number | null = null;
     if (totalRegions > 0 && knownYears.has(parseInt(date.slice(0, 4), 10))) {
@@ -103,17 +115,23 @@ export async function getCountryHolidayCalendar(country: string, from: string, t
         for (const s of p.subdivisions) active.add(s);
       }
       regionsOnHoliday = nationwide ? totalRegions : active.size;
+      activeByDate.set(date, nationwide ? 'all' : active);
     }
     const publicHoliday = holidays.get(date);
     return { date, regionsOnHoliday, ...(publicHoliday ? { publicHoliday } : {}) };
   });
-  return { country: code, totalRegions, days };
+  return { country: code, totalRegions, days, regionCodes: [...regions], activeByDate };
 }
 
 export interface PersonalCalendarDay {
   date: string;
   /** School regions (of the children, else the home region) on holiday that day */
   onHoliday: string[];
+  /**
+   * Other school regions of the home country on holiday that day (crowds and prices while the
+   * family is free); null = unknown
+   */
+  otherRegionsOnHoliday: number | null;
   /** School regions without published holidays for that year */
   unknown: string[];
   publicHoliday?: string;
@@ -124,6 +142,8 @@ export interface PersonalCalendar {
   schoolRegions: string[];
   /** School regions without any school holiday data (country not covered) */
   regionsWithoutData: string[];
+  /** Regions of the home country besides the family's own (the scale of otherRegionsOnHoliday) */
+  otherRegionsTotal: number;
   days: PersonalCalendarDay[];
 }
 
@@ -147,9 +167,16 @@ export async function getPersonalHolidayCalendar(
     })
   );
   const holidays = publicHolidayNames(home, years, locale);
+  // The rest of the home country: how crowded the family's free days are
+  const country = await buildCountryCalendar(home.split('-')[0], from, to, locale);
+  const ownCodes = new Set(regions.map((r) => toOpenHolidaysSubdivision(r)).filter((r) => country.regionCodes.includes(r)));
+  const otherRegionsTotal = Math.max(0, country.totalRegions - ownCodes.size);
 
   const days = eachDay(from, to).map((date) => {
     const year = parseInt(date.slice(0, 4), 10);
+    const active = country.activeByDate.get(date);
+    const otherRegionsOnHoliday =
+      active === undefined ? null : active === 'all' ? otherRegionsTotal : [...active].filter((r) => !ownCodes.has(r)).length;
     const onHoliday: string[] = [];
     const unknown: string[] = [];
     for (const r of byRegion) {
@@ -157,8 +184,8 @@ export async function getPersonalHolidayCalendar(
       else if (r.holidays.some((h) => date >= h.startDate && date <= h.endDate)) onHoliday.push(r.region);
     }
     const publicHoliday = holidays.get(date);
-    return { date, onHoliday, unknown, ...(publicHoliday ? { publicHoliday } : {}) };
+    return { date, onHoliday, unknown, otherRegionsOnHoliday, ...(publicHoliday ? { publicHoliday } : {}) };
   });
   const regionsWithoutData = byRegion.filter((r) => r.holidays.length === 0).map((r) => r.region);
-  return { homeRegion: home, schoolRegions: regions, regionsWithoutData, days };
+  return { homeRegion: home, schoolRegions: regions, regionsWithoutData, otherRegionsTotal, days };
 }

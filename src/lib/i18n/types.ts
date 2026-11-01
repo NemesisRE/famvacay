@@ -449,6 +449,8 @@ export interface TranslationDictionary {
     calendarPersonalHint: string;
     calendarRegionsCount: string;
     calendarRegionsLegend: string;
+    calendarPersonalLegend: string;
+    calendarOtherRegionsCount: string;
     calendarLegendAllFree: string;
     calendarLegendSomeFree: string;
     calendarLegendSchoolDay: string;
@@ -456,6 +458,7 @@ export interface TranslationDictionary {
     calendarLegendPublicHoliday: string;
     calendarLegendBlackout: string;
     calendarLegendUnknown: string;
+    calendarLegendNoData: string;
     calendarNoSchoolData: string;
     calendarSources: string;
     viewModeDestination: string;

@@ -1411,14 +1411,30 @@ export default function HomePage() {
       .map((c) => c.schoolRegion || federalState);
     return [...new Set(regions)];
   }, [childrenList, earliestDate, federalState]);
+  // The chosen holidays of the home region, dated by the server for the travel period (as for the search)
+  const recurringKey = [federalState, earliestDate, latestDate, locale, recurringBlackouts.join(',')].join('|');
+  const [recurringDates, setRecurringDates] = useState<{ key: string; dates: { startDate: string; endDate: string; reason: string }[] }>({
+    key: '',
+    dates: [],
+  });
+  useEffect(() => {
+    if (!earliestDate || !latestDate || recurringBlackouts.length === 0) return;
+    let active = true;
+    resolveSelectedHolidayBlackouts(recurringBlackouts, federalState, earliestDate, latestDate, locale).then((list) => {
+      if (active) setRecurringDates({ key: recurringKey, dates: list.map((h) => ({ startDate: h.startDate, endDate: h.endDate, reason: h.name })) });
+    });
+    return () => {
+      active = false;
+    };
+    // recurringKey covers every input
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recurringKey]);
   const calendarBlackouts = useMemo(
     () => [
       ...searchBlackouts.filter((b) => b.startDate && b.endDate),
-      ...(earliestDate && latestDate
-        ? resolveSpecialHolidayPeriods(recurringBlackouts, earliestDate, latestDate, locale).map((h) => ({ startDate: h.startDate, endDate: h.endDate, reason: h.name }))
-        : []),
+      ...(recurringBlackouts.length > 0 && recurringDates.key === recurringKey ? recurringDates.dates : []),
     ],
-    [searchBlackouts, recurringBlackouts, earliestDate, latestDate, locale]
+    [searchBlackouts, recurringBlackouts.length, recurringDates, recurringKey]
   );
 
   const scrollToResultsTop = () =>

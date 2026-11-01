@@ -21,6 +21,7 @@ const regionHolidays: Record<string, { startDate: string; endDate: string; name:
 vi.mock('@/lib/integrations/open-holidays', () => ({
   getCountrySchoolHolidays: vi.fn(async (country: string, year: number) => countryPeriods[`${country}-${year}`] ?? []),
   getSchoolHolidays: vi.fn(async (region: string, year: number) => regionHolidays[`${region}-${year}`] ?? []),
+  toOpenHolidaysSubdivision: (region: string) => region,
 }));
 
 const { getCountryHolidayCalendar, getPersonalHolidayCalendar } = await import('../holiday-calendar');
@@ -58,6 +59,16 @@ describe('personal holiday calendar (children school regions, home public holida
     expect(day(cal.days, '2027-08-01').onHoliday).toEqual(['XA-1', 'XA-2']);
     expect(day(cal.days, '2027-08-20').onHoliday).toEqual(['XA-2']);
     expect(cal.regionsWithoutData).toEqual([]);
+  });
+
+  it('rates the family free days by the other regions of the country on holiday', async () => {
+    const cal = await getPersonalHolidayCalendar('XA-1', ['XA-1'], '2027-07-01', '2027-09-01', 'en');
+    expect(cal.otherRegionsTotal).toBe(2);
+    // Early July: only the family's own region is off; August: both others too
+    expect(day(cal.days, '2027-07-05').otherRegionsOnHoliday).toBe(0);
+    expect(day(cal.days, '2027-08-01').otherRegionsOnHoliday).toBe(2);
+    expect(day(cal.days, '2027-08-17').otherRegionsOnHoliday).toBe(2);
+    expect(day(cal.days, '2027-08-25').otherRegionsOnHoliday).toBe(1);
   });
 
   it('uses the home region without school children and flags regions without data', async () => {
