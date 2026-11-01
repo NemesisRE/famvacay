@@ -6,7 +6,7 @@ export type HotelSeason = 'PEAK' | 'SHOULDER' | 'OFF';
  * Nightly rate in euros for a standard family room at a destination with the reference price
  * level (see HOTEL_PRICE_REFERENCE_LEVEL), per season.
  */
-export const BASE_NIGHTLY_RATE: Record<HotelSeason, number> = { PEAK: 155, SHOULDER: 115, OFF: 95 };
+export const BASE_NIGHTLY_RATE: Record<HotelSeason, number> = { PEAK: 165, SHOULDER: 122, OFF: 100 };
 
 /**
  * Price level (World Bank, USA = 1) the base rates were calibrated on: Mediterranean coastal
@@ -18,7 +18,7 @@ export const HOTEL_PRICE_REFERENCE_LEVEL = 0.7;
  * Hotels follow the national price level only in part: resorts charge closer to international
  * prices than the local average (a bit more than meals do, see LOCAL_PRICE_EXPONENT there).
  */
-const HOTEL_PRICE_EXPONENT = 0.7;
+const HOTEL_PRICE_EXPONENT = 0.55;
 const MIN_HOTEL_FACTOR = 0.6;
 const MAX_HOTEL_FACTOR = 1.9;
 
@@ -30,8 +30,8 @@ export function hotelPriceFactor(priceLevel: number | undefined): number {
   return Math.min(MAX_HOTEL_FACTOR, Math.max(MIN_HOTEL_FACTOR, factor));
 }
 
-const RESORT_PREMIUM_EXPONENT = 0.4;
-const MAX_RESORT_PREMIUM = 1.7;
+const RESORT_PREMIUM_EXPONENT = 0.3;
+const MAX_RESORT_PREMIUM = 1.4;
 
 /**
  * Extra for destinations where holidays cost more than the national price level suggests (island

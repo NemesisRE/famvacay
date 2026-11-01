@@ -11,7 +11,7 @@ describe('hotel rates from country price levels', () => {
   });
 
   it('stays at the base rate without data', () => {
-    expect(hotelNightlyRate(undefined, 'SHOULDER')).toBe(115);
+    expect(hotelNightlyRate(undefined, 'SHOULDER')).toBe(122);
     expect(hotelPriceFactor(0)).toBe(1);
   });
 
@@ -28,7 +28,7 @@ describe('hotel rates from country price levels', () => {
     expect(resortPremium(3000, 1000)).toBeGreaterThan(1.3);
     expect(resortPremium(400, 1000)).toBe(1);
     expect(resortPremium(undefined, 1000)).toBe(1);
-    expect(resortPremium(100000, 1000)).toBe(1.7);
+    expect(resortPremium(100000, 1000)).toBe(1.4);
     expect(hotelNightlyRate(0.62, 'PEAK', 1.5)).toBeGreaterThan(hotelNightlyRate(0.62, 'PEAK'));
   });
 });
