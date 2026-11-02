@@ -71,9 +71,12 @@ describe('Safety hard-exclusions', () => {
     expect(dests.has('BKK')).toBe(true);
   });
 
-  it('keeps US level 3 out of open discovery only', () => {
-    expect(isDestinationSafeForVacation('HRG', 'Egypt')).toBe(false);
-    expect(isDestinationBanned('HRG', 'Egypt')).toBe(false);
+  it('keeps a level 3 out of open discovery only, and only where the sources agree or it is the traveller\'s own', () => {
+    // Egypt: partial German warning (2) vs US level 3 - no agreement for a German traveller
+    expect(isDestinationSafeForVacation('HRG', 'Egypt', 'DE')).toBe(true);
+    // ...but a traveller from the US always gets the US warning
+    expect(isDestinationSafeForVacation('HRG', 'Egypt', 'US')).toBe(false);
+    expect(isDestinationBanned('HRG', 'Egypt', 'US')).toBe(false);
   });
 
   it('fails closed with the offline snapshot when no live advisories are available', () => {

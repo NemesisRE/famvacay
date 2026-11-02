@@ -33,6 +33,13 @@ export interface DestinationSafetyAssessment {
   /** Official sources: the country page when known, otherwise the provider's overview */
   germanAdvisoryUrl?: string;
   usAdvisoryUrl?: string;
+  /** Further official sources (normalized 1-4); they can raise the level up to 3, never to a hard ban */
+  caAdvisoryLevel?: 1 | 2 | 3 | 4;
+  caAdvisoryTitle?: string;
+  caAdvisoryUrl?: string;
+  auAdvisoryLevel?: 1 | 2 | 3 | 4;
+  auAdvisoryTitle?: string;
+  auAdvisoryUrl?: string;
 }
 
 export interface TravelAdvisoryCacheEntry {
@@ -48,6 +55,14 @@ export interface TravelAdvisoryCacheEntry {
   usUrl?: string;
   isSafeForFamilies: boolean;
   safetyScore: number;
+  /** Global Affairs Canada, normalized 1 (normal precautions) to 4 (avoid all travel) */
+  caLevel?: 1 | 2 | 3 | 4;
+  caTitle?: string;
+  caUrl?: string;
+  /** Australian Smartraveller, normalized 1 (normal precautions) to 4 (do not travel) */
+  auLevel?: 1 | 2 | 3 | 4;
+  auTitle?: string;
+  auUrl?: string;
 }
 
 export interface AdvisoryCacheStore {
@@ -146,47 +161,98 @@ export function resolveIsoCountryCode(countryCodeOrName: string): string {
 
 /**
  * Hard exclusion boundary: a destination under a *full* national travel warning (Auswärtiges
- * Amt Reisewarnung, or US State Dept Level 4 "Do Not Travel"), or an airport in an active
- * conflict zone, is never calculated or returned - not even when the user names it explicitly.
- * Partial travel warnings (Teilreisewarnungen) are explicitly allowed.
+ * Amt Reisewarnung, US/Canada/Australia "do not travel") that the sources agree on (see warnsAt),
+ * or an airport in an active conflict zone, is never calculated or returned - not even when the
+ * user names it explicitly. Partial travel warnings (Teilreisewarnungen) are explicitly allowed.
  */
-export function isDestinationBanned(airportCode: string, countryCodeOrName: string): boolean {
+export function isDestinationBanned(airportCode: string, countryCodeOrName: string, homeCountry?: string): boolean {
   const apCode = (airportCode || '').trim().toUpperCase();
   if (HIGH_RISK_AIRPORT_CODES.has(apCode)) return true;
   const entry = getAdvisoryStore().entries[resolveIsoCountryCode(countryCodeOrName)];
-  return Boolean(entry && (entry.hasGermanWarning || entry.usStateDeptLevel === 4));
+  return Boolean(entry && warnsAt(entry, 4, homeCountry));
 }
 
 /**
  * Evaluates whether a destination is suitable for flex discovery (open family vacation search).
- * Besides the hard ban, US Level 3 ("Reconsider Travel") destinations are left out of open
+ * Besides the hard ban, destinations at the soft level 3 (see isSoftBlocked) are left out of open
  * discovery; they stay reachable when the user asks for them explicitly.
  */
-export function isDestinationSafeForVacation(airportCode: string, countryCodeOrName: string): boolean {
-  if (isDestinationBanned(airportCode, countryCodeOrName)) return false;
+export function isDestinationSafeForVacation(
+  airportCode: string,
+  countryCodeOrName: string,
+  homeCountry?: string
+): boolean {
+  if (isDestinationBanned(airportCode, countryCodeOrName, homeCountry)) return false;
   const entry = getAdvisoryStore().entries[resolveIsoCountryCode(countryCodeOrName)];
-  return entry ? entry.isSafeForFamilies : true;
+  return entry ? !isSoftBlocked(entry, homeCountry) : true;
 }
 
 /** ISO codes of every country open discovery already leaves out for safety reasons */
-export function getCountriesBlockedFromDiscovery(): string[] {
+export function getCountriesBlockedFromDiscovery(homeCountry?: string): string[] {
   return Object.keys(getAdvisoryStore().entries)
-    .filter((iso) => !isDestinationSafeForVacation('', iso))
+    .filter((iso) => !isDestinationSafeForVacation('', iso, homeCountry))
     .sort();
+}
+
+/** Each rating government on the same 1-4 scale; a source that does not rate the country is left out */
+function ratedSources(entry: TravelAdvisoryCacheEntry): Array<[string, number]> {
+  const rated: Array<[string, number]> = [];
+  if (entry.hasGermanWarning) rated.push(['DE', 4]);
+  else if (entry.hasGermanPartialWarning) rated.push(['DE', 2]);
+  else if (entry.germanContentId !== undefined) rated.push(['DE', 1]);
+  if (entry.usTitle !== undefined || entry.usStateDeptLevel > 1) rated.push(['US', entry.usStateDeptLevel]);
+  if (entry.caLevel) rated.push(['CA', entry.caLevel]);
+  if (entry.auLevel) rated.push(['AU', entry.auLevel]);
+  return rated;
+}
+
+/**
+ * Whether the governments warn at `threshold` (3 = "reconsider travel", 4 = "do not travel"). All
+ * sources count the same: two of them must agree, or the only one that rates the country. They
+ * are all Western governments, so a single outlier must not drop a country for everyone.
+ * Exception: a traveller from a rating country always gets that government's own warning, as it
+ * is the one their embassy stands behind (Germany included).
+ */
+function warnsAt(entry: TravelAdvisoryCacheEntry, threshold: 3 | 4, homeCountry?: string): boolean {
+  const rated = ratedSources(entry);
+  const high = rated.filter(([, level]) => level >= threshold);
+  if (high.length === 0) return false;
+  const home = (homeCountry || '').toUpperCase();
+  if (high.some(([source]) => source === home)) return true;
+  return high.length >= Math.min(2, rated.length);
+}
+
+export function isSoftBlocked(entry: TravelAdvisoryCacheEntry, homeCountry?: string): boolean {
+  return warnsAt(entry, 3, homeCountry);
+}
+
+/** Level shown for a traveller from `homeCountry` */
+export function effectiveAdvisoryLevel(entry: TravelAdvisoryCacheEntry, homeCountry?: string): 1 | 2 | 3 | 4 {
+  if (warnsAt(entry, 4, homeCountry)) return 4;
+  if (warnsAt(entry, 3, homeCountry)) return 3;
+  return ratedSources(entry).some(([, level]) => level >= 2) ? 2 : 1;
+}
+
+export function advisoryScoreForLevel(level: 1 | 2 | 3 | 4): number {
+  return level === 4 ? 20 : level === 3 ? 45 : level === 2 ? 75 : 92;
 }
 
 const AA_OVERVIEW_URL = 'https://www.auswaertiges-amt.de/de/ReiseUndSicherheit/reise-und-sicherheitshinweise';
 const US_OVERVIEW_URL = 'https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories.html';
+const CA_OVERVIEW_URL = 'https://travel.gc.ca/travelling/advisories';
+const AU_OVERVIEW_URL = 'https://www.smartraveller.gov.au/destinations';
 
 /** Links to the official advisories; the AA site resolves a page by its content id alone */
 export function getAdvisorySourceUrls(
-  entry?: Pick<TravelAdvisoryCacheEntry, 'germanContentId' | 'usUrl'>
-): Pick<DestinationSafetyAssessment, 'germanAdvisoryUrl' | 'usAdvisoryUrl'> {
+  entry?: Pick<TravelAdvisoryCacheEntry, 'germanContentId' | 'usUrl' | 'caUrl' | 'auUrl'>
+): Pick<DestinationSafetyAssessment, 'germanAdvisoryUrl' | 'usAdvisoryUrl' | 'caAdvisoryUrl' | 'auAdvisoryUrl'> {
   return {
     germanAdvisoryUrl: entry?.germanContentId
       ? `${AA_OVERVIEW_URL}/${entry.germanContentId}`
       : AA_OVERVIEW_URL,
     usAdvisoryUrl: entry?.usUrl || US_OVERVIEW_URL,
+    caAdvisoryUrl: entry?.caUrl || CA_OVERVIEW_URL,
+    auAdvisoryUrl: entry?.auUrl || AU_OVERVIEW_URL,
   };
 }
 
@@ -195,7 +261,8 @@ export function getAdvisorySourceUrls(
  */
 export function getDestinationSafetyAssessment(
   airportCode: string,
-  countryCodeOrName: string
+  countryCodeOrName: string,
+  homeCountry?: string
 ): DestinationSafetyAssessment {
   const apCode = (airportCode || '').trim().toUpperCase();
   const iso = resolveIsoCountryCode(countryCodeOrName);
@@ -224,19 +291,11 @@ export function getDestinationSafetyAssessment(
   }
 
   if (entry) {
-    let level: SafetyLevel = 'SAFE';
-    let advisory: 1 | 2 | 3 | 4 = entry.usStateDeptLevel;
-
-    if (entry.hasGermanWarning || entry.usStateDeptLevel === 4) {
-      level = 'DANGER';
-      advisory = 4;
-    } else if (entry.usStateDeptLevel === 3) {
-      level = 'WARNING';
-      advisory = 3;
-    } else if (entry.hasGermanPartialWarning || entry.usStateDeptLevel === 2) {
-      level = 'CAUTION';
-      advisory = 2;
-    }
+    const advisory = effectiveAdvisoryLevel(entry, homeCountry);
+    const level: SafetyLevel = advisory === 4 ? 'DANGER' : advisory === 3 ? 'WARNING' : advisory === 2 ? 'CAUTION' : 'SAFE';
+    // The US wording only describes the level when the US is what sets it
+    const usSetsLevel = advisory === entry.usStateDeptLevel;
+    const isSafeForFamilies = advisory < 3;
 
     const defaultTitle =
       advisory === 4
@@ -248,10 +307,10 @@ export function getDestinationSafetyAssessment(
         : 'Level 1: Exercise Normal Precautions';
 
     return {
-      score: entry.safetyScore,
+      score: advisoryScoreForLevel(advisory),
       level,
-      isSafe: entry.isSafeForFamilies,
-      isSafeForFamilies: entry.isSafeForFamilies,
+      isSafe: isSafeForFamilies,
+      isSafeForFamilies,
       advisoryLevel: advisory,
       safetyLabel:
         level === 'SAFE'
@@ -261,14 +320,24 @@ export function getDestinationSafetyAssessment(
           : level === 'WARNING'
           ? 'Reisewarnung (Teilbereich)'
           : 'Reisewarnung',
-      source: 'Auswärtiges Amt & US State Dept',
-      warningDetails: entry.usTitle,
+      source: 'Auswärtiges Amt, US State Dept, Global Affairs Canada & Smartraveller',
+      warningDetails: usSetsLevel
+        ? entry.usTitle
+        : entry.caLevel === advisory
+        ? entry.caTitle
+        : entry.auLevel === advisory
+        ? entry.auTitle
+        : undefined,
       countryCode: iso,
       countryName: entry.countryName,
       hasGermanWarning: entry.hasGermanWarning,
       hasGermanPartialWarning: entry.hasGermanPartialWarning,
       usStateDeptLevel: entry.usStateDeptLevel,
-      advisoryTitle: entry.usTitle || defaultTitle,
+      advisoryTitle: (usSetsLevel && entry.usTitle) || defaultTitle,
+      caAdvisoryLevel: entry.caLevel,
+      caAdvisoryTitle: entry.caTitle,
+      auAdvisoryLevel: entry.auLevel,
+      auAdvisoryTitle: entry.auTitle,
       ...sourceUrls,
     };
   }

@@ -395,6 +395,10 @@ export interface TranslationDictionary {
     /** Link to the official advisory page (German Foreign Office / US State Department) */
     safetyAaLink: string;
     safetyUsLink: string;
+    safetyCaLevel: string;
+    safetyCaLink: string;
+    safetyAuLevel: string;
+    safetyAuLink: string;
     seasonEventEaster: string;
     seasonEventSpringBreakEaster: string;
     seasonEventCarnival: string;

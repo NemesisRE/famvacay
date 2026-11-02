@@ -652,10 +652,10 @@ export function optimizeVacationWindows(
     const point = getDestinationPoint(dest);
     if (!point) continue;
 
-    // Hard safety boundary: full national travel warnings (Auswärtiges Amt Reisewarnung / US
-    // Level 4) and active conflict zones are never calculated, even when explicitly requested.
+    // Hard safety boundary: full national travel warnings the governments agree on (or the
+    // traveller's own government's) and active conflict zones are never calculated, even when explicitly requested.
     // Partial warnings (Teilreisewarnungen) stay allowed.
-    if (isDestinationBanned(dest, point.country)) continue;
+    if (isDestinationBanned(dest, point.country, homeCountry)) continue;
 
     const destGeo = {
       lat: point.lat,
@@ -1484,7 +1484,8 @@ export function optimizeVacationWindows(
     if (!safetyAssessment) {
       safetyAssessment = getDestinationSafetyAssessment(
         cand.destinationAirport,
-        cand.destinationCountry || ''
+        cand.destinationCountry || '',
+        homeCountry
       );
       safetyByDestination.set(cand.destinationAirport, safetyAssessment);
     }

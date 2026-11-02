@@ -1115,7 +1115,7 @@ export function discoverDestinationTiers(
 
     // Safety Assessment Filter (Amadeus Safe Place / Travel Advisory Level 1 & 2):
     // Flex search / open discovery must only surface safe, family-friendly destinations.
-    if (!isDestinationSafeForVacation(isSurface ? '' : ap.code, ap.country)) continue;
+    if (!isDestinationSafeForVacation(isSurface ? '' : ap.code, ap.country, originGeo.countryCode)) continue;
 
     const dist = calculateGeodesicDistanceKm(userLat, userLon, ap.lat, ap.lon);
     if (dist < minDistance || dist > maxDistance) continue;
