@@ -161,15 +161,15 @@ export function resolveIsoCountryCode(countryCodeOrName: string): string {
 
 /**
  * Hard exclusion boundary: a destination under a *full* national travel warning (Auswärtiges
- * Amt Reisewarnung, or US State Dept Level 4 "Do Not Travel"), or an airport in an active
- * conflict zone, is never calculated or returned - not even when the user names it explicitly.
- * Partial travel warnings (Teilreisewarnungen) are explicitly allowed.
+ * Amt Reisewarnung, US/Canada/Australia "do not travel") that the sources agree on (see warnsAt),
+ * or an airport in an active conflict zone, is never calculated or returned - not even when the
+ * user names it explicitly. Partial travel warnings (Teilreisewarnungen) are explicitly allowed.
  */
-export function isDestinationBanned(airportCode: string, countryCodeOrName: string): boolean {
+export function isDestinationBanned(airportCode: string, countryCodeOrName: string, homeCountry?: string): boolean {
   const apCode = (airportCode || '').trim().toUpperCase();
   if (HIGH_RISK_AIRPORT_CODES.has(apCode)) return true;
   const entry = getAdvisoryStore().entries[resolveIsoCountryCode(countryCodeOrName)];
-  return Boolean(entry && (entry.hasGermanWarning || entry.usStateDeptLevel === 4));
+  return Boolean(entry && warnsAt(entry, 4, homeCountry));
 }
 
 /**
@@ -182,7 +182,7 @@ export function isDestinationSafeForVacation(
   countryCodeOrName: string,
   homeCountry?: string
 ): boolean {
-  if (isDestinationBanned(airportCode, countryCodeOrName)) return false;
+  if (isDestinationBanned(airportCode, countryCodeOrName, homeCountry)) return false;
   const entry = getAdvisoryStore().entries[resolveIsoCountryCode(countryCodeOrName)];
   return entry ? !isSoftBlocked(entry, homeCountry) : true;
 }
@@ -194,31 +194,43 @@ export function getCountriesBlockedFromDiscovery(): string[] {
     .sort();
 }
 
-/**
- * The soft level 3 ("reconsider travel") needs agreement: two of the rating governments, or the
- * only one that rates the country. All sources are Western governments, so a single outlier
- * must not drop a country for everyone. Exception: a traveller from a rating country always
- * gets that government's own warning, as it is the one their embassy stands behind.
- * Only the German full warning and US level 4 are a hard ban (isDestinationBanned) - for everyone.
- */
-export function isSoftBlocked(entry: TravelAdvisoryCacheEntry, homeCountry?: string): boolean {
+/** Each rating government on the same 1-4 scale; a source that does not rate the country is left out */
+function ratedSources(entry: TravelAdvisoryCacheEntry): Array<[string, number]> {
   const rated: Array<[string, number]> = [];
+  if (entry.hasGermanWarning) rated.push(['DE', 4]);
+  else if (entry.hasGermanPartialWarning) rated.push(['DE', 2]);
+  else if (entry.germanContentId !== undefined) rated.push(['DE', 1]);
   if (entry.usTitle !== undefined || entry.usStateDeptLevel > 1) rated.push(['US', entry.usStateDeptLevel]);
   if (entry.caLevel) rated.push(['CA', entry.caLevel]);
   if (entry.auLevel) rated.push(['AU', entry.auLevel]);
-  const high = rated.filter(([, level]) => level >= 3);
+  return rated;
+}
+
+/**
+ * Whether the governments warn at `threshold` (3 = "reconsider travel", 4 = "do not travel"). All
+ * sources count the same: two of them must agree, or the only one that rates the country. They
+ * are all Western governments, so a single outlier must not drop a country for everyone.
+ * Exception: a traveller from a rating country always gets that government's own warning, as it
+ * is the one their embassy stands behind (Germany included).
+ */
+function warnsAt(entry: TravelAdvisoryCacheEntry, threshold: 3 | 4, homeCountry?: string): boolean {
+  const rated = ratedSources(entry);
+  const high = rated.filter(([, level]) => level >= threshold);
   if (high.length === 0) return false;
   const home = (homeCountry || '').toUpperCase();
   if (high.some(([source]) => source === home)) return true;
   return high.length >= Math.min(2, rated.length);
 }
 
-/** Level shown for a traveller from `homeCountry` (the home country only matters for the soft level 3) */
+export function isSoftBlocked(entry: TravelAdvisoryCacheEntry, homeCountry?: string): boolean {
+  return warnsAt(entry, 3, homeCountry);
+}
+
+/** Level shown for a traveller from `homeCountry` */
 export function effectiveAdvisoryLevel(entry: TravelAdvisoryCacheEntry, homeCountry?: string): 1 | 2 | 3 | 4 {
-  if (entry.hasGermanWarning || entry.usStateDeptLevel === 4) return 4;
-  if (isSoftBlocked(entry, homeCountry)) return 3;
-  const strictest = Math.max(entry.usStateDeptLevel, entry.caLevel ?? 1, entry.auLevel ?? 1);
-  return entry.hasGermanPartialWarning || strictest >= 2 ? 2 : 1;
+  if (warnsAt(entry, 4, homeCountry)) return 4;
+  if (warnsAt(entry, 3, homeCountry)) return 3;
+  return ratedSources(entry).some(([, level]) => level >= 2) ? 2 : 1;
 }
 
 export function advisoryScoreForLevel(level: 1 | 2 | 3 | 4): number {
@@ -282,7 +294,7 @@ export function getDestinationSafetyAssessment(
     const advisory = effectiveAdvisoryLevel(entry, homeCountry);
     const level: SafetyLevel = advisory === 4 ? 'DANGER' : advisory === 3 ? 'WARNING' : advisory === 2 ? 'CAUTION' : 'SAFE';
     // The US wording only describes the level when the US is what sets it
-    const usSetsLevel = entry.hasGermanWarning || advisory === entry.usStateDeptLevel;
+    const usSetsLevel = advisory === entry.usStateDeptLevel;
     const isSafeForFamilies = advisory < 3;
 
     const defaultTitle =

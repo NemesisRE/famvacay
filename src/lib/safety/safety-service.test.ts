@@ -166,14 +166,18 @@ describe('Canada and Australia advisories', () => {
     expect(isSoftBlocked({ ...base, usStateDeptLevel: 3 as const, usTitle: 'x' })).toBe(true);
   });
 
-  it('always applies the own government\'s warning to its citizens, never ban for others', () => {
+  it('treats every government alike: agreement, or the traveller\'s own government', () => {
     const caOnly = { ...base, usStateDeptLevel: 1 as const, usTitle: 'x', caLevel: 4 as const, auLevel: 1 as const };
-    expect(isSoftBlocked(caOnly, 'DE')).toBe(false);
-    expect(isSoftBlocked(caOnly, 'ca')).toBe(true);
-    expect(effectiveAdvisoryLevel(caOnly, 'CA')).toBe(3);
-    // German full warning and US level 4 stay a ban for everyone
+    expect(effectiveAdvisoryLevel(caOnly, 'JP')).toBe(2);
+    expect(effectiveAdvisoryLevel(caOnly, 'ca')).toBe(4);
+    // Germany is no exception: its full warning alone does not ban for a Japanese traveller
+    // when the US rates the country 1, but does for a German one
+    const deOnly = { ...base, usStateDeptLevel: 1 as const, usTitle: 'x', hasGermanWarning: true };
+    expect(effectiveAdvisoryLevel(deOnly, 'JP')).toBe(2);
+    expect(effectiveAdvisoryLevel(deOnly, 'DE')).toBe(4);
+    // two agree on "do not travel": banned for everyone; a lone rating is all there is: banned
+    expect(effectiveAdvisoryLevel({ ...deOnly, usStateDeptLevel: 4 as const }, 'JP')).toBe(4);
     expect(effectiveAdvisoryLevel({ ...base, usStateDeptLevel: 1 as const, hasGermanWarning: true }, 'JP')).toBe(4);
-    expect(effectiveAdvisoryLevel({ ...base, usStateDeptLevel: 4 as const }, 'JP')).toBe(4);
   });
 
   it('merges them into the live assessment', async () => {
