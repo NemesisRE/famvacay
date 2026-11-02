@@ -22,7 +22,8 @@ export type DatasetName =
   | 'climate-normals'
   | 'holiday-appeal'
   | 'destination-names'
-  | 'price-levels';
+  | 'price-levels'
+  | 'tourism-spend';
 
 interface PublishedDataset {
   data: unknown;

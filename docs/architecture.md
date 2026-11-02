@@ -97,7 +97,7 @@ FamVacay uses a flat, shared family profile: every adult linked to a profile thr
 | Family | `FamilyProfile`, `FamilyMembership`, `FamilyMember`, `FamilyAirport`, `BlackoutPeriod` | Home location, school region, preferences (cabin class, overland travel time, scoring weights incl. excluded countries), members with birth dates and per-child school regions, preferred departure airports, recurring blackouts. |
 | Invitations | `FamilyInvite` | Schema only - inviting further adults has no UI or API yet. |
 | Searches & sharing | `TripSearch`, `TripPlan`, `BlackoutDate`, `SharedTripBoard`, `SharedCandidate` | Shared boards store only derived, non-identifying fields (no address, coordinates or exact birth dates) and expire. |
-| Reference data | `Place`, `Airport`, `GeneratedDataset` | `GeneratedDataset` holds the background-refreshed datasets (airports, routes, climate, city names, traffic, holiday appeal, price levels). |
+| Reference data | `Place`, `Airport`, `GeneratedDataset` | `GeneratedDataset` holds the background-refreshed datasets (airports, routes, climate, city names, traffic, holiday appeal, price levels, tourism spend). |
 
 Database changes always come with a migration in `prisma/migrations/`, applied by the `migrate` service (`prisma migrate deploy`).
 
