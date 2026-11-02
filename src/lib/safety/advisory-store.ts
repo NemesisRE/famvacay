@@ -174,13 +174,17 @@ export function isDestinationBanned(airportCode: string, countryCodeOrName: stri
 
 /**
  * Evaluates whether a destination is suitable for flex discovery (open family vacation search).
- * Besides the hard ban, US Level 3 ("Reconsider Travel") destinations are left out of open
+ * Besides the hard ban, destinations at the soft level 3 (see isSoftBlocked) are left out of open
  * discovery; they stay reachable when the user asks for them explicitly.
  */
-export function isDestinationSafeForVacation(airportCode: string, countryCodeOrName: string): boolean {
+export function isDestinationSafeForVacation(
+  airportCode: string,
+  countryCodeOrName: string,
+  homeCountry?: string
+): boolean {
   if (isDestinationBanned(airportCode, countryCodeOrName)) return false;
   const entry = getAdvisoryStore().entries[resolveIsoCountryCode(countryCodeOrName)];
-  return entry ? entry.isSafeForFamilies : true;
+  return entry ? !isSoftBlocked(entry, homeCountry) : true;
 }
 
 /** ISO codes of every country open discovery already leaves out for safety reasons */
@@ -191,15 +195,34 @@ export function getCountriesBlockedFromDiscovery(): string[] {
 }
 
 /**
- * Strictest US-style level across the US State Dept and the further sources. Canada and
- * Australia are capped at 3 ("reconsider"): they steer discovery away, but only the German full
- * warning and US level 4 remain a hard ban (see isDestinationBanned).
+ * The soft level 3 ("reconsider travel") needs agreement: two of the rating governments, or the
+ * only one that rates the country. All sources are Western governments, so a single outlier
+ * must not drop a country for everyone. Exception: a traveller from a rating country always
+ * gets that government's own warning, as it is the one their embassy stands behind.
+ * Only the German full warning and US level 4 are a hard ban (isDestinationBanned) - for everyone.
  */
-export function peakAdvisoryLevel(
-  entry: Pick<TravelAdvisoryCacheEntry, 'usStateDeptLevel' | 'caLevel' | 'auLevel'>
-): 1 | 2 | 3 | 4 {
-  const others = Math.min(3, Math.max(entry.caLevel ?? 1, entry.auLevel ?? 1));
-  return Math.max(entry.usStateDeptLevel, others) as 1 | 2 | 3 | 4;
+export function isSoftBlocked(entry: TravelAdvisoryCacheEntry, homeCountry?: string): boolean {
+  const rated: Array<[string, number]> = [];
+  if (entry.usTitle !== undefined || entry.usStateDeptLevel > 1) rated.push(['US', entry.usStateDeptLevel]);
+  if (entry.caLevel) rated.push(['CA', entry.caLevel]);
+  if (entry.auLevel) rated.push(['AU', entry.auLevel]);
+  const high = rated.filter(([, level]) => level >= 3);
+  if (high.length === 0) return false;
+  const home = (homeCountry || '').toUpperCase();
+  if (high.some(([source]) => source === home)) return true;
+  return high.length >= Math.min(2, rated.length);
+}
+
+/** Level shown for a traveller from `homeCountry` (the home country only matters for the soft level 3) */
+export function effectiveAdvisoryLevel(entry: TravelAdvisoryCacheEntry, homeCountry?: string): 1 | 2 | 3 | 4 {
+  if (entry.hasGermanWarning || entry.usStateDeptLevel === 4) return 4;
+  if (isSoftBlocked(entry, homeCountry)) return 3;
+  const strictest = Math.max(entry.usStateDeptLevel, entry.caLevel ?? 1, entry.auLevel ?? 1);
+  return entry.hasGermanPartialWarning || strictest >= 2 ? 2 : 1;
+}
+
+export function advisoryScoreForLevel(level: 1 | 2 | 3 | 4): number {
+  return level === 4 ? 20 : level === 3 ? 45 : level === 2 ? 75 : 92;
 }
 
 const AA_OVERVIEW_URL = 'https://www.auswaertiges-amt.de/de/ReiseUndSicherheit/reise-und-sicherheitshinweise';
@@ -226,7 +249,8 @@ export function getAdvisorySourceUrls(
  */
 export function getDestinationSafetyAssessment(
   airportCode: string,
-  countryCodeOrName: string
+  countryCodeOrName: string,
+  homeCountry?: string
 ): DestinationSafetyAssessment {
   const apCode = (airportCode || '').trim().toUpperCase();
   const iso = resolveIsoCountryCode(countryCodeOrName);
@@ -255,22 +279,11 @@ export function getDestinationSafetyAssessment(
   }
 
   if (entry) {
-    let level: SafetyLevel = 'SAFE';
-    const peak = peakAdvisoryLevel(entry);
-    let advisory: 1 | 2 | 3 | 4 = peak;
+    const advisory = effectiveAdvisoryLevel(entry, homeCountry);
+    const level: SafetyLevel = advisory === 4 ? 'DANGER' : advisory === 3 ? 'WARNING' : advisory === 2 ? 'CAUTION' : 'SAFE';
     // The US wording only describes the level when the US is what sets it
-    const usSetsLevel = entry.hasGermanWarning || peak === entry.usStateDeptLevel;
-
-    if (entry.hasGermanWarning || entry.usStateDeptLevel === 4) {
-      level = 'DANGER';
-      advisory = 4;
-    } else if (peak === 3) {
-      level = 'WARNING';
-      advisory = 3;
-    } else if (entry.hasGermanPartialWarning || peak === 2) {
-      level = 'CAUTION';
-      advisory = 2;
-    }
+    const usSetsLevel = entry.hasGermanWarning || advisory === entry.usStateDeptLevel;
+    const isSafeForFamilies = advisory < 3;
 
     const defaultTitle =
       advisory === 4
@@ -282,10 +295,10 @@ export function getDestinationSafetyAssessment(
         : 'Level 1: Exercise Normal Precautions';
 
     return {
-      score: entry.safetyScore,
+      score: advisoryScoreForLevel(advisory),
       level,
-      isSafe: entry.isSafeForFamilies,
-      isSafeForFamilies: entry.isSafeForFamilies,
+      isSafe: isSafeForFamilies,
+      isSafeForFamilies,
       advisoryLevel: advisory,
       safetyLabel:
         level === 'SAFE'
@@ -296,7 +309,13 @@ export function getDestinationSafetyAssessment(
           ? 'Reisewarnung (Teilbereich)'
           : 'Reisewarnung',
       source: 'Auswärtiges Amt, US State Dept, Global Affairs Canada & Smartraveller',
-      warningDetails: usSetsLevel ? entry.usTitle : entry.caLevel === peak ? entry.caTitle : entry.auTitle,
+      warningDetails: usSetsLevel
+        ? entry.usTitle
+        : entry.caLevel === advisory
+        ? entry.caTitle
+        : entry.auLevel === advisory
+        ? entry.auTitle
+        : undefined,
       countryCode: iso,
       countryName: entry.countryName,
       hasGermanWarning: entry.hasGermanWarning,

@@ -464,7 +464,7 @@ global.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Res
       return new Response(JSON.stringify({ data: {
         ES: ca('ES', 0, 'Exercise normal security precautions', 'spain'),
         JP: ca('JP', 0, 'Exercise normal security precautions', 'japan'),
-        AE: ca('AE', 1, 'Exercise a high degree of caution', 'united-arab-emirates'),
+        AE: ca('AE', 2, 'Avoid non-essential travel', 'united-arab-emirates'),
         UA: ca('UA', 3, 'Avoid all travel', 'ukraine'),
         'PT-20': ca('PT', 2, 'Avoid non-essential travel', 'azores'),
       } }), { status: 200, headers: { 'Content-Type': 'application/json' } });

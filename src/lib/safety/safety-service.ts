@@ -19,7 +19,8 @@ import {
   registerAdvisoryRefresh,
   getAdvisoryStore,
   hasLiveAdvisories,
-  peakAdvisoryLevel,
+  effectiveAdvisoryLevel,
+  advisoryScoreForLevel,
   type AdvisoryCacheStore,
   type TravelAdvisoryCacheEntry,
 } from './advisory-store';
@@ -374,20 +375,9 @@ export async function refreshTravelAdvisories(force = false): Promise<AdvisoryCa
 
       // 4. Compute unified safety score and safe place rating
       for (const entry of Object.values(entries)) {
-        const peak = peakAdvisoryLevel(entry);
-        if (entry.hasGermanWarning || entry.usStateDeptLevel === 4) {
-          entry.isSafeForFamilies = false;
-          entry.safetyScore = 20;
-        } else if (peak === 3) {
-          entry.isSafeForFamilies = false;
-          entry.safetyScore = 45;
-        } else if (entry.hasGermanPartialWarning || peak === 2) {
-          entry.isSafeForFamilies = true;
-          entry.safetyScore = 75;
-        } else {
-          entry.isSafeForFamilies = true;
-          entry.safetyScore = 92;
-        }
+        const level = effectiveAdvisoryLevel(entry);
+        entry.isSafeForFamilies = level < 3;
+        entry.safetyScore = advisoryScoreForLevel(level);
       }
 
       const store: AdvisoryCacheStore = {

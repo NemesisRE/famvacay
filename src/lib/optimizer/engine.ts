@@ -1484,7 +1484,8 @@ export function optimizeVacationWindows(
     if (!safetyAssessment) {
       safetyAssessment = getDestinationSafetyAssessment(
         cand.destinationAirport,
-        cand.destinationCountry || ''
+        cand.destinationCountry || '',
+        homeCountry
       );
       safetyByDestination.set(cand.destinationAirport, safetyAssessment);
     }

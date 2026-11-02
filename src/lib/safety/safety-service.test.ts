@@ -6,7 +6,7 @@ import {
   parseCanadaAdvisories,
   parseSmartravellerAdvisories,
 } from './safety-service';
-import { getAdvisorySourceUrls, peakAdvisoryLevel } from './advisory-store';
+import { getAdvisorySourceUrls, isSoftBlocked, effectiveAdvisoryLevel } from './advisory-store';
 
 describe('Destination Safety & Security Service (Auswärtiges Amt & US State Dept Live APIs)', () => {
   beforeAll(async () => {
@@ -153,16 +153,33 @@ describe('Canada and Australia advisories', () => {
     expect(list.map((x) => [x.iso, x.level, Boolean(x.url)])).toEqual([['AF', 4, false], ['ES', 3, true]]);
   });
 
-  it('caps the extra sources at level 3 so they never become a hard ban', () => {
-    expect(peakAdvisoryLevel({ usStateDeptLevel: 1, caLevel: 4, auLevel: 4 })).toBe(3);
-    expect(peakAdvisoryLevel({ usStateDeptLevel: 4, caLevel: 1 })).toBe(4);
-    expect(peakAdvisoryLevel({ usStateDeptLevel: 2 })).toBe(2);
+  const base = { isoCode: 'XX', countryName: 'X', hasGermanWarning: false, hasGermanPartialWarning: false, isSafeForFamilies: true, safetyScore: 92 };
+
+  it('needs two sources for the soft level 3, or the only one that rates the country', () => {
+    // US alone says 3, Canada and Australia disagree: no block, shown as caution
+    const outlier = { ...base, usStateDeptLevel: 3 as const, usTitle: 'x', caLevel: 1 as const, auLevel: 1 as const };
+    expect(isSoftBlocked(outlier)).toBe(false);
+    expect(effectiveAdvisoryLevel(outlier)).toBe(2);
+    // two agree
+    expect(isSoftBlocked({ ...outlier, caLevel: 3 })).toBe(true);
+    // the other feeds are down: the US rating stands alone
+    expect(isSoftBlocked({ ...base, usStateDeptLevel: 3 as const, usTitle: 'x' })).toBe(true);
+  });
+
+  it('always applies the own government\'s warning to its citizens, never ban for others', () => {
+    const caOnly = { ...base, usStateDeptLevel: 1 as const, usTitle: 'x', caLevel: 4 as const, auLevel: 1 as const };
+    expect(isSoftBlocked(caOnly, 'DE')).toBe(false);
+    expect(isSoftBlocked(caOnly, 'ca')).toBe(true);
+    expect(effectiveAdvisoryLevel(caOnly, 'CA')).toBe(3);
+    // German full warning and US level 4 stay a ban for everyone
+    expect(effectiveAdvisoryLevel({ ...base, usStateDeptLevel: 1 as const, hasGermanWarning: true }, 'JP')).toBe(4);
+    expect(effectiveAdvisoryLevel({ ...base, usStateDeptLevel: 4 as const }, 'JP')).toBe(4);
   });
 
   it('merges them into the live assessment', async () => {
     await refreshTravelAdvisories(true);
     const uae = getDestinationSafetyAssessment('DXB', 'AE');
-    expect(uae.caAdvisoryLevel).toBe(2);
+    expect(uae.caAdvisoryLevel).toBe(3);
     expect(uae.caAdvisoryUrl).toBe('https://travel.gc.ca/destinations/united-arab-emirates');
     const spain = getDestinationSafetyAssessment('PMI', 'ES');
     expect(spain.auAdvisoryLevel).toBe(1);
