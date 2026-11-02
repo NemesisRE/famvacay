@@ -3,6 +3,7 @@ import { mealPriceFactor, mealPricePercentOfHome, localMealPlanRates, MEAL_PLAN_
 import { calculateMealPlanDailyValue, getSynchronousTripPricing } from '../pricing-service';
 import { destinationCountryCode, getCountryPriceLevel } from '../price-levels';
 import { generatePriceLevels } from '@/lib/datasets/generators/price-levels';
+import { generateTourismSpend } from '@/lib/datasets/generators/tourism-spend';
 
 describe('meal value at the destination price level', () => {
   it('is the base value at the Mediterranean reference and without data', () => {
@@ -117,5 +118,31 @@ describe('price-level generator (World Bank API)', () => {
     });
     const levels = await generatePriceLevels({ fetch: fetchMock as unknown as typeof fetch, sleep: async () => {}, log: () => {} });
     expect(levels).toEqual({ GR: 0.66, TH: 0.32 });
+  });
+
+  it('derives tourist spend per arrival and skips tiny arrival counts', async () => {
+    const pages: Record<string, unknown[]> = {
+      country: [
+        { iso2Code: 'MV', region: { value: 'South Asia' } },
+        { iso2Code: 'ES', region: { value: 'Europe & Central Asia' } },
+        { iso2Code: 'TV', region: { value: 'East Asia & Pacific' } },
+      ],
+      'ST.INT.RCPT.CD': [
+        { country: { id: 'MV' }, value: 4_000_000_000 },
+        { country: { id: 'ES' }, value: 90_000_000_000 },
+        { country: { id: 'TV' }, value: 1_000_000 },
+      ],
+      'ST.INT.ARVL': [
+        { country: { id: 'MV' }, value: 1_900_000 },
+        { country: { id: 'ES' }, value: 85_000_000 },
+        { country: { id: 'TV' }, value: 2_000 },
+      ],
+    };
+    const fetchMock = vi.fn(async (url: string) => {
+      const key = Object.keys(pages).find((k) => url.includes(k === 'country' ? '/country?' : k))!;
+      return new Response(JSON.stringify([{ page: 1, pages: 1 }, pages[key]]), { status: 200 });
+    });
+    const spend = await generateTourismSpend({ fetch: fetchMock as unknown as typeof fetch, sleep: async () => {}, log: () => {} });
+    expect(spend).toEqual({ ES: 1059, MV: 2105 });
   });
 });

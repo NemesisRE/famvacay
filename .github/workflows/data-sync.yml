@@ -71,6 +71,10 @@ jobs:
         continue-on-error: true
         run: pnpm run generate:price-levels
 
+      - name: Regenerate tourism spend (World Bank)
+        continue-on-error: true
+        run: pnpm run generate:tourism-spend
+
       # Rain-duration data (Open-Meteo free tier) fills in gradually: each run keeps what is
       # already published and adds what fits into the time cap, staying inside the job timeout.
       - name: Regenerate climate normals
