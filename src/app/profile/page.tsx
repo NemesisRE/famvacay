@@ -523,6 +523,7 @@ function FamilyProfileContent() {
                 id="profile-excluded-countries"
                 value={excludedCountries}
                 onChange={setExcludedCountries}
+                homeCountry={country}
               />
             </div>
 

@@ -188,9 +188,9 @@ export function isDestinationSafeForVacation(
 }
 
 /** ISO codes of every country open discovery already leaves out for safety reasons */
-export function getCountriesBlockedFromDiscovery(): string[] {
+export function getCountriesBlockedFromDiscovery(homeCountry?: string): string[] {
   return Object.keys(getAdvisoryStore().entries)
-    .filter((iso) => !isDestinationSafeForVacation('', iso))
+    .filter((iso) => !isDestinationSafeForVacation('', iso, homeCountry))
     .sort();
 }
 

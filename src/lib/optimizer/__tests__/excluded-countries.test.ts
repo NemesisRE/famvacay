@@ -96,3 +96,16 @@ describe('Excluded countries in open discovery', () => {
     expect(filtered.some((w) => countryOf(w.destinationAirport) === excluded)).toBe(false);
   });
 });
+
+describe('Discovery-blocked list per home country', () => {
+  it('adds the traveller\'s own government\'s level 3', () => {
+    const e = (isoCode: string, usStateDeptLevel: 1 | 2 | 3 | 4, caLevel: 1 | 2 | 3 | 4) => ({
+      isoCode, countryName: isoCode, hasGermanWarning: false, hasGermanPartialWarning: false,
+      usStateDeptLevel, usTitle: 'x', caLevel, isSafeForFamilies: true, safetyScore: 90,
+    });
+    setAdvisoryStore({ timestamp: Date.now(), entries: { EG: e('EG', 3, 1) } });
+    expect(getCountriesBlockedFromDiscovery()).toEqual([]);
+    expect(getCountriesBlockedFromDiscovery('DE')).toEqual([]);
+    expect(getCountriesBlockedFromDiscovery('us')).toEqual(['EG']);
+  });
+});

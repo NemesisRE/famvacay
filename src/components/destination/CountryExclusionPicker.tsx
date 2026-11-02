@@ -20,16 +20,22 @@ import { CONTINENT_ORDER, getCountriesOfContinent } from '@/lib/geo/continents';
 import { useHistoryBack } from '@/lib/navigation/use-history-back';
 import { foldForSearch } from '@/lib/text/search-fold';
 
-let blockedRequest: Promise<string[]> | null = null;
-function loadSafetyBlockedCountries(): Promise<string[]> {
-  blockedRequest ??= fetch('/api/safety/discovery-blocked')
-    .then((r) => (r.ok ? r.json() : { countries: [] }))
-    .then((d: { countries?: string[] }) => d.countries ?? [])
-    .catch(() => {
-      blockedRequest = null;
-      return [];
-    });
-  return blockedRequest;
+// One request per home country: the traveller's own government's warnings count for them
+const blockedRequests = new Map<string, Promise<string[]>>();
+function loadSafetyBlockedCountries(homeCountry?: string): Promise<string[]> {
+  const home = /^[A-Za-z]{2}$/.test(homeCountry || '') ? homeCountry!.toUpperCase() : '';
+  let request = blockedRequests.get(home);
+  if (!request) {
+    request = fetch(`/api/safety/discovery-blocked${home ? `?home=${home}` : ''}`)
+      .then((r) => (r.ok ? r.json() : { countries: [] }))
+      .then((d: { countries?: string[] }) => d.countries ?? [])
+      .catch(() => {
+        blockedRequests.delete(home);
+        return [];
+      });
+    blockedRequests.set(home, request);
+  }
+  return request;
 }
 
 const fold = foldForSearch;
@@ -39,9 +45,11 @@ export interface CountryExclusionPickerProps {
   value: string[];
   onChange: (codes: string[]) => void;
   id?: string;
+  /** ISO code of the traveller's home country */
+  homeCountry?: string;
 }
 
-export function CountryExclusionPicker({ value, onChange, id }: CountryExclusionPickerProps) {
+export function CountryExclusionPicker({ value, onChange, id, homeCountry }: CountryExclusionPickerProps) {
   const { t, locale } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   // The Back button closes it instead of leaving the page
@@ -52,13 +60,13 @@ export function CountryExclusionPicker({ value, onChange, id }: CountryExclusion
 
   useEffect(() => {
     let active = true;
-    loadSafetyBlockedCountries().then((codes) => {
+    loadSafetyBlockedCountries(homeCountry).then((codes) => {
       if (active) setSafetyBlocked(new Set(codes));
     });
     return () => {
       active = false;
     };
-  }, []);
+  }, [homeCountry]);
 
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,

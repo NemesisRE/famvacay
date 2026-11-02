@@ -2353,6 +2353,7 @@ export default function HomePage() {
                       id="excluded-countries"
                       value={excludedCountries}
                       onChange={setExcludedCountries}
+                      homeCountry={country}
                     />
                   </div>
                 )}
