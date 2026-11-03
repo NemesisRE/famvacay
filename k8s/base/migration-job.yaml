@@ -25,7 +25,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: migrator
-          image: ghcr.io/nemesisre/famvacay-migrator:1.0.0
+          image: ghcr.io/nemesisre/famvacay-migrator:1.0.0@sha256:5ab088b54347089d228f4bedec5e4bf165c55af5a42f3eab233d92e8e4a9c8a7
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
