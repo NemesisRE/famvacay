@@ -3706,6 +3706,7 @@ export default function HomePage() {
                   ) : (
                     /* Destination Cards List; two columns next to the collapsed constraints rail, where one
                        card per row would be far wider than it was designed for (not with country headings) */
+                    <>
                     <div
                       className={
                         constraintsSideCollapsed && sortBy !== 'country'
@@ -3857,7 +3858,9 @@ export default function HomePage() {
                       </div>
                     );
                   })}
+                    </div>
 
+                  {/* Below the cards, not a cell of their grid */}
                   <ResultsPagination
                     page={Math.min(destinationCurrentPage, destinationTotalPages)}
                     totalPages={destinationTotalPages}
@@ -3872,7 +3875,7 @@ export default function HomePage() {
                       setDestinationCurrentPage(1);
                     }}
                   />
-                </div>
+                </>
               )}
             </div>
               ) : (
