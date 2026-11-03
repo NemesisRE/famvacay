@@ -1012,7 +1012,9 @@ export default function HomePage() {
         });
       }
     } else {
-      // Side by side: the form is long, so the results column may be scrolled out of view
+      // Side by side: fold the form to its rail so the results get the width (the rail's button
+      // brings it back), and scroll them into view - the form is long, so they may be out of view
+      setConstraintsSideCollapsed(true);
       requestAnimationFrame(() =>
         document.getElementById('results-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       );
@@ -1765,7 +1767,7 @@ export default function HomePage() {
     return (
       <div
         key={`${win.startDate}-${win.originAirport}-${win.travelVehicle || "PLANE"}-${win.destinationAirport}-${win.durationDays}`}
-        className="bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 p-5 @container shadow-xs hover:shadow-md transition-shadow relative"
+        className="bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 p-5 @container flex flex-col flex-1 shadow-xs hover:shadow-md transition-shadow relative"
       >
         {/* Arbitrage Banner */}
         {win.isArbitrageOpportunity && (
@@ -2033,7 +2035,8 @@ export default function HomePage() {
         })}
 
         {/* Bottom Bar: Action Buttons above Metrics */}
-        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+        <div className="flex-1 min-h-4" />
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
           {/* Action Buttons: travel details and deals - stacked full width on phones, two equal
               columns on larger screens, content centered */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -2728,7 +2731,9 @@ export default function HomePage() {
         </div>
 
         {/* Results Stream */}
-        <div className={`space-y-4 ${constraintsSideCollapsed ? 'lg:col-span-1' : 'lg:col-span-7'}`}>
+        {/* While a search runs the column is at least a screen tall: with the form folded away the page
+            would otherwise be too short to scroll the results heading to the top */}
+        <div className={`space-y-4 ${constraintsSideCollapsed ? 'lg:col-span-1' : 'lg:col-span-7'} ${loading ? 'lg:min-h-screen' : ''}`}>
           {/* One row like the form's heading (title left, action right), so both cards start level */}
           <div id="results-heading" className="border-b border-slate-200 dark:border-slate-800 pb-2.5 scroll-mt-20">
             <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2 min-h-9">
@@ -3680,7 +3685,7 @@ export default function HomePage() {
                     <div
                       className={
                         constraintsSideCollapsed && sortBy !== 'country'
-                          ? 'space-y-6 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-6 xl:items-start'
+                          ? 'space-y-6 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-6'
                           : 'space-y-6'
                       }
                     >
@@ -3690,7 +3695,7 @@ export default function HomePage() {
                       sortBy === 'country' &&
                       (pageIdx === 0 || displayedDestinationGroups[pageIdx - 1].destinationCountry !== group.destinationCountry);
                     return (
-                      <div key={group.destinationCode} className="space-y-2">
+                      <div key={group.destinationCode} className="flex flex-col gap-2 h-full">
                       {startsCountry && (
                         <h3 className="flex items-center gap-1.5 pt-1 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                           <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
@@ -3698,7 +3703,7 @@ export default function HomePage() {
                         </h3>
                       )}
                       <div
-                        className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs hover:shadow-md transition"
+                        className="flex flex-col flex-1 bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs hover:shadow-md transition"
                       >
                         {/* Group Header */}
                         <div className="bg-linear-to-r from-slate-50 via-teal-50/40 to-emerald-50/20 dark:from-slate-800/80 dark:via-slate-800/50 dark:to-teal-950/20 p-4 border-b border-slate-200 dark:border-slate-800 space-y-3">
@@ -3779,7 +3784,8 @@ export default function HomePage() {
                           </div>
 
                           {/* Bottom Row: Stats & Action Buttons (Pulled down for maximum room) */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-slate-200/70 dark:border-slate-700/70">
+                          {/* Tall enough for the "Top Recommendation" badge, so cards without it line up with the first */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 sm:min-h-[2.25rem] border-t border-slate-200/70 dark:border-slate-700/70">
                             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
                               <span>
                                 {t.home.destGroupTimeframesFound.replace('{count}', String(group.totalWindows))}
@@ -3805,7 +3811,7 @@ export default function HomePage() {
                         </div>
 
                         {/* Featured Top-Scoring Vacation Window */}
-                        <div className="p-4 bg-white dark:bg-slate-900/90">
+                        <div className="flex flex-col flex-1 p-4 bg-white dark:bg-slate-900/90">
                           {renderVacationCard(group.featuredWindow, { rank: groupIdx + 1, hideDestinationHeader: true })}
                         </div>
 
@@ -3898,7 +3904,7 @@ export default function HomePage() {
                   {/* Two columns next to the collapsed constraints rail */}
                   <div
                     className={
-                      constraintsSideCollapsed ? 'space-y-4 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-4 xl:items-start' : 'space-y-4'
+                      constraintsSideCollapsed ? 'space-y-4 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-4' : 'space-y-4'
                     }
                   >
                     {displayedResults.map((win, idx) => {
