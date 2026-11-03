@@ -3849,7 +3849,7 @@ export default function HomePage() {
                             <button
                               type="button"
                               onClick={() => showDestinationInList(group.destinationCode)}
-                              className="w-full sm:w-auto px-3 py-2 text-xs font-bold rounded-lg border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                              className="w-full px-3 py-2 text-xs font-bold rounded-lg border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition inline-flex items-center justify-center gap-1.5 cursor-pointer"
                             >
                               <List className="w-3.5 h-3.5" />
                               {t.home.destGroupShowAllInList.replace('{count}', String(group.totalWindows))}
