@@ -2103,7 +2103,7 @@ export default function HomePage() {
           {/* Metrics: PTO consumed and Match Score, side by side from sm up like the buttons above */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             <MetricExplanationPopover window={win} trigger="ptoRatio" className="w-full">
-              <div className="bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100/90 dark:hover:bg-slate-700/60 transition rounded-lg p-2.5 flex flex-col items-start gap-0.5 @lg:flex-row @lg:items-center @lg:justify-between group border border-transparent hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer">
+              <div className="bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100/90 dark:hover:bg-slate-700/60 transition rounded-lg p-2.5 flex items-center justify-between sm:flex-col sm:items-start sm:justify-start sm:gap-0.5 @lg:flex-row @lg:items-center @lg:justify-between group border border-transparent hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer">
                 <span className="text-slate-500 dark:text-slate-400 text-xs font-medium flex items-center gap-1 whitespace-nowrap">
                   <span>{t.home.ptoConsumed}</span>
                   <Info className="w-3 h-3 text-slate-400 dark:text-slate-500 opacity-60 group-hover:opacity-100 shrink-0" />
@@ -2130,7 +2130,7 @@ export default function HomePage() {
             )}
 
             <MetricExplanationPopover window={win} trigger="score" className="w-full">
-              <div className="bg-indigo-50/80 dark:bg-indigo-950/40 hover:bg-indigo-100/90 dark:hover:bg-indigo-900/40 transition rounded-lg p-2.5 flex flex-col items-start gap-0.5 @lg:flex-row @lg:items-center @lg:justify-between border border-indigo-100/60 dark:border-indigo-900/50 hover:border-indigo-300 dark:hover:border-indigo-700 group">
+              <div className="bg-indigo-50/80 dark:bg-indigo-950/40 hover:bg-indigo-100/90 dark:hover:bg-indigo-900/40 transition rounded-lg p-2.5 flex items-center justify-between sm:flex-col sm:items-start sm:justify-start sm:gap-0.5 @lg:flex-row @lg:items-center @lg:justify-between border border-indigo-100/60 dark:border-indigo-900/50 hover:border-indigo-300 dark:hover:border-indigo-700 group">
                 <span className="text-indigo-700 dark:text-indigo-300 text-xs font-semibold flex items-center gap-1 whitespace-nowrap">
                   {t.home.score}
                   <Info className="w-3 h-3 text-indigo-400 opacity-60 group-hover:opacity-100 shrink-0" />
