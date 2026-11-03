@@ -2210,7 +2210,7 @@ export default function HomePage() {
               aria-controls="search-constraints"
               title={t.home.constraintsExpand}
               aria-label={t.home.constraintsExpand}
-              className="hidden lg:flex lg:flex-1 w-12 flex-col items-center gap-3 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:border-teal-300 dark:hover:border-teal-700 transition-colors cursor-pointer"
+              className="hidden lg:flex lg:flex-1 lg:mb-0 w-12 flex-col items-center gap-3 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:border-teal-300 dark:hover:border-teal-700 transition-colors cursor-pointer"
             >
               {/* Same order and colour as the open sidebar's heading: the filter icon first, in green */}
               <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
