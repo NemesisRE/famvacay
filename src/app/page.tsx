@@ -1765,7 +1765,7 @@ export default function HomePage() {
     return (
       <div
         key={`${win.startDate}-${win.originAirport}-${win.travelVehicle || "PLANE"}-${win.destinationAirport}-${win.durationDays}`}
-        className="bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs hover:shadow-md transition-shadow relative"
+        className="bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 p-5 @container shadow-xs hover:shadow-md transition-shadow relative"
       >
         {/* Arbitrage Banner */}
         {win.isArbitrageOpportunity && (
@@ -1778,10 +1778,10 @@ export default function HomePage() {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div className="flex flex-col @xl:flex-row @xl:items-start justify-between gap-4">
           <div className="space-y-1.5 flex-1 min-w-0">
             {!options?.hideDestinationHeader && (
-              <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-teal-700 dark:text-teal-400 tracking-wide pb-0.5">
+              <div className="space-y-1.5 text-xs font-bold text-teal-700 dark:text-teal-400 tracking-wide pb-0.5">
                 <button
                   type="button"
                   onClick={() =>
@@ -1807,18 +1807,25 @@ export default function HomePage() {
                     {getFormattedLocalizedDestination(destinationKey(win), win.destinationName)}
                   </span>
                 </button>
-                {getDedupedStyleMetas(getDestinationVacationStyles(win.destinationAirport, win.flightDistanceKm)).map((meta) => {
-                  const StyleIcon = meta.icon;
-                  return (
-                    <span
-                      key={meta.label}
-                      className={`text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border border-l-[3px] inline-flex items-center gap-1 shadow-2xs ${meta.color}`}
-                    >
-                      <StyleIcon className="w-2.5 h-2.5 shrink-0" />
-                      <span>{meta.label}</span>
-                    </span>
-                  );
-                })}
+                {/* Vacation styles on their own line ... */}
+                {getDedupedStyleMetas(getDestinationVacationStyles(win.destinationAirport, win.flightDistanceKm)).length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {getDedupedStyleMetas(getDestinationVacationStyles(win.destinationAirport, win.flightDistanceKm)).map((meta) => {
+                      const StyleIcon = meta.icon;
+                      return (
+                        <span
+                          key={meta.label}
+                          className={`text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border border-l-[3px] inline-flex items-center gap-1 shadow-2xs ${meta.color}`}
+                        >
+                          <StyleIcon className="w-2.5 h-2.5 shrink-0" />
+                          <span>{meta.label}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+                {/* ... and the way of getting there and the safety rating on another */}
+                <div className="flex flex-wrap items-center gap-2">
                 {win.travelVehicle && (
                   <span
                     className={`text-[9px] font-semibold px-2 py-0.5 rounded-lg border inline-flex items-center gap-1 shadow-2xs ${getVehicleMeta(win.travelVehicle).color}`}
@@ -1860,6 +1867,7 @@ export default function HomePage() {
                   destinationName={getFormattedLocalizedDestination(win.destinationAirport, win.destinationName)}
                   countryName={getLocalizedDestinationLabel(win.destinationAirport, locale, { country: win.destinationCountry }).country}
                 />
+                </div>
               </div>
             )}
 
@@ -1923,16 +1931,16 @@ export default function HomePage() {
           </div>
 
           {/* Price Section */}
-          <div className="flex flex-col sm:items-end justify-start gap-1 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 text-left sm:text-right shrink-0">
+          <div className="flex flex-col @xl:items-end justify-start gap-1 pt-2 @xl:pt-0 border-t @xl:border-t-0 border-slate-100 dark:border-slate-800 text-left @xl:text-right shrink-0">
             {(() => {
               const displayTotalCost = win.estimatedTotalCost;
               const displayPricePerPerson = win.pricePerPerson;
               return (
                 <div>
-                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1 sm:justify-end">
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1 @xl:justify-end">
                     {t.home.estFamilyCost}
                   </span>
-                  <div className="flex items-baseline gap-2 sm:justify-end flex-wrap">
+                  <div className="flex items-baseline gap-2 @xl:justify-end flex-wrap">
                     <span className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
                       {formatCurrency(displayTotalCost)}
                     </span>
@@ -1944,14 +1952,14 @@ export default function HomePage() {
                     {win.travelVehicle && win.travelVehicle !== 'PLANE' ? t.home.travelAndLodgingIncluded : t.home.flightAndLodgingIncluded}
                   </span>
                   {/* When to book; details in the deals popover */}
-                  <div className="mt-1 flex sm:justify-end">
+                  <div className="mt-1 flex @xl:justify-end">
                     <BookingTimingBadge advice={evaluateBookingTimingForCandidate(win)} />
                   </div>
                 </div>
               );
             })()}
             {Boolean(win.effectiveCost) && win.boardType === 'ALL_INCLUSIVE' && typeof win.mealPlanValue === 'number' && win.mealPlanValue > 0 ? (
-              <div className="mt-0.5 flex sm:justify-end">
+              <div className="mt-0.5 flex @xl:justify-end">
                 <MealPlanValuePopover mealPlanValue={win.mealPlanValue} durationDays={win.durationDays} rates={win.pricingDetails?.mealPlanRates} />
               </div>
             ) : null}
@@ -2092,8 +2100,8 @@ export default function HomePage() {
             />
           </div>
 
-          {/* Metrics: PTO consumed and Match Score, each on a dedicated line */}
-          <div className="flex flex-col gap-2 text-xs">
+          {/* Metrics: PTO consumed and Match Score, side by side from sm up like the buttons above */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             <MetricExplanationPopover window={win} trigger="ptoRatio" className="w-full">
               <div className="bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100/90 dark:hover:bg-slate-700/60 transition rounded-lg p-2.5 flex items-center justify-between group border border-transparent hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer">
                 <span className="text-slate-500 dark:text-slate-400 text-xs font-medium flex items-center gap-1">
@@ -2108,7 +2116,7 @@ export default function HomePage() {
 
             {win.childcareArbitrageWarning && (
               <div
-                className="bg-rose-50/80 dark:bg-rose-950/30 rounded-lg p-2.5 flex items-start gap-1.5 border border-rose-200/70 dark:border-rose-900/60 text-[11px] text-rose-800 dark:text-rose-300"
+                className="sm:col-span-2 sm:order-last bg-rose-50/80 dark:bg-rose-950/30 rounded-lg p-2.5 flex items-start gap-1.5 border border-rose-200/70 dark:border-rose-900/60 text-[11px] text-rose-800 dark:text-rose-300"
                 title={t.home.childcareArbitrageWarningHint}
               >
                 <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
@@ -3667,8 +3675,15 @@ export default function HomePage() {
                       </button>
                     </div>
                   ) : (
-                    /* Destination Cards List */
-                    <div className="space-y-6">
+                    /* Destination Cards List; two columns next to the collapsed constraints rail, where one
+                       card per row would be far wider than it was designed for (not with country headings) */
+                    <div
+                      className={
+                        constraintsSideCollapsed && sortBy !== 'country'
+                          ? 'space-y-6 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-6 xl:items-start'
+                          : 'space-y-6'
+                      }
+                    >
                       {displayedDestinationGroups.map((group, pageIdx) => {
                     const groupIdx = destinationPageStart + pageIdx;
                     const startsCountry =
@@ -3690,7 +3705,7 @@ export default function HomePage() {
                           {/* Top: Destination Title & Vacation Style Tags (Wide full row) */}
                           <div className="flex items-start sm:items-center gap-3">
                             <div className="flex-1 min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
+                              <div className="space-y-1.5">
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -3717,18 +3732,23 @@ export default function HomePage() {
                                     <span>{group.destinationName}</span>
                                   </h3>
                                 </button>
-                                {getDedupedStyleMetas(group.vacationStyles).map((meta) => {
-                                  const StyleIcon = meta.icon;
-                                  return (
-                                    <span
-                                      key={meta.label}
-                                      className={`text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-md border border-l-[3px] inline-flex items-center gap-1 shadow-2xs ${meta.color}`}
-                                    >
-                                      <StyleIcon className="w-3 h-3 shrink-0" />
-                                      <span>{meta.label}</span>
-                                    </span>
-                                  );
-                                })}
+                                {getDedupedStyleMetas(group.vacationStyles).length > 0 && (
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {getDedupedStyleMetas(group.vacationStyles).map((meta) => {
+                                      const StyleIcon = meta.icon;
+                                      return (
+                                        <span
+                                          key={meta.label}
+                                          className={`text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-md border border-l-[3px] inline-flex items-center gap-1 shadow-2xs ${meta.color}`}
+                                        >
+                                          <StyleIcon className="w-3 h-3 shrink-0" />
+                                          <span>{meta.label}</span>
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                                <div className="flex flex-wrap items-center gap-2">
                                 {/* Every way of getting there; the featured trip's vehicle first, with its distance */}
                                 {group.travelVehicles.map((vehicle) => {
                                   const meta = getVehicleMeta(vehicle);
@@ -3753,6 +3773,7 @@ export default function HomePage() {
                                   destinationName={group.destinationName}
                                   countryName={group.destinationCountry}
                                 />
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -3874,10 +3895,17 @@ export default function HomePage() {
                       </span>
                     </div>
                   )}
-                  {displayedResults.map((win, idx) => {
-                    const globalRank = (currentPage - 1) * pageSize + idx + 1;
-                    return renderVacationCard(win, { rank: globalRank });
-                  })}
+                  {/* Two columns next to the collapsed constraints rail */}
+                  <div
+                    className={
+                      constraintsSideCollapsed ? 'space-y-4 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-4 xl:items-start' : 'space-y-4'
+                    }
+                  >
+                    {displayedResults.map((win, idx) => {
+                      const globalRank = (currentPage - 1) * pageSize + idx + 1;
+                      return renderVacationCard(win, { rank: globalRank });
+                    })}
+                  </div>
 
                   {/* Pagination Controls */}
                   <ResultsPagination
