@@ -2730,7 +2730,9 @@ export default function HomePage() {
         </div>
 
         {/* Results Stream */}
-        <div className={`space-y-4 ${constraintsSideCollapsed ? 'lg:col-span-1' : 'lg:col-span-7'}`}>
+        {/* While a search runs the column is at least a screen tall: with the form folded away the page
+            would otherwise be too short to scroll the results heading to the top */}
+        <div className={`space-y-4 ${constraintsSideCollapsed ? 'lg:col-span-1' : 'lg:col-span-7'} ${loading ? 'lg:min-h-screen' : ''}`}>
           {/* One row like the form's heading (title left, action right), so both cards start level */}
           <div id="results-heading" className="border-b border-slate-200 dark:border-slate-800 pb-2.5 scroll-mt-20">
             <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2 min-h-9">
