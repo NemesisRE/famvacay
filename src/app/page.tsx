@@ -1012,7 +1012,9 @@ export default function HomePage() {
         });
       }
     } else {
-      // Side by side: the form is long, so the results column may be scrolled out of view
+      // Side by side: fold the form to its rail so the results get the width (the rail's button
+      // brings it back), and scroll them into view - the form is long, so they may be out of view
+      setConstraintsSideCollapsed(true);
       requestAnimationFrame(() =>
         document.getElementById('results-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       );
