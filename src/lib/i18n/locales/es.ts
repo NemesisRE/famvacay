@@ -399,7 +399,7 @@ export const es: TranslationDictionary = {
     filterGroupTravelRoute: 'Viaje y Ruta',
     filterGroupBudgetSort: 'Régimen, Presupuesto y Orden',
     days: 'Días',
-    ptoConsumed: 'Días de permiso consumidos',
+    ptoConsumed: 'Días de permiso',
     ptoSaved: 'Día festivo aprovechado',
     workweekComparisonTitle: 'Vacaciones según semana laboral',
     workweekHolidaysSaved: 'Festivos ahorrados',
