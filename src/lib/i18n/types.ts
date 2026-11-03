@@ -141,6 +141,16 @@ export interface TranslationDictionary {
     directFlightPremiumBadge: string;
     directFlightPremiumDesc: string;
     connectingSavingsBadge: string;
+    flightCorridorTag: string;
+    connectingSavingsTag: string;
+    checkLiveFlights: string;
+    flightLegFallback: string;
+    flightNonStopShort: string;
+    flightStopsShort: string;
+    flightGeodesic: string;
+    flightShareAdultsOne: string;
+    flightShareAdultsMany: string;
+    farePerAdult: string;
     filterByFlightStops: string;
     filterNoFlights: string;
     filterNoOverland: string;

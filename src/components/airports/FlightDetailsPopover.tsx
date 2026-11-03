@@ -361,7 +361,7 @@ export function FlightDetailsPopover({
                             <span className="text-slate-600 dark:text-slate-400 font-semibold">{segDurStr}</span>
                           </div>
                           <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center justify-between">
-                            <span>{seg.carrier || 'Flight Leg'}</span>
+                            <span>{seg.carrier || t.home.flightLegFallback}</span>
                             <span>~{seg.distanceKm.toLocaleString()} km</span>
                           </div>
                         </div>
@@ -391,7 +391,7 @@ export function FlightDetailsPopover({
                 <div className="font-extrabold text-slate-900 dark:text-slate-100 text-sm mt-0.5">
                   {flightDurationStr}
                   <span className="text-[9px] font-normal text-slate-500 dark:text-slate-400 ml-1">
-                    {isActuallyDirect ? 'non-stop' : `${stops} stop(s)`}
+                    {isActuallyDirect ? t.home.flightNonStopShort : t.home.flightStopsShort.replace('{stops}', String(stops))}
                   </span>
                 </div>
               </div>
@@ -403,7 +403,7 @@ export function FlightDetailsPopover({
                 </span>
                 <div className="font-extrabold text-slate-900 dark:text-slate-100 text-sm mt-0.5">
                   {flightDistanceKm ? `~${flightDistanceKm.toLocaleString()} km` : '—'}
-                  <span className="text-[9px] font-normal text-slate-400 dark:text-slate-500 ml-1">geodesic</span>
+                  <span className="text-[9px] font-normal text-slate-400 dark:text-slate-500 ml-1">{t.home.flightGeodesic}</span>
                 </div>
               </div>
             </div>
@@ -413,21 +413,21 @@ export function FlightDetailsPopover({
               <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-600 dark:text-slate-300 font-medium">
-                    {t.home.flightShare} ({adults} adult{adults > 1 ? 's' : ''}):
+                    {t.home.flightShare} ({adults > 1 ? t.home.flightShareAdultsMany.replace('{count}', String(adults)) : t.home.flightShareAdultsOne}):
                   </span>
                   <span className="font-extrabold text-slate-900 dark:text-slate-100">
-                    {totalFlightCost ? `~${totalFlightCost} €` : `~${baseAdultFare} € / adult`}
+                    {totalFlightCost ? `~${totalFlightCost} €` : `~${baseAdultFare} € ${t.home.farePerAdult}`}
                   </span>
                 </div>
                 {isActuallyDirect ? (
                   <div className="flex items-center justify-between text-[10px] text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
                     <span className="font-semibold">{t.home.directFlightPremiumBadge}</span>
-                    <span className="text-emerald-700 dark:text-emerald-400 font-bold">Non-Stop Corridor</span>
+                    <span className="text-emerald-700 dark:text-emerald-400 font-bold">{t.home.flightCorridorTag}</span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between text-[10px] text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 px-2 py-0.5 rounded border border-teal-200 dark:border-teal-800">
                     <span className="font-semibold">{t.home.connectingSavingsBadge}</span>
-                    <span className="text-teal-700 dark:text-teal-400 font-bold">Connecting Savings Applied</span>
+                    <span className="text-teal-700 dark:text-teal-400 font-bold">{t.home.connectingSavingsTag}</span>
                   </div>
                 )}
               </div>
@@ -441,7 +441,7 @@ export function FlightDetailsPopover({
                 rel="noopener noreferrer"
                 className="w-full py-1.5 px-3 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
               >
-                <span>Check Live Flights on Google Flights</span>
+                <span>{t.home.checkLiveFlights}</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
