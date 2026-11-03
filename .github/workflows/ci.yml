@@ -104,7 +104,7 @@ jobs:
     # no apt install per run (that step took 35-55 s and sometimes hung). Its version must match
     # @playwright/test exactly; Renovate updates both together (see renovate.json).
     container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:47b510dd9230bf0b9bfc9b20102241e577ea7a99334ab4c3ca19f19770e9b8ea
+      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f
       options: --ipc=host
     # The tests run the production build, which refuses to start without a database URL and an
     # auth secret, so the job gets its own Postgres and Valkey like a real deployment
