@@ -50,9 +50,9 @@ const VIEW_STORAGE_KEY = 'famvac_calendar_view';
 
 function readStoredView(): CalendarView {
   try {
-    return localStorage.getItem(VIEW_STORAGE_KEY) === 'personal' ? 'personal' : 'country';
+    return localStorage.getItem(VIEW_STORAGE_KEY) === 'country' ? 'country' : 'personal';
   } catch {
-    return 'country';
+    return 'personal';
   }
 }
 
@@ -330,13 +330,15 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
         </p>
       )}
 
-      <div className="relative">
+      {/* Columns follow the width of the section, not the screen: the results column is wide next to
+          the collapsed constraints rail and narrow next to the open one */}
+      <div className="relative @container">
         {updating && (
           <div className="absolute inset-0 z-10 flex items-start justify-center pt-16 pointer-events-none">
             <Loader2 className="w-5 h-5 animate-spin text-teal-600" aria-label={t.common.loading} />
           </div>
         )}
-        <div className={`grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-4 gap-3 transition-opacity ${updating ? 'opacity-40' : ''}`}>
+        <div className={`grid grid-cols-2 @lg:grid-cols-3 @4xl:grid-cols-4 gap-3 transition-opacity ${updating ? 'opacity-40' : ''}`}>
           {range.months.map((month) => {
             const [y, m] = month.split('-').map(Number);
             const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
