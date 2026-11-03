@@ -1795,6 +1795,8 @@ export default function HomePage() {
           <div className="space-y-1.5 flex-1 min-w-0">
             {!options?.hideDestinationHeader && (
               <div className="space-y-1.5 text-xs font-bold text-teal-700 dark:text-teal-400 tracking-wide pb-0.5">
+                {/* Safety rating right behind the name */}
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
                 <button
                   type="button"
                   onClick={() =>
@@ -1820,6 +1822,12 @@ export default function HomePage() {
                     {getFormattedLocalizedDestination(destinationKey(win), win.destinationName)}
                   </span>
                 </button>
+                <DestinationSafetyPopover
+                  safety={win.destinationSafety || win.safetyAssessment}
+                  destinationName={getFormattedLocalizedDestination(win.destinationAirport, win.destinationName)}
+                  countryName={getLocalizedDestinationLabel(win.destinationAirport, locale, { country: win.destinationCountry }).country}
+                />
+                </div>
                 {/* Vacation styles on their own line ... */}
                 {getDedupedStyleMetas(getDestinationVacationStyles(win.destinationAirport, win.flightDistanceKm)).length > 0 && (
                   <div className="flex flex-wrap items-center gap-2">
@@ -1837,7 +1845,7 @@ export default function HomePage() {
                     })}
                   </div>
                 )}
-                {/* ... and the way of getting there and the safety rating on another */}
+                {/* ... and the way of getting there on another */}
                 <div className="flex flex-wrap items-center gap-2">
                 {win.travelVehicle && (
                   <span
@@ -1875,11 +1883,6 @@ export default function HomePage() {
                     </span>
                   </span>
                 )}
-                <DestinationSafetyPopover
-                  safety={win.destinationSafety || win.safetyAssessment}
-                  destinationName={getFormattedLocalizedDestination(win.destinationAirport, win.destinationName)}
-                  countryName={getLocalizedDestinationLabel(win.destinationAirport, locale, { country: win.destinationCountry }).country}
-                />
                 </div>
               </div>
             )}
@@ -1891,6 +1894,12 @@ export default function HomePage() {
               <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-teal-600/10 dark:bg-teal-400/15 text-teal-800 dark:text-teal-200 border border-teal-300/80 dark:border-teal-700">
                 {win.durationDays} {t.home.days}
               </span>
+              {win.weather && (
+                <ClimateDetailsPopover
+                  destinationAirport={win.destinationAirport}
+                  weather={win.weather}
+                />
+              )}
               {win.autoSelectedOrigin && !win.railFeeder && (
                 <span
                   className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-dashed border-emerald-400 dark:border-emerald-700 flex items-center gap-1"
@@ -1921,12 +1930,6 @@ export default function HomePage() {
                   {t.home.winterSportsActiveBadge}
                   {win.weather.snowDepthCm ? ` (~${win.weather.snowDepthCm} cm)` : ''}
                 </span>
-              )}
-              {win.weather && (
-                <ClimateDetailsPopover
-                  destinationAirport={win.destinationAirport}
-                  weather={win.weather}
-                />
               )}
               {win.boardType && (
                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-violet-50 dark:bg-violet-950/40 text-violet-800 dark:text-violet-300 border border-violet-200 dark:border-violet-800 border-l-[3px] border-l-violet-500 dark:border-l-violet-400 flex items-center gap-1">
@@ -3738,6 +3741,8 @@ export default function HomePage() {
                           <div className="flex items-start sm:items-center gap-3">
                             <div className="flex-1 min-w-0">
                               <div className="space-y-1.5">
+                                {/* Safety rating right behind the name; wraps below it on narrow screens */}
+                                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -3764,6 +3769,12 @@ export default function HomePage() {
                                     <span>{group.destinationName}</span>
                                   </h3>
                                 </button>
+                                <DestinationSafetyPopover
+                                  safety={group.destinationSafety || group.featuredWindow.destinationSafety || group.featuredWindow.safetyAssessment}
+                                  destinationName={group.destinationName}
+                                  countryName={group.destinationCountry}
+                                />
+                                </div>
                                 {getDedupedStyleMetas(group.vacationStyles).length > 0 && (
                                   <div className="flex flex-wrap items-center gap-2">
                                     {getDedupedStyleMetas(group.vacationStyles).map((meta) => {
@@ -3800,11 +3811,6 @@ export default function HomePage() {
                                     </span>
                                   );
                                 })}
-                                <DestinationSafetyPopover
-                                  safety={group.destinationSafety || group.featuredWindow.destinationSafety || group.featuredWindow.safetyAssessment}
-                                  destinationName={group.destinationName}
-                                  countryName={group.destinationCountry}
-                                />
                                 </div>
                               </div>
                             </div>
