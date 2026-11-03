@@ -236,7 +236,6 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
             .map((d) => ({ date: d.date, otherRegions: d.otherRegionsOnHoliday }))
         )
       : [];
-  // Stars only where part of a break stands out; a break that is equally busy throughout gets none
   const quietStretches =
     noKids && data && otherTotal > 0
       ? findQuietStretches(
@@ -245,8 +244,9 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
             .map((d) => ({ date: d.date, otherRegions: d.otherRegionsOnHoliday }))
         )
       : [];
+  // Every day of every listed stretch gets a star, so the calendar and the lists below never disagree
   const isBestDay = (date: string) =>
-    bestStretches.some((b) => (b.start !== b.blockStart || b.end !== b.blockEnd) && date >= b.start && date <= b.end);
+    bestStretches.some((b) => date >= b.start && date <= b.end) || quietStretches.some((q) => date >= q.start && date <= q.end);
   // "1.–11. Sept. 2027", "Sep 1 – 11, 2027": the year and month only once, per the user's language
   const rangeFormat = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
   const dateRange = (start: string, end: string) => rangeFormat.formatRange(new Date(`${start}T00:00:00Z`), new Date(`${end}T00:00:00Z`));
@@ -438,7 +438,7 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
             {bucketLabel(scale, i)}
           </span>
         ))}
-        {bestStretches.length > 0 && (
+        {(bestStretches.length > 0 || quietStretches.length > 0) && (
           <span className="inline-flex items-center gap-1">
             <Star aria-hidden="true" className="w-3 h-3 fill-white stroke-emerald-700 dark:stroke-emerald-300 stroke-[2.5]" />
             {t.home.calendarBestDays}

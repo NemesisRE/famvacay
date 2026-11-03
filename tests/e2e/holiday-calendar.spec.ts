@@ -10,7 +10,7 @@ const days = (from: string, count: number, make: (date: string, i: number) => ob
     return { date, ...make(date, i) };
   });
 
-test('the calendar tab shows the holiday density of the country and the family view', async ({ page, request }) => {
+test('the calendar section shows the holiday density of the country and the family view', async ({ page, request }) => {
   await page.route('**/api/holidays/calendar?**', async (route) => {
     const view = new URL(route.request().url()).searchParams.get('view');
     const body =
@@ -37,12 +37,11 @@ test('the calendar tab shows the holiday density of the country and the family v
   const { shareId } = await share.json();
   await page.goto(`/?s=${shareId}`);
 
-  await page.getByRole('button', { name: 'Calendar' }).click();
+  await page.getByRole('button', { name: 'Calendar' }).click(); // opens the calendar section
   const calendar = page.locator('section[aria-labelledby="holiday-calendar-title"]');
   await expect(calendar.getByRole('heading', { name: /School holidays – Germany/ })).toBeVisible();
   await expect(calendar.getByRole('heading', { name: /July 2027/ })).toBeVisible();
   await expect(calendar.getByRole('listitem', { name: /July 1, 2027 · 0 of 16 regions on school holiday · Public holiday: Test Day/ })).toBeVisible();
-  expect(new URL(page.url()).searchParams.get('view')).toBe('calendar');
 
   await calendar.getByRole('button', { name: 'Your location' }).click();
   await expect(calendar.getByRole('heading', { name: 'Your best travel times' })).toBeVisible();
@@ -50,7 +49,7 @@ test('the calendar tab shows the holiday density of the country and the family v
   await expect(calendar.getByRole('heading', { name: 'Quietest periods' })).toBeVisible();
   await expect(calendar.getByText(/Jul 1 – 10, 2027/)).toBeVisible();
 
-  // Back returns to the previous view
-  await page.goBack();
-  await expect(calendar).toHaveCount(0);
+  // The quietest periods are starred on the calendar too (the label names the star)
+  await expect(calendar.getByRole('listitem', { name: /July 5, 2027 .*Best days/ })).toBeVisible();
+  await expect(calendar.getByRole('listitem', { name: /July 20, 2027 .*Best days/ })).toHaveCount(0);
 });

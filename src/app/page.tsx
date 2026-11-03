@@ -103,10 +103,10 @@ import { replaceUrlKeepingHistoryEntry } from '@/lib/navigation/history-entries'
 import { pushHistoryStep, goBackHistoryStep } from '@/lib/navigation/use-history-back';
 import { HolidayCalendarView } from '@/components/results/HolidayCalendarView';
 
-/** Views of the results: grouped by destination, a flat list, or the holiday calendar of the travel period */
-type ResultsViewMode = 'destination' | 'list' | 'calendar';
-const isResultsViewMode = (value: unknown): value is ResultsViewMode =>
-  value === 'destination' || value === 'list' || value === 'calendar';
+/** Views of the results: grouped by destination or a flat list (the holiday calendar is a section of its own) */
+type ResultsViewMode = 'destination' | 'list';
+const isResultsViewMode = (value: unknown): value is ResultsViewMode => value === 'destination' || value === 'list';
+const CALENDAR_OPEN_KEY = 'famvac_calendar_open';
 
 /** Background results this soon after the first ones are merged directly instead of offered */
 const INSTANT_BACKGROUND_MS = 1500;
@@ -249,6 +249,8 @@ export default function HomePage() {
   const [shareError, setShareError] = useState(false);
 
   const [viewMode, setViewMode] = useState<ResultsViewMode>('destination');
+  // The holiday calendar sits beside the results, not among their views
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [selectedDestinationsList, setSelectedDestinationsList] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [maxCostFilter, setMaxCostFilter] = useState<number | undefined>(undefined);
@@ -410,6 +412,8 @@ export default function HomePage() {
       if (savedFilters) {
         const parsed = JSON.parse(savedFilters);
         if (isResultsViewMode(parsed.viewMode)) setViewMode(parsed.viewMode);
+        // Calendar used to be a third view mode
+        else if (parsed.viewMode === 'calendar') setCalendarOpen(true);
         if (Array.isArray(parsed.selectedDestinationsList)) setSelectedDestinationsList(parsed.selectedDestinationsList);
         if (parsed.selectedMonth) setSelectedMonth(parsed.selectedMonth);
         if (parsed.maxCostFilter !== undefined) setMaxCostFilter(parsed.maxCostFilter);
@@ -447,6 +451,13 @@ export default function HomePage() {
       const urlView = urlParams.get('view');
       if (isResultsViewMode(urlView)) {
         setViewMode(urlView);
+      } else if (urlView === 'calendar') {
+        setCalendarOpen(true);
+      }
+      try {
+        if (localStorage.getItem(CALENDAR_OPEN_KEY) === '1') setCalendarOpen(true);
+      } catch {
+        // Per-viewer convenience only
       }
       const urlDest = urlParams.get('dest');
       if (urlDest) {
@@ -2857,7 +2868,7 @@ export default function HomePage() {
 
                   {/* Right: View Mode Switcher (icons only at lg, where the results column is narrowest) */}
                   <div className="flex items-center">
-                    <div className="grid grid-cols-3 w-full sm:w-auto sm:inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700">
+                    <div className="grid grid-cols-2 w-full sm:w-auto sm:inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700">
                       <button
                         title={t.home.viewModeDestination}
                         type="button"
@@ -2883,19 +2894,6 @@ export default function HomePage() {
                       >
                         <List className="hidden sm:block w-3.5 h-3.5" />
                         <span className="whitespace-nowrap lg:sr-only xl:not-sr-only">{t.home.viewModeList}</span>
-                      </button>
-                      <button
-                        title={t.home.calendarTab}
-                        type="button"
-                        onClick={() => switchViewMode('calendar')}
-                        className={`px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                          viewMode === 'calendar'
-                            ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-2xs'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                        }`}
-                      >
-                        <CalendarDays className="hidden sm:block w-3.5 h-3.5" />
-                        <span className="whitespace-nowrap lg:sr-only xl:not-sr-only">{t.home.calendarTab}</span>
                       </button>
                     </div>
                   </div>
@@ -3648,16 +3646,42 @@ export default function HomePage() {
                 })()}
               </div>
 
+              {/* The calendar is its own section, independent of the destination/list view below */}
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  aria-expanded={calendarOpen}
+                  aria-controls="holiday-calendar-section"
+                  onClick={() => {
+                    const next = !calendarOpen;
+                    setCalendarOpen(next);
+                    try {
+                      localStorage.setItem(CALENDAR_OPEN_KEY, next ? '1' : '0');
+                    } catch {
+                      // Per-viewer convenience only
+                    }
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  <CalendarDays className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <span className="flex-1 text-left">{t.home.calendarTab}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${calendarOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {calendarOpen && (
+                  <div id="holiday-calendar-section">
+                    <HolidayCalendarView
+                      homeRegion={federalState}
+                      schoolRegions={calendarSchoolRegions}
+                      earliestDate={earliestDate}
+                      latestDate={latestDate}
+                      blackouts={calendarBlackouts}
+                    />
+                  </div>
+                )}
+              </div>
+
               <div id="results-top" className="scroll-mt-24" aria-hidden="true" />
-              {viewMode === 'calendar' ? (
-                <HolidayCalendarView
-                  homeRegion={federalState}
-                  schoolRegions={calendarSchoolRegions}
-                  earliestDate={earliestDate}
-                  latestDate={latestDate}
-                  blackouts={calendarBlackouts}
-                />
-              ) : filteredResults.length === 0 ? (
+              {filteredResults.length === 0 ? (
                 <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 p-8 text-center text-slate-500 dark:text-slate-400 text-xs">
                   {t.home.noFilteredResults}
                 </div>
