@@ -91,7 +91,7 @@ export function ClimateDetailsPopover({
             ref={refs.setFloating}
             style={getResponsivePopoverStyle(isSmallScreen, floatingStyles, 9999)}
             {...getFloatingProps()}
-            className="animate-in fade-in zoom-in-95 w-72 sm:w-80 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-4 text-slate-800 dark:text-slate-100 transition-opacity duration-150 ease-out"
+            className="animate-in fade-in zoom-in-95 w-72 sm:w-80 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-600 dark:ring-1 dark:ring-white/10 dark:shadow-black/70 p-4 text-slate-800 dark:text-slate-100 transition-opacity duration-150 ease-out"
           >
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-1.5 font-bold text-xs text-slate-800 dark:text-slate-100">

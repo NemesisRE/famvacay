@@ -93,7 +93,7 @@ export function ResultsCountPopover({
             ref={refs.setFloating}
             style={getResponsivePopoverStyle(isSmallScreen, floatingStyles, 9999)}
             {...getFloatingProps()}
-            className="w-80 max-w-[calc(100vw-24px)] bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-3 text-xs text-slate-800 dark:text-slate-100 space-y-2 animate-in fade-in zoom-in-95"
+            className="w-80 max-w-[calc(100vw-24px)] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 dark:ring-1 dark:ring-white/10 dark:shadow-black/70 p-3 text-xs text-slate-800 dark:text-slate-100 space-y-2 animate-in fade-in zoom-in-95"
           >
             <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
               <span className="font-bold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">

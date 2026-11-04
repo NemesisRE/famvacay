@@ -72,7 +72,7 @@ export function BookingTimingBadge({ advice, className = '' }: { advice: Booking
   const Icon = style.icon;
   return (
     <span
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[10px] font-bold ${style.pill} ${className}`}
+      className={`inline-flex items-center gap-1 whitespace-nowrap px-1.5 py-0.5 rounded-md border text-[10px] font-bold ${style.pill} ${className}`}
       title={`${t.bookingTiming.title}: ${leadTimeText(t, advice.daysUntilDeparture)}`}
     >
       <Icon className="w-2.5 h-2.5 shrink-0" />
@@ -94,9 +94,10 @@ export function BookingTimingCard({ advice }: { advice: BookingTimingAdvice }) {
       aria-labelledby={titleId}
       className={`p-2.5 rounded-lg border text-[11px] space-y-2 ${style.card}`}
     >
-      <div className="flex items-center justify-between gap-2">
+      {/* The status pill moves to its own line when the title would otherwise have to wrap around it */}
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <h3 id={titleId} className={`font-bold flex items-center gap-1 ${style.accent}`}>
-          <CalendarClock className="w-3.5 h-3.5" />
+          <CalendarClock className="w-3.5 h-3.5 shrink-0" />
           {t.bookingTiming.title}
         </h3>
         <BookingTimingBadge advice={advice} />

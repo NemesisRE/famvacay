@@ -1765,7 +1765,7 @@ export default function HomePage() {
     return (
       <div
         key={`${win.startDate}-${win.originAirport}-${win.travelVehicle || "PLANE"}-${win.destinationAirport}-${win.durationDays}`}
-        className="bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 p-5 @container shadow-xs hover:shadow-md transition-shadow relative"
+        className="bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 p-5 @container shadow-xs hover:shadow-md transition-shadow relative flex flex-col flex-1"
       >
         {/* Arbitrage Banner */}
         {win.isArbitrageOpportunity && (
@@ -2033,7 +2033,8 @@ export default function HomePage() {
         })}
 
         {/* Bottom Bar: Action Buttons above Metrics */}
-        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+        <div className="mt-auto pt-4">
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
           {/* Action Buttons: travel details and deals - stacked full width on phones, two equal
               columns on larger screens, content centered */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -2146,6 +2147,7 @@ export default function HomePage() {
               </div>
             </MetricExplanationPopover>
           </div>
+        </div>
         </div>
 
         {win.isCachedBenchmark && (
@@ -3680,7 +3682,7 @@ export default function HomePage() {
                     <div
                       className={
                         constraintsSideCollapsed && sortBy !== 'country'
-                          ? 'space-y-6 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-6 xl:items-start'
+                          ? 'space-y-6 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-x-6 xl:gap-y-0'
                           : 'space-y-6'
                       }
                     >
@@ -3690,7 +3692,10 @@ export default function HomePage() {
                       sortBy === 'country' &&
                       (pageIdx === 0 || displayedDestinationGroups[pageIdx - 1].destinationCountry !== group.destinationCountry);
                     return (
-                      <div key={group.destinationCode} className="space-y-2">
+                      <div
+                        key={group.destinationCode}
+                        className="space-y-2 xl:space-y-0 xl:mb-6 xl:row-span-3 xl:grid xl:grid-rows-subgrid"
+                      >
                       {startsCountry && (
                         <h3 className="flex items-center gap-1.5 pt-1 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                           <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
@@ -3698,10 +3703,10 @@ export default function HomePage() {
                         </h3>
                       )}
                       <div
-                        className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs hover:shadow-md transition"
+                        className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs hover:shadow-md transition xl:row-span-3 xl:grid xl:grid-rows-subgrid"
                       >
                         {/* Group Header */}
-                        <div className="bg-linear-to-r from-slate-50 via-teal-50/40 to-emerald-50/20 dark:from-slate-800/80 dark:via-slate-800/50 dark:to-teal-950/20 p-4 border-b border-slate-200 dark:border-slate-800 space-y-3">
+                        <div className="bg-linear-to-r from-slate-50 via-teal-50/40 to-emerald-50/20 dark:from-slate-800/80 dark:via-slate-800/50 dark:to-teal-950/20 p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col space-y-3">
                           {/* Top: Destination Title & Vacation Style Tags (Wide full row) */}
                           <div className="flex items-start sm:items-center gap-3">
                             <div className="flex-1 min-w-0">
@@ -3779,7 +3784,7 @@ export default function HomePage() {
                           </div>
 
                           {/* Bottom Row: Stats & Action Buttons (Pulled down for maximum room) */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-slate-200/70 dark:border-slate-700/70">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 mt-auto min-h-9 border-t border-slate-200/70 dark:border-slate-700/70">
                             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
                               <span>
                                 {t.home.destGroupTimeframesFound.replace('{count}', String(group.totalWindows))}
@@ -3805,7 +3810,7 @@ export default function HomePage() {
                         </div>
 
                         {/* Featured Top-Scoring Vacation Window */}
-                        <div className="p-4 bg-white dark:bg-slate-900/90">
+                        <div className="p-4 bg-white dark:bg-slate-900/90 flex flex-col">
                           {renderVacationCard(group.featuredWindow, { rank: groupIdx + 1, hideDestinationHeader: true })}
                         </div>
 
