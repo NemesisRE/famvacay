@@ -83,9 +83,9 @@ export function AboutContent() {
   const a = t.about;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 py-2">
+    <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8 py-2">
       {/* 1. Hero */}
-      <section className="relative overflow-hidden rounded-3xl border border-teal-200/70 dark:border-teal-900/60 bg-gradient-to-br from-teal-50 via-white to-violet-50 dark:from-teal-950/50 dark:via-slate-900 dark:to-violet-950/40 p-6 sm:p-8">
+      <section className="relative overflow-hidden rounded-3xl border border-teal-200/70 dark:border-teal-900/60 bg-gradient-to-br from-teal-50 via-white to-violet-50 dark:from-teal-950/50 dark:via-slate-900 dark:to-violet-950/40 p-3 sm:p-4">
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-300 bg-white/80 dark:bg-slate-900/70 border border-teal-200 dark:border-teal-800 rounded-full px-3 py-1">
           <Scale className="w-3.5 h-3.5" aria-hidden="true" />
           {a.heroBadge}
@@ -93,7 +93,7 @@ export function AboutContent() {
         <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white max-w-3xl leading-tight">
           {a.heroTitle}
         </h1>
-        <div className="mt-6 grid gap-6 sm:grid-cols-2">
+        <div className="mt-6 grid gap-4 sm:gap-6 sm:grid-cols-2">
           <p className={bodyClass}>{a.heroIntro}</p>
           <p className={bodyClass}>{a.heroIntroSecond}</p>
         </div>
@@ -104,13 +104,13 @@ export function AboutContent() {
       </section>
 
       {/* 2. Division of labour */}
-      <section aria-labelledby="about-division" className="space-y-6">
+      <section aria-labelledby="about-division" className="space-y-4 sm:space-y-6">
         <div className={proseClass}>
           <h2 id="about-division" className={sectionTitleClass}>{a.divisionTitle}</h2>
           <p className={`${bodyClass} mt-2`}>{a.divisionIntro}</p>
         </div>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border-2 border-violet-200 dark:border-violet-800 bg-white dark:bg-slate-900 p-4 sm:p-6">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+          <div className="rounded-2xl border-2 border-violet-200 dark:border-violet-800 bg-white dark:bg-slate-900 p-3 sm:p-4">
             <div className="flex items-center gap-3 pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
               <span className="shrink-0 w-11 h-11 rounded-2xl bg-violet-600 text-white flex items-center justify-center">
                 <Bot className="w-6 h-6" aria-hidden="true" />
@@ -120,7 +120,7 @@ export function AboutContent() {
                 <RoleBadge role="ai" label={a.aiSubtitle} />
               </div>
             </div>
-            <ul className="space-y-3">
+            <ul className="space-y-2 sm:space-y-3">
               {AI_ITEMS.map(({ key, icon }) => (
                 <ItemRow
                   key={key}
@@ -131,7 +131,7 @@ export function AboutContent() {
               ))}
             </ul>
           </div>
-          <div className="rounded-2xl border-2 border-teal-200 dark:border-teal-800 bg-white dark:bg-slate-900 p-4 sm:p-6">
+          <div className="rounded-2xl border-2 border-teal-200 dark:border-teal-800 bg-white dark:bg-slate-900 p-3 sm:p-4">
             <div className="flex items-center gap-3 pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
               <span className="shrink-0 w-11 h-11 rounded-2xl bg-teal-600 text-white flex items-center justify-center">
                 <UserRound className="w-6 h-6" aria-hidden="true" />
@@ -141,7 +141,7 @@ export function AboutContent() {
                 <RoleBadge role="human" label={a.humanSubtitle} />
               </div>
             </div>
-            <ul className="space-y-3">
+            <ul className="space-y-2 sm:space-y-3">
               {HUMAN_ITEMS.map(({ key, icon }) => (
                 <ItemRow
                   key={key}
@@ -156,16 +156,16 @@ export function AboutContent() {
       </section>
 
       {/* 3. Why FamVacay exists */}
-      <section aria-labelledby="about-capabilities" className="space-y-6">
+      <section aria-labelledby="about-capabilities" className="space-y-4 sm:space-y-6">
         <div className={proseClass}>
           <h2 id="about-capabilities" className={sectionTitleClass}>{a.capabilitiesTitle}</h2>
           <p className={`${bodyClass} mt-2`}>{a.capabilitiesIntro}</p>
         </div>
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
           {CAPABILITIES.map(({ key, icon: Icon }) => (
             <div
               key={key}
-              className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6"
+              className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 sm:p-4"
             >
               <Icon className="w-6 h-6 text-teal-600 dark:text-teal-400" aria-hidden="true" />
               <h3 className="mt-3 font-bold text-slate-900 dark:text-white">{a.capabilities[key].title}</h3>
@@ -178,7 +178,7 @@ export function AboutContent() {
       {/* 4. Open & honest engineering */}
       <section
         aria-labelledby="about-honesty"
-        className="rounded-3xl bg-slate-900 dark:bg-slate-900 border border-slate-800 text-white p-6 sm:p-8"
+        className="rounded-3xl bg-slate-900 dark:bg-slate-900 border border-slate-800 text-white p-3 sm:p-4"
       >
         <h2 id="about-honesty" className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
           <Scale className="w-6 h-6 text-teal-400" aria-hidden="true" />
