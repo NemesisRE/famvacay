@@ -1,5 +1,6 @@
 'use client';
 
+import { AirportSavingsBadge } from '@/components/results/AirportSavingsBadge';
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import {
@@ -1784,17 +1785,6 @@ export default function HomePage() {
         key={`${win.startDate}-${win.originAirport}-${win.travelVehicle || "PLANE"}-${win.destinationAirport}-${win.durationDays}`}
         className={`bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 p-3 sm:p-4 @container flex flex-col flex-1 shadow-xs hover:shadow-md transition-shadow relative${!options?.hideDestinationHeader && freshDestinations.has(destinationKey(win)) ? ' famvac-flash' : ''}`}
       >
-        {/* Arbitrage Banner */}
-        {win.isArbitrageOpportunity && (
-          <div className="bg-emerald-600 text-white text-[11px] font-bold px-3 py-1 flex items-center justify-between -mx-3 -mt-3 sm:-mx-4 sm:-mt-4 mb-3 sm:mb-4 rounded-t-xl">
-            <span className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-              {t.home.arbitrageBadge} ({win.originAirport} in {win.arbitrageOriginState})
-            </span>
-            <span>{t.home.arbitrageSaving}</span>
-          </div>
-        )}
-
         <div className="flex flex-col @xl:flex-row @xl:items-start justify-between gap-4">
           <div className="space-y-1.5 flex-1 min-w-0">
             {!options?.hideDestinationHeader && (
@@ -1904,14 +1894,17 @@ export default function HomePage() {
                   weather={win.weather}
                 />
               )}
-              {win.autoSelectedOrigin && !win.railFeeder && (
-                <span
-                  className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-dashed border-emerald-400 dark:border-emerald-700 flex items-center gap-1"
-                  title={t.home.autoOriginTitle}
-                >
-                  <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                  {t.home.autoOriginBadge} · {win.originAirport}
-                </span>
+              {win.isArbitrageOpportunity ? (
+                <AirportSavingsBadge
+                  originAirport={win.originAirport}
+                  originCity={win.originCity}
+                  originState={win.arbitrageOriginState}
+                  autoSelected={Boolean(win.autoSelectedOrigin)}
+                />
+              ) : (
+                win.autoSelectedOrigin && !win.railFeeder && (
+                  <AirportSavingsBadge originAirport={win.originAirport} originCity={win.originCity} autoSelected variant="green" />
+                )
               )}
               {win.sourceMarketDemand && win.sourceMarketDemand.index <= 0.1 && (
                 <span

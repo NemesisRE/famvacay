@@ -223,7 +223,9 @@ export interface TranslationDictionary {
     noResultsForDestinationTitle: string;
     noResultsForDestinationHint: string;
     arbitrageBadge: string;
-    arbitrageSaving: string;
+    arbitrageTitle: string;
+    arbitrageExplain: string;
+    arbitrageAutoNote: string;
     seasonalWarningBadge: string;
     seasonWarningMonsoonTitle: string;
     seasonWarningMonsoonDesc: string;
@@ -349,6 +351,7 @@ export interface TranslationDictionary {
     airportsRailBadge: string;
     autoOriginBadge: string;
     autoOriginTitle: string;
+    autoOriginExplain: string;
     demandHighBadge: string;
     demandLowBadge: string;
     demandTitle: string;
