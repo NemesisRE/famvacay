@@ -111,8 +111,8 @@ type ResultsViewMode = 'destination' | 'list';
 const isResultsViewMode = (value: unknown): value is ResultsViewMode => value === 'destination' || value === 'list';
 const CALENDAR_OPEN_KEY = 'famvac_calendar_open';
 
-/** Background results this soon after the first ones are merged directly instead of offered */
-const INSTANT_BACKGROUND_MS = 1500;
+/** How long destinations merged from the background search keep their highlight */
+const MERGE_FLASH_MS = 2600;
 
 export default function HomePage() {
   const { status } = useSession();
@@ -233,15 +233,10 @@ export default function HomePage() {
   const [constraintsSideCollapsed, setConstraintsSideCollapsed] = useState(false);
   const searchRunRef = useRef(0);
   const backgroundAbortRef = useRef<AbortController | null>(null);
-  // Background results wait here until the user asks for them, so the list never reshuffles while read
-  const pendingBackgroundApplyRef = useRef<(() => void) | null>(null);
+  // Destinations the background search just merged in; their cards flash briefly (see .famvac-flash)
+  const [freshDestinations, setFreshDestinations] = useState<ReadonlySet<string>>(() => new Set());
+  const freshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dismissBackgroundSearch = useCallback(() => {
-    pendingBackgroundApplyRef.current = null;
-    setBackgroundSearch({ status: 'idle' });
-  }, []);
-  const applyBackgroundSearch = useCallback(() => {
-    pendingBackgroundApplyRef.current?.();
-    pendingBackgroundApplyRef.current = null;
     setBackgroundSearch({ status: 'idle' });
   }, []);
   const [error, setError] = useState<string | null>(null);
@@ -1033,7 +1028,8 @@ export default function HomePage() {
         document.getElementById('results-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       );
     }
-    pendingBackgroundApplyRef.current = null;
+    if (freshTimerRef.current) clearTimeout(freshTimerRef.current);
+    setFreshDestinations(new Set());
     setBackgroundSearch({ status: 'idle' });
     setLoading(true);
     setError(null);
@@ -1208,25 +1204,19 @@ export default function HomePage() {
               return;
             }
             const added = destinationCount(full.windows) - firstCount;
-            // Before anyone could start reading: no reason to ask (a fully cached search never gets
-            // here, the server returned the full result for the first request already)
-            const arrivedInstantly = fromCache || Date.now() - firstShownAt < INSTANT_BACKGROUND_MS;
-            if (added > 0 && arrivedInstantly) {
+            if (added > 0) {
+              // Merged without asking: scores are relative, so the list may reorder, but the browser's
+              // scroll anchoring keeps what is being read in place. The new destinations flash so they
+              // are not lost somewhere in the list.
+              const known = new Set(data.windows.map(destinationKey));
+              const fresh = new Set(full.windows.map(destinationKey).filter((key) => !known.has(key)));
               setResults(full.windows);
               publishResults(full.windows);
-              // Merged without asking, but still said: the "searching" banner was visible, and
-              // without a word the new destinations went unnoticed somewhere in the list
-              setBackgroundSearch({ status: 'done', added });
-            } else if (added > 0) {
-              const windows = full.windows;
-              pendingBackgroundApplyRef.current = () => {
-                setResults(windows);
-                publishResults(windows);
-              };
-              setBackgroundSearch({ status: 'ready', added });
-            } else {
-              setBackgroundSearch({ status: 'done', added: 0 });
+              setFreshDestinations(fresh);
+              if (freshTimerRef.current) clearTimeout(freshTimerRef.current);
+              freshTimerRef.current = setTimeout(() => setFreshDestinations(new Set()), MERGE_FLASH_MS);
             }
+            setBackgroundSearch({ status: 'done', added });
           })
           .catch(() => {
             if (searchRunRef.current === runId) setBackgroundSearch({ status: 'idle' });
@@ -1781,7 +1771,7 @@ export default function HomePage() {
     return (
       <div
         key={`${win.startDate}-${win.originAirport}-${win.travelVehicle || "PLANE"}-${win.destinationAirport}-${win.durationDays}`}
-        className="bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 p-3 sm:p-4 @container flex flex-col flex-1 shadow-xs hover:shadow-md transition-shadow relative"
+        className={`bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 p-3 sm:p-4 @container flex flex-col flex-1 shadow-xs hover:shadow-md transition-shadow relative${freshDestinations.has(destinationKey(win)) ? ' famvac-flash' : ''}`}
       >
         {/* Arbitrage Banner */}
         {win.isArbitrageOpportunity && (
@@ -2789,7 +2779,7 @@ export default function HomePage() {
           {loading && <SearchLoadingPanel />}
 
           {!loading && results && results.length > 0 && (
-            <BackgroundSearchBanner state={backgroundSearch} onDismiss={dismissBackgroundSearch} onApply={applyBackgroundSearch} />
+            <BackgroundSearchBanner state={backgroundSearch} onDismiss={dismissBackgroundSearch} />
           )}
 
           {!results && !loading && (

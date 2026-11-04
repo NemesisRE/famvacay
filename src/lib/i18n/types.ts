@@ -732,8 +732,6 @@ export interface TranslationDictionary {
     backgroundRunning: string;
     backgroundDone: string;
     backgroundDoneNone: string;
-    backgroundReady: string;
-    backgroundShow: string;
     /** Playful lines rotated while searching */
     messages: string[];
   };
