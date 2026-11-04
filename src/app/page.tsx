@@ -2229,11 +2229,15 @@ export default function HomePage() {
                 {/* A toggle below the two-column layout; on wide screens the form always shows */}
                 <button
                   type="button"
-                  onClick={() => setConstraintsCollapsed((c) => !c)}
+                  onClick={() => {
+                    // From lg up the form is a sidebar that collapses to the rail, below it an accordion
+                    if (window.matchMedia('(min-width: 1024px)').matches) setConstraintsSideCollapsed(true);
+                    else setConstraintsCollapsed((c) => !c);
+                  }}
                   aria-expanded={!constraintsCollapsed}
                   aria-controls="search-constraints"
                   title={constraintsCollapsed ? t.home.constraintsExpand : t.home.constraintsCollapse}
-                  className="flex items-center gap-2 cursor-pointer lg:cursor-default lg:pointer-events-none text-left"
+                  className="flex items-center gap-2 cursor-pointer text-left"
                 >
                   <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" />
                   {t.home.constraintsTitle}
