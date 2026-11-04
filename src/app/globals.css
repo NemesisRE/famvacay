@@ -207,3 +207,24 @@ body {
     animation: none;
   }
 }
+
+/* Cards of destinations the background search just merged into the list: a teal ring that fades out */
+@keyframes famvac-flash {
+  0%,
+  35% {
+    box-shadow: 0 0 0 3px rgb(20 184 166 / 0.7), 0 0 24px rgb(20 184 166 / 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgb(20 184 166 / 0), 0 0 24px rgb(20 184 166 / 0);
+  }
+}
+.famvac-flash {
+  animation: famvac-flash 2400ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* No motion, but still a (static) cue; it disappears with the state a moment later */
+  .famvac-flash {
+    animation: none;
+    box-shadow: 0 0 0 2px rgb(20 184 166 / 0.7);
+  }
+}

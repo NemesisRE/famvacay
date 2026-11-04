@@ -738,8 +738,6 @@ export const fr: TranslationDictionary = {
     backgroundRunning: "Recherche d'autres destinations…",
     backgroundDone: "{count} destinations supplémentaires ajoutées",
     backgroundDoneNone: "Toutes les destinations correspondantes sont affichées",
-    backgroundReady: "{count} destinations supplémentaires trouvées",
-    backgroundShow: "Les afficher",
     messages: [
       "Réticulation des châteaux de sable…",
       "Négociation avec les mouettes pour les meilleures places sur la plage…",
