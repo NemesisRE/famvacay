@@ -50,9 +50,9 @@ const VIEW_STORAGE_KEY = 'famvac_calendar_view';
 
 function readStoredView(): CalendarView {
   try {
-    return localStorage.getItem(VIEW_STORAGE_KEY) === 'personal' ? 'personal' : 'country';
+    return localStorage.getItem(VIEW_STORAGE_KEY) === 'country' ? 'country' : 'personal';
   } catch {
-    return 'country';
+    return 'personal';
   }
 }
 
@@ -236,7 +236,6 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
             .map((d) => ({ date: d.date, otherRegions: d.otherRegionsOnHoliday }))
         )
       : [];
-  // Stars only where part of a break stands out; a break that is equally busy throughout gets none
   const quietStretches =
     noKids && data && otherTotal > 0
       ? findQuietStretches(
@@ -245,8 +244,9 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
             .map((d) => ({ date: d.date, otherRegions: d.otherRegionsOnHoliday }))
         )
       : [];
+  // Every day of every listed stretch gets a star, so the calendar and the lists below never disagree
   const isBestDay = (date: string) =>
-    bestStretches.some((b) => (b.start !== b.blockStart || b.end !== b.blockEnd) && date >= b.start && date <= b.end);
+    bestStretches.some((b) => date >= b.start && date <= b.end) || quietStretches.some((q) => date >= q.start && date <= q.end);
   // "1.–11. Sept. 2027", "Sep 1 – 11, 2027": the year and month only once, per the user's language
   const rangeFormat = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
   const dateRange = (start: string, end: string) => rangeFormat.formatRange(new Date(`${start}T00:00:00Z`), new Date(`${end}T00:00:00Z`));
@@ -330,13 +330,15 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
         </p>
       )}
 
-      <div className="relative">
+      {/* Columns follow the width of the section, not the screen: the results column is wide next to
+          the collapsed constraints rail and narrow next to the open one */}
+      <div className="relative @container">
         {updating && (
           <div className="absolute inset-0 z-10 flex items-start justify-center pt-16 pointer-events-none">
             <Loader2 className="w-5 h-5 animate-spin text-teal-600" aria-label={t.common.loading} />
           </div>
         )}
-        <div className={`grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-4 gap-3 transition-opacity ${updating ? 'opacity-40' : ''}`}>
+        <div className={`grid grid-cols-2 @lg:grid-cols-3 @4xl:grid-cols-4 gap-3 transition-opacity ${updating ? 'opacity-40' : ''}`}>
           {range.months.map((month) => {
             const [y, m] = month.split('-').map(Number);
             const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
@@ -438,7 +440,7 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
             {bucketLabel(scale, i)}
           </span>
         ))}
-        {bestStretches.length > 0 && (
+        {(bestStretches.length > 0 || quietStretches.length > 0) && (
           <span className="inline-flex items-center gap-1">
             <Star aria-hidden="true" className="w-3 h-3 fill-white stroke-emerald-700 dark:stroke-emerald-300 stroke-[2.5]" />
             {t.home.calendarBestDays}

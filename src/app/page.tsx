@@ -69,6 +69,7 @@ import {
   getWindowFilterWarning,
   getWindowSeasonalWarnings,
 } from '@/lib/optimizer/localized-warnings';
+import { LONG_HAUL_KM } from '@/lib/optimizer/distance-bands';
 import { SeasonalWarningFilterDropdown, type SeasonalWarningOption } from '@/components/results/SeasonalWarningFilterDropdown';
 import { DestinationMapModal } from '@/components/destination/DestinationMapModal';
 import { DestinationSafetyPopover } from '@/components/destination/DestinationSafetyPopover';
@@ -78,6 +79,8 @@ import { getDestinationVacationStyles } from '@/lib/optimizer/destination-styles
 import { shareOrCopyLink } from '@/lib/share/share-link';
 import {
   applyResultFilters,
+  DISTANCE_FILTER_VALUES,
+  normalizeDistanceFilter,
   destinationKey,
   countResultFilterOptions,
   explainResultFilterExclusions,
@@ -103,10 +106,10 @@ import { replaceUrlKeepingHistoryEntry } from '@/lib/navigation/history-entries'
 import { pushHistoryStep, goBackHistoryStep } from '@/lib/navigation/use-history-back';
 import { HolidayCalendarView } from '@/components/results/HolidayCalendarView';
 
-/** Views of the results: grouped by destination, a flat list, or the holiday calendar of the travel period */
-type ResultsViewMode = 'destination' | 'list' | 'calendar';
-const isResultsViewMode = (value: unknown): value is ResultsViewMode =>
-  value === 'destination' || value === 'list' || value === 'calendar';
+/** Views of the results: grouped by destination or a flat list (the holiday calendar is a section of its own) */
+type ResultsViewMode = 'destination' | 'list';
+const isResultsViewMode = (value: unknown): value is ResultsViewMode => value === 'destination' || value === 'list';
+const CALENDAR_OPEN_KEY = 'famvac_calendar_open';
 
 /** Background results this soon after the first ones are merged directly instead of offered */
 const INSTANT_BACKGROUND_MS = 1500;
@@ -249,6 +252,8 @@ export default function HomePage() {
   const [shareError, setShareError] = useState(false);
 
   const [viewMode, setViewMode] = useState<ResultsViewMode>('destination');
+  // The holiday calendar sits beside the results, not among their views
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [selectedDestinationsList, setSelectedDestinationsList] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [maxCostFilter, setMaxCostFilter] = useState<number | undefined>(undefined);
@@ -410,6 +415,8 @@ export default function HomePage() {
       if (savedFilters) {
         const parsed = JSON.parse(savedFilters);
         if (isResultsViewMode(parsed.viewMode)) setViewMode(parsed.viewMode);
+        // Calendar used to be a third view mode
+        else if (parsed.viewMode === 'calendar') setCalendarOpen(true);
         if (Array.isArray(parsed.selectedDestinationsList)) setSelectedDestinationsList(parsed.selectedDestinationsList);
         if (parsed.selectedMonth) setSelectedMonth(parsed.selectedMonth);
         if (parsed.maxCostFilter !== undefined) setMaxCostFilter(parsed.maxCostFilter);
@@ -417,7 +424,7 @@ export default function HomePage() {
         if (parsed.sortBy) setSortBy(parsed.sortBy);
         if (parsed.pageSize) setPageSize(parsed.pageSize);
         if (parsed.resultStyleFilter) setResultStyleFilter(parsed.resultStyleFilter);
-        if (parsed.distanceFilter) setDistanceFilter(parsed.distanceFilter);
+        if (parsed.distanceFilter) setDistanceFilter(normalizeDistanceFilter(parsed.distanceFilter));
         if (parsed.vehicleFilter) setVehicleFilter(parsed.vehicleFilter);
         if (parsed.safetyFilter) setSafetyFilter(parsed.safetyFilter);
         if (parsed.warningFilter === 'CLEAN_ONLY' || parsed.warningFilter === 'ALL') {
@@ -447,6 +454,13 @@ export default function HomePage() {
       const urlView = urlParams.get('view');
       if (isResultsViewMode(urlView)) {
         setViewMode(urlView);
+      } else if (urlView === 'calendar') {
+        setCalendarOpen(true);
+      }
+      try {
+        if (localStorage.getItem(CALENDAR_OPEN_KEY) === '1') setCalendarOpen(true);
+      } catch {
+        // Per-viewer convenience only
       }
       const urlDest = urlParams.get('dest');
       if (urlDest) {
@@ -457,7 +471,7 @@ export default function HomePage() {
       const urlStyle = urlParams.get('style');
       if (urlStyle) setResultStyleFilter(urlStyle as DestinationType);
       const urlDist = urlParams.get('dist');
-      if (urlDist) setDistanceFilter(urlDist);
+      if (urlDist) setDistanceFilter(normalizeDistanceFilter(urlDist));
       const urlVehicle = urlParams.get('vehicle');
       if (urlVehicle) setVehicleFilter(urlVehicle);
       const urlSafety = urlParams.get('safety');
@@ -1012,7 +1026,9 @@ export default function HomePage() {
         });
       }
     } else {
-      // Side by side: the form is long, so the results column may be scrolled out of view
+      // Side by side: fold the form to its rail so the results get the width (the rail's button
+      // brings it back), and scroll them into view - the form is long, so they may be out of view
+      setConstraintsSideCollapsed(true);
       requestAnimationFrame(() =>
         document.getElementById('results-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       );
@@ -1594,8 +1610,8 @@ export default function HomePage() {
       results
         ? countResultFilterOptions(results, resultFilterState, {
             month: ['ALL', ...availableMonths],
-            style: ['ALL', 'BEACH', 'ALPINE', 'CITY', 'NATURE', 'LONGRANGE'],
-            distance: ['ALL', 'SHORT', 'MID', 'EXTENDED', 'LONG', 'INTERCONTINENTAL'],
+            style: ['ALL', 'BEACH', 'ALPINE', 'CITY', 'NATURE'],
+            distance: [...DISTANCE_FILTER_VALUES],
             vehicle: ['ALL', 'PLANE', 'CAR', 'TRAIN', 'BUS'],
             safety: ['LEVEL_1', 'SAFE_ONLY', 'ALL'],
             warning: ['CLEAN_ONLY', 'ALL'],
@@ -1765,7 +1781,7 @@ export default function HomePage() {
     return (
       <div
         key={`${win.startDate}-${win.originAirport}-${win.travelVehicle || "PLANE"}-${win.destinationAirport}-${win.durationDays}`}
-        className="bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 p-5 @container shadow-xs hover:shadow-md transition-shadow relative flex flex-col flex-1"
+        className="bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 p-5 @container flex flex-col flex-1 shadow-xs hover:shadow-md transition-shadow relative"
       >
         {/* Arbitrage Banner */}
         {win.isArbitrageOpportunity && (
@@ -1782,6 +1798,8 @@ export default function HomePage() {
           <div className="space-y-1.5 flex-1 min-w-0">
             {!options?.hideDestinationHeader && (
               <div className="space-y-1.5 text-xs font-bold text-teal-700 dark:text-teal-400 tracking-wide pb-0.5">
+                {/* Safety rating right behind the name */}
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
                 <button
                   type="button"
                   onClick={() =>
@@ -1807,6 +1825,12 @@ export default function HomePage() {
                     {getFormattedLocalizedDestination(destinationKey(win), win.destinationName)}
                   </span>
                 </button>
+                <DestinationSafetyPopover
+                  safety={win.destinationSafety || win.safetyAssessment}
+                  destinationName={getFormattedLocalizedDestination(win.destinationAirport, win.destinationName)}
+                  countryName={getLocalizedDestinationLabel(win.destinationAirport, locale, { country: win.destinationCountry }).country}
+                />
+                </div>
                 {/* Vacation styles on their own line ... */}
                 {getDedupedStyleMetas(getDestinationVacationStyles(win.destinationAirport, win.flightDistanceKm)).length > 0 && (
                   <div className="flex flex-wrap items-center gap-2">
@@ -1824,7 +1848,7 @@ export default function HomePage() {
                     })}
                   </div>
                 )}
-                {/* ... and the way of getting there and the safety rating on another */}
+                {/* ... and the way of getting there on another */}
                 <div className="flex flex-wrap items-center gap-2">
                 {win.travelVehicle && (
                   <span
@@ -1862,11 +1886,6 @@ export default function HomePage() {
                     </span>
                   </span>
                 )}
-                <DestinationSafetyPopover
-                  safety={win.destinationSafety || win.safetyAssessment}
-                  destinationName={getFormattedLocalizedDestination(win.destinationAirport, win.destinationName)}
-                  countryName={getLocalizedDestinationLabel(win.destinationAirport, locale, { country: win.destinationCountry }).country}
-                />
                 </div>
               </div>
             )}
@@ -1878,6 +1897,12 @@ export default function HomePage() {
               <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-teal-600/10 dark:bg-teal-400/15 text-teal-800 dark:text-teal-200 border border-teal-300/80 dark:border-teal-700">
                 {win.durationDays} {t.home.days}
               </span>
+              {win.weather && (
+                <ClimateDetailsPopover
+                  destinationAirport={win.destinationAirport}
+                  weather={win.weather}
+                />
+              )}
               {win.autoSelectedOrigin && !win.railFeeder && (
                 <span
                   className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-dashed border-emerald-400 dark:border-emerald-700 flex items-center gap-1"
@@ -1908,12 +1933,6 @@ export default function HomePage() {
                   {t.home.winterSportsActiveBadge}
                   {win.weather.snowDepthCm ? ` (~${win.weather.snowDepthCm} cm)` : ''}
                 </span>
-              )}
-              {win.weather && (
-                <ClimateDetailsPopover
-                  destinationAirport={win.destinationAirport}
-                  weather={win.weather}
-                />
               )}
               {win.boardType && (
                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-violet-50 dark:bg-violet-950/40 text-violet-800 dark:text-violet-300 border border-violet-200 dark:border-violet-800 border-l-[3px] border-l-violet-500 dark:border-l-violet-400 flex items-center gap-1">
@@ -2033,7 +2052,7 @@ export default function HomePage() {
         })}
 
         {/* Bottom Bar: Action Buttons above Metrics */}
-        <div className="mt-auto pt-4">
+        <div className="flex-1 min-h-4" />
         <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
           {/* Action Buttons: travel details and deals - stacked full width on phones, two equal
               columns on larger screens, content centered */}
@@ -2148,7 +2167,6 @@ export default function HomePage() {
             </MetricExplanationPopover>
           </div>
         </div>
-        </div>
 
         {win.isCachedBenchmark && (
           <div className="mt-2 text-[10px] text-slate-400 flex items-center gap-1">
@@ -2188,7 +2206,8 @@ export default function HomePage() {
         }`}
       >
         {/* Form column: heading above the card, like "Optimal vacation windows" */}
-        <div className={`space-y-4 ${constraintsSideCollapsed ? 'lg:col-span-1' : 'lg:col-span-5'}`}>
+        <div className={`space-y-4 ${constraintsSideCollapsed ? 'lg:col-span-1 lg:flex lg:flex-col' : 'lg:col-span-5'}`}>
+          {/* The rail runs the full height of the results next to it */}
           {constraintsSideCollapsed && (
             <button
               type="button"
@@ -2197,10 +2216,11 @@ export default function HomePage() {
               aria-controls="search-constraints"
               title={t.home.constraintsExpand}
               aria-label={t.home.constraintsExpand}
-              className="hidden lg:flex w-12 flex-col items-center gap-3 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs text-teal-600 dark:text-teal-400 hover:border-teal-300 dark:hover:border-teal-700 transition-colors cursor-pointer"
+              className="hidden lg:flex lg:flex-1 lg:mb-0 w-12 flex-col items-center gap-3 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:border-teal-300 dark:hover:border-teal-700 transition-colors cursor-pointer"
             >
-              <PanelLeftOpen className="w-5 h-5" aria-hidden="true" />
-              <Filter className="w-4 h-4 text-slate-400" aria-hidden="true" />
+              {/* Same order and colour as the open sidebar's heading: the filter icon first, in green */}
+              <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+              <PanelLeftOpen className="w-4 h-4 text-slate-500 dark:text-slate-400" aria-hidden="true" />
             </button>
           )}
           <div className={`border-b border-slate-200 dark:border-slate-800 pb-2.5 ${constraintsSideCollapsed ? 'lg:hidden' : ''}`}>
@@ -2730,7 +2750,9 @@ export default function HomePage() {
         </div>
 
         {/* Results Stream */}
-        <div className={`space-y-4 ${constraintsSideCollapsed ? 'lg:col-span-1' : 'lg:col-span-7'}`}>
+        {/* While a search runs the column is at least a screen tall: with the form folded away the page
+            would otherwise be too short to scroll the results heading to the top */}
+        <div className={`space-y-4 ${constraintsSideCollapsed ? 'lg:col-span-1' : 'lg:col-span-7'} ${loading ? 'lg:min-h-screen' : ''}`}>
           {/* One row like the form's heading (title left, action right), so both cards start level */}
           <div id="results-heading" className="border-b border-slate-200 dark:border-slate-800 pb-2.5 scroll-mt-20">
             <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2 min-h-9">
@@ -2854,7 +2876,7 @@ export default function HomePage() {
 
                   {/* Right: View Mode Switcher (icons only at lg, where the results column is narrowest) */}
                   <div className="flex items-center">
-                    <div className="grid grid-cols-3 w-full sm:w-auto sm:inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700">
+                    <div className="grid grid-cols-2 w-full sm:w-auto sm:inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700">
                       <button
                         title={t.home.viewModeDestination}
                         type="button"
@@ -2880,19 +2902,6 @@ export default function HomePage() {
                       >
                         <List className="hidden sm:block w-3.5 h-3.5" />
                         <span className="whitespace-nowrap lg:sr-only xl:not-sr-only">{t.home.viewModeList}</span>
-                      </button>
-                      <button
-                        title={t.home.calendarTab}
-                        type="button"
-                        onClick={() => switchViewMode('calendar')}
-                        className={`px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                          viewMode === 'calendar'
-                            ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-2xs'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                        }`}
-                      >
-                        <CalendarDays className="hidden sm:block w-3.5 h-3.5" />
-                        <span className="whitespace-nowrap lg:sr-only xl:not-sr-only">{t.home.calendarTab}</span>
                       </button>
                     </div>
                   </div>
@@ -2968,7 +2977,7 @@ export default function HomePage() {
                               <MapPin className="w-3.5 h-3.5 text-teal-600" />
                               <span>{t.home.filterByDestination}</span>
                               {isDestinationActive && (
-                                <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                                <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                               )}
                             </label>
                             <div className="flex items-center gap-1.5 w-full sm:w-auto min-w-0">
@@ -3008,7 +3017,7 @@ export default function HomePage() {
                             <Compass className={`w-3.5 h-3.5 ${isStyleActive ? 'text-teal-600' : 'text-teal-600'}`} />
                             <span>{t.home.filterByVacationStyle}</span>
                             {isStyleActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3026,7 +3035,6 @@ export default function HomePage() {
                                 filterOption('style', 'ALPINE', t.home.vacationKindAlpine, resultStyleFilter),
                                 filterOption('style', 'CITY', t.home.vacationKindCity, resultStyleFilter),
                                 filterOption('style', 'NATURE', t.home.vacationKindNature, resultStyleFilter),
-                                filterOption('style', 'LONGRANGE', t.home.vacationKindLongrange, resultStyleFilter),
                               ]}
                             />
                             <div className="w-7 h-7 flex items-center justify-center shrink-0">
@@ -3054,7 +3062,7 @@ export default function HomePage() {
                             <ShieldCheck className={`w-3.5 h-3.5 ${isSafetyActive ? 'text-emerald-600' : 'text-emerald-600'}`} />
                             <span>{t.home.filterBySafety}</span>
                             {isSafetyActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3103,7 +3111,7 @@ export default function HomePage() {
                             <Calendar className={`w-3.5 h-3.5 ${isMonthActive ? 'text-teal-600' : 'text-teal-600'}`} />
                             <span>{t.home.filterByMonth}</span>
                             {isMonthActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3150,7 +3158,7 @@ export default function HomePage() {
                             <Award className={`w-3.5 h-3.5 ${isSchoolHolidayActive ? 'text-teal-600' : 'text-teal-600'}`} />
                             <span>{t.home.schoolHolidaysFilterLabel}</span>
                             {isSchoolHolidayActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3192,7 +3200,7 @@ export default function HomePage() {
                             <Users className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
                             <span>{t.home.filterBySeasonalInfo}</span>
                             {isSeasonalInfoActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3234,7 +3242,7 @@ export default function HomePage() {
                             <AlertCircle className={`w-3.5 h-3.5 ${isWarningActive ? 'text-amber-500' : 'text-amber-500'}`} />
                             <span>{t.home.filterByWarnings}</span>
                             {isWarningActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto min-w-0">
@@ -3277,7 +3285,7 @@ export default function HomePage() {
                             <Sun className={`w-3.5 h-3.5 ${isHeatActive ? 'text-amber-500' : 'text-amber-500'}`} />
                             <span>{t.home.filterByHeat}</span>
                             {isHeatActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3325,7 +3333,7 @@ export default function HomePage() {
                             <Car className={`w-3.5 h-3.5 ${isVehicleActive ? 'text-emerald-600' : 'text-emerald-600'}`} />
                             <span>{t.home.filterByVehicle}</span>
                             {isVehicleActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3370,7 +3378,7 @@ export default function HomePage() {
                             <Route className="w-3.5 h-3.5 text-indigo-600" />
                             <span>{t.home.filterByDistance}</span>
                             {isDistanceActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3384,11 +3392,8 @@ export default function HomePage() {
                               highlighted={isDistanceActive}
                               options={[
                                 filterOption('distance', 'ALL', t.home.allDistances, distanceFilter),
-                                filterOption('distance', 'SHORT', t.home.distShort, distanceFilter),
-                                filterOption('distance', 'MID', t.home.distMid, distanceFilter),
-                                filterOption('distance', 'EXTENDED', t.home.distExtended, distanceFilter),
-                                filterOption('distance', 'LONG', t.home.distLong, distanceFilter),
-                                filterOption('distance', 'INTERCONTINENTAL', t.home.distIntercontinental, distanceFilter),
+                                filterOption('distance', 'NEARBY', t.home.travelDistanceNearbyRange.replace('{km}', LONG_HAUL_KM.toLocaleString(locale)), distanceFilter),
+                                filterOption('distance', 'LONGHAUL', t.home.travelDistanceLongHaulRange.replace('{km}', LONG_HAUL_KM.toLocaleString(locale)), distanceFilter),
                               ]}
                             />
                             <div className="w-7 h-7 flex items-center justify-center shrink-0">
@@ -3419,7 +3424,7 @@ export default function HomePage() {
                               <span className="font-normal text-[10px] text-slate-500 dark:text-slate-400">({t.home.filterNoFlights})</span>
                             )}
                             {isFlightStopsActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3466,7 +3471,7 @@ export default function HomePage() {
                               <span className="font-normal text-[10px] text-slate-500 dark:text-slate-400">({t.home.filterNoOverland})</span>
                             )}
                             {isOverlandDurationActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3517,7 +3522,7 @@ export default function HomePage() {
                             <Utensils className={`w-3.5 h-3.5 ${isBoardTypeActive ? 'text-violet-600' : 'text-violet-600'}`} />
                             <span>{t.home.filterByBoardType}</span>
                             {isBoardTypeActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3562,13 +3567,13 @@ export default function HomePage() {
                             <Sparkles className={`w-3.5 h-3.5 ${isMaxCostActive ? 'text-amber-500' : 'text-amber-500'}`} />
                             <span>{t.home.filterByCost}</span>
                             {isMaxCostActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
                             <input
                               type="number"
-                              placeholder="z. B. 3500 €"
+                              placeholder={t.home.maxBudgetPlaceholder}
                               value={maxCostFilter || ''}
                               onChange={(e) => {
                                 setMaxCostFilter(e.target.value ? Number(e.target.value) : undefined);
@@ -3605,7 +3610,7 @@ export default function HomePage() {
                             <ArrowUpDown className={`w-3.5 h-3.5 ${isSortActive ? 'text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400'}`} />
                             <span>{t.home.sortBy}</span>
                             {isSortActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3645,16 +3650,42 @@ export default function HomePage() {
                 })()}
               </div>
 
+              {/* The calendar is its own section, independent of the destination/list view below */}
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  aria-expanded={calendarOpen}
+                  aria-controls="holiday-calendar-section"
+                  onClick={() => {
+                    const next = !calendarOpen;
+                    setCalendarOpen(next);
+                    try {
+                      localStorage.setItem(CALENDAR_OPEN_KEY, next ? '1' : '0');
+                    } catch {
+                      // Per-viewer convenience only
+                    }
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  <CalendarDays className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <span className="flex-1 text-left">{t.home.calendarTab}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${calendarOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {calendarOpen && (
+                  <div id="holiday-calendar-section">
+                    <HolidayCalendarView
+                      homeRegion={federalState}
+                      schoolRegions={calendarSchoolRegions}
+                      earliestDate={earliestDate}
+                      latestDate={latestDate}
+                      blackouts={calendarBlackouts}
+                    />
+                  </div>
+                )}
+              </div>
+
               <div id="results-top" className="scroll-mt-24" aria-hidden="true" />
-              {viewMode === 'calendar' ? (
-                <HolidayCalendarView
-                  homeRegion={federalState}
-                  schoolRegions={calendarSchoolRegions}
-                  earliestDate={earliestDate}
-                  latestDate={latestDate}
-                  blackouts={calendarBlackouts}
-                />
-              ) : filteredResults.length === 0 ? (
+              {filteredResults.length === 0 ? (
                 <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 p-8 text-center text-slate-500 dark:text-slate-400 text-xs">
                   {t.home.noFilteredResults}
                 </div>
@@ -3679,6 +3710,7 @@ export default function HomePage() {
                   ) : (
                     /* Destination Cards List; two columns next to the collapsed constraints rail, where one
                        card per row would be far wider than it was designed for (not with country headings) */
+                    <>
                     <div
                       className={
                         constraintsSideCollapsed && sortBy !== 'country'
@@ -3692,10 +3724,7 @@ export default function HomePage() {
                       sortBy === 'country' &&
                       (pageIdx === 0 || displayedDestinationGroups[pageIdx - 1].destinationCountry !== group.destinationCountry);
                     return (
-                      <div
-                        key={group.destinationCode}
-                        className="space-y-2 xl:space-y-0 xl:mb-6 xl:row-span-3 xl:grid xl:grid-rows-subgrid"
-                      >
+                      <div key={group.destinationCode} className="flex flex-col gap-2 h-full xl:gap-0 xl:mb-6 xl:row-span-3 xl:grid xl:grid-rows-subgrid">
                       {startsCountry && (
                         <h3 className="flex items-center gap-1.5 pt-1 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                           <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
@@ -3703,7 +3732,7 @@ export default function HomePage() {
                         </h3>
                       )}
                       <div
-                        className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs hover:shadow-md transition xl:row-span-3 xl:grid xl:grid-rows-subgrid"
+                        className="flex flex-col flex-1 xl:row-span-3 xl:grid xl:grid-rows-subgrid bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs hover:shadow-md transition"
                       >
                         {/* Group Header */}
                         <div className="bg-linear-to-r from-slate-50 via-teal-50/40 to-emerald-50/20 dark:from-slate-800/80 dark:via-slate-800/50 dark:to-teal-950/20 p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col space-y-3">
@@ -3711,6 +3740,8 @@ export default function HomePage() {
                           <div className="flex items-start sm:items-center gap-3">
                             <div className="flex-1 min-w-0">
                               <div className="space-y-1.5">
+                                {/* Safety rating right behind the name; wraps below it on narrow screens */}
+                                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -3737,6 +3768,12 @@ export default function HomePage() {
                                     <span>{group.destinationName}</span>
                                   </h3>
                                 </button>
+                                <DestinationSafetyPopover
+                                  safety={group.destinationSafety || group.featuredWindow.destinationSafety || group.featuredWindow.safetyAssessment}
+                                  destinationName={group.destinationName}
+                                  countryName={group.destinationCountry}
+                                />
+                                </div>
                                 {getDedupedStyleMetas(group.vacationStyles).length > 0 && (
                                   <div className="flex flex-wrap items-center gap-2">
                                     {getDedupedStyleMetas(group.vacationStyles).map((meta) => {
@@ -3773,18 +3810,14 @@ export default function HomePage() {
                                     </span>
                                   );
                                 })}
-                                <DestinationSafetyPopover
-                                  safety={group.destinationSafety || group.featuredWindow.destinationSafety || group.featuredWindow.safetyAssessment}
-                                  destinationName={group.destinationName}
-                                  countryName={group.destinationCountry}
-                                />
                                 </div>
                               </div>
                             </div>
                           </div>
 
                           {/* Bottom Row: Stats & Action Buttons (Pulled down for maximum room) */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 mt-auto min-h-9 border-t border-slate-200/70 dark:border-slate-700/70">
+                          {/* Tall enough for the "Top Recommendation" badge, so cards without it line up with the first */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 mt-auto sm:min-h-[2.25rem] border-t border-slate-200/70 dark:border-slate-700/70">
                             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
                               <span>
                                 {t.home.destGroupTimeframesFound.replace('{count}', String(group.totalWindows))}
@@ -3810,7 +3843,7 @@ export default function HomePage() {
                         </div>
 
                         {/* Featured Top-Scoring Vacation Window */}
-                        <div className="p-4 bg-white dark:bg-slate-900/90 flex flex-col">
+                        <div className="flex flex-col flex-1 p-4 bg-white dark:bg-slate-900/90">
                           {renderVacationCard(group.featuredWindow, { rank: groupIdx + 1, hideDestinationHeader: true })}
                         </div>
 
@@ -3821,7 +3854,7 @@ export default function HomePage() {
                             <button
                               type="button"
                               onClick={() => showDestinationInList(group.destinationCode)}
-                              className="w-full sm:w-auto px-3 py-2 text-xs font-bold rounded-lg border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                              className="w-full px-3 py-2 text-xs font-bold rounded-lg border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition inline-flex items-center justify-center gap-1.5 cursor-pointer"
                             >
                               <List className="w-3.5 h-3.5" />
                               {t.home.destGroupShowAllInList.replace('{count}', String(group.totalWindows))}
@@ -3832,7 +3865,9 @@ export default function HomePage() {
                       </div>
                     );
                   })}
+                    </div>
 
+                  {/* Below the cards, not a cell of their grid */}
                   <ResultsPagination
                     page={Math.min(destinationCurrentPage, destinationTotalPages)}
                     totalPages={destinationTotalPages}
@@ -3847,7 +3882,7 @@ export default function HomePage() {
                       setDestinationCurrentPage(1);
                     }}
                   />
-                </div>
+                </>
               )}
             </div>
               ) : (
@@ -3903,7 +3938,7 @@ export default function HomePage() {
                   {/* Two columns next to the collapsed constraints rail */}
                   <div
                     className={
-                      constraintsSideCollapsed ? 'space-y-4 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-4 xl:items-start' : 'space-y-4'
+                      constraintsSideCollapsed ? 'space-y-4 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-4' : 'space-y-4'
                     }
                   >
                     {displayedResults.map((win, idx) => {

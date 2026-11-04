@@ -43,6 +43,7 @@ export interface TranslationDictionary {
     constraintsCollapse: string;
     formReset: string;
     formResetTitle: string;
+    filterActive: string;
     filterReset: string;
     noFilteredResults: string;
     overlandOnlyHint: string;
@@ -141,6 +142,16 @@ export interface TranslationDictionary {
     directFlightPremiumBadge: string;
     directFlightPremiumDesc: string;
     connectingSavingsBadge: string;
+    flightCorridorTag: string;
+    connectingSavingsTag: string;
+    checkLiveFlights: string;
+    flightLegFallback: string;
+    flightNonStopShort: string;
+    flightStopsShort: string;
+    flightGeodesic: string;
+    flightShareAdultsOne: string;
+    flightShareAdultsMany: string;
+    farePerAdult: string;
     filterByFlightStops: string;
     filterNoFlights: string;
     filterNoOverland: string;
@@ -507,11 +518,6 @@ export interface TranslationDictionary {
     filterByVacationStyle: string;
     filterByDistance: string;
     allDistances: string;
-    distShort: string;
-    distMid: string;
-    distExtended: string;
-    distLong: string;
-    distIntercontinental: string;
     showOnMap: string;
     mapOpenGoogleMaps: string;
     mapOpenOsm: string;
