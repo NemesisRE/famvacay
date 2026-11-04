@@ -38,7 +38,7 @@ test('the calendar section shows the holiday density of the country and the fami
   await page.goto(`/?s=${shareId}`);
 
   await page.getByRole('button', { name: 'Best travel times' }).click(); // opens the calendar section
-  const calendar = page.locator('section[aria-labelledby="holiday-calendar-title"]');
+  const calendar = page.getByRole('region', { name: 'Best travel times' });
   // "Your group" is the default view
   await expect(calendar.getByText(/Without school children you are not tied to school holidays/)).toBeVisible();
   await expect(calendar.getByRole('listitem', { name: /July 20, 2027 · 12 of 16 regions on school holiday/ })).toBeVisible();
