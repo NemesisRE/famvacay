@@ -19,8 +19,6 @@ import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 interface AirportSavingsBadgeProps {
   originAirport: string;
-  /** Region of the departure airport whose schools are in session */
-  originState?: string;
   /** The airport was picked automatically (shown with the "best airport" wording) */
   autoSelected?: boolean;
 }
@@ -30,7 +28,7 @@ interface AirportSavingsBadgeProps {
  * region is on school holiday, the airport's region is not). It replaces the full-width banner,
  * which pushed the card content down and broke the row alignment between neighbouring cards.
  */
-export function AirportSavingsBadge({ originAirport, originState, autoSelected }: AirportSavingsBadgeProps) {
+export function AirportSavingsBadge({ originAirport, autoSelected }: AirportSavingsBadgeProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   // The Back button closes it instead of leaving the page
@@ -49,9 +47,7 @@ export function AirportSavingsBadge({ originAirport, originState, autoSelected }
   const { getReferenceProps, getFloatingProps } = useInteractions([dismiss, role]);
 
   const label = autoSelected ? t.home.autoOriginBadge : t.home.arbitrageBadge;
-  const explain = t.home.arbitrageExplain
-    .replace('{origin}', originAirport)
-    .replace('{state}', originState || originAirport);
+  const explain = t.home.arbitrageExplain.replace('{origin}', originAirport);
 
   return (
     <>
@@ -63,11 +59,12 @@ export function AirportSavingsBadge({ originAirport, originState, autoSelected }
           e.stopPropagation();
           setIsOpen((prev) => !prev);
         }}
-        className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-dashed border-amber-500 dark:border-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40 flex items-center gap-1 cursor-pointer transition select-none"
+        className="group text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-dashed border-amber-500 dark:border-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40 flex items-center gap-1 cursor-pointer transition select-none"
         title={t.home.arbitrageSaving}
       >
         <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
         {label} · {originAirport}
+        <span className="opacity-60 group-hover:opacity-100 text-[10px] font-normal transition-opacity">ℹ</span>
       </button>
 
       {isOpen && (
@@ -96,7 +93,6 @@ export function AirportSavingsBadge({ originAirport, originState, autoSelected }
               </button>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{explain}</p>
-            <p className="text-xs font-bold text-amber-800 dark:text-amber-300">{t.home.arbitrageSaving}</p>
             {autoSelected && (
               <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.home.autoOriginTitle}</p>
             )}

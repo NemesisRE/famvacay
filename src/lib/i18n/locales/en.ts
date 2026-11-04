@@ -206,7 +206,7 @@ export const en: TranslationDictionary = {
     noResultsForDestinationTitle: 'No matching vacation periods found for the selected destination(s).',
     noResultsForDestinationHint: 'No suitable travel windows matched the selected destination. Try widening your travel dates, adjusting flexible durations, or selecting alternative departure hubs.',
     arbitrageBadge: "Cheaper departure",
-    arbitrageExplain: "During this period your home region is on school holiday, so fares from nearby airports are at peak prices. Schools in {state} are in session, so flights from {origin} are in lower demand and usually cost less.",
+    arbitrageExplain: "School is out in your home region during this period, so flights from nearby airports are pricey. Around {origin} classes are still on, which makes it cheaper: up to 30% less than flying from your local airport.",
     arbitrageSaving: 'Up to 30% cheaper vs. local airport',
     seasonalWarningBadge: 'Seasonality Notice',
     seasonWarningMonsoonTitle: 'Monsoon Season',

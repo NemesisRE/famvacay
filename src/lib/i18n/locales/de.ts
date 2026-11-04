@@ -206,7 +206,7 @@ export const de: TranslationDictionary = {
     noResultsForDestinationTitle: 'Keine passenden Reisezeiträume für das ausgewählte Reiseziel gefunden.',
     noResultsForDestinationHint: 'Für das gewählte Reiseziel wurden keine passenden Reisefenster gefunden. Versuche, den Zeitraum zu erweitern oder alternative Abflughäfen zu wählen.',
     arbitrageBadge: "Günstiger Abflug",
-    arbitrageExplain: "In diesem Zeitraum sind in deiner Heimatregion Schulferien, die Flüge ab Flughäfen in der Nähe sind daher teuer. In {state} ist Schulzeit, die Nachfrage ab {origin} ist niedriger und die Flüge sind meist günstiger.",
+    arbitrageExplain: "In deiner Heimatregion sind in diesem Zeitraum Ferien, deshalb sind Flüge ab Flughäfen in deiner Nähe teuer. Rund um {origin} ist noch Schule, darum ist es günstiger: bis zu 30 % weniger als ab dem Heimatflughafen.",
     arbitrageSaving: 'Bis zu 30% Ersparnis ggü. Heimatflughafen',
     seasonalWarningBadge: 'Saison-Hinweis',
     seasonWarningMonsoonTitle: 'Monsun-Saison',

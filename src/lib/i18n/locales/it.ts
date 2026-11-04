@@ -206,7 +206,7 @@ export const it: TranslationDictionary = {
     noResultsForDestinationTitle: 'Nessun periodo di vacanza trovato per la meta selezionata.',
     noResultsForDestinationHint: 'Non ci sono finestre di viaggio adatte per questa destinazione. Prova ad ampliare l’intervallo di date o a selezionare aeroporti di partenza alternativi.',
     arbitrageBadge: "Partenza più economica",
-    arbitrageExplain: "In questo periodo nella tua regione d’origine ci sono le vacanze scolastiche, quindi i voli dagli aeroporti vicini costano di più. In {state} le scuole sono aperte: la domanda da {origin} è più bassa e i voli di solito costano meno.",
+    arbitrageExplain: "In questo periodo la tua regione ha le vacanze scolastiche e i voli dagli aeroporti vicini costano di più. Intorno a {origin} la scuola è ancora aperta, quindi costa meno: fino al 30 % in meno rispetto all’aeroporto di casa.",
     arbitrageSaving: 'Fino al 30% più conveniente rispetto all’aeroporto locale',
     seasonalWarningBadge: 'Avviso stagionale',
     seasonWarningMonsoonTitle: 'Stagione dei monsoni',

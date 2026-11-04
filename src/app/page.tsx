@@ -1897,7 +1897,6 @@ export default function HomePage() {
               {win.isArbitrageOpportunity ? (
                 <AirportSavingsBadge
                   originAirport={win.originAirport}
-                  originState={win.arbitrageOriginState}
                   autoSelected={Boolean(win.autoSelectedOrigin)}
                 />
               ) : (
