@@ -800,6 +800,7 @@ export interface TranslationDictionary {
     footerLink: string;
     heroBadge: string;
     heroTitle: string;
+    heroSubtitle: string;
     heroIntro: string;
     heroIntroSecond: string;
     divisionTitle: string;

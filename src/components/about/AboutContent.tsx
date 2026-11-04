@@ -93,6 +93,7 @@ export function AboutContent() {
         <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white max-w-3xl leading-tight">
           {a.heroTitle}
         </h1>
+        <p className="mt-3 text-lg sm:text-xl font-semibold text-slate-700 dark:text-slate-200 max-w-3xl">{a.heroSubtitle}</p>
         <div className="mt-6 grid gap-4 sm:gap-6 sm:grid-cols-2">
           <p className={bodyClass}>{a.heroIntro}</p>
           <p className={bodyClass}>{a.heroIntroSecond}</p>
@@ -178,13 +179,13 @@ export function AboutContent() {
       {/* 4. Open & honest engineering */}
       <section
         aria-labelledby="about-honesty"
-        className="rounded-3xl bg-slate-900 dark:bg-slate-900 border border-slate-800 text-white p-3 sm:p-4"
+        className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white p-3 sm:p-4"
       >
         <h2 id="about-honesty" className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Scale className="w-6 h-6 text-teal-400" aria-hidden="true" />
+          <Scale className="w-6 h-6 text-teal-600 dark:text-teal-400" aria-hidden="true" />
           {a.honestyTitle}
         </h2>
-        <div className="mt-3 space-y-3 max-w-3xl text-sm sm:text-base text-slate-300 leading-relaxed">
+        <div className="mt-3 space-y-3 max-w-3xl text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
           <p>{a.honestyBody}</p>
           <p>{a.honestyBodySecond}</p>
         </div>

@@ -873,7 +873,8 @@ export const de: TranslationDictionary = {
   about: {
     footerLink: "Über FamVacay",
     heroBadge: "Über FamVacay & Engineering-Philosophie",
-    heroTitle: "100 % KI-generierter Code. 100 % menschliche Idee, Gestaltung, Architektur und Tests.",
+    heroTitle: "KI schreibt den Code. Menschen machen das Produkt.",
+    heroSubtitle: "100 % KI-generierter Code. 100 % menschliche Idee, Gestaltung, Architektur und Tests.",
     heroIntro: "Keine einzige Zeile TypeScript, Prisma oder CSS von FamVacay wurde von Hand getippt. Jede Zeile haben KI-Coding-Agenten geschrieben.",
     heroIntroSecond: "Trotzdem ist FamVacay das Gegenteil einer schnell zusammengeprompteten KI-Spielerei: Die Idee, das Produktdesign, jede Regel im Optimierer, die Architektur und die Tests stammen von dem Menschen dahinter, der das Problem aus eigener Erfahrung kennt.",
     divisionTitle: "Wer hat was gemacht?",
