@@ -2216,11 +2216,11 @@ export default function HomePage() {
               aria-controls="search-constraints"
               title={t.home.constraintsExpand}
               aria-label={t.home.constraintsExpand}
-              className="hidden lg:flex lg:flex-1 lg:mb-0 w-12 flex-col items-center gap-3 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:border-teal-300 dark:hover:border-teal-700 transition-colors cursor-pointer"
+              className="hidden lg:flex lg:flex-1 lg:mb-0 w-12 flex-col items-center gap-3 pt-2 pb-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:border-teal-300 dark:hover:border-teal-700 transition-colors cursor-pointer"
             >
-              {/* Same order and colour as the open sidebar's heading: the filter icon first, in green */}
+              {/* Same order and colour as the open sidebar's heading: the filter icon first, in green; both icons share one size and the first sits level with the results heading's icon (row height min-h-9) */}
               <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
-              <PanelLeftOpen className="w-4 h-4 text-slate-500 dark:text-slate-400" aria-hidden="true" />
+              <PanelLeftOpen className="w-5 h-5 text-slate-500 dark:text-slate-400" aria-hidden="true" />
             </button>
           )}
           <div className={`border-b border-slate-200 dark:border-slate-800 pb-2.5 ${constraintsSideCollapsed ? 'lg:hidden' : ''}`}>
