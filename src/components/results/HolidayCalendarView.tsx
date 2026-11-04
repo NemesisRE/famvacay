@@ -44,6 +44,8 @@ interface HolidayCalendarViewProps {
   latestDate: string;
   /** Blackouts of the search, shown in the personal view */
   blackouts: { startDate: string; endDate: string; reason?: string }[];
+  /** Rendered inside a collapsible box that already supplies the border and padding */
+  embedded?: boolean;
 }
 
 const VIEW_STORAGE_KEY = 'famvac_calendar_view';
@@ -115,7 +117,7 @@ const PERSONAL = {
  * regions are off at the same time (early August in Baden-Württemberg is crowded, early September
  * quiet), public holidays at home and their blackouts.
  */
-export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, latestDate, blackouts }: HolidayCalendarViewProps) {
+export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, latestDate, blackouts, embedded }: HolidayCalendarViewProps) {
   const { t, locale, formatDate } = useI18n();
   const [view, setView] = useState<CalendarView>(readStoredView);
   const country = (homeRegion || '').split('-')[0];
@@ -278,7 +280,7 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
         ];
 
   return (
-    <section aria-labelledby="holiday-calendar-title" aria-busy={updating} className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 space-y-4">
+    <section aria-labelledby="holiday-calendar-title" aria-busy={updating} className={`space-y-4 ${embedded ? '' : 'bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-4'}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         {/* Fixed heights: the two views' texts differ in length and must not move the calendar */}
         <div className="space-y-0.5 min-w-0 flex-1 basis-64">
