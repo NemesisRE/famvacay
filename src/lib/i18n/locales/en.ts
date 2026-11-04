@@ -873,7 +873,7 @@ export const en: TranslationDictionary = {
   about: {
     footerLink: "About",
     heroBadge: "About & Engineering Philosophy",
-    heroTitle: "AI writes the code. Humans make the product.",
+    heroTitle: "AI builds. Humans decide.",
     heroSubtitle: "100 % AI-generated code. 100 % human idea, design, architecture and testing.",
     heroIntro: "Not a single line of FamVacay's TypeScript, Prisma schema or CSS was typed by hand. Every line was written by AI coding agents.",
     heroIntroSecond: "And yet FamVacay is the opposite of a one-shot AI toy app. The idea, the product design, every rule in the optimizer, the architecture and the testing come from the human behind it, who knows the problem first-hand.",
