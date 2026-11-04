@@ -27,7 +27,7 @@ export function ResultsPagination({
   const { t } = useI18n();
 
   return (
-    <div className="bg-white dark:bg-slate-900/90 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div className="bg-white dark:bg-slate-900/90 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
       <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
         <span>{t.home.resultsPerPage}:</span>
         <SelectDropdown
