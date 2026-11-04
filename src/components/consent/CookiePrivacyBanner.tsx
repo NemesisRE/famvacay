@@ -24,7 +24,7 @@ export function CookiePrivacyBanner() {
   return (
     <div className="fixed bottom-0 inset-x-0 z-[100] p-4 flex justify-center">
       {/* Desktop: message and both buttons in one row; phones: full-width buttons below the text */}
-      <div className="max-w-xl lg:max-w-5xl w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-6">
+      <div className="max-w-xl lg:max-w-5xl w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 dark:ring-1 dark:ring-white/10 dark:shadow-black/70 rounded-2xl shadow-lg p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-6">
         <p className="flex-1 min-w-0 text-xs text-slate-600 dark:text-slate-400">{t.legal.cookieBannerMessage}</p>
         <div className="flex flex-col sm:flex-row sm:justify-end gap-2 shrink-0 [&>button]:w-full sm:[&>button]:w-auto sm:[&>button]:whitespace-nowrap">
           {mode === 'STRICT_OPT_IN' ? (

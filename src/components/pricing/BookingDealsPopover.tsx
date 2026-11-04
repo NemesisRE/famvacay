@@ -212,18 +212,22 @@ export function BookingDealsPopover({
             ref={refs.setFloating}
             style={getResponsivePopoverStyle(isSmallScreen, floatingStyles, 9999)}
             {...getFloatingProps()}
-            className="animate-in fade-in zoom-in-95 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 text-slate-800 dark:text-slate-100 transition-opacity duration-150 ease-out"
+            className="animate-in fade-in zoom-in-95 w-80 sm:w-96 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 dark:ring-1 dark:ring-white/10 dark:shadow-black/70 p-4 text-slate-800 dark:text-slate-100 transition-opacity duration-150 ease-out"
           >
             {/* Header */}
-            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900 dark:text-slate-100">
-                <Tag className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+            {/* Title and buttons share the first row, the route badge gets its own line below: beside them
+                it squeezed the title into a wrap on narrow popovers */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 pb-2.5 border-b border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900 dark:text-slate-100 min-w-0 flex-1">
+                <Tag className="w-3.5 h-3.5 shrink-0 text-teal-600 dark:text-teal-400" />
                 <span>{t.home.bookingDealsTitle || 'Travel Portal Deals'}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+              <div className="order-3 basis-full min-w-0">
+                <span className="inline-block max-w-full truncate align-top whitespace-nowrap text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
                   {isOverland ? destinationLabel : `${originAirport} ➔ ${destinationAirport}`}
                 </span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowPortalSettings(!showPortalSettings)}

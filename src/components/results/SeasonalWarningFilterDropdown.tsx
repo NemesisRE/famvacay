@@ -153,7 +153,7 @@ export function SeasonalWarningFilterDropdown({
               overflowY: 'hidden',
             }}
             {...getFloatingProps()}
-            className="w-80 flex flex-col bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-2.5 text-slate-800 dark:text-slate-100 transition-all duration-100 animate-in fade-in zoom-in-95"
+            className="w-80 flex flex-col bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 dark:ring-1 dark:ring-white/10 dark:shadow-black/70 p-2.5 text-slate-800 dark:text-slate-100 transition-all duration-100 animate-in fade-in zoom-in-95"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}

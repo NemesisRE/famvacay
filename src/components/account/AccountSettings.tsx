@@ -654,7 +654,7 @@ export function AccountSettings() {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 dark:border-slate-800 space-y-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 dark:border-slate-600 dark:ring-1 dark:ring-white/10 dark:shadow-black/70 space-y-4">
             <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
               <AlertTriangle className="w-6 h-6" />
               <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100">

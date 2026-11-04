@@ -2216,11 +2216,11 @@ export default function HomePage() {
               aria-controls="search-constraints"
               title={t.home.constraintsExpand}
               aria-label={t.home.constraintsExpand}
-              className="hidden lg:flex lg:flex-1 lg:mb-0 w-12 flex-col items-center gap-3 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:border-teal-300 dark:hover:border-teal-700 transition-colors cursor-pointer"
+              className="hidden lg:flex lg:flex-1 lg:mb-0 w-12 flex-col items-center gap-3 pt-2 pb-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:border-teal-300 dark:hover:border-teal-700 transition-colors cursor-pointer"
             >
-              {/* Same order and colour as the open sidebar's heading: the filter icon first, in green */}
+              {/* Same order and colour as the open sidebar's heading: the filter icon first, in green; both icons share one size and the first sits level with the results heading's icon (row height min-h-9) */}
               <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
-              <PanelLeftOpen className="w-4 h-4 text-slate-500 dark:text-slate-400" aria-hidden="true" />
+              <PanelLeftOpen className="w-5 h-5 text-slate-500 dark:text-slate-400" aria-hidden="true" />
             </button>
           )}
           <div className={`border-b border-slate-200 dark:border-slate-800 pb-2.5 ${constraintsSideCollapsed ? 'lg:hidden' : ''}`}>
@@ -2229,11 +2229,15 @@ export default function HomePage() {
                 {/* A toggle below the two-column layout; on wide screens the form always shows */}
                 <button
                   type="button"
-                  onClick={() => setConstraintsCollapsed((c) => !c)}
+                  onClick={() => {
+                    // From lg up the form is a sidebar that collapses to the rail, below it an accordion
+                    if (window.matchMedia('(min-width: 1024px)').matches) setConstraintsSideCollapsed(true);
+                    else setConstraintsCollapsed((c) => !c);
+                  }}
                   aria-expanded={!constraintsCollapsed}
                   aria-controls="search-constraints"
                   title={constraintsCollapsed ? t.home.constraintsExpand : t.home.constraintsCollapse}
-                  className="flex items-center gap-2 cursor-pointer lg:cursor-default lg:pointer-events-none text-left"
+                  className="flex items-center gap-2 cursor-pointer text-left"
                 >
                   <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" />
                   {t.home.constraintsTitle}
@@ -3714,7 +3718,7 @@ export default function HomePage() {
                     <div
                       className={
                         constraintsSideCollapsed && sortBy !== 'country'
-                          ? 'space-y-6 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-6'
+                          ? 'space-y-6 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-x-6 xl:gap-y-0'
                           : 'space-y-6'
                       }
                     >
@@ -3724,7 +3728,7 @@ export default function HomePage() {
                       sortBy === 'country' &&
                       (pageIdx === 0 || displayedDestinationGroups[pageIdx - 1].destinationCountry !== group.destinationCountry);
                     return (
-                      <div key={group.destinationCode} className="flex flex-col gap-2 h-full">
+                      <div key={group.destinationCode} className="flex flex-col gap-2 h-full xl:gap-0 xl:mb-6 xl:row-span-3 xl:grid xl:grid-rows-subgrid">
                       {startsCountry && (
                         <h3 className="flex items-center gap-1.5 pt-1 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                           <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
@@ -3732,10 +3736,10 @@ export default function HomePage() {
                         </h3>
                       )}
                       <div
-                        className="flex flex-col flex-1 bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs hover:shadow-md transition"
+                        className="flex flex-col flex-1 xl:row-span-3 xl:grid xl:grid-rows-subgrid bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs hover:shadow-md transition"
                       >
                         {/* Group Header */}
-                        <div className="bg-linear-to-r from-slate-50 via-teal-50/40 to-emerald-50/20 dark:from-slate-800/80 dark:via-slate-800/50 dark:to-teal-950/20 p-4 border-b border-slate-200 dark:border-slate-800 space-y-3">
+                        <div className="bg-linear-to-r from-slate-50 via-teal-50/40 to-emerald-50/20 dark:from-slate-800/80 dark:via-slate-800/50 dark:to-teal-950/20 p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col space-y-3">
                           {/* Top: Destination Title & Vacation Style Tags (Wide full row) */}
                           <div className="flex items-start sm:items-center gap-3">
                             <div className="flex-1 min-w-0">
@@ -3817,7 +3821,7 @@ export default function HomePage() {
 
                           {/* Bottom Row: Stats & Action Buttons (Pulled down for maximum room) */}
                           {/* Tall enough for the "Top Recommendation" badge, so cards without it line up with the first */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 sm:min-h-[2.25rem] border-t border-slate-200/70 dark:border-slate-700/70">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 mt-auto sm:min-h-[2.25rem] border-t border-slate-200/70 dark:border-slate-700/70">
                             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
                               <span>
                                 {t.home.destGroupTimeframesFound.replace('{count}', String(group.totalWindows))}

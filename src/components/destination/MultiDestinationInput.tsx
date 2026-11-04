@@ -371,7 +371,7 @@ export function MultiDestinationInput({
             id={ids.listbox}
             role="listbox"
             aria-label={t.home.destinationsLabel}
-            className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700/60"
+            className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 dark:ring-1 dark:ring-white/10 dark:shadow-black/70 rounded-xl shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700/60"
           >
             <div
               id={ids.option(0)}

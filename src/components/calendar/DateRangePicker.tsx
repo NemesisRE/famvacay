@@ -119,7 +119,7 @@ export function DateRangePicker({ startDate, endDate, onChange, minDate, classNa
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1.5 z-50 p-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="absolute left-0 top-full mt-1.5 z-50 p-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-600 dark:ring-1 dark:ring-white/10 dark:shadow-black/70 animate-in fade-in slide-in-from-top-1 duration-150">
           <DayPicker
             mode="range"
             selected={range}

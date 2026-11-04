@@ -120,7 +120,7 @@ export function UserMenu() {
           <div
             role="menu"
             aria-label={t.nav.menu}
-            className="absolute right-0 top-full mt-1.5 z-50 p-1.5 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 min-w-[220px] text-slate-800 dark:text-slate-200 animate-in fade-in slide-in-from-top-1 duration-150 space-y-1"
+            className="absolute right-0 top-full mt-1.5 z-50 p-1.5 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-600 dark:ring-1 dark:ring-white/10 dark:shadow-black/70 min-w-[220px] text-slate-800 dark:text-slate-200 animate-in fade-in slide-in-from-top-1 duration-150 space-y-1"
           >
             {/* Theme row */}
             <div className="px-2.5 pt-1 pb-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">

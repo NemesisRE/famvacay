@@ -120,7 +120,7 @@ export function MetricExplanationPopover({
             ref={refs.setFloating}
             style={getResponsivePopoverStyle(isSmallScreen, floatingStyles, 99999)}
             {...getFloatingProps()}
-            className="w-80 sm:w-96 max-w-[94vw] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 text-slate-800 dark:text-slate-100 transition-all duration-150 animate-in fade-in zoom-in-95"
+            className="w-80 sm:w-96 max-w-[94vw] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-600 dark:ring-1 dark:ring-white/10 dark:shadow-black/70 p-5 text-slate-800 dark:text-slate-100 transition-all duration-150 animate-in fade-in zoom-in-95"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}

@@ -122,7 +122,7 @@ export function DatePicker({ value, onChange, min, max, id, yearDropdown, cleara
             // Phones: a centred dialog as wide as the calendar, not the full-width sheet other popovers use
             style={{ ...getResponsivePopoverStyle(isSmallScreen, floatingStyles, 99999), ...(isSmallScreen ? { width: 'auto' } : {}) }}
             {...getFloatingProps()}
-            className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in-95"
+            className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-600 dark:ring-1 dark:ring-white/10 dark:shadow-black/70 animate-in fade-in zoom-in-95"
           >
             <DayPicker
               mode="single"

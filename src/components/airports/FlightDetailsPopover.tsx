@@ -194,7 +194,7 @@ export function FlightDetailsPopover({
             ref={refs.setFloating}
             style={getResponsivePopoverStyle(isSmallScreen, floatingStyles, 9999)}
             {...getFloatingProps()}
-            className="animate-in fade-in zoom-in-95 w-84 sm:w-[420px] max-w-[95vw] bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 text-slate-800 dark:text-slate-100 transition-opacity duration-150 ease-out space-y-3.5"
+            className="animate-in fade-in zoom-in-95 w-84 sm:w-[420px] max-w-[95vw] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 dark:ring-1 dark:ring-white/10 dark:shadow-black/70 p-4 text-slate-800 dark:text-slate-100 transition-opacity duration-150 ease-out space-y-3.5"
           >
             {/* Header */}
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
