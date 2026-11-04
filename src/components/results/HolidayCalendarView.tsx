@@ -280,20 +280,10 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
         ];
 
   return (
-    <section aria-labelledby="holiday-calendar-title" aria-busy={updating} className={`space-y-4 ${embedded ? '' : 'bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-4'}`}>
+    <section aria-label={t.home.calendarTab} aria-busy={updating} className={`space-y-4 ${embedded ? '' : 'bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-4'}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         {/* Fixed heights: the two views' texts differ in length and must not move the calendar */}
-        <div className="space-y-0.5 min-w-0 flex-1 basis-64">
-          <h3 id="holiday-calendar-title" className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1.5 min-w-0">
-            <CalendarDays className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-            <span className="truncate">
-              {view === 'country'
-                ? t.home.calendarCountryTitle.replace('{country}', countryName)
-                : schoolRegions.length === 0
-                  ? t.home.calendarPersonalTitleNoKids
-                  : t.home.calendarPersonalTitle}
-            </span>
-          </h3>
+        <div className="min-w-0 flex-1 basis-64">
           {/* Both hints share one grid cell, the other one invisible: the box always fits the longer
               text, so switching views neither cuts it off nor moves the calendar */}
           <div className="grid text-[11px] text-slate-500 dark:text-slate-400">
