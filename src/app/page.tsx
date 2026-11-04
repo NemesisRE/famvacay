@@ -233,7 +233,7 @@ export default function HomePage() {
   const [constraintsSideCollapsed, setConstraintsSideCollapsed] = useState(false);
   const searchRunRef = useRef(0);
   const backgroundAbortRef = useRef<AbortController | null>(null);
-  // Destinations the background search just merged in; their cards flash briefly (see .famvac-flash)
+  // Destinations the background search just merged in; their box (destination view) or cards (list view) flash briefly, see .famvac-flash
   const [freshDestinations, setFreshDestinations] = useState<ReadonlySet<string>>(() => new Set());
   const freshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dismissBackgroundSearch = useCallback(() => {
@@ -1771,7 +1771,7 @@ export default function HomePage() {
     return (
       <div
         key={`${win.startDate}-${win.originAirport}-${win.travelVehicle || "PLANE"}-${win.destinationAirport}-${win.durationDays}`}
-        className={`bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 p-3 sm:p-4 @container flex flex-col flex-1 shadow-xs hover:shadow-md transition-shadow relative${freshDestinations.has(destinationKey(win)) ? ' famvac-flash' : ''}`}
+        className={`bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 p-3 sm:p-4 @container flex flex-col flex-1 shadow-xs hover:shadow-md transition-shadow relative${!options?.hideDestinationHeader && freshDestinations.has(destinationKey(win)) ? ' famvac-flash' : ''}`}
       >
         {/* Arbitrage Banner */}
         {win.isArbitrageOpportunity && (
@@ -3727,7 +3727,7 @@ export default function HomePage() {
                         </h3>
                       )}
                       <div
-                        className="flex flex-col flex-1 xl:row-span-3 xl:grid xl:grid-rows-subgrid bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs hover:shadow-md transition"
+                        className={`flex flex-col flex-1 xl:row-span-3 xl:grid xl:grid-rows-subgrid bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs hover:shadow-md transition${freshDestinations.has(group.destinationCode) ? ' famvac-flash' : ''}`}
                       >
                         {/* Group Header */}
                         <div className="bg-linear-to-r from-slate-50 via-teal-50/40 to-emerald-50/20 dark:from-slate-800/80 dark:via-slate-800/50 dark:to-teal-950/20 p-3 sm:p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col space-y-3">
