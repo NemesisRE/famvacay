@@ -207,7 +207,7 @@ export const en: TranslationDictionary = {
     noResultsForDestinationHint: 'No suitable travel windows matched the selected destination. Try widening your travel dates, adjusting flexible durations, or selecting alternative departure hubs.',
     arbitrageBadge: "Cheaper departure",
     arbitrageTitle: "Recommended: depart from {place}",
-    arbitrageExplain: "School holidays are starting in your region, so fares from nearby airports are going up. Schools in {region} are still in regular session, so flights from {city} are much cheaper in this period (up to 30% savings).",
+    arbitrageExplain: "It's school holiday time in your region, so fares from nearby airports are going up. Schools in {region} are still in regular session, so flights from {city} are much cheaper in this period (up to 30% savings).",
     arbitrageAutoNote: "We picked {city} for you automatically because, for your travel dates and destination, this airport offers the best mix of availability and price.",
     seasonalWarningBadge: 'Seasonality Notice',
     seasonWarningMonsoonTitle: 'Monsoon Season',

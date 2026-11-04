@@ -207,7 +207,7 @@ export const fr: TranslationDictionary = {
     noResultsForDestinationHint: 'Aucun séjour ne correspond à cette destination. Essaie d’élargir tes dates de voyage ou de sélectionner d’autres aéroports de départ.',
     arbitrageBadge: "Départ moins cher",
     arbitrageTitle: "Recommandation : départ de {place}",
-    arbitrageExplain: "Les vacances scolaires commencent dans ta région, ce qui fait grimper les prix des vols dans les aéroports voisins. Dans la région {region}, les cours se poursuivent normalement : les vols au départ de {city} sont donc nettement moins chers sur cette période (jusqu’à 30 % d’économie).",
+    arbitrageExplain: "C’est la période des vacances scolaires dans ta région, ce qui fait grimper les prix des vols dans les aéroports voisins. Dans la région {region}, les cours se poursuivent normalement : les vols au départ de {city} sont donc nettement moins chers sur cette période (jusqu’à 30 % d’économie).",
     arbitrageAutoNote: "Nous avons choisi {city} automatiquement pour toi : pour tes dates et ta destination, cet aéroport offre le meilleur compromis entre disponibilité et prix.",
     seasonalWarningBadge: 'Avis de saisonnalité',
     seasonWarningMonsoonTitle: 'Saison de la mousson',

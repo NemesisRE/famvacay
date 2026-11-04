@@ -207,7 +207,7 @@ export const es: TranslationDictionary = {
     noResultsForDestinationHint: 'No se encontraron viajes adecuados para este destino. Intenta ampliar tus fechas de viaje o probar con aeropuertos de salida alternativos.',
     arbitrageBadge: "Salida más barata",
     arbitrageTitle: "Recomendación: salida desde {place}",
-    arbitrageExplain: "En tu región empiezan las vacaciones escolares, así que los vuelos desde los aeropuertos cercanos suben de precio. En {region} las clases siguen con normalidad, por lo que los vuelos desde {city} salen bastante más baratos en estas fechas (hasta un 30 % de ahorro).",
+    arbitrageExplain: "En tu región es época de vacaciones escolares, así que los vuelos desde los aeropuertos cercanos suben de precio. En {region} las clases siguen con normalidad, por lo que los vuelos desde {city} salen bastante más baratos en estas fechas (hasta un 30 % de ahorro).",
     arbitrageAutoNote: "Hemos elegido {city} automáticamente para ti, porque para tus fechas y tu destino este aeropuerto ofrece la mejor combinación de disponibilidad y precio.",
     seasonalWarningBadge: 'Aviso de temporada',
     seasonWarningMonsoonTitle: 'Temporada de monzones',

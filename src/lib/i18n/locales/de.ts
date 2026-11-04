@@ -207,7 +207,7 @@ export const de: TranslationDictionary = {
     noResultsForDestinationHint: 'Für das gewählte Reiseziel wurden keine passenden Reisefenster gefunden. Versuche, den Zeitraum zu erweitern oder alternative Abflughäfen zu wählen.',
     arbitrageBadge: "Günstiger Abflug",
     arbitrageTitle: "Empfehlung: Abflug ab {place}",
-    arbitrageExplain: "In deiner Region beginnen die Ferien, weshalb die Flugpreise an den umliegenden Flughäfen steigen. In {region} läuft der reguläre Schulbetrieb noch weiter – daher sind Flüge ab {city} in diesem Zeitraum deutlich preiswerter (bis zu 30 % Ersparnis).",
+    arbitrageExplain: "In deiner Region ist Ferienzeit, weshalb die Flugpreise an den umliegenden Flughäfen steigen. In {region} läuft der reguläre Schulbetrieb noch weiter – daher sind Flüge ab {city} in diesem Zeitraum deutlich preiswerter (bis zu 30 % Ersparnis).",
     arbitrageAutoNote: "Wir haben {city} automatisch für dich ausgewählt, da dieser Flughafen für deinen Reisezeitraum und dein Ziel die beste Kombination aus Verfügbarkeit und Preis bietet.",
     seasonalWarningBadge: 'Saison-Hinweis',
     seasonWarningMonsoonTitle: 'Monsun-Saison',
