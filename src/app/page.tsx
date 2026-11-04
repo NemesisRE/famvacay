@@ -1898,6 +1898,7 @@ export default function HomePage() {
                 <AirportSavingsBadge
                   originAirport={win.originAirport}
                   originCity={win.originCity}
+                  originState={win.arbitrageOriginState}
                   autoSelected={Boolean(win.autoSelectedOrigin)}
                 />
               ) : (

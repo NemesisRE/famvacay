@@ -15,12 +15,15 @@ import {
 import { Sparkles, X } from 'lucide-react';
 import { useIsSmallScreen, getResponsivePopoverStyle, PopoverBackdrop, viewportFit, POPOVER_DISMISS_OPTIONS } from '@/components/ui/responsive-popover';
 import { useI18n } from '@/lib/i18n/i18n-context';
+import { COUNTRIES } from '@/lib/regions/subdivisions';
 import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 interface AirportSavingsBadgeProps {
   originAirport: string;
   /** City of the departure airport, used in the texts instead of the bare IATA code */
   originCity?: string;
+  /** ISO 3166-2 code of the departure airport's region (schools in session there) */
+  originState?: string;
   /** The airport was picked automatically (shown with the "best airport" wording) */
   autoSelected?: boolean;
   /** gold: fare advantage; green: plain automatic pick */
@@ -32,7 +35,7 @@ interface AirportSavingsBadgeProps {
  * region is on school holiday, the airport's region is not). It replaces the full-width banner,
  * which pushed the card content down and broke the row alignment between neighbouring cards.
  */
-export function AirportSavingsBadge({ originAirport, originCity, autoSelected, variant = 'gold' }: AirportSavingsBadgeProps) {
+export function AirportSavingsBadge({ originAirport, originCity, originState, autoSelected, variant = 'gold' }: AirportSavingsBadgeProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   // The Back button closes it instead of leaving the page
@@ -53,8 +56,13 @@ export function AirportSavingsBadge({ originAirport, originCity, autoSelected, v
   const isGold = variant === 'gold';
   const label = autoSelected || !isGold ? t.home.autoOriginBadge : t.home.arbitrageBadge;
   const city = originCity || originAirport;
-  const explain = isGold ? t.home.arbitrageExplain.replace('{city}', city) : t.home.autoOriginExplain;
-  const heading = `${label} · ${originCity ? `${originCity} (${originAirport})` : originAirport}`;
+  const place = originCity ? `${originCity} (${originAirport})` : originAirport;
+  const region =
+    (originState && COUNTRIES[originState.split('-')[0]]?.subdivisions?.find((sub) => sub.code === originState)?.name) || city;
+  const explain = isGold
+    ? t.home.arbitrageExplain.replace('{region}', region).replaceAll('{city}', city)
+    : t.home.autoOriginExplain;
+  const heading = isGold ? t.home.arbitrageTitle.replace('{place}', place) : `${label} · ${place}`;
   const tone = isGold
     ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-500 dark:border-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40'
     : 'bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-400 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40';
@@ -105,7 +113,7 @@ export function AirportSavingsBadge({ originAirport, originCity, autoSelected, v
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{explain}</p>
             {isGold && autoSelected && (
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.home.autoOriginExplain}</p>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{t.home.arbitrageAutoNote.replaceAll('{city}', city)}</p>
             )}
           </div>
         </FloatingPortal>

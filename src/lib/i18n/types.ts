@@ -223,7 +223,9 @@ export interface TranslationDictionary {
     noResultsForDestinationTitle: string;
     noResultsForDestinationHint: string;
     arbitrageBadge: string;
+    arbitrageTitle: string;
     arbitrageExplain: string;
+    arbitrageAutoNote: string;
     seasonalWarningBadge: string;
     seasonWarningMonsoonTitle: string;
     seasonWarningMonsoonDesc: string;
