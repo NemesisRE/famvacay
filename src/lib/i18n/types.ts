@@ -43,6 +43,7 @@ export interface TranslationDictionary {
     constraintsCollapse: string;
     formReset: string;
     formResetTitle: string;
+    filterActive: string;
     filterReset: string;
     noFilteredResults: string;
     overlandOnlyHint: string;
@@ -517,11 +518,6 @@ export interface TranslationDictionary {
     filterByVacationStyle: string;
     filterByDistance: string;
     allDistances: string;
-    distShort: string;
-    distMid: string;
-    distExtended: string;
-    distLong: string;
-    distIntercontinental: string;
     showOnMap: string;
     mapOpenGoogleMaps: string;
     mapOpenOsm: string;

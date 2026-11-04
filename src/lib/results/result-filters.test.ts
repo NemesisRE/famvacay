@@ -4,6 +4,7 @@ import {
   applyResultFilters,
   countResultFilterOptions,
   isResultFilterApplicable,
+  normalizeDistanceFilter,
   type ResultFilterState,
 } from './result-filters';
 import type { CandidateWindow } from '../optimizer/types';
@@ -111,6 +112,28 @@ describe('Result filters', () => {
     expect(applyResultFilters([level1, level2, level3], state({ safety: 'LEVEL_1' }))).toEqual([level1]);
     expect(applyResultFilters([level1, level2, level3], state({ safety: 'SAFE_ONLY' }))).toEqual([level1, level2]);
     expect(applyResultFilters([level1, level2, level3], state({ safety: 'ALL' }))).toEqual([level1, level2, level3]);
+  });
+});
+
+describe('Distance filter follows the search form (up to / beyond the long-haul limit)', () => {
+  const near = win({ travelVehicle: 'PLANE', flightDistanceKm: 1800 });
+  const far = win({ travelVehicle: 'PLANE', flightDistanceKm: 7200 });
+  const drive = win({ travelVehicle: 'CAR', vehicleDetails: { distanceKm: 600, durationMinutes: 420 } as any });
+
+  it('splits results at the long-haul limit', () => {
+    const all = [near, far, drive];
+    expect(applyResultFilters(all, state({ distance: 'NEARBY' }))).toEqual([near, drive]);
+    expect(applyResultFilters(all, state({ distance: 'LONGHAUL' }))).toEqual([far]);
+    expect(applyResultFilters(all, state({ distance: 'ALL' }))).toEqual(all);
+  });
+
+  it('maps the former distance bands from saved or shared links', () => {
+    expect(normalizeDistanceFilter('SHORT')).toBe('NEARBY');
+    expect(normalizeDistanceFilter('MID')).toBe('NEARBY');
+    expect(normalizeDistanceFilter('EXTENDED')).toBe('NEARBY');
+    expect(normalizeDistanceFilter('INTERCONTINENTAL')).toBe('LONGHAUL');
+    expect(normalizeDistanceFilter('LONG')).toBe('ALL');
+    expect(applyResultFilters([near, far], state({ distance: 'INTERCONTINENTAL' }))).toEqual([far]);
   });
 });
 

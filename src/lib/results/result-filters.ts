@@ -50,6 +50,17 @@ export const NEUTRAL_FILTER_VALUES: { [K in ResultFilterKey]: ResultFilterState[
   maxCost: undefined,
 };
 
+/** Result distance filter values: the same two choices as the search form's travel distance */
+export const DISTANCE_FILTER_VALUES = ['ALL', 'NEARBY', 'LONGHAUL'] as const;
+
+/** Maps a saved or linked distance filter (including the former five bands) onto the current ones */
+export function normalizeDistanceFilter(value: string): (typeof DISTANCE_FILTER_VALUES)[number] {
+  if (value === 'NEARBY' || value === 'LONGHAUL') return value;
+  if (value === 'SHORT' || value === 'MID' || value === 'EXTENDED') return 'NEARBY';
+  if (value === 'INTERCONTINENTAL') return 'LONGHAUL';
+  return 'ALL';
+}
+
 const isOverland = (w: CandidateWindow) => Boolean(w.travelVehicle && w.travelVehicle !== 'PLANE');
 
 const tripDistanceKm = (w: CandidateWindow) =>
@@ -80,25 +91,17 @@ const TESTS: Tests = {
   style: (w, style) => {
     if (style === 'ALL') return true;
     const styles = getDestinationVacationStyles(w.destinationAirport, w.flightDistanceKm);
-    if (style === 'BEACH') return styles.includes('BEACH') && !styles.includes('LONGRANGE');
+    // Distance is its own filter: a long-haul beach is still a beach holiday
     return styles.includes(style as never);
   },
-  distance: (w, distance) => {
+  distance: (w, rawDistance) => {
+    // The search form only knows "up to LONG_HAUL_KM" and "beyond"; older saved or shared links
+    // carry the former five bands
+    const distance = normalizeDistanceFilter(rawDistance);
     const dist = tripDistanceKm(w);
-    switch (distance) {
-      case 'SHORT':
-        return dist <= 1000;
-      case 'MID':
-        return dist <= 2500;
-      case 'EXTENDED':
-        return dist <= LONG_HAUL_KM;
-      case 'LONG':
-        return dist <= 6000;
-      case 'INTERCONTINENTAL':
-        return dist > LONG_HAUL_KM;
-      default:
-        return true;
-    }
+    if (distance === 'NEARBY') return dist <= LONG_HAUL_KM;
+    if (distance === 'LONGHAUL') return dist > LONG_HAUL_KM;
+    return true;
   },
   // The trip's own vehicle: since a destination can be reached by several vehicles, each trip is one
   // of them (filtering "plane" must not keep car trips to a destination that also has an airport)

@@ -69,6 +69,7 @@ import {
   getWindowFilterWarning,
   getWindowSeasonalWarnings,
 } from '@/lib/optimizer/localized-warnings';
+import { LONG_HAUL_KM } from '@/lib/optimizer/distance-bands';
 import { SeasonalWarningFilterDropdown, type SeasonalWarningOption } from '@/components/results/SeasonalWarningFilterDropdown';
 import { DestinationMapModal } from '@/components/destination/DestinationMapModal';
 import { DestinationSafetyPopover } from '@/components/destination/DestinationSafetyPopover';
@@ -78,6 +79,8 @@ import { getDestinationVacationStyles } from '@/lib/optimizer/destination-styles
 import { shareOrCopyLink } from '@/lib/share/share-link';
 import {
   applyResultFilters,
+  DISTANCE_FILTER_VALUES,
+  normalizeDistanceFilter,
   destinationKey,
   countResultFilterOptions,
   explainResultFilterExclusions,
@@ -421,7 +424,7 @@ export default function HomePage() {
         if (parsed.sortBy) setSortBy(parsed.sortBy);
         if (parsed.pageSize) setPageSize(parsed.pageSize);
         if (parsed.resultStyleFilter) setResultStyleFilter(parsed.resultStyleFilter);
-        if (parsed.distanceFilter) setDistanceFilter(parsed.distanceFilter);
+        if (parsed.distanceFilter) setDistanceFilter(normalizeDistanceFilter(parsed.distanceFilter));
         if (parsed.vehicleFilter) setVehicleFilter(parsed.vehicleFilter);
         if (parsed.safetyFilter) setSafetyFilter(parsed.safetyFilter);
         if (parsed.warningFilter === 'CLEAN_ONLY' || parsed.warningFilter === 'ALL') {
@@ -468,7 +471,7 @@ export default function HomePage() {
       const urlStyle = urlParams.get('style');
       if (urlStyle) setResultStyleFilter(urlStyle as DestinationType);
       const urlDist = urlParams.get('dist');
-      if (urlDist) setDistanceFilter(urlDist);
+      if (urlDist) setDistanceFilter(normalizeDistanceFilter(urlDist));
       const urlVehicle = urlParams.get('vehicle');
       if (urlVehicle) setVehicleFilter(urlVehicle);
       const urlSafety = urlParams.get('safety');
@@ -1607,8 +1610,8 @@ export default function HomePage() {
       results
         ? countResultFilterOptions(results, resultFilterState, {
             month: ['ALL', ...availableMonths],
-            style: ['ALL', 'BEACH', 'ALPINE', 'CITY', 'NATURE', 'LONGRANGE'],
-            distance: ['ALL', 'SHORT', 'MID', 'EXTENDED', 'LONG', 'INTERCONTINENTAL'],
+            style: ['ALL', 'BEACH', 'ALPINE', 'CITY', 'NATURE'],
+            distance: [...DISTANCE_FILTER_VALUES],
             vehicle: ['ALL', 'PLANE', 'CAR', 'TRAIN', 'BUS'],
             safety: ['LEVEL_1', 'SAFE_ONLY', 'ALL'],
             warning: ['CLEAN_ONLY', 'ALL'],
@@ -2974,7 +2977,7 @@ export default function HomePage() {
                               <MapPin className="w-3.5 h-3.5 text-teal-600" />
                               <span>{t.home.filterByDestination}</span>
                               {isDestinationActive && (
-                                <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                                <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                               )}
                             </label>
                             <div className="flex items-center gap-1.5 w-full sm:w-auto min-w-0">
@@ -3014,7 +3017,7 @@ export default function HomePage() {
                             <Compass className={`w-3.5 h-3.5 ${isStyleActive ? 'text-teal-600' : 'text-teal-600'}`} />
                             <span>{t.home.filterByVacationStyle}</span>
                             {isStyleActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3032,7 +3035,6 @@ export default function HomePage() {
                                 filterOption('style', 'ALPINE', t.home.vacationKindAlpine, resultStyleFilter),
                                 filterOption('style', 'CITY', t.home.vacationKindCity, resultStyleFilter),
                                 filterOption('style', 'NATURE', t.home.vacationKindNature, resultStyleFilter),
-                                filterOption('style', 'LONGRANGE', t.home.vacationKindLongrange, resultStyleFilter),
                               ]}
                             />
                             <div className="w-7 h-7 flex items-center justify-center shrink-0">
@@ -3060,7 +3062,7 @@ export default function HomePage() {
                             <ShieldCheck className={`w-3.5 h-3.5 ${isSafetyActive ? 'text-emerald-600' : 'text-emerald-600'}`} />
                             <span>{t.home.filterBySafety}</span>
                             {isSafetyActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3109,7 +3111,7 @@ export default function HomePage() {
                             <Calendar className={`w-3.5 h-3.5 ${isMonthActive ? 'text-teal-600' : 'text-teal-600'}`} />
                             <span>{t.home.filterByMonth}</span>
                             {isMonthActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3156,7 +3158,7 @@ export default function HomePage() {
                             <Award className={`w-3.5 h-3.5 ${isSchoolHolidayActive ? 'text-teal-600' : 'text-teal-600'}`} />
                             <span>{t.home.schoolHolidaysFilterLabel}</span>
                             {isSchoolHolidayActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3198,7 +3200,7 @@ export default function HomePage() {
                             <Users className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
                             <span>{t.home.filterBySeasonalInfo}</span>
                             {isSeasonalInfoActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3240,7 +3242,7 @@ export default function HomePage() {
                             <AlertCircle className={`w-3.5 h-3.5 ${isWarningActive ? 'text-amber-500' : 'text-amber-500'}`} />
                             <span>{t.home.filterByWarnings}</span>
                             {isWarningActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto min-w-0">
@@ -3283,7 +3285,7 @@ export default function HomePage() {
                             <Sun className={`w-3.5 h-3.5 ${isHeatActive ? 'text-amber-500' : 'text-amber-500'}`} />
                             <span>{t.home.filterByHeat}</span>
                             {isHeatActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3331,7 +3333,7 @@ export default function HomePage() {
                             <Car className={`w-3.5 h-3.5 ${isVehicleActive ? 'text-emerald-600' : 'text-emerald-600'}`} />
                             <span>{t.home.filterByVehicle}</span>
                             {isVehicleActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3376,7 +3378,7 @@ export default function HomePage() {
                             <Route className="w-3.5 h-3.5 text-indigo-600" />
                             <span>{t.home.filterByDistance}</span>
                             {isDistanceActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3390,11 +3392,8 @@ export default function HomePage() {
                               highlighted={isDistanceActive}
                               options={[
                                 filterOption('distance', 'ALL', t.home.allDistances, distanceFilter),
-                                filterOption('distance', 'SHORT', t.home.distShort, distanceFilter),
-                                filterOption('distance', 'MID', t.home.distMid, distanceFilter),
-                                filterOption('distance', 'EXTENDED', t.home.distExtended, distanceFilter),
-                                filterOption('distance', 'LONG', t.home.distLong, distanceFilter),
-                                filterOption('distance', 'INTERCONTINENTAL', t.home.distIntercontinental, distanceFilter),
+                                filterOption('distance', 'NEARBY', t.home.travelDistanceNearbyRange.replace('{km}', LONG_HAUL_KM.toLocaleString(locale)), distanceFilter),
+                                filterOption('distance', 'LONGHAUL', t.home.travelDistanceLongHaulRange.replace('{km}', LONG_HAUL_KM.toLocaleString(locale)), distanceFilter),
                               ]}
                             />
                             <div className="w-7 h-7 flex items-center justify-center shrink-0">
@@ -3425,7 +3424,7 @@ export default function HomePage() {
                               <span className="font-normal text-[10px] text-slate-500 dark:text-slate-400">({t.home.filterNoFlights})</span>
                             )}
                             {isFlightStopsActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3472,7 +3471,7 @@ export default function HomePage() {
                               <span className="font-normal text-[10px] text-slate-500 dark:text-slate-400">({t.home.filterNoOverland})</span>
                             )}
                             {isOverlandDurationActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3523,7 +3522,7 @@ export default function HomePage() {
                             <Utensils className={`w-3.5 h-3.5 ${isBoardTypeActive ? 'text-violet-600' : 'text-violet-600'}`} />
                             <span>{t.home.filterByBoardType}</span>
                             {isBoardTypeActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3568,13 +3567,13 @@ export default function HomePage() {
                             <Sparkles className={`w-3.5 h-3.5 ${isMaxCostActive ? 'text-amber-500' : 'text-amber-500'}`} />
                             <span>{t.home.filterByCost}</span>
                             {isMaxCostActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
                             <input
                               type="number"
-                              placeholder="z. B. 3500 €"
+                              placeholder={t.home.maxBudgetPlaceholder}
                               value={maxCostFilter || ''}
                               onChange={(e) => {
                                 setMaxCostFilter(e.target.value ? Number(e.target.value) : undefined);
@@ -3611,7 +3610,7 @@ export default function HomePage() {
                             <ArrowUpDown className={`w-3.5 h-3.5 ${isSortActive ? 'text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400'}`} />
                             <span>{t.home.sortBy}</span>
                             {isSortActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title="Aktiv" />
+                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
