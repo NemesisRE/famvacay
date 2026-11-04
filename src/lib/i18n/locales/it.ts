@@ -873,7 +873,8 @@ export const it: TranslationDictionary = {
   about: {
     footerLink: "Chi siamo",
     heroBadge: "Chi siamo & filosofia di ingegneria",
-    heroTitle: "Codice generato al 100% dall’IA. Idea, design, architettura e test 100% umani.",
+    heroTitle: "L’IA costruisce. Le persone decidono.",
+    heroSubtitle: "Codice generato al 100 % dall’IA. Idea, design, architettura e test 100 % umani.",
     heroIntro: "Nemmeno una riga del TypeScript, dello schema Prisma o del CSS di FamVacay è stata digitata a mano. Ogni riga è stata scritta da agenti di programmazione IA.",
     heroIntroSecond: "Eppure FamVacay è l’opposto di un giocattolo IA creato con un solo prompt. L’idea, il design del prodotto, ogni regola dell’ottimizzatore, l’architettura e i test vengono dalla persona che c’è dietro, che conosce il problema in prima persona.",
     divisionTitle: "Chi ha fatto cosa",
