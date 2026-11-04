@@ -194,7 +194,7 @@ export function AboutContent() {
             href={SOURCE_CODE_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold text-sm px-4 py-2.5 transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm px-4 py-2.5 transition-colors"
           >
             <Code2 className="w-4 h-4" aria-hidden="true" />
             {a.sourceCodeLink}
