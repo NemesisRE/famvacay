@@ -20,7 +20,7 @@ export const de: TranslationDictionary = {
     heroAudience: 'Für Familien gemacht, aber genauso praktisch für Paare, Freunde und Alleinreisende.',
     estimatesDisclaimerTitle: 'Alle Angaben sind Schätzungen.',
     estimatesDisclaimerText: 'Flugverbindungen, Strecken, Reisezeiten, Preise, Wetter und Reisehinweise beruhen auf offenen Daten und Modellen, nicht auf Live-Buchungsdaten. Bitte prüfe Verfügbarkeit, Preise sowie Einreise- und Sicherheitshinweise vor der Buchung direkt beim Anbieter.',
-    constraintsTitle: 'Reisebedingungen & Filter',
+    constraintsTitle: 'Reisebedingungen',
     constraintsExpand: "Suchoptionen anzeigen",
     constraintsCollapse: "Suchoptionen ausblenden",
     formReset: 'Zurücksetzen',
