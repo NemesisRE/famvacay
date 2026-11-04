@@ -57,7 +57,7 @@ const BADGE_TONES = {
 function RoleBadge({ role, label }: { role: keyof typeof BADGE_TONES; label: string }) {
   const Icon = role === 'ai' ? Bot : UserRound;
   return (
-    <span className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold ${BADGE_TONES[role]}`}>
+    <span className={`inline-flex items-center gap-2 justify-center text-center rounded-lg px-3 py-1.5 text-xs font-bold ${BADGE_TONES[role]}`}>
       <Icon className="w-3.5 h-3.5" aria-hidden="true" />
       {label}
     </span>
@@ -97,7 +97,7 @@ export function AboutContent() {
           <p className={bodyClass}>{a.heroIntro}</p>
           <p className={bodyClass}>{a.heroIntroSecond}</p>
         </div>
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="mt-6 grid gap-2 w-fit mx-auto sm:grid-cols-2">
           <RoleBadge role="ai" label={a.aiSubtitle} />
           <RoleBadge role="human" label={a.humanSubtitle} />
         </div>
@@ -188,16 +188,18 @@ export function AboutContent() {
           <p>{a.honestyBody}</p>
           <p>{a.honestyBodySecond}</p>
         </div>
-        <a
-          href={SOURCE_CODE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold text-sm px-4 py-2.5 transition-colors"
-        >
-          <Code2 className="w-4 h-4" aria-hidden="true" />
-          {a.sourceCodeLink}
-          <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
-        </a>
+        <div className="mt-6 flex justify-center">
+          <a
+            href={SOURCE_CODE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold text-sm px-4 py-2.5 transition-colors"
+          >
+            <Code2 className="w-4 h-4" aria-hidden="true" />
+            {a.sourceCodeLink}
+            <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+          </a>
+        </div>
       </section>
     </div>
   );
