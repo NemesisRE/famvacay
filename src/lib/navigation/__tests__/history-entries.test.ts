@@ -4,6 +4,7 @@ import { createHistoryEntries, HISTORY_ENTRY_KEY } from '../history-entries';
 /** Browser-like history: back() is asynchronous and fires popstate; pushState drops forward entries. */
 function fakeBrowser() {
   const entries: unknown[] = [{ page: true }];
+  const urls: string[] = ['/'];
   let index = 0;
   const listeners: (() => void)[] = [];
   const go = (delta: number) => {
@@ -21,16 +22,21 @@ function fakeBrowser() {
       },
       pushState(state: unknown) {
         entries.splice(index + 1, entries.length, state);
+        urls.splice(index + 1, urls.length, urls[index]);
         index++;
       },
-      replaceState(state: unknown) {
+      replaceState(state: unknown, _title?: string, url?: string) {
         entries[index] = state;
+        if (url !== undefined) urls[index] = url;
       },
       back: () => go(-1),
     },
     forward: () => go(1),
     addEventListener: (_type: 'popstate', listener: () => void) => {
       listeners.push(listener);
+    },
+    get url() {
+      return urls[index];
     },
     get length() {
       return entries.length;
@@ -153,5 +159,27 @@ describe('history entries for overlays and views', () => {
     const id = entries.push(vi.fn());
     entries.replaceUrl('/?view=list');
     expect(browser.history.state).toEqual({ [HISTORY_ENTRY_KEY]: id });
+  });
+
+  it('keeps the URL written while an overlay was open when the overlay closes', async () => {
+    const browser = fakeBrowser();
+    const entries = createHistoryEntries(browser);
+    // A dropdown opens, a filter is picked (URL written), then it closes itself
+    const id = entries.push(vi.fn());
+    entries.replaceUrl('/?style=BEACH');
+    entries.release(id);
+    await settle();
+    expect(browser.index).toBe(0);
+    expect(browser.url).toBe('/?style=BEACH');
+  });
+
+  it('keeps the URL when the Back button closes the overlay', async () => {
+    const browser = fakeBrowser();
+    const entries = createHistoryEntries(browser);
+    entries.push(vi.fn());
+    entries.replaceUrl('/?style=BEACH');
+    browser.history.back();
+    await settle();
+    expect(browser.url).toBe('/?style=BEACH');
   });
 });

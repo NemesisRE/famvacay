@@ -42,6 +42,14 @@ export function createHistoryEntries(target: HistoryTarget): HistoryEntries {
   // history.back() calls of our own whose popstate must not close anything
   let ownBackCalls = 0;
   let listening = false;
+  // The newest URL we wrote (filters, view). The entries below an overlay's entry still carry the
+  // URL from before the overlay opened, so closing the overlay would otherwise bring that
+  // older URL back and drop every filter set while it was open.
+  let latestUrl: string | null = null;
+
+  const restoreLatestUrl = () => {
+    if (latestUrl !== null) target.history.replaceState(target.history.state, '', latestUrl);
+  };
 
   const currentEntryId = (): number | undefined => {
     const state = target.history.state as Record<string, unknown> | null;
@@ -61,12 +69,15 @@ export function createHistoryEntries(target: HistoryTarget): HistoryEntries {
   function onPopState() {
     if (ownBackCalls > 0) {
       ownBackCalls--;
+      restoreLatestUrl();
       return;
     }
     const top = stack[stack.length - 1];
     // Forward onto an entry, or a traversal that left the top entry where it was
     if (!top || currentEntryId() === top.id) return;
     stack.pop();
+    // Before onBack: a handler that stays open pushes its entry again at this URL
+    restoreLatestUrl();
     if (top.onBack() === false) pushEntry(top);
   }
 
@@ -102,6 +113,7 @@ export function createHistoryEntries(target: HistoryTarget): HistoryEntries {
     replaceUrl(url) {
       // Keeps the marker of an open entry (a plain replaceState(null) would drop it)
       const id = currentEntryId();
+      latestUrl = url;
       target.history.replaceState(id === undefined ? null : { [HISTORY_ENTRY_KEY]: id }, '', url);
     },
     size: () => stack.length,

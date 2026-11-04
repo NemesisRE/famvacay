@@ -80,7 +80,8 @@ test.describe('Search State Sharing, Destination Filtering, and Dark Mode', () =
     await page.goto(`/?s=${shareData.shareId}`);
 
     // Verify results are loaded and visible immediately (PMI is labelled by its island)
-    await expect(page.getByText(/Mallorca/).first()).toBeVisible();
+    // (the restored search folds the form, whose airport list also mentions Palma: look at visible text)
+    await expect(page.getByText(/Mallorca/).locator('visible=true').first()).toBeVisible();
 
     // 3. Switch to the list view and open the filter panel, where the destination filter lives
     await page.getByRole('button', { name: /^(List|Liste)$/ }).click();
