@@ -109,7 +109,6 @@ import { HolidayCalendarView } from '@/components/results/HolidayCalendarView';
 /** Views of the results: grouped by destination or a flat list (the holiday calendar is a section of its own) */
 type ResultsViewMode = 'destination' | 'list';
 const isResultsViewMode = (value: unknown): value is ResultsViewMode => value === 'destination' || value === 'list';
-const CALENDAR_OPEN_KEY = 'famvac_calendar_open';
 
 /** How long destinations merged from the background search keep their highlight */
 const MERGE_FLASH_MS = 2600;
@@ -410,8 +409,6 @@ export default function HomePage() {
       if (savedFilters) {
         const parsed = JSON.parse(savedFilters);
         if (isResultsViewMode(parsed.viewMode)) setViewMode(parsed.viewMode);
-        // Calendar used to be a third view mode
-        else if (parsed.viewMode === 'calendar') setCalendarOpen(true);
         if (Array.isArray(parsed.selectedDestinationsList)) setSelectedDestinationsList(parsed.selectedDestinationsList);
         if (parsed.selectedMonth) setSelectedMonth(parsed.selectedMonth);
         if (parsed.maxCostFilter !== undefined) setMaxCostFilter(parsed.maxCostFilter);
@@ -452,11 +449,15 @@ export default function HomePage() {
       } else if (urlView === 'calendar') {
         setCalendarOpen(true);
       }
-      try {
-        if (localStorage.getItem(CALENDAR_OPEN_KEY) === '1') setCalendarOpen(true);
-      } catch {
-        // Per-viewer convenience only
-      }
+      // The calendar always starts closed (an explicit ?view=calendar link opens it)
+      // A restored search shows its results first: the form stays folded unless the URL says
+      // form=open, which the sync effect writes while it is open
+      const formOpenFromUrl = urlParams.get('form') === 'open';
+      const foldFormForRestoredResults = () => {
+        if (formOpenFromUrl) return;
+        if (window.matchMedia('(max-width: 1023px)').matches) setConstraintsCollapsed(true);
+        else setConstraintsSideCollapsed(true);
+      };
       const urlDest = urlParams.get('dest');
       if (urlDest) {
         setSelectedDestinationsList(urlDest.split(',').filter(Boolean));
@@ -502,6 +503,7 @@ export default function HomePage() {
               const { formState, windows, shareId } = res.payload;
               if (Array.isArray(windows) && windows.length > 0) {
                 setResults(windows);
+                foldFormForRestoredResults();
                 setActiveShareId(shareId || shareParam);
                 if (formState) {
                   if (formState.departureLocation) setDepartureLocation(formState.departureLocation);
@@ -540,6 +542,7 @@ export default function HomePage() {
           // Restore recent search results if less than 2.5 hours old
           if (ageHours < 2.5 && Array.isArray(parsed.windows) && parsed.windows.length > 0) {
             setResults(parsed.windows);
+            foldFormForRestoredResults();
           }
         }
       }
@@ -722,6 +725,11 @@ export default function HomePage() {
       if (sortBy !== 'score') params.set('sort', sortBy);
       else params.delete('sort');
 
+      // The form is part of the page state: open next to results = form=open (no results: the form is all there is)
+      const formOpen = window.matchMedia('(max-width: 1023px)').matches ? !constraintsCollapsed : !constraintsSideCollapsed;
+      if (results && results.length > 0 && formOpen) params.set('form', 'open');
+      else params.delete('form');
+
       const nextUrl = url.pathname + (params.toString() ? `?${params.toString()}` : '') + url.hash;
       replaceUrlKeepingHistoryEntry(nextUrl);
     } catch {
@@ -745,6 +753,9 @@ export default function HomePage() {
     schoolHolidayFilter,
     maxCostFilter,
     sortBy,
+    results,
+    constraintsCollapsed,
+    constraintsSideCollapsed,
   ]);
 
   const handleResetForm = () => {
@@ -3651,13 +3662,7 @@ export default function HomePage() {
                   aria-expanded={calendarOpen}
                   aria-controls="holiday-calendar-section"
                   onClick={() => {
-                    const next = !calendarOpen;
-                    setCalendarOpen(next);
-                    try {
-                      localStorage.setItem(CALENDAR_OPEN_KEY, next ? '1' : '0');
-                    } catch {
-                      // Per-viewer convenience only
-                    }
+                    setCalendarOpen(!calendarOpen);
                   }}
                   className="w-full flex items-center gap-2 px-3 sm:px-4 py-3 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
                 >
