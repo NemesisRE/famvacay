@@ -19,8 +19,12 @@ import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 interface AirportSavingsBadgeProps {
   originAirport: string;
+  /** City of the departure airport, used in the texts instead of the bare IATA code */
+  originCity?: string;
   /** The airport was picked automatically (shown with the "best airport" wording) */
   autoSelected?: boolean;
+  /** gold: fare advantage; green: plain automatic pick */
+  variant?: 'gold' | 'green';
 }
 
 /**
@@ -28,7 +32,7 @@ interface AirportSavingsBadgeProps {
  * region is on school holiday, the airport's region is not). It replaces the full-width banner,
  * which pushed the card content down and broke the row alignment between neighbouring cards.
  */
-export function AirportSavingsBadge({ originAirport, autoSelected }: AirportSavingsBadgeProps) {
+export function AirportSavingsBadge({ originAirport, originCity, autoSelected, variant = 'gold' }: AirportSavingsBadgeProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   // The Back button closes it instead of leaving the page
@@ -46,8 +50,15 @@ export function AirportSavingsBadge({ originAirport, autoSelected }: AirportSavi
   const role = useRole(context);
   const { getReferenceProps, getFloatingProps } = useInteractions([dismiss, role]);
 
-  const label = autoSelected ? t.home.autoOriginBadge : t.home.arbitrageBadge;
-  const explain = t.home.arbitrageExplain.replace('{origin}', originAirport);
+  const isGold = variant === 'gold';
+  const label = autoSelected || !isGold ? t.home.autoOriginBadge : t.home.arbitrageBadge;
+  const city = originCity || originAirport;
+  const explain = isGold ? t.home.arbitrageExplain.replace('{city}', city) : t.home.autoOriginExplain;
+  const heading = `${label} · ${originCity ? `${originCity} (${originAirport})` : originAirport}`;
+  const tone = isGold
+    ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-500 dark:border-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40'
+    : 'bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-400 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40';
+  const iconTone = isGold ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400';
 
   return (
     <>
@@ -59,10 +70,10 @@ export function AirportSavingsBadge({ originAirport, autoSelected }: AirportSavi
           e.stopPropagation();
           setIsOpen((prev) => !prev);
         }}
-        className="group text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-dashed border-amber-500 dark:border-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40 flex items-center gap-1 cursor-pointer transition select-none"
-        title={t.home.arbitrageSaving}
+        className={`group text-[11px] font-bold px-2 py-0.5 rounded-full border border-dashed flex items-center gap-1 cursor-pointer transition select-none ${tone}`}
+        title={heading}
       >
-        <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+        <Sparkles className={`w-3 h-3 ${iconTone}`} />
         {label} · {originAirport}
         <span className="opacity-60 group-hover:opacity-100 text-[10px] font-normal transition-opacity">ℹ</span>
       </button>
@@ -80,7 +91,7 @@ export function AirportSavingsBadge({ originAirport, autoSelected }: AirportSavi
             <div className="flex items-start justify-between gap-3">
               <h4 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-                {t.home.arbitrageBadge} · {originAirport}
+                {heading}
               </h4>
               <button
                 type="button"
@@ -93,8 +104,8 @@ export function AirportSavingsBadge({ originAirport, autoSelected }: AirportSavi
               </button>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{explain}</p>
-            {autoSelected && (
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.home.autoOriginTitle}</p>
+            {isGold && autoSelected && (
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.home.autoOriginExplain}</p>
             )}
           </div>
         </FloatingPortal>

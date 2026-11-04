@@ -1897,17 +1897,12 @@ export default function HomePage() {
               {win.isArbitrageOpportunity ? (
                 <AirportSavingsBadge
                   originAirport={win.originAirport}
+                  originCity={win.originCity}
                   autoSelected={Boolean(win.autoSelectedOrigin)}
                 />
               ) : (
                 win.autoSelectedOrigin && !win.railFeeder && (
-                  <span
-                    className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-dashed border-emerald-400 dark:border-emerald-700 flex items-center gap-1"
-                    title={t.home.autoOriginTitle}
-                  >
-                    <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                    {t.home.autoOriginBadge} · {win.originAirport}
-                  </span>
+                  <AirportSavingsBadge originAirport={win.originAirport} originCity={win.originCity} autoSelected variant="green" />
                 )
               )}
               {win.sourceMarketDemand && win.sourceMarketDemand.index <= 0.1 && (
