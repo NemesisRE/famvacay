@@ -458,11 +458,8 @@ export interface TranslationDictionary {
     calendarTab: string;
     calendarViewCountry: string;
     calendarViewPersonal: string;
-    calendarCountryTitle: string;
     calendarCountryHint: string;
-    calendarPersonalTitle: string;
     calendarPersonalHint: string;
-    calendarPersonalTitleNoKids: string;
     calendarPersonalHintNoKids: string;
     calendarQuietTitle: string;
     calendarRegionsCount: string;

@@ -37,10 +37,10 @@ test('the calendar section shows the holiday density of the country and the fami
   const { shareId } = await share.json();
   await page.goto(`/?s=${shareId}`);
 
-  await page.getByRole('button', { name: 'Calendar' }).click(); // opens the calendar section
-  const calendar = page.locator('section[aria-labelledby="holiday-calendar-title"]');
-  // "Your location" is the default view
-  await expect(calendar.getByRole('heading', { name: 'Your best travel times' })).toBeVisible();
+  await page.getByRole('button', { name: 'Best travel times' }).click(); // opens the calendar section
+  const calendar = page.getByRole('region', { name: 'Best travel times' });
+  // "Your group" is the default view
+  await expect(calendar.getByText(/Without school children you are not tied to school holidays/)).toBeVisible();
   await expect(calendar.getByRole('listitem', { name: /July 20, 2027 · 12 of 16 regions on school holiday/ })).toBeVisible();
   await expect(calendar.getByRole('heading', { name: 'Quietest periods' })).toBeVisible();
   await expect(calendar.getByText(/Jul 1 – 10, 2027/)).toBeVisible();
@@ -49,7 +49,7 @@ test('the calendar section shows the holiday density of the country and the fami
   await expect(calendar.getByRole('listitem', { name: /July 20, 2027 .*Best days/ })).toHaveCount(0);
 
   await calendar.getByRole('button', { name: 'Country', exact: true }).click();
-  await expect(calendar.getByRole('heading', { name: /School holidays – Germany/ })).toBeVisible();
+  await expect(calendar.getByText(/How many regions have school holidays each day/)).toBeVisible();
   await expect(calendar.getByRole('heading', { name: /July 2027/ })).toBeVisible();
   await expect(calendar.getByRole('listitem', { name: /July 1, 2027 · 0 of 16 regions on school holiday · Public holiday: Test Day/ })).toBeVisible();
 });
