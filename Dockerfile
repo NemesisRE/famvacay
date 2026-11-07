@@ -9,7 +9,7 @@
 # ------------------------------------------------------------------------------
 # Stage 1: Dependencies
 # ------------------------------------------------------------------------------
-FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS deps
+FROM node:26-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS deps
 WORKDIR /app
 
 RUN apk add --no-cache libc6-compat openssl
@@ -27,7 +27,7 @@ RUN pnpm install --frozen-lockfile --offline
 # ------------------------------------------------------------------------------
 # Stage 2: Builder
 # ------------------------------------------------------------------------------
-FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS builder
+FROM node:26-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS builder
 WORKDIR /app
 
 RUN apk add --no-cache openssl libc6-compat
@@ -50,7 +50,7 @@ RUN pnpm run build
 # ------------------------------------------------------------------------------
 # Stage 3: Migrator (Dedicated one-shot container for database migrations)
 # ------------------------------------------------------------------------------
-FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS migrator
+FROM node:26-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS migrator
 WORKDIR /app
 # Links the published image to the repository on ghcr.io (description, permissions)
 LABEL org.opencontainers.image.source="https://github.com/NemesisRE/famvacay"       org.opencontainers.image.description="FamVacay database migrations (prisma migrate deploy)"       org.opencontainers.image.licenses="AGPL-3.0"
@@ -83,7 +83,7 @@ CMD ["migrate", "deploy"]
 # ------------------------------------------------------------------------------
 # Stage 4: Runner (Target size < 150MB, read-only root compatible)
 # ------------------------------------------------------------------------------
-FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS runner
+FROM node:26-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS runner
 WORKDIR /app
 LABEL org.opencontainers.image.source="https://github.com/NemesisRE/famvacay"       org.opencontainers.image.description="FamVacay - family vacation optimizer"       org.opencontainers.image.licenses="AGPL-3.0"
 
