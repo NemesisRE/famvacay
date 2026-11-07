@@ -62,6 +62,12 @@
       "groupSlug": "playwright"
     },
     {
+      "description": "The registry has no release timestamps for this image, so with internalChecksFilter strict the age check never passed and the image was left out of the playwright group (the npm package was bumped alone and CI failed on mismatching browsers). The group still waits for the npm package's age.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["mcr.microsoft.com/playwright"],
+      "minimumReleaseAge": null
+    },
+    {
       "description": "Isolated review for major updates",
       "matchUpdateTypes": ["major"],
       "schedule": ["before 6am on Monday"],

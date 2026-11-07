@@ -18,6 +18,7 @@ To keep packages up to date and reduce manual maintenance overhead, FamVacay use
      - Includes: `eslint*`, `@typescript-eslint/*`, `prettier*`, `vitest*`, `@playwright/*`, `typescript`, `tailwindcss`, `postcss`.
      - Group: `development & quality toolchain`
      - Group Slug: `dev-toolchain`
+   - `@playwright/*` and the `mcr.microsoft.com/playwright` image in `.github/workflows/ci.yml` form one group (`playwright`): the image version must equal `@playwright/test`, or every E2E test fails at browser launch. The image rule disables `minimumReleaseAge` because the registry reports no release timestamps, which kept the image out of the group under `internalChecksFilter: "strict"`.
    - Major updates are kept isolated for focused review.
    - `typescript` major updates are suppressed (`allowedVersions: "<7.0.0"`) until upstream ecosystem support matures — see [Known Blocked Major Upgrades](#known-blocked-major-upgrades) below.
    - `postgres` major updates are disabled in Renovate (`matchUpdateTypes: ["major"], enabled: false`) because PostgreSQL major version changes break on-disk volume binary compatibility and require planned manual migration (`pg_dumpall` / `pg_upgrade`).
