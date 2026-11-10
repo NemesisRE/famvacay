@@ -198,7 +198,7 @@ importers:
         version: 4.4.0
       date-holidays:
         specifier: ^3.38.0
-        version: 3.38.1
+        version: 3.39.1
       geolib:
         specifier: ^4.0.0
         version: 4.0.2
@@ -268,7 +268,7 @@ importers:
         version: 5.1.0(vitest@5.1.0)
       dotenv:
         specifier: ^18.0.9
-        version: 18.0.9
+        version: 18.0.10
       eslint:
         specifier: ^10.13.0
         version: 10.14.0(jiti@2.7.0)(supports-color@7.2.0)
@@ -644,6 +644,10 @@ packages:
 
   '@hexagon/base64@1.1.28':
     resolution: {integrity: sha512-lhqDEAvWixy3bZ+UOYbPwUbBkwBq5C1LAJ/xPC8Oi+lL54oyakv/npbA0aU2hgCsx/1NUd4IBvV03+aUBWxerw==}
+
+  '@hnw/date-tibetan@1.0.2':
+    resolution: {integrity: sha512-BlN5wLlbjuBso/D7JbpRC5nizJkXi2WXmayZOJL3dc9R3a6RoCeIFp0aowqMdIcuETF2qpOM1OBoP6rUgW1eBg==}
+    engines: {node: '>=12.0.0'}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -1765,8 +1769,8 @@ packages:
   ast-v8-to-istanbul@1.0.7:
     resolution: {integrity: sha512-kFL68AG6ajd8fg248zwM9GQrUWEp79gsmjum34OEXjs4yHuUMZfYKwOLW9GMmB4oNvVrj+EAGxsP7ye2UR9UlA==}
 
-  astronomia@4.2.0:
-    resolution: {integrity: sha512-mTvpBGyXB80aSsDhAAiuwza5VqAyqmj5yzhjBrFhRy17DcWDzJrb8Vdl4Sm+g276S+mY7bk/5hi6akZ5RQFeHg==}
+  astronomia@4.3.0:
+    resolution: {integrity: sha512-kD87oezczQTJYp6SW07l9X/fyssEg4/GSFmxBN1Xk8TRN7h4tkQddRK/VJnlHkbzmK1w16s/7dUtUO4EUKLDpA==}
     engines: {node: '>=12.0.0'}
 
   async-function@1.0.0:
@@ -1835,8 +1839,8 @@ packages:
   cacheable@2.5.0:
     resolution: {integrity: sha512-60cyAOytib/OzBw1JNSoSV/boK1AtHryDIjvVBk7XbN4ugfkM3+Sry7fEjNgPMGgOjuaZPAp8ruZ0Cxafwyq9g==}
 
-  caldate@2.0.5:
-    resolution: {integrity: sha512-JndhrUuDuE975KUhFqJaVR1OQkCHZqpOrJur/CFXEIEhWhBMjxO85cRSK8q4FW+B+yyPq6GYua2u4KvNzTcq0w==}
+  caldate@2.1.0:
+    resolution: {integrity: sha512-RtO0e0m5Qk36Qqd038V1qn6f8esmbmK16fYlGj9wlack3CD1VGzFJ7B4HacVOprbPkyCR+P3JHnlTYGoMpJUVQ==}
     engines: {node: '>=12.0.0'}
 
   call-bind-apply-helpers@1.0.2:
@@ -1962,27 +1966,27 @@ packages:
     resolution: {integrity: sha512-BS8PfmtDGnrgYdOonGZQdLZslWIeCGFP9tpan0hi1Co2Zr2NKADsvGYA8XxuG/4UWgJ6Cjtv+YJnB6MM69QGlQ==}
     engines: {node: '>= 0.4'}
 
-  date-bengali-revised@2.0.2:
-    resolution: {integrity: sha512-q9iDru4+TSA9k4zfm0CFHJj6nBsxP7AYgWC/qodK/i7oOIlj5K2z5IcQDtESfs/Qwqt/xJYaP86tkazd/vRptg==}
+  date-bengali-revised@2.1.0:
+    resolution: {integrity: sha512-A/+Bo0lQY8ZaOjIgqxF+qii3b5911HyBGzfYkjQpa3EWsH+kj8gks675D73vzTp4XIuEQqtTg4h+7pJh0sHbuw==}
     engines: {node: '>=12.0.0'}
 
-  date-chinese@2.1.4:
-    resolution: {integrity: sha512-WY+6+Qw92ZGWFvGtStmNQHEYpNa87b8IAQ5T8VKt4wqrn24lBXyyBnWI5jAIyy7h/KVwJZ06bD8l/b7yss82Ww==}
+  date-chinese@2.2.0:
+    resolution: {integrity: sha512-P8F1dvF6p1jCAl6JcErKFEMi9elaMmxs2LHySO2kYi2i4OoqpRg23L8vEjxRl6Mbx/UKq29vIElJ/UCBfzEJqA==}
     engines: {node: '>=12.0.0'}
 
-  date-easter@1.0.3:
-    resolution: {integrity: sha512-aOViyIgpM4W0OWUiLqivznwTtuMlD/rdUWhc5IatYnplhPiWrLv75cnifaKYhmQwUBLAMWLNG4/9mlLIbXoGBQ==}
+  date-easter@1.1.0:
+    resolution: {integrity: sha512-uy13sHOXDrw9ewFdBhHWdLOcDOE3Hk08Bn5DrVYGdcCPy524D86BaaDtKKlpW7IqfI5btOzsTYxnCq+eZQe+Gg==}
     engines: {node: '>=12.0.0'}
 
   date-fns@4.4.0:
     resolution: {integrity: sha512-+1UMbeh68lH1SegH83CGWwpb6OHHbpSgr3+s5Eww5M4CAgswBpoWS0AjTOfEJ33HiYKz1hdj/KTFprzXHmq/6w==}
 
-  date-holidays-parser@3.4.7:
-    resolution: {integrity: sha512-h09ZEtM6u5cYM6m1bX+1Ny9f+nLO9KVZUKNPEnH7lhbXYTfqZogaGTnhONswGeIJFF91UImIftS3CdM9HLW5oQ==}
+  date-holidays-parser@3.7.0:
+    resolution: {integrity: sha512-41qmuFwuiOE7qwIQCbmF+/WyHc7+eeBWje/3yMiT8pGdSXs+RpXAfY1i6ZD+/6x4ZJPiorwd8V2B4jbjQL09iw==}
     engines: {node: '>=12.0.0'}
 
-  date-holidays@3.38.1:
-    resolution: {integrity: sha512-8KCm5dJWa5qH60w9QpTOMwPPV1B0sMtZU3+C14OyFgjrwZh4iPi6MfrGMxTaHsS85r+Hxsgcr1DFtv7D/thO4A==}
+  date-holidays@3.39.1:
+    resolution: {integrity: sha512-/eJPKI84IZ+DFydE/kMnRNp0WfAVEoqCCVL6vTYOQ7z7r/y1oTJrRp1AP8l0goso67vaUVLWBU/skZXVbc2e8A==}
     engines: {node: '>=12.0.0'}
     hasBin: true
 
@@ -2050,8 +2054,8 @@ packages:
     resolution: {integrity: sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw==}
     engines: {node: '>=12'}
 
-  dotenv@18.0.9:
-    resolution: {integrity: sha512-3fVOW4cB02R066PUSwn8O4TJyz9NckQl7F81blIbaq9jKBm2tSmOKky7ZHIXzGvkVPXCSn6jkpziBPZdGFs8Tw==}
+  dotenv@18.0.10:
+    resolution: {integrity: sha512-89FAA1xchzK2mxVWdr5F/0rldwiueXs6zJM86rO66EzekR1iBdiXRthyG+m5GvkJaFH3C2LESzamTkgndmLT2A==}
     engines: {node: '>=12'}
     hasBin: true
 
@@ -2606,8 +2610,9 @@ packages:
     resolution: {integrity: sha512-H0dkQoCa3b2VEeKQBOxFph+JAbcrQdE7KC0UkqwpLmv2EC4P41QXP+rqo9wYodACiG5/WM5s9oDApTU8utwj9g==}
     engines: {node: '>= 0.4'}
 
-  jalaali-js@1.2.8:
-    resolution: {integrity: sha512-Jl/EwY84JwjW2wsWqeU4pNd22VNQ7EkjI36bDuLw31wH98WQW4fPjD0+mG7cdCK+Y8D6s9R3zLiQ3LaKu6bD8A==}
+  jalaali-js@2.0.1:
+    resolution: {integrity: sha512-qzTmjw6lZ3V4znyNA8ceYoGgFR+CcF+xEfIYZNcK2ZR0mzdMpMZ6iAcdRPvMgxUVdPMh6QLWCANpTcCJow2U+Q==}
+    engines: {node: '>=20'}
 
   jiti@2.7.0:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
@@ -2806,8 +2811,8 @@ packages:
   minimist@1.2.8:
     resolution: {integrity: sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==}
 
-  moment-timezone@0.5.48:
-    resolution: {integrity: sha512-f22b8LV1gbTO2ms2j2z13MuPogNoh5UzxL3nzNAYKGraILnbGc9NEE6dyiiiLv46DGRb8A4kg8UKWLjPthxBHw==}
+  moment-timezone@0.6.6:
+    resolution: {integrity: sha512-LF5AAYsMduXFW2ungr/D9JqNq9ykZyhWgYG6wFtdGZW5ZlBDTBgTUFqW8EC7Fa+Dvs3IMZxlWkSR09sW2D/+0w==}
 
   moment@2.31.0:
     resolution: {integrity: sha512-0acOTfMiWOheYS4eoWb80yYMb/JLvVv9SHbs2PehaDzfUG0Bw855SKyk0IKTnPGa5+U2bmi3W68l1+sGLX/pvw==}
@@ -3955,6 +3960,10 @@ snapshots:
 
   '@hexagon/base64@1.1.28': {}
 
+  '@hnw/date-tibetan@1.0.2':
+    dependencies:
+      astronomia: 4.3.0
+
   '@humanfs/core@0.19.2':
     dependencies:
       '@humanfs/types': 0.15.0
@@ -5047,7 +5056,7 @@ snapshots:
       estree-walker: 3.0.3
       js-tokens: 10.0.0
 
-  astronomia@4.2.0: {}
+  astronomia@4.3.0: {}
 
   async-function@1.0.0: {}
 
@@ -5117,9 +5126,9 @@ snapshots:
       keyv: 5.6.0
       qified: 0.10.1
 
-  caldate@2.0.5:
+  caldate@2.1.0:
     dependencies:
-      moment-timezone: 0.5.48
+      moment-timezone: 0.6.6
 
   call-bind-apply-helpers@1.0.2:
     dependencies:
@@ -5238,30 +5247,31 @@ snapshots:
       es-errors: 1.3.0
       is-data-view: 1.0.2
 
-  date-bengali-revised@2.0.2: {}
+  date-bengali-revised@2.1.0: {}
 
-  date-chinese@2.1.4:
+  date-chinese@2.2.0:
     dependencies:
-      astronomia: 4.2.0
+      astronomia: 4.3.0
 
-  date-easter@1.0.3: {}
+  date-easter@1.1.0: {}
 
   date-fns@4.4.0: {}
 
-  date-holidays-parser@3.4.7:
+  date-holidays-parser@3.7.0:
     dependencies:
-      astronomia: 4.2.0
-      caldate: 2.0.5
-      date-bengali-revised: 2.0.2
-      date-chinese: 2.1.4
-      date-easter: 1.0.3
+      '@hnw/date-tibetan': 1.0.2
+      astronomia: 4.3.0
+      caldate: 2.1.0
+      date-bengali-revised: 2.1.0
+      date-chinese: 2.2.0
+      date-easter: 1.1.0
       deepmerge: 4.3.1
-      jalaali-js: 1.2.8
-      moment-timezone: 0.5.48
+      jalaali-js: 2.0.1
+      moment-timezone: 0.6.6
 
-  date-holidays@3.38.1:
+  date-holidays@3.39.1:
     dependencies:
-      date-holidays-parser: 3.4.7
+      date-holidays-parser: 3.7.0
       js-yaml: 5.5.0
       lodash: 4.18.1
       prepin: 1.0.3
@@ -5316,7 +5326,7 @@ snapshots:
 
   dotenv@17.4.2: {}
 
-  dotenv@18.0.9: {}
+  dotenv@18.0.10: {}
 
   dunder-proto@1.0.1:
     dependencies:
@@ -6056,7 +6066,7 @@ snapshots:
       has-symbols: 1.1.0
       set-function-name: 2.0.2
 
-  jalaali-js@1.2.8: {}
+  jalaali-js@2.0.1: {}
 
   jiti@2.7.0: {}
 
@@ -6214,7 +6224,7 @@ snapshots:
 
   minimist@1.2.8: {}
 
-  moment-timezone@0.5.48:
+  moment-timezone@0.6.6:
     dependencies:
       moment: 2.31.0
 
