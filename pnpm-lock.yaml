@@ -168,7 +168,7 @@ importers:
     dependencies:
       '@auth/prisma-adapter':
         specifier: ^2.11.3
-        version: 2.11.3(@prisma/client@7.10.1(prisma@7.10.1(@types/node@26.6.6)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3))(typescript@6.0.3))(@simplewebauthn/browser@14.0.0)(@simplewebauthn/server@14.1.0)(nodemailer@10.4.0)
+        version: 2.11.3(@prisma/client@7.10.1(prisma@7.10.1(@types/node@26.6.6)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3))(typescript@6.0.3))(@simplewebauthn/browser@14.0.0)(@simplewebauthn/server@14.1.0)(nodemailer@10.5.0)
       '@floating-ui/react':
         specifier: ^0.27.20
         version: 0.27.20(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -213,16 +213,16 @@ importers:
         version: 1.0.0
       lucide-react:
         specifier: ^1.59.0
-        version: 1.70.0(@types/react@19.3.0)(react@19.3.1)
+        version: 1.71.0(@types/react@19.3.0)(react@19.3.1)
       next:
         specifier: ^16.4.3
         version: 16.4.6(@babel/core@7.29.7(supports-color@7.2.0))(@playwright/test@1.65.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       next-auth:
         specifier: ^4.24.15
-        version: 4.24.15(next@16.4.6(@babel/core@7.29.7(supports-color@7.2.0))(@playwright/test@1.65.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(nodemailer@10.4.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 4.24.15(next@16.4.6(@babel/core@7.29.7(supports-color@7.2.0))(@playwright/test@1.65.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(nodemailer@10.5.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       nodemailer:
         specifier: ^10.3.1
-        version: 10.4.0
+        version: 10.5.0
       react:
         specifier: ^19.3.1
         version: 19.3.1
@@ -2774,8 +2774,8 @@ packages:
     resolution: {integrity: sha512-5J9ysMYUpYIg9RF2vJpy9SinEmSviFSe0GyPpCQ4L5QSkLAgeLXlTAOu2ZwWUU5m+0SBl6gUU1R1ZQB3aKypfA==}
     engines: {bun: '>=1.0.0', deno: '>=1.30.0', node: '>=8.0.0'}
 
-  lucide-react@1.70.0:
-    resolution: {integrity: sha512-gCTPPN1MlQUBtUgdsUv+0CAUj+X8hifRUiRBw4E5v7lvDIOIpx0EZezdGQMSimS8pKA6esvullJub4GYr0mCHA==}
+  lucide-react@1.71.0:
+    resolution: {integrity: sha512-8YtvF+bqT/EMqAXU7kWvYdRu+TV9j4kS1eIS7IbN1j1Z1DgupbrTL0nDIygdqgBDTD7AJPP607VdVgzDTar4zA==}
     peerDependencies:
       '@types/react': '*'
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -2886,8 +2886,8 @@ packages:
     resolution: {integrity: sha512-OmO8+GM1JUZqXET720VrJCwkjUCXmCMQm0Z3UDDRbfNLHS4NEAvY60j5jiFv0tkKw2PNNlqOLhahVmwJIOLDIQ==}
     engines: {node: '>=18'}
 
-  nodemailer@10.4.0:
-    resolution: {integrity: sha512-fyy6r4Q5euRJ9Qr3Cts9K7SZrfe9zmz9oLOYiAR02MEJRDRci+99y0OoYBYBgpLffOqkkjXrB/d26VfiMje/kA==}
+  nodemailer@10.5.0:
+    resolution: {integrity: sha512-L/w/HH5MqpzMDuZD7fQdt/+KqymuvrpaApaIjAH2XA3ILePwlcvXCVVvP75xVrXCEt2ggK2marrrHHFB5Qu0kA==}
     engines: {node: '>=20.0.0'}
 
   oauth4webapi@3.8.8:
@@ -3650,7 +3650,7 @@ snapshots:
 
   '@alloc/quick-lru@5.3.0': {}
 
-  '@auth/core@0.41.3(@simplewebauthn/browser@14.0.0)(@simplewebauthn/server@14.1.0)(nodemailer@10.4.0)':
+  '@auth/core@0.41.3(@simplewebauthn/browser@14.0.0)(@simplewebauthn/server@14.1.0)(nodemailer@10.5.0)':
     dependencies:
       '@panva/hkdf': 1.2.1
       jose: 6.2.13
@@ -3660,11 +3660,11 @@ snapshots:
     optionalDependencies:
       '@simplewebauthn/browser': 14.0.0
       '@simplewebauthn/server': 14.1.0
-      nodemailer: 10.4.0
+      nodemailer: 10.5.0
 
-  '@auth/prisma-adapter@2.11.3(@prisma/client@7.10.1(prisma@7.10.1(@types/node@26.6.6)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3))(typescript@6.0.3))(@simplewebauthn/browser@14.0.0)(@simplewebauthn/server@14.1.0)(nodemailer@10.4.0)':
+  '@auth/prisma-adapter@2.11.3(@prisma/client@7.10.1(prisma@7.10.1(@types/node@26.6.6)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3))(typescript@6.0.3))(@simplewebauthn/browser@14.0.0)(@simplewebauthn/server@14.1.0)(nodemailer@10.5.0)':
     dependencies:
-      '@auth/core': 0.41.3(@simplewebauthn/browser@14.0.0)(@simplewebauthn/server@14.1.0)(nodemailer@10.4.0)
+      '@auth/core': 0.41.3(@simplewebauthn/browser@14.0.0)(@simplewebauthn/server@14.1.0)(nodemailer@10.5.0)
       '@prisma/client': 7.10.1(prisma@7.10.1(@types/node@26.6.6)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3))(typescript@6.0.3)
     transitivePeerDependencies:
       - '@simplewebauthn/browser'
@@ -6189,7 +6189,7 @@ snapshots:
 
   lru.min@1.1.5: {}
 
-  lucide-react@1.70.0(@types/react@19.3.0)(react@19.3.1):
+  lucide-react@1.71.0(@types/react@19.3.0)(react@19.3.1):
     dependencies:
       react: 19.3.1
     optionalDependencies:
@@ -6253,7 +6253,7 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  next-auth@4.24.15(next@16.4.6(@babel/core@7.29.7(supports-color@7.2.0))(@playwright/test@1.65.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(nodemailer@10.4.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  next-auth@4.24.15(next@16.4.6(@babel/core@7.29.7(supports-color@7.2.0))(@playwright/test@1.65.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(nodemailer@10.5.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@babel/runtime': 7.29.10
       '@panva/hkdf': 1.2.1
@@ -6268,7 +6268,7 @@ snapshots:
       react-dom: 19.3.1(react@19.3.1)
       uuid: 11.1.1
     optionalDependencies:
-      nodemailer: 10.4.0
+      nodemailer: 10.5.0
 
   next@16.4.6(@babel/core@7.29.7(supports-color@7.2.0))(@playwright/test@1.65.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
@@ -6305,7 +6305,7 @@ snapshots:
 
   node-releases@2.0.60: {}
 
-  nodemailer@10.4.0: {}
+  nodemailer@10.5.0: {}
 
   oauth4webapi@3.8.8: {}
 
