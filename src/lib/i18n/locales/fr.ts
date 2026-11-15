@@ -599,6 +599,7 @@ export const fr: TranslationDictionary = {
     socialDesc: 'Associe tes comptes tiers pour une connexion rapide en 1 clic.',
     connectedBadge: 'Connecté',
     unlinkBtn: 'Dissocier',
+    notLinked: 'Non associé',
     unlinkedSuccess: 'Compte dissocié avec succès.',
     dangerZoneTitle: 'Zone de danger',
     dangerZoneDesc: 'Supprimer définitivement ton compte utilisateur et l’ensemble des données et profils voyageurs.',
