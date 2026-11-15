@@ -596,10 +596,10 @@ export function AccountSettings() {
               return (
                 <div
                   key={id}
-                  className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 flex items-center justify-between gap-3"
+                  className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 flex items-center justify-between gap-3 hover:border-slate-300 dark:hover:border-slate-600 transition"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="w-9 h-9 shrink-0 rounded-lg bg-white dark:bg-slate-100 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-900">
+                    <span className="w-9 h-9 shrink-0 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-900 dark:text-slate-100">
                       <Icon className={id === 'apple' ? 'w-5 h-5 fill-current' : 'w-5 h-5'} />
                     </span>
                     <div className="min-w-0">
