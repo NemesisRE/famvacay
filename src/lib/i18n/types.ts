@@ -655,9 +655,8 @@ export interface TranslationDictionary {
     errorCredentialsSignin: string;
     errorGeneric: string;
     errorSocialSignInFailed: string;
-    passkeyEmailRequired: string;
-    passkeySuccess: string;
     passkeyCancelled: string;
+    passkeyFailed: string;
   };
   common: {
     done: string;

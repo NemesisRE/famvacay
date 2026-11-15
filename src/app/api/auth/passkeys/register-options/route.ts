@@ -4,6 +4,7 @@ import { generateRegistrationOptions, type AuthenticatorTransport } from '@simpl
 import { authOptions } from '@/lib/auth/auth-options';
 import { prisma } from '@/lib/db/prisma';
 import { setCached } from '@/lib/cache/redis';
+import { getRelyingParty } from '@/lib/auth/passkey';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,19 +12,11 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    let email = session?.user?.email;
-
-    // If not logged in, email can be provided in request body to register passkey during onboarding
+    // Only a signed-in user may add a passkey to an account. Passkeys now sign in, so enrolling one
+    // for an arbitrary email address would be an account takeover.
+    const email = session?.user?.email;
     if (!email) {
-      const body = await req.json().catch(() => ({}));
-      email = body.email;
-    }
-
-    if (!email) {
-      return NextResponse.json(
-        { error: 'User email is required to register a passkey.' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -39,9 +32,7 @@ export async function POST(req: NextRequest) {
     }
 
     const rpName = 'FamVacay';
-    // RP ID derived from APP_URL or default to localhost
-    const appUrl = process.env.APP_URL || 'http://localhost:3000';
-    const rpID = new URL(appUrl).hostname;
+    const { rpID } = getRelyingParty();
 
     const options = await generateRegistrationOptions({
       rpName,
@@ -56,7 +47,9 @@ export async function POST(req: NextRequest) {
         transports: p.transports ? (p.transports.split(',') as AuthenticatorTransport[]) : undefined,
       })),
       authenticatorSelection: {
-        residentKey: 'preferred',
+        // Discoverable credential: sign-in starts without an email address, password managers
+        // such as Bitwarden only offer such passkeys in that case
+        residentKey: 'required',
         userVerification: 'preferred',
       },
     });
