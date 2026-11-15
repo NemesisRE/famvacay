@@ -6,6 +6,7 @@ import AppleProvider from 'next-auth/providers/apple';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db/prisma';
 import { checkRateLimit, clientIdentifierFromHeaders, RATE_LIMITS, rateLimitingEnabled } from '@/lib/security/rate-limit';
+import { verifyPasskeyLogin } from './passkey';
 import { getAppleCredentials, getGoogleCredentials } from './oauth-config';
 
 const googleCredentials = getGoogleCredentials();
@@ -92,7 +93,31 @@ export const authOptions: AuthOptions = {
       },
     }),
 
-    // 2. Google OAuth
+    // 2. Passkey (WebAuthn): the signed response to a challenge from /api/auth/passkeys/login-options
+    CredentialsProvider({
+      id: 'passkey',
+      name: 'Passkey',
+      credentials: {
+        challengeId: { type: 'text' },
+        response: { type: 'text' },
+      },
+      async authorize(credentials, req) {
+        if (rateLimitingEnabled()) {
+          const perIp = await checkRateLimit(RATE_LIMITS.loginPerIp, clientIdentifierFromHeaders(req?.headers));
+          if (!perIp.allowed) throw new Error('Too many login attempts. Please try again later.');
+        }
+        let response;
+        try {
+          response = JSON.parse(credentials?.response || '');
+        } catch {
+          throw new Error('Passkey sign-in data is incomplete. Please try again.');
+        }
+        const user = await verifyPasskeyLogin(credentials?.challengeId, response);
+        return { id: user.id, email: user.email, name: user.name, image: user.image };
+      },
+    }),
+
+    // 3. Google OAuth
     ...(googleCredentials
       ? [
           GoogleProvider({
@@ -102,7 +127,7 @@ export const authOptions: AuthOptions = {
         ]
       : []),
 
-    // 3. Apple Sign-In
+    // 4. Apple Sign-In
     ...(appleCredentials
       ? [
           AppleProvider({

@@ -97,6 +97,19 @@ export async function setCached<T>(key: string, value: T, ttlSeconds: number): P
   });
 }
 
+/** Removes a key from Valkey and the memory fallback (single-use values such as WebAuthn challenges). */
+export async function deleteCached(key: string): Promise<void> {
+  const client = getRedisClient();
+  if (client && (client.status === 'ready' || client.status === 'connecting')) {
+    try {
+      await client.del(key);
+    } catch {
+      // Redis / Valkey failed, the memory fallback is cleared below
+    }
+  }
+  memoryCache.delete(key);
+}
+
 const counterMemory = new Map<string, { count: number; expiry: number }>();
 
 /**

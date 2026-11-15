@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { signIn, getProviders, ClientSafeProvider } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Mail, Key, Shield, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
-import { startRegistration } from '@simplewebauthn/browser';
+import { startAuthentication } from '@simplewebauthn/browser';
 import { useI18n } from '@/lib/i18n/i18n-context';
 
 function SignInContent() {
@@ -102,47 +102,40 @@ function SignInContent() {
     }
   };
 
-  const handlePasskeyRegister = async () => {
-    if (!email) {
-      setMessage({ type: 'error', text: t.auth.passkeyEmailRequired });
-      return;
-    }
-
+  const handlePasskeySignIn = async () => {
     setLoading(true);
     setMessage(null);
 
     try {
-      const optRes = await fetch('/api/auth/passkeys/register-options', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
+      const optRes = await fetch('/api/auth/passkeys/login-options', { method: 'POST' });
+      const optData = await optRes.json().catch(() => ({}));
       if (!optRes.ok) {
-        const d = await optRes.json();
-        throw new Error(d.error || 'Failed to retrieve passkey challenge.');
+        throw new Error(optData.error || t.auth.passkeyFailed);
       }
 
-      const options = await optRes.json();
-      const credential = await startRegistration({ optionsJSON: options });
-
-      const verifyRes = await fetch('/api/auth/passkeys/verify-registration', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, credential }),
-      });
-
-      const verifyData = await verifyRes.json();
-      if (!verifyRes.ok) {
-        throw new Error(verifyData.error || 'Passkey verification failed.');
+      let assertion;
+      try {
+        assertion = await startAuthentication({ optionsJSON: optData.options });
+      } catch (err: any) {
+        // The browser or password manager was dismissed or holds no passkey for this site
+        console.warn('[passkey] sign-in aborted:', err?.name, err?.message);
+        throw new Error(t.auth.passkeyCancelled);
       }
 
-      setMessage({
-        type: 'success',
-        text: t.auth.passkeySuccess,
+      const res = await signIn('passkey', {
+        redirect: false,
+        challengeId: optData.challengeId,
+        response: JSON.stringify(assertion),
       });
+      if (res?.error) {
+        // NextAuth reports a failed sign-in without a message as "CredentialsSignin"
+        throw new Error(res.error === 'CredentialsSignin' ? t.auth.passkeyFailed : res.error);
+      }
+
+      router.push('/');
+      router.refresh();
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || t.auth.passkeyCancelled });
+      setMessage({ type: 'error', text: err.message || t.auth.passkeyFailed });
     } finally {
       setLoading(false);
     }
@@ -313,11 +306,11 @@ function SignInContent() {
           </button>
         </form>
 
-        {/* Passkey enrollment option: responsive, wrap-safe layout */}
+        {/* Passkey sign-in: responsive, wrap-safe layout. New passkeys are added in the account settings. */}
         <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
           <button
             type="button"
-            onClick={handlePasskeyRegister}
+            onClick={handlePasskeySignIn}
             disabled={loading}
             className="w-full min-h-10 py-2 px-3 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/60 dark:bg-indigo-950/40 hover:bg-indigo-50 dark:hover:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-semibold text-xs transition flex items-center justify-center gap-2 text-center cursor-pointer disabled:opacity-60"
           >

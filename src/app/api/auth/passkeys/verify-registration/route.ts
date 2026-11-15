@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRegistrationResponse } from '@simplewebauthn/server';
 import { prisma } from '@/lib/db/prisma';
-import { getCached } from '@/lib/cache/redis';
+import { getCached, deleteCached } from '@/lib/cache/redis';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/auth-options';
+import { getRelyingParty } from '@/lib/auth/passkey';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, credential } = await req.json();
+    const session = await getServerSession(authOptions);
+    const email = session?.user?.email;
+    if (!email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    if (!email || !credential) {
-      return NextResponse.json(
-        { error: 'Email and credential payload are required.' },
-        { status: 400 }
-      );
+    const { credential } = await req.json();
+    if (!credential) {
+      return NextResponse.json({ error: 'Credential payload is required.' }, { status: 400 });
     }
 
     const user = await prisma.user.findUnique({
@@ -35,9 +40,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const appUrl = process.env.APP_URL || 'http://localhost:3000';
-    const origin = new URL(appUrl).origin;
-    const rpID = new URL(appUrl).hostname;
+    // Single use: a replayed registration response must not verify again
+    await deleteCached(`webauthn:challenge:reg:${user.id}`);
+
+    const { origin, rpID } = getRelyingParty();
 
     const verification = await verifyRegistrationResponse({
       response: credential,
