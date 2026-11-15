@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth-options';
 import { prisma } from '@/lib/db/prisma';
 import { isMailConfigured } from '@/lib/mail/mailer';
+import { getAppleCredentials } from '@/lib/auth/oauth-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +49,8 @@ export async function GET() {
       emailVerified: Boolean(user?.emailVerified),
       // Without mail, addresses cannot be confirmed: the settings then show no status at all
       mailEnabled: isMailConfigured(),
+      // Apple is only offered when the instance has its credentials; a linked account stays unlinkable
+      appleEnabled: Boolean(getAppleCredentials()),
       linkedProviders: accounts.map((a) => a.provider),
       passkeysCount: passkeys.length,
       accounts,

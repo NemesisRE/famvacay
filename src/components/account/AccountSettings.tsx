@@ -30,12 +30,14 @@ export function AccountSettings() {
     passkeysCount: number;
     emailVerified: boolean;
     mailEnabled: boolean;
+    appleEnabled: boolean;
   }>({
     hasPassword: false,
     linkedProviders: [],
     passkeysCount: 0,
     emailVerified: false,
     mailEnabled: false,
+    appleEnabled: false,
   });
 
   const [passkeys, setPasskeys] = useState<any[]>([]);
@@ -100,6 +102,7 @@ export function AccountSettings() {
         passkeysCount: data.account.passkeysCount || 0,
         emailVerified: Boolean(data.account.emailVerified),
         mailEnabled: Boolean(data.account.mailEnabled),
+        appleEnabled: Boolean(data.account.appleEnabled),
       });
     }
     if (data.passkeys) setPasskeys(data.passkeys);
@@ -605,32 +608,34 @@ export function AccountSettings() {
             )}
           </div>
 
-          {/* Apple */}
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="w-6 h-6 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center font-bold text-xs text-slate-700 dark:text-slate-200">
-                A
-              </span>
-              <div>
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block">Apple</span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                  {accountInfo.linkedProviders.includes('apple')
-                    ? t.account.connectedBadge
-                    : 'Not linked'}
+          {/* Apple: hidden when the instance has no Apple credentials, unless an account is still linked */}
+          {(accountInfo.appleEnabled || accountInfo.linkedProviders.includes('apple')) && (
+            <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="w-6 h-6 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center font-bold text-xs text-slate-700 dark:text-slate-200">
+                  A
                 </span>
+                <div>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block">Apple</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                    {accountInfo.linkedProviders.includes('apple')
+                      ? t.account.connectedBadge
+                      : 'Not linked'}
+                  </span>
+                </div>
               </div>
+              {accountInfo.linkedProviders.includes('apple') && (
+                <button
+                  type="button"
+                  onClick={() => handleUnlinkProvider('apple')}
+                  className="text-[11px] font-semibold text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1 cursor-pointer"
+                >
+                  <Unlink className="w-3 h-3" />
+                  {t.account.unlinkBtn}
+                </button>
+              )}
             </div>
-            {accountInfo.linkedProviders.includes('apple') && (
-              <button
-                type="button"
-                onClick={() => handleUnlinkProvider('apple')}
-                className="text-[11px] font-semibold text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1 cursor-pointer"
-              >
-                <Unlink className="w-3 h-3" />
-                {t.account.unlinkBtn}
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
