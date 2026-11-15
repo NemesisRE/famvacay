@@ -456,10 +456,9 @@ export function AccountSettings() {
         )}
 
         <form onSubmit={handleUpdatePassword} className="space-y-3">
-          {/* One row of equal-width fields on desktop (items-end keeps the inputs level when a label wraps) */}
-          <div
-            className={`grid grid-cols-1 gap-3 items-end ${accountInfo.hasPassword ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}
-          >
+          {/* Same three-column grid as the email form: equal-width fields, the button in the last column
+              (items-end keeps the inputs level when a label wraps) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
             {accountInfo.hasPassword && (
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -500,15 +499,16 @@ export function AccountSettings() {
                 className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
               />
             </div>
+            <div className="sm:col-start-3">
+              <button
+                type="submit"
+                disabled={updatingPassword}
+                className="w-full text-xs font-bold py-2 px-4 rounded-lg bg-teal-600 hover:bg-teal-700 text-white transition disabled:opacity-50 cursor-pointer"
+              >
+                {updatingPassword ? 'Updating...' : t.account.changePasswordBtn}
+              </button>
+            </div>
           </div>
-
-          <button
-            type="submit"
-            disabled={updatingPassword}
-            className="text-xs font-bold py-2 px-4 rounded-lg bg-teal-600 hover:bg-teal-700 text-white transition disabled:opacity-50"
-          >
-            {updatingPassword ? 'Updating...' : t.account.changePasswordBtn}
-          </button>
         </form>
       </div>
 
