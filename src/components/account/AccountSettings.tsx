@@ -456,22 +456,24 @@ export function AccountSettings() {
         )}
 
         <form onSubmit={handleUpdatePassword} className="space-y-3">
-          {accountInfo.hasPassword && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                {t.account.currentPasswordLabel}
-              </label>
-              <input
-                type="password"
-                required
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full sm:w-80 text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
-              />
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md">
+          {/* One row of equal-width fields on desktop (items-end keeps the inputs level when a label wraps) */}
+          <div
+            className={`grid grid-cols-1 gap-3 items-end ${accountInfo.hasPassword ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}
+          >
+            {accountInfo.hasPassword && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {t.account.currentPasswordLabel}
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+            )}
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 {t.account.newPasswordLabel}
