@@ -599,6 +599,7 @@ export const it: TranslationDictionary = {
     socialDesc: 'Collega i provider social per accedere in 1 clic.',
     connectedBadge: 'Collegato',
     unlinkBtn: 'Scollega',
+    notLinked: 'Non collegato',
     unlinkedSuccess: 'Account scollegato con successo.',
     dangerZoneTitle: 'Zona di pericolo',
     dangerZoneDesc: 'Elimina definitivamente il tuo account utente e tutti i dati e profili viaggiatori memorizzati.',

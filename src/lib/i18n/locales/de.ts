@@ -599,6 +599,7 @@ export const de: TranslationDictionary = {
     socialDesc: 'Verknüpfe Social-Logins für die bequeme 1-Klick-Anmeldung.',
     connectedBadge: 'Verknüpft',
     unlinkBtn: 'Trennen',
+    notLinked: 'Nicht verknüpft',
     unlinkedSuccess: 'Konto erfolgreich getrennt.',
     dangerZoneTitle: 'Gefahrenbereich',
     dangerZoneDesc: 'Lösche dein Benutzerkonto und alle gespeicherten Reisendaten unwiderruflich.',

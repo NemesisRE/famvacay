@@ -599,6 +599,7 @@ export const en: TranslationDictionary = {
     socialDesc: 'Link social providers to sign in with one click.',
     connectedBadge: 'Connected',
     unlinkBtn: 'Unlink Account',
+    notLinked: 'Not linked',
     unlinkedSuccess: 'Account unlinked successfully.',
     dangerZoneTitle: 'Danger Zone',
     dangerZoneDesc: 'Permanently delete your user account and all stored traveler profiles and search data.',

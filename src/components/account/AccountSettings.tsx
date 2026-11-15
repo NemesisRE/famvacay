@@ -17,6 +17,7 @@ import {
   Unlink,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/i18n-context';
+import { AppleIcon, GoogleIcon } from '@/components/auth/provider-icons';
 import { useHistoryBack } from '@/lib/navigation/use-history-back';
 
 export function AccountSettings() {
@@ -30,6 +31,7 @@ export function AccountSettings() {
     passkeysCount: number;
     emailVerified: boolean;
     mailEnabled: boolean;
+    googleEnabled: boolean;
     appleEnabled: boolean;
   }>({
     hasPassword: false,
@@ -37,6 +39,7 @@ export function AccountSettings() {
     passkeysCount: 0,
     emailVerified: false,
     mailEnabled: false,
+    googleEnabled: false,
     appleEnabled: false,
   });
 
@@ -102,6 +105,7 @@ export function AccountSettings() {
         passkeysCount: data.account.passkeysCount || 0,
         emailVerified: Boolean(data.account.emailVerified),
         mailEnabled: Boolean(data.account.mailEnabled),
+        googleEnabled: Boolean(data.account.googleEnabled),
         appleEnabled: Boolean(data.account.appleEnabled),
       });
     }
@@ -344,6 +348,11 @@ export function AccountSettings() {
     );
   }
 
+  const socialProviders = [
+    { id: 'google', label: 'Google', Icon: GoogleIcon, enabled: accountInfo.googleEnabled },
+    { id: 'apple', label: 'Apple', Icon: AppleIcon, enabled: accountInfo.appleEnabled },
+  ].filter((p) => p.enabled || accountInfo.linkedProviders.includes(p.id));
+
   return (
     <div className="space-y-8">
       {/* 1. Email Address */}
@@ -572,72 +581,54 @@ export function AccountSettings() {
         </div>
       </div>
 
-      {/* 4. Connected Accounts (OAuth) */}
-      <div className="p-6 bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
-        <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-          <Share2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{t.account.socialSecTitle}</h3>
-        </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400">{t.account.socialDesc}</p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Google */}
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="w-6 h-6 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center font-bold text-xs text-slate-700 dark:text-slate-200">
-                G
-              </span>
-              <div>
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block">Google</span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                  {accountInfo.linkedProviders.includes('google')
-                    ? t.account.connectedBadge
-                    : 'Not linked'}
-                </span>
-              </div>
-            </div>
-            {accountInfo.linkedProviders.includes('google') && (
-              <button
-                type="button"
-                onClick={() => handleUnlinkProvider('google')}
-                className="text-[11px] font-semibold text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1 cursor-pointer"
-              >
-                <Unlink className="w-3 h-3" />
-                {t.account.unlinkBtn}
-              </button>
-            )}
+      {/* 4. Connected Accounts (OAuth): only providers this instance has credentials for, or that are still linked */}
+      {socialProviders.length > 0 && (
+        <div className="p-6 bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+          <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <Share2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{t.account.socialSecTitle}</h3>
           </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t.account.socialDesc}</p>
 
-          {/* Apple: hidden when the instance has no Apple credentials, unless an account is still linked */}
-          {(accountInfo.appleEnabled || accountInfo.linkedProviders.includes('apple')) && (
-            <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <span className="w-6 h-6 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center font-bold text-xs text-slate-700 dark:text-slate-200">
-                  A
-                </span>
-                <div>
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block">Apple</span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                    {accountInfo.linkedProviders.includes('apple')
-                      ? t.account.connectedBadge
-                      : 'Not linked'}
-                  </span>
-                </div>
-              </div>
-              {accountInfo.linkedProviders.includes('apple') && (
-                <button
-                  type="button"
-                  onClick={() => handleUnlinkProvider('apple')}
-                  className="text-[11px] font-semibold text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1 cursor-pointer"
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {socialProviders.map(({ id, label, Icon }) => {
+              const linked = accountInfo.linkedProviders.includes(id);
+              return (
+                <div
+                  key={id}
+                  className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 flex items-center justify-between gap-3"
                 >
-                  <Unlink className="w-3 h-3" />
-                  {t.account.unlinkBtn}
-                </button>
-              )}
-            </div>
-          )}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="w-9 h-9 shrink-0 rounded-lg bg-white dark:bg-slate-100 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-900">
+                      <Icon className={id === 'apple' ? 'w-5 h-5 fill-current' : 'w-5 h-5'} />
+                    </span>
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block">{label}</span>
+                      <span
+                        className={`text-[11px] ${
+                          linked ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
+                        }`}
+                      >
+                        {linked ? t.account.connectedBadge : t.account.notLinked}
+                      </span>
+                    </div>
+                  </div>
+                  {linked && (
+                    <button
+                      type="button"
+                      onClick={() => handleUnlinkProvider(id)}
+                      className="shrink-0 text-[11px] font-semibold text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Unlink className="w-3 h-3" />
+                      {t.account.unlinkBtn}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 5. Danger Zone */}
       <div className="p-6 bg-red-50/50 dark:bg-red-950/20 rounded-xl border border-red-200 dark:border-red-900/40 space-y-3">

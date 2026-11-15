@@ -610,6 +610,7 @@ export interface TranslationDictionary {
     socialDesc: string;
     connectedBadge: string;
     unlinkBtn: string;
+    notLinked: string;
     unlinkedSuccess: string;
     dangerZoneTitle: string;
     dangerZoneDesc: string;

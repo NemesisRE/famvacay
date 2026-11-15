@@ -599,6 +599,7 @@ export const es: TranslationDictionary = {
     socialDesc: 'Vincula cuentas sociales para iniciar sesión con 1 clic.',
     connectedBadge: 'Conectado',
     unlinkBtn: 'Desvincular',
+    notLinked: 'No vinculado',
     unlinkedSuccess: 'Cuenta desvinculada con éxito.',
     dangerZoneTitle: 'Zona de peligro',
     dangerZoneDesc: 'Eliminar permanentemente tu cuenta de usuario y todos los datos y perfiles de viajeros asociados.',
