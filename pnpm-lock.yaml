@@ -207,7 +207,7 @@ importers:
         version: 4.4.0
       date-holidays:
         specifier: ^3.38.0
-        version: 3.39.1
+        version: 3.39.2
       geolib:
         specifier: ^4.0.0
         version: 4.0.2
@@ -222,7 +222,7 @@ importers:
         version: 1.0.0
       lucide-react:
         specifier: ^1.59.0
-        version: 1.72.0(@types/react@19.3.0)(react@19.3.1)
+        version: 1.73.0(@types/react@19.3.0)(react@19.3.1)
       next:
         specifier: ^16.4.3
         version: 16.4.6(@babel/core@7.29.7(supports-color@7.2.0))(@playwright/test@1.65.1)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -1997,8 +1997,8 @@ packages:
     resolution: {integrity: sha512-41qmuFwuiOE7qwIQCbmF+/WyHc7+eeBWje/3yMiT8pGdSXs+RpXAfY1i6ZD+/6x4ZJPiorwd8V2B4jbjQL09iw==}
     engines: {node: '>=12.0.0'}
 
-  date-holidays@3.39.1:
-    resolution: {integrity: sha512-/eJPKI84IZ+DFydE/kMnRNp0WfAVEoqCCVL6vTYOQ7z7r/y1oTJrRp1AP8l0goso67vaUVLWBU/skZXVbc2e8A==}
+  date-holidays@3.39.2:
+    resolution: {integrity: sha512-QKy9L/auAmGHrBJwriExTy7Ym61ev+2U7zUj2hEIc6mITClxTc996c3Nnnaxdh/jqWIea6a9rqClgwfL6ItqCw==}
     engines: {node: '>=12.0.0'}
     hasBin: true
 
@@ -2786,8 +2786,8 @@ packages:
     resolution: {integrity: sha512-5J9ysMYUpYIg9RF2vJpy9SinEmSviFSe0GyPpCQ4L5QSkLAgeLXlTAOu2ZwWUU5m+0SBl6gUU1R1ZQB3aKypfA==}
     engines: {bun: '>=1.0.0', deno: '>=1.30.0', node: '>=8.0.0'}
 
-  lucide-react@1.72.0:
-    resolution: {integrity: sha512-fbF5i1GU8GODETa3Q7rXqrJrcx3iPYrQtxthom103zGx+Z0BGwKYAW9s+9435ohYJ7hQm0av0PoZcqI1CRwNrg==}
+  lucide-react@1.73.0:
+    resolution: {integrity: sha512-fVOzGviL9mTfHenG1PbCfIceavyGlnpYNSYr+aGZHLRymAJ7DTP6KHuqt0uBkCKAoenr1UVkwSbDIYt2xIesEQ==}
     peerDependencies:
       '@types/react': '*'
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -5287,7 +5287,7 @@ snapshots:
       jalaali-js: 2.0.1
       moment-timezone: 0.6.6
 
-  date-holidays@3.39.1:
+  date-holidays@3.39.2:
     dependencies:
       date-holidays-parser: 3.7.0
       js-yaml: 5.5.0
@@ -6207,7 +6207,7 @@ snapshots:
 
   lru.min@1.1.5: {}
 
-  lucide-react@1.72.0(@types/react@19.3.0)(react@19.3.1):
+  lucide-react@1.73.0(@types/react@19.3.0)(react@19.3.1):
     dependencies:
       react: 19.3.1
     optionalDependencies:
