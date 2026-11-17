@@ -13,6 +13,15 @@ import { ServiceWorkerRegistration } from '@/components/pwa/ServiceWorkerRegistr
 import { ThemeSync } from '@/components/theme/ThemeSync';
 import { THEME_INIT_SCRIPT } from '@/lib/theme';
 import { getRequestLocale } from '@/lib/i18n/server-locale';
+import localFont from 'next/font/local';
+
+// Brand typeface (SIL OFL), self-hosted: the CSP allows fonts from our own origin only
+const outfit = localFont({
+  src: './fonts/outfit-variable.woff2',
+  variable: '--font-outfit',
+  weight: '100 900',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.APP_URL || 'https://famvacay.us'),
@@ -32,6 +41,13 @@ export const metadata: Metadata = {
   // The app is translated itself: browser translation would rewrite React-managed text nodes
   // (wrapping them in <font>) and crash the next DOM update with removeChild/insertBefore errors
   other: { google: 'notranslate' },
+  openGraph: {
+    type: 'website',
+    siteName: 'FamVacay',
+    title: 'FamVacay - Family Vacation Optimizer',
+    images: [{ url: '/brand/fv-og-1200x630.png', width: 1200, height: 630, alt: 'FamVacay' }],
+  },
+  twitter: { card: 'summary_large_image', images: ['/brand/fv-og-1200x630.png'] },
 };
 
 export const viewport: Viewport = {
@@ -49,7 +65,7 @@ export default async function RootLayout({
   // Rendered in the visitor's language from the first byte (cookie, otherwise Accept-Language)
   const locale = await getRequestLocale();
   return (
-    <html lang={locale} translate="no" className="notranslate" suppressHydrationWarning>
+    <html lang={locale} translate="no" className={`notranslate ${outfit.variable}`} suppressHydrationWarning>
       <head>
         {/* Theme before first paint (no flash); ThemeSync keeps it once React has taken over */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
@@ -62,10 +78,12 @@ export default async function RootLayout({
               <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50 transition-colors">
                 <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Link href="/" className="flex items-center gap-2">
-                      <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">
-                        Fam<span className="text-teal-600 dark:text-teal-400">Vacay</span>
-                      </span>
+                    <Link href="/" className="flex items-center" aria-label="FamVacay">
+                      {/* Brand lockup (wordmark is outlined, so it needs no font); one file per theme */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/brand/fv-lockup.svg" alt="FamVacay" width={132} height={36} className="h-9 w-auto dark:hidden" />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/brand/fv-lockup-dark.svg" alt="" aria-hidden="true" width={132} height={36} className="hidden h-9 w-auto dark:block" />
                     </Link>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3">
