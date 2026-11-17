@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="public/icon.svg" width="96" height="96" alt="FamVacay Logo" />
+  <img src="public/brand/fv-lockup.svg" height="72" alt="FamVacay" />
   <h1>FamVacay</h1>
   <p><strong>Family Vacation Optimizer</strong></p>
   <p>Harmonize statutory school holiday calendars, discover departure arbitrage savings, and optimize PTO bridge days.</p>
