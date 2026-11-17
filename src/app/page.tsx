@@ -2175,8 +2175,16 @@ export default function HomePage() {
   return (
     <div className="space-y-8">
       {/* Intro hero banner */}
-      <div className="bg-linear-to-r from-teal-800 via-teal-700 to-emerald-800 rounded-2xl p-6 sm:p-8 text-white shadow-lg">
-        <div className="max-w-3xl space-y-3">
+      <div className="bg-linear-to-r from-teal-800 via-teal-700 to-emerald-800 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+        {/* Brand mark fills the empty right side where the text column leaves room (wide screens only, decorative) */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/fv-mark-reversed.svg"
+          alt=""
+          aria-hidden="true"
+          className="hidden xl:block absolute right-16 top-1/2 -translate-y-1/2 h-60 w-auto pointer-events-none select-none"
+        />
+        <div className="max-w-3xl space-y-3 relative">
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
             {t.home.heroTitle}
           </h1>
