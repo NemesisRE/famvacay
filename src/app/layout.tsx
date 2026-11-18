@@ -79,11 +79,22 @@ export default async function RootLayout({
                 <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Link href="/" className="flex items-center" aria-label="FamVacay">
+                      {/* Phones: the animated mark (builds up once, static with reduced motion) next to the outlined wordmark */}
+                      <span className="flex items-center gap-1.5 sm:hidden" aria-hidden="true">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/brand/fv-mark-animated.svg" alt="" width={34} height={36} className="h-9 w-auto dark:hidden" />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/brand/fv-mark-animated-dark.svg" alt="" width={34} height={36} className="hidden h-9 w-auto dark:block" />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/brand/fv-wordmark.svg" alt="" width={94} height={21} className="h-[21px] w-auto dark:hidden" />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/brand/fv-wordmark-dark.svg" alt="" width={94} height={21} className="hidden h-[21px] w-auto dark:block" />
+                      </span>
                       {/* Brand lockup (wordmark is outlined, so it needs no font); one file per theme */}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="/brand/fv-lockup.svg" alt="FamVacay" width={132} height={36} className="h-9 w-auto dark:hidden" />
+                      <img src="/brand/fv-lockup.svg" alt="FamVacay" width={132} height={36} className="hidden h-9 w-auto sm:block dark:sm:hidden" />
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="/brand/fv-lockup-dark.svg" alt="" aria-hidden="true" width={132} height={36} className="hidden h-9 w-auto dark:block" />
+                      <img src="/brand/fv-lockup-dark.svg" alt="" aria-hidden="true" width={132} height={36} className="hidden h-9 w-auto dark:sm:block" />
                     </Link>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3">

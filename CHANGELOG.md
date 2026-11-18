@@ -20,7 +20,7 @@ this file keeps a summary per version.
   (`#2DD4BF` to `#26D4C3`, `#0F766E` to `#11766C`, `#F8FAFC` to `#F9FAFC`). Tints, glows and the
   hero gradient are mixed in OKLCH; the manifest, error page and emails keep hex.
 - Brand files regenerated from the brand repo (dark lockup, Open Graph image).
-- The home page hero shows the new animated logo (builds up once, static with reduced motion).
+- The new animated logo builds up once (static with reduced motion) in the home page hero and, on phones, in the header.
 
 ## [1.0.0] - 2026-10-30
 
