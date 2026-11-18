@@ -140,7 +140,7 @@ export function CountryExclusionPicker({ value, onChange, id, homeCountry }: Cou
         className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 transition cursor-pointer shadow-2xs select-none ${
           value.length > 0
             ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200'
-            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60'
+            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-brand-light dark:hover:bg-slate-700/60'
         }`}
       >
         <span className="truncate">{label}</span>
@@ -187,7 +187,7 @@ export function CountryExclusionPicker({ value, onChange, id, homeCountry }: Cou
                 <button
                   type="button"
                   onClick={() => onChange([])}
-                  className="text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 font-semibold cursor-pointer"
+                  className="text-brand-teal dark:text-brand-teal-light hover:text-teal-800 dark:hover:text-teal-300 font-semibold cursor-pointer"
                 >
                   {t.home.excludeCountriesClear}
                 </button>
@@ -202,7 +202,7 @@ export function CountryExclusionPicker({ value, onChange, id, homeCountry }: Cou
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t.common.search}
-                className="w-full text-xs rounded-lg pl-7 pr-2 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 outline-hidden focus:ring-1 focus:ring-teal-500"
+                className="w-full text-xs rounded-lg pl-7 pr-2 py-1.5 bg-brand-light dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 outline-hidden focus:ring-1 focus:ring-teal-500"
               />
             </div>
 
@@ -228,7 +228,7 @@ export function CountryExclusionPicker({ value, onChange, id, homeCountry }: Cou
                         className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-left transition cursor-pointer ${
                           isExcluded
                             ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 font-semibold'
-                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300'
+                            : 'hover:bg-brand-light dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300'
                         }`}
                       >
                         <span
@@ -253,7 +253,7 @@ export function CountryExclusionPicker({ value, onChange, id, homeCountry }: Cou
                   setIsOpen(false);
                   setQuery('');
                 }}
-                className="w-full py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition cursor-pointer"
+                className="w-full py-1.5 rounded-lg bg-brand-teal hover:bg-brand-teal-dark text-white text-xs font-semibold transition cursor-pointer"
               >
                 {t.common.done}
                 {value.length > 0 && <span>{` (${value.length})`}</span>}

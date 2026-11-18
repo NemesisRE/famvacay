@@ -11,6 +11,17 @@ this file keeps a summary per version.
 
 ## [Unreleased]
 
+### Changed
+
+- **Brand colours 2.0.0:** the palette now comes from the brand tokens (`src/app/brand-tokens.css`,
+  hex first, OKLCH where supported) instead of Tailwind's `teal-400/600/700`, `amber-500` and
+  `slate-50/900`. The classes are `brand-teal`, `brand-teal-light`, `brand-teal-dark`, `brand-sun`,
+  `brand-slate`, `brand-light` and `brand-night`. Teal light, teal dark and light moved slightly
+  (`#2DD4BF` to `#26D4C3`, `#0F766E` to `#11766C`, `#F8FAFC` to `#F9FAFC`). Tints, glows and the
+  hero gradient are mixed in OKLCH; the manifest, error page and emails keep hex.
+- Brand files regenerated from the brand repo (dark lockup, Open Graph image).
+- The new animated logo builds up once (static with reduced motion) in the home page hero and, on phones, in the header.
+
 ## [1.0.0] - 2026-10-30
 
 First stable release.

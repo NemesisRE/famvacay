@@ -53,13 +53,13 @@ function render(locale: SupportedLocale, to: string, subject: string, section: S
 
   const p = (s: string, style = '') => `<p style="margin:0 0 16px;${style}">${escapeHtml(s)}</p>`;
   const button = section.button
-    ? `<p style="margin:24px 0"><a href="${escapeHtml(section.button.url)}" style="display:inline-block;padding:10px 18px;border-radius:8px;background:#0d9488;color:#ffffff;font-weight:600;text-decoration:none">${escapeHtml(section.button.label)}</a></p>` +
+    ? `<p style="margin:24px 0"><a href="${escapeHtml(section.button.url)}" style="display:inline-block;padding:10px 18px;border-radius:8px;background:#0D9488;color:#ffffff;font-weight:600;text-decoration:none">${escapeHtml(section.button.label)}</a></p>` +
       `<p style="margin:0 0 16px;font-size:12px;color:#64748b;word-break:break-all">${escapeHtml(section.button.url)}</p>`
     : '';
   const html =
-    `<!doctype html><html lang="${locale}"><body style="margin:0;padding:24px;background:#f8fafc;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a;font-size:15px;line-height:1.5">` +
+    `<!doctype html><html lang="${locale}"><body style="margin:0;padding:24px;background:#F9FAFC;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0F172A;font-size:15px;line-height:1.5">` +
     `<div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:24px">` +
-    `<p style="margin:0 0 16px;font-weight:700;color:#0d9488">FamVacay</p>` +
+    `<p style="margin:0 0 16px;font-weight:700;color:#0D9488">FamVacay</p>` +
     section.paragraphs.map((s) => p(s)).join('') +
     button +
     (section.notes ?? []).map((s) => p(s, 'font-size:13px;color:#475569')).join('') +

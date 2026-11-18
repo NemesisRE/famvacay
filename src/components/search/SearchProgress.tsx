@@ -38,14 +38,14 @@ export function SearchLoadingPanel() {
     <div
       role="status"
       aria-live="polite"
-      className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-10 text-center space-y-4"
+      className="bg-white dark:bg-brand-slate rounded-xl border border-slate-200 dark:border-slate-800 p-10 text-center space-y-4"
     >
       <div className="relative w-14 h-14 mx-auto">
-        <span className="absolute inset-0 rounded-full border-4 border-teal-100 dark:border-teal-900/60 border-t-teal-500 dark:border-t-teal-400 animate-spin" />
-        <Palmtree className="absolute inset-0 m-auto w-6 h-6 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+        <span className="absolute inset-0 rounded-full border-4 border-teal-100 dark:border-teal-900/60 border-t-teal-500 dark:border-t-brand-teal-light animate-spin" />
+        <Palmtree className="absolute inset-0 m-auto w-6 h-6 text-brand-teal dark:text-brand-teal-light" aria-hidden="true" />
       </div>
       <h3 className="text-slate-800 dark:text-slate-100 font-semibold text-base">{t.searchProgress.loadingTitle}</h3>
-      <p key={message} className="text-sm text-teal-700 dark:text-teal-300 italic min-h-5 animate-in fade-in duration-500">
+      <p key={message} className="text-sm text-brand-teal-dark dark:text-teal-300 italic min-h-5 animate-in fade-in duration-500">
         {message}
       </p>
       <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">{t.searchProgress.loadingHint}</p>
@@ -78,7 +78,7 @@ export function BackgroundSearchBanner({
         aria-live="polite"
         className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-teal-50/80 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-900/60 text-xs text-teal-900 dark:text-teal-200"
       >
-        <span className="w-3.5 h-3.5 shrink-0 rounded-full border-2 border-teal-300 dark:border-teal-700 border-t-teal-600 dark:border-t-teal-300 animate-spin" />
+        <span className="w-3.5 h-3.5 shrink-0 rounded-full border-2 border-teal-300 dark:border-brand-teal-dark border-t-brand-teal dark:border-t-teal-300 animate-spin" />
         <span className="font-semibold">{t.searchProgress.backgroundRunning}</span>
       </div>
     );

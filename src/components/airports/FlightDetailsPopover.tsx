@@ -163,10 +163,10 @@ export function FlightDetailsPopover({
         {...getReferenceProps()}
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="relative h-7 w-full inline-flex items-center justify-center gap-1.5 font-semibold text-xs text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-slate-700/60 hover:text-teal-800 dark:hover:text-teal-300 pl-2.5 pr-7 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-teal-300 transition-colors cursor-pointer group shadow-2xs"
+        className="relative h-7 w-full inline-flex items-center justify-center gap-1.5 font-semibold text-xs text-slate-700 dark:text-slate-200 bg-brand-light dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-slate-700/60 hover:text-teal-800 dark:hover:text-teal-300 pl-2.5 pr-7 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-teal-300 transition-colors cursor-pointer group shadow-2xs"
         title={t.home.flightDetailsTooltip}
       >
-        <Plane className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform shrink-0" />
+        <Plane className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light group-hover:scale-110 transition-transform shrink-0" />
         <span className="font-bold tracking-tight">
           {originAirport} ➔ {destinationAirport}
         </span>
@@ -180,7 +180,7 @@ export function FlightDetailsPopover({
           </span>
         )}
         <ChevronDown
-          className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 group-hover:text-teal-600 transition-transform ${
+          className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 group-hover:text-brand-teal transition-transform ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
@@ -198,8 +198,8 @@ export function FlightDetailsPopover({
           >
             {/* Header */}
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900 dark:text-slate-100">
-                <Plane className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <div className="flex items-center gap-1.5 font-bold text-xs text-brand-slate dark:text-slate-100">
+                <Plane className="w-4 h-4 text-brand-teal dark:text-brand-teal-light" />
                 <span>{t.home.flightDetailsTitle}</span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -226,19 +226,19 @@ export function FlightDetailsPopover({
             </div>
 
             {/* Departure Origin Airport Section */}
-            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1.5">
+            <div className="p-2.5 rounded-xl bg-brand-light dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  <Navigation className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                  <Navigation className="w-3 h-3 text-brand-teal dark:text-brand-teal-light" />
                   {t.home.departureAirportTitle}
                 </span>
-                <span className="text-[11px] font-black text-teal-700 dark:text-teal-300 bg-white dark:bg-slate-900 px-1.5 py-0.2 rounded border border-teal-200 dark:border-teal-700">
+                <span className="text-[11px] font-black text-brand-teal-dark dark:text-teal-300 bg-white dark:bg-brand-slate px-1.5 py-0.2 rounded border border-teal-200 dark:border-brand-teal-dark">
                   {originAirport}
                 </span>
               </div>
 
               <div>
-                <span className="block font-bold text-xs text-slate-900 dark:text-slate-100">
+                <span className="block font-bold text-xs text-brand-slate dark:text-slate-100">
                   {displayOrigName}
                 </span>
                 {displayOrigCity && (
@@ -252,9 +252,9 @@ export function FlightDetailsPopover({
               <div className="pt-1 border-t border-slate-200/70 dark:border-slate-700/60 text-[11px] space-y-1">
                 {originDistanceKm !== undefined && (
                   <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
-                    <MapPin className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
+                    <MapPin className="w-3 h-3 text-brand-teal dark:text-brand-teal-light shrink-0" />
                     <span>
-                      <strong className="text-slate-900 dark:text-slate-100">~{originDistanceKm} km</strong>{' '}
+                      <strong className="text-brand-slate dark:text-slate-100">~{originDistanceKm} km</strong>{' '}
                       {departureLocation ? `${t.home.distanceFromHome} (${departureLocation.split(',')[0]})` : t.home.distanceFromHome}
                     </span>
                   </div>
@@ -317,13 +317,13 @@ export function FlightDetailsPopover({
                   <MapPin className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                   {t.home.destinationAirportTitle}
                 </span>
-                <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-900 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-700">
+                <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-300 bg-white dark:bg-brand-slate px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-700">
                   {destinationAirport}
                 </span>
               </div>
 
               <div>
-                <span className="block font-bold text-xs text-slate-900 dark:text-slate-100">
+                <span className="block font-bold text-xs text-brand-slate dark:text-slate-100">
                   {displayDestName}
                 </span>
                 {displayDestCity && (
@@ -342,7 +342,7 @@ export function FlightDetailsPopover({
                     <ArrowRightLeft className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                     {t.home.flightSegmentsTitle}
                   </span>
-                  <span className="text-[10px] font-extrabold text-amber-800 dark:text-amber-300 bg-white dark:bg-slate-900 px-1.5 py-0.2 rounded border border-amber-300 dark:border-amber-700">
+                  <span className="text-[10px] font-extrabold text-amber-800 dark:text-amber-300 bg-white dark:bg-brand-slate px-1.5 py-0.2 rounded border border-amber-300 dark:border-amber-700">
                     {stops === 1 ? t.home.oneStopFlight : t.home.multipleStopsFlight.replace('{stops}', String(stops))}
                   </span>
                 </div>
@@ -383,12 +383,12 @@ export function FlightDetailsPopover({
 
             {/* Flight Metrics Grid */}
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+              <div className="p-2 rounded-lg bg-brand-light dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                  <Clock className="w-3 h-3 text-brand-teal dark:text-brand-teal-light" />
                   {t.home.flightDuration}
                 </span>
-                <div className="font-extrabold text-slate-900 dark:text-slate-100 text-sm mt-0.5">
+                <div className="font-extrabold text-brand-slate dark:text-slate-100 text-sm mt-0.5">
                   {flightDurationStr}
                   <span className="text-[9px] font-normal text-slate-500 dark:text-slate-400 ml-1">
                     {isActuallyDirect ? t.home.flightNonStopShort : t.home.flightStopsShort.replace('{stops}', String(stops))}
@@ -396,12 +396,12 @@ export function FlightDetailsPopover({
                 </div>
               </div>
 
-              <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+              <div className="p-2 rounded-lg bg-brand-light dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1">
-                  <Plane className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                  <Plane className="w-3 h-3 text-brand-teal dark:text-brand-teal-light" />
                   {t.home.flightDistance}
                 </span>
-                <div className="font-extrabold text-slate-900 dark:text-slate-100 text-sm mt-0.5">
+                <div className="font-extrabold text-brand-slate dark:text-slate-100 text-sm mt-0.5">
                   {flightDistanceKm ? `~${flightDistanceKm.toLocaleString()} km` : '—'}
                   <span className="text-[9px] font-normal text-slate-400 dark:text-slate-500 ml-1">{t.home.flightGeodesic}</span>
                 </div>
@@ -410,12 +410,12 @@ export function FlightDetailsPopover({
 
             {/* Fare Breakdown Summary if available */}
             {baseAdultFare !== undefined && (
-              <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] space-y-1.5">
+              <div className="p-2 rounded-lg bg-brand-light dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-600 dark:text-slate-300 font-medium">
                     {t.home.flightShare} ({adults > 1 ? t.home.flightShareAdultsMany.replace('{count}', String(adults)) : t.home.flightShareAdultsOne}):
                   </span>
-                  <span className="font-extrabold text-slate-900 dark:text-slate-100">
+                  <span className="font-extrabold text-brand-slate dark:text-slate-100">
                     {totalFlightCost ? `~${totalFlightCost} €` : `~${baseAdultFare} € ${t.home.farePerAdult}`}
                   </span>
                 </div>
@@ -427,7 +427,7 @@ export function FlightDetailsPopover({
                 ) : (
                   <div className="flex items-center justify-between text-[10px] text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 px-2 py-0.5 rounded border border-teal-200 dark:border-teal-800">
                     <span className="font-semibold">{t.home.connectingSavingsBadge}</span>
-                    <span className="text-teal-700 dark:text-teal-400 font-bold">{t.home.connectingSavingsTag}</span>
+                    <span className="text-brand-teal-dark dark:text-brand-teal-light font-bold">{t.home.connectingSavingsTag}</span>
                   </div>
                 )}
               </div>
@@ -439,7 +439,7 @@ export function FlightDetailsPopover({
                 href={googleFlightsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-1.5 px-3 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                className="w-full py-1.5 px-3 rounded-lg bg-brand-teal hover:bg-brand-teal-dark text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
               >
                 <span>{t.home.checkLiveFlights}</span>
                 <ExternalLink className="w-3.5 h-3.5" />

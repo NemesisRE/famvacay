@@ -38,8 +38,8 @@ export function PrivacyContent({ legal, analyticsEnabled, oauthProviders, mailEn
   );
 
   return (
-    <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs space-y-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.legal.privacyTitle}</h1>
+    <div className="bg-white dark:bg-brand-slate/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs space-y-6 max-w-2xl mx-auto">
+      <h1 className="text-2xl font-bold text-brand-slate dark:text-white">{t.legal.privacyTitle}</h1>
 
       <section>
         <h2 className={sectionTitleClass}>{t.legal.controllerSectionTitle}</h2>
@@ -79,10 +79,10 @@ export function PrivacyContent({ legal, analyticsEnabled, oauthProviders, mailEn
         <section>
           <h2 className={sectionTitleClass}>{t.legal.analyticsSectionTitle}</h2>
           <p className={sectionBodyClass}>{t.legal.analyticsNotice}</p>
-          <div className="mt-3 flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40">
+          <div className="mt-3 flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-brand-light/60 dark:bg-slate-800/40">
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
               {t.legal.analyticsOptOutLabel}{' '}
-              <span className={umamiDisabled ? 'text-slate-400' : 'text-teal-600 dark:text-teal-400'}>
+              <span className={umamiDisabled ? 'text-slate-400' : 'text-brand-teal dark:text-brand-teal-light'}>
                 {umamiDisabled ? t.legal.analyticsStatusDisabled : t.legal.analyticsStatusEnabled}
               </span>
             </span>
@@ -104,10 +104,10 @@ export function PrivacyContent({ legal, analyticsEnabled, oauthProviders, mailEn
         <h2 className={sectionTitleClass}>{t.legal.userRightsSectionTitle}</h2>
         <p className={sectionBodyClass}>{t.legal.userRightsNotice}</p>
         <div className="mt-2 flex flex-wrap gap-3 text-sm font-semibold">
-          <a href="/api/account" className="text-teal-600 dark:text-teal-400 underline hover:no-underline">
+          <a href="/api/account" className="text-brand-teal dark:text-brand-teal-light underline hover:no-underline">
             {t.legal.exportDataLink}
           </a>
-          <Link href="/profile" className="text-teal-600 dark:text-teal-400 underline hover:no-underline">
+          <Link href="/profile" className="text-brand-teal dark:text-brand-teal-light underline hover:no-underline">
             {t.legal.accountSettingsLink}
           </Link>
         </div>

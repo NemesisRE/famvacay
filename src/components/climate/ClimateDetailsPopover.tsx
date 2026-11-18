@@ -75,7 +75,7 @@ export function ClimateDetailsPopover({
         aria-haspopup="dialog"
         aria-expanded={isOpen}
       >
-        <Sun className="w-3 h-3 text-amber-500 group-hover:rotate-45 transition-transform shrink-0" />
+        <Sun className="w-3 h-3 text-brand-sun group-hover:rotate-45 transition-transform shrink-0" />
         <span>{weather.avgTempC}°C</span>
         {/* Same "more info" cue as the safety badge */}
         <span className="opacity-60 group-hover:opacity-100 text-[10px] font-normal transition-opacity ml-0.5" aria-hidden="true">
@@ -95,11 +95,11 @@ export function ClimateDetailsPopover({
           >
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-1.5 font-bold text-xs text-slate-800 dark:text-slate-100">
-                <Thermometer className="w-4 h-4 text-amber-500" />
+                <Thermometer className="w-4 h-4 text-brand-sun" />
                 <span>{t.home.climateDetailsTitle || 'Climate & Weather Insights'}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 border border-teal-200 dark:border-teal-700">
+                <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 border border-teal-200 dark:border-brand-teal-dark">
                   {destinationAirport}
                 </span>
                 <button
@@ -119,7 +119,7 @@ export function ClimateDetailsPopover({
                   <Sun className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                   {t.home.climateAvgTemp || 'Ø Temperature'}
                 </span>
-                <div className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">
+                <div className="font-extrabold text-brand-slate dark:text-slate-100 text-sm">
                   {weather.avgTempC}°C
                 </div>
               </div>
@@ -130,7 +130,7 @@ export function ClimateDetailsPopover({
                   <Thermometer className="w-3 h-3 text-orange-600 dark:text-orange-400" />
                   {t.home.climateMaxTemp || 'Max / Min Air'}
                 </span>
-                <div className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">
+                <div className="font-extrabold text-brand-slate dark:text-slate-100 text-sm">
                   {maxTemp}° / {minTemp}°C
                 </div>
               </div>
@@ -141,7 +141,7 @@ export function ClimateDetailsPopover({
                   <Waves className="w-3 h-3 text-sky-600 dark:text-sky-400" />
                   {t.home.climateWaterTemp || 'Water / Sea'}
                 </span>
-                <div className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">
+                <div className="font-extrabold text-brand-slate dark:text-slate-100 text-sm">
                   {weather.waterTempC !== null && weather.waterTempC !== undefined
                     ? `${weather.waterTempC}°C`
                     : <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{t.home.climateNotApplicable || 'Inland / N/A'}</span>}
@@ -149,12 +149,12 @@ export function ClimateDetailsPopover({
               </div>
 
               {/* Rainy Days & Precip Risk */}
-              <div className="bg-slate-50 dark:bg-slate-800/80 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="bg-brand-light dark:bg-slate-800/80 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
                 <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1 mb-0.5">
                   <CloudRain className="w-3 h-3 text-slate-600 dark:text-slate-400" />
                   {t.home.climateRainyDays || 'Rain Days / Risk'}
                 </span>
-                <div className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">
+                <div className="font-extrabold text-brand-slate dark:text-slate-100 text-sm">
                   ~{rainyDays}d <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">({weather.precipitationRiskPercent}%)</span>
                 </div>
               </div>
@@ -174,9 +174,9 @@ export function ClimateDetailsPopover({
             </div>
 
             {/* Daily Sunshine Hours */}
-            <div className="flex items-center justify-between px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800/70 rounded-lg text-xs border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between px-2.5 py-1.5 bg-brand-light dark:bg-slate-800/70 rounded-lg text-xs border border-slate-100 dark:border-slate-800">
               <span className="text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1.5 text-[11px]">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+                <Sparkles className="w-3.5 h-3.5 text-brand-sun dark:text-amber-400" />
                 {t.home.climateSunshine || 'Daily Sunshine'}
               </span>
               <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">

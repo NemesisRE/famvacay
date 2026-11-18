@@ -1783,12 +1783,12 @@ export default function HomePage() {
     return (
       <div
         key={`${win.startDate}-${win.originAirport}-${win.travelVehicle || "PLANE"}-${win.destinationAirport}-${win.durationDays}`}
-        className={`bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 p-3 sm:p-4 @container flex flex-col flex-1 shadow-xs hover:shadow-md transition-shadow relative${!options?.hideDestinationHeader && freshDestinations.has(destinationKey(win)) ? ' famvac-flash' : ''}`}
+        className={`bg-white dark:bg-brand-slate/90 rounded-xl border border-slate-200 dark:border-slate-800 p-3 sm:p-4 @container flex flex-col flex-1 shadow-xs hover:shadow-md transition-shadow relative${!options?.hideDestinationHeader && freshDestinations.has(destinationKey(win)) ? ' famvac-flash' : ''}`}
       >
         <div className="flex flex-col @xl:flex-row @xl:items-start justify-between gap-4">
           <div className="space-y-1.5 flex-1 min-w-0">
             {!options?.hideDestinationHeader && (
-              <div className="space-y-1.5 text-xs font-bold text-teal-700 dark:text-teal-400 tracking-wide pb-0.5">
+              <div className="space-y-1.5 text-xs font-bold text-brand-teal-dark dark:text-brand-teal-light tracking-wide pb-0.5">
                 {/* Safety rating right behind the name */}
                 <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
                 <button
@@ -1808,11 +1808,11 @@ export default function HomePage() {
                       overlandDurationMinutes: win.vehicleDetails?.durationMinutes,
                     })
                   }
-                  className="inline-flex items-center gap-1.5 text-slate-900 dark:text-slate-100 hover:text-teal-600 dark:hover:text-teal-400 cursor-pointer group text-left transition-colors"
+                  className="inline-flex items-center gap-1.5 text-brand-slate dark:text-slate-100 hover:text-brand-teal dark:hover:text-brand-teal-light cursor-pointer group text-left transition-colors"
                   title={t.home.showOnMap}
                 >
-                  <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all shrink-0" />
-                  <span className="font-extrabold text-slate-900 dark:text-slate-100 group-hover:text-teal-600 dark:group-hover:text-teal-400 group-hover:underline text-sm transition-colors">
+                  <MapPin className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all shrink-0" />
+                  <span className="font-extrabold text-brand-slate dark:text-slate-100 group-hover:text-brand-teal dark:group-hover:text-brand-teal-light group-hover:underline text-sm transition-colors">
                     {getFormattedLocalizedDestination(destinationKey(win), win.destinationName)}
                   </span>
                 </button>
@@ -1859,7 +1859,7 @@ export default function HomePage() {
                     className="text-[9px] font-semibold px-2 py-0.5 rounded-lg border inline-flex items-center gap-1 shadow-2xs bg-slate-100/90 text-slate-700 border-slate-300/80 dark:bg-slate-800/90 dark:text-slate-200 dark:border-slate-700"
                     title={t.home.railAirTitle}
                   >
-                    <Train className="w-2.5 h-2.5 shrink-0 text-teal-600 dark:text-teal-400" />
+                    <Train className="w-2.5 h-2.5 shrink-0 text-brand-teal dark:text-brand-teal-light" />
                     <span>
                       {t.home.railAirBadge} · {win.railFeeder.hubAirport}
                     </span>
@@ -1882,10 +1882,10 @@ export default function HomePage() {
             )}
 
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-extrabold text-slate-900 dark:text-slate-100 text-base sm:text-lg">
+              <span className="font-extrabold text-brand-slate dark:text-slate-100 text-base sm:text-lg">
                 {formatLocalizedDate(win.startDate, true)} → {formatLocalizedDate(win.endDate, true)}
               </span>
-              <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-teal-600/10 dark:bg-teal-400/15 text-teal-800 dark:text-teal-200 border border-teal-300/80 dark:border-teal-700">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-brand-teal/10 dark:bg-brand-teal-light/15 text-teal-800 dark:text-teal-200 border border-teal-300/80 dark:border-brand-teal-dark">
                 {win.durationDays} {t.home.days}
               </span>
               {win.weather && (
@@ -1954,7 +1954,7 @@ export default function HomePage() {
                     {t.home.estFamilyCost}
                   </span>
                   <div className="flex items-baseline gap-2 @xl:justify-end flex-wrap">
-                    <span className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                    <span className="text-2xl font-black text-brand-slate dark:text-slate-100 tracking-tight">
                       {formatCurrency(displayTotalCost)}
                     </span>
                     <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
@@ -2117,12 +2117,12 @@ export default function HomePage() {
           {/* Metrics: PTO consumed and Match Score, side by side from sm up like the buttons above */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             <MetricExplanationPopover window={win} trigger="ptoRatio" className="w-full">
-              <div className="bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100/90 dark:hover:bg-slate-700/60 transition rounded-lg p-2.5 flex items-center justify-between sm:flex-col sm:items-start sm:justify-start sm:gap-0.5 @lg:flex-row @lg:items-center @lg:justify-between group border border-transparent hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer">
+              <div className="bg-brand-light dark:bg-slate-800/80 hover:bg-slate-100/90 dark:hover:bg-slate-700/60 transition rounded-lg p-2.5 flex items-center justify-between sm:flex-col sm:items-start sm:justify-start sm:gap-0.5 @lg:flex-row @lg:items-center @lg:justify-between group border border-transparent hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer">
                 <span className="text-slate-500 dark:text-slate-400 text-xs font-medium flex items-center gap-1 whitespace-nowrap">
                   <span>{t.home.ptoConsumed}</span>
                   <Info className="w-3 h-3 text-slate-400 dark:text-slate-500 opacity-60 group-hover:opacity-100 shrink-0" />
                 </span>
-                <span className="font-extrabold text-slate-900 dark:text-slate-100 text-sm whitespace-nowrap">
+                <span className="font-extrabold text-brand-slate dark:text-slate-100 text-sm whitespace-nowrap">
                   {win.ptoDaysConsumed} {t.home.days}
                 </span>
               </div>
@@ -2175,11 +2175,11 @@ export default function HomePage() {
   return (
     <div className="space-y-8">
       {/* Intro hero banner */}
-      <div className="bg-linear-to-r from-teal-800 via-teal-700 to-emerald-800 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
-        {/* Brand mark fills the empty right side where the text column leaves room (wide screens only, decorative) */}
+      <div className="bg-linear-to-r/oklch from-teal-800 via-brand-teal-dark to-emerald-800 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+        {/* Animated brand mark (builds up once, then stays; static under prefers-reduced-motion) fills the empty right side where the text column leaves room (wide screens only, decorative) */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/brand/fv-mark-reversed.svg"
+          src="/brand/fv-mark-animated-reversed.svg"
           alt=""
           aria-hidden="true"
           className="hidden xl:block absolute right-16 top-1/2 -translate-y-1/2 h-60 w-auto pointer-events-none select-none"
@@ -2218,10 +2218,10 @@ export default function HomePage() {
               aria-controls="search-constraints"
               title={t.home.constraintsExpand}
               aria-label={t.home.constraintsExpand}
-              className="hidden lg:flex lg:flex-1 lg:mb-0 w-12 flex-col items-center gap-3 pt-2 pb-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:border-teal-300 dark:hover:border-teal-700 transition-colors cursor-pointer"
+              className="hidden lg:flex lg:flex-1 lg:mb-0 w-12 flex-col items-center gap-3 pt-2 pb-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-brand-slate shadow-xs hover:border-teal-300 dark:hover:border-brand-teal-dark transition-colors cursor-pointer"
             >
               {/* Same order and colour as the open sidebar's heading: the filter icon first, in green; both icons share one size and the first sits level with the results heading's icon (row height min-h-9) */}
-              <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+              <Filter className="w-5 h-5 text-brand-teal dark:text-brand-teal-light" aria-hidden="true" />
               <PanelLeftOpen className="w-5 h-5 text-slate-500 dark:text-slate-400" aria-hidden="true" />
             </button>
           )}
@@ -2241,7 +2241,7 @@ export default function HomePage() {
                   title={constraintsCollapsed ? t.home.constraintsExpand : t.home.constraintsCollapse}
                   className="flex items-center gap-2 cursor-pointer text-left"
                 >
-                  <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                  <Filter className="w-5 h-5 text-brand-teal dark:text-brand-teal-light" />
                   {t.home.constraintsTitle}
                   <ChevronDown
                     className={`lg:hidden w-4 h-4 text-slate-400 transition-transform ${constraintsCollapsed ? '' : 'rotate-180'}`}
@@ -2273,10 +2273,10 @@ export default function HomePage() {
                 </button>
                 {profileLoaded && (
                   <span
-                    className="hidden sm:flex whitespace-nowrap text-[10px] font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/50 px-2.5 py-0.5 rounded-full border border-teal-200 dark:border-teal-800 items-center gap-1.5"
+                    className="hidden sm:flex whitespace-nowrap text-[10px] font-semibold text-brand-teal-dark dark:text-teal-300 bg-teal-50 dark:bg-teal-950/50 px-2.5 py-0.5 rounded-full border border-teal-200 dark:border-teal-800 items-center gap-1.5"
                     title={t.home.prefilledFromProfile}
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-teal-600 dark:bg-teal-400 animate-pulse"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-teal dark:bg-brand-teal-light animate-pulse"></span>
                     {/* Short next to the heading (the full text wrapped in German and Italian) */}
                     <span className="lg:sr-only xl:not-sr-only">{t.home.prefilledFromProfileShort}</span>
                   </span>
@@ -2285,10 +2285,10 @@ export default function HomePage() {
             </div>
             {profileLoaded && (
               <span
-                className="mt-2 block sm:hidden text-[10px] font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/50 px-2.5 py-0.5 rounded-full border border-teal-200 dark:border-teal-800 w-fit items-center gap-1.5"
+                className="mt-2 block sm:hidden text-[10px] font-semibold text-brand-teal-dark dark:text-teal-300 bg-teal-50 dark:bg-teal-950/50 px-2.5 py-0.5 rounded-full border border-teal-200 dark:border-teal-800 w-fit items-center gap-1.5"
                 title={t.home.prefilledFromProfile}
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-600 dark:bg-teal-400 animate-pulse inline-block mr-1.5"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-brand-teal dark:bg-brand-teal-light animate-pulse inline-block mr-1.5"></span>
                 {t.home.prefilledFromProfile}
               </span>
             )}
@@ -2298,7 +2298,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setConstraintsCollapsed(false)}
-              className="lg:hidden w-full text-left bg-white dark:bg-slate-900 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-3 cursor-pointer hover:border-teal-300 dark:hover:border-teal-700 transition-colors"
+              className="lg:hidden w-full text-left bg-white dark:bg-brand-slate px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-3 cursor-pointer hover:border-teal-300 dark:hover:border-brand-teal-dark transition-colors"
             >
               <span className="min-w-0 text-xs text-slate-600 dark:text-slate-300">
                 {(() => {
@@ -2319,7 +2319,7 @@ export default function HomePage() {
                   );
                 })()}
               </span>
-              <span className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-teal-700 dark:text-teal-300">
+              <span className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-brand-teal-dark dark:text-teal-300">
                 {t.home.constraintsExpand}
                 <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
               </span>
@@ -2328,7 +2328,7 @@ export default function HomePage() {
 
           <div
             id="search-constraints"
-            className={`bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6 ${
+            className={`bg-white dark:bg-brand-slate p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6 ${
               constraintsCollapsed ? (constraintsSideCollapsed ? 'hidden' : 'hidden lg:block') : constraintsSideCollapsed ? 'lg:hidden' : ''
             }`}
           >
@@ -2360,7 +2360,7 @@ export default function HomePage() {
                 />
 
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 pt-0.5">
-                  <Info className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                  <Info className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light shrink-0" />
                   <span>{t.home.holidayScopeNotice}</span>
                 </p>
               </div>
@@ -2378,7 +2378,7 @@ export default function HomePage() {
                   <div>
                     <div className="mb-2 space-y-0.5">
                       <label htmlFor="excluded-countries" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <Ban className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                        <Ban className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                         <span>{t.home.excludeCountriesLabel}</span>
                       </label>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
@@ -2399,7 +2399,7 @@ export default function HomePage() {
                   <div>
                     <div className="mb-2.5 space-y-0.5">
                       <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <Compass className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                        <Compass className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                         <span>{t.home.vacationKindLabel}</span>
                       </label>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
@@ -2422,7 +2422,7 @@ export default function HomePage() {
                       <>
                         <div className="mt-4 mb-2.5 space-y-0.5">
                           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                            <Globe className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                            <Globe className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                             <span>{t.home.travelDistanceLabel}</span>
                           </label>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
@@ -2443,7 +2443,7 @@ export default function HomePage() {
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                 <div className="mb-2.5 space-y-0.5">
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Car className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                    <Car className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                     <span>{t.home.travelVehicleLabel}</span>
                   </label>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
@@ -2526,7 +2526,7 @@ export default function HomePage() {
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                    <Users className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                     {t.home.partyTitle}
                   </label>
                   <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
@@ -2535,7 +2535,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Adults Selector */}
-                <div className="p-3 bg-slate-50/80 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
+                <div className="p-3 bg-brand-light/80 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
                   <div>
                     <span className="block text-xs font-semibold text-slate-800 dark:text-slate-100">
                       {t.home.adultsLabel}
@@ -2554,7 +2554,7 @@ export default function HomePage() {
                     >
                       -
                     </button>
-                    <span className="w-6 text-center text-xs font-bold text-slate-900 dark:text-slate-100">
+                    <span className="w-6 text-center text-xs font-bold text-brand-slate dark:text-slate-100">
                       {adultsCount}
                     </span>
                     <button
@@ -2581,10 +2581,10 @@ export default function HomePage() {
               {/* Step 5: Flexible Vacation Duration */}
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <Calendar className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                   <span>{t.home.durationLabel}</span>
                 </label>
-                <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-3">
+                <div className="p-3 bg-brand-light dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-3">
                   <div>
                     <span className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
                       {t.home.durationMinLabel}
@@ -2617,10 +2617,10 @@ export default function HomePage() {
               {/* Step 6: Search Date Range (Strictly Future Dates) */}
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <Calendar className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                   <span>{t.home.travelDatesLabel}</span>
                 </label>
-                <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-3">
+                <div className="p-3 bg-brand-light dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-3">
                   <div>
                     <span className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
                       {t.home.earliestDateLabel}
@@ -2697,7 +2697,7 @@ export default function HomePage() {
                               placeholder={t.home.blackoutReasonPlaceholder}
                               value={b.reason || ''}
                               onChange={(e) => updateBlackout(idx, 'reason', e.target.value)}
-                              className="flex-1 min-w-0 text-xs rounded border border-slate-300 dark:border-slate-700 px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-hidden focus:ring-1 focus:ring-amber-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                              className="flex-1 min-w-0 text-xs rounded border border-slate-300 dark:border-slate-700 px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-hidden focus:ring-1 focus:ring-brand-sun placeholder:text-slate-400 dark:placeholder:text-slate-500"
                             />
                             <button
                               type="button"
@@ -2737,7 +2737,7 @@ export default function HomePage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-4 rounded-xl font-bold text-sm bg-teal-600 hover:bg-teal-700 text-white shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl font-bold text-sm bg-brand-teal hover:bg-brand-teal-dark text-white shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
               >
                 {loading ? (
                   <>
@@ -2795,9 +2795,9 @@ export default function HomePage() {
           )}
 
           {!results && !loading && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center space-y-3">
-              <div className="w-12 h-12 bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 rounded-full flex items-center justify-center mx-auto text-xl">
-                <Sun className="w-6 h-6 text-amber-500" />
+            <div className="bg-white dark:bg-brand-slate rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center space-y-3">
+              <div className="w-12 h-12 bg-teal-50 dark:bg-teal-950/40 text-brand-teal dark:text-brand-teal-light rounded-full flex items-center justify-center mx-auto text-xl">
+                <Sun className="w-6 h-6 text-brand-sun" />
               </div>
               <h3 className="text-slate-800 dark:text-slate-100 font-semibold text-base">{t.home.readyTitle}</h3>
               <p className="text-slate-500 dark:text-slate-400 text-xs max-w-sm mx-auto">{t.home.readyDescription}</p>
@@ -2823,7 +2823,7 @@ export default function HomePage() {
           {results && results.length > 0 && (
             <>
               {/* Filter and Sort Toolbar */}
-              <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+              <div className="bg-white dark:bg-brand-slate p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
                 <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3">
                   {/* Left: Filter Toggle Button + Active Count + Reset + Share */}
                   <div className="flex items-center gap-2 min-w-0">
@@ -2832,14 +2832,14 @@ export default function HomePage() {
                       onClick={() => setShowResultFilters((prev) => !prev)}
                       className={`flex-1 sm:flex-none justify-between sm:justify-start flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                         showResultFilters
-                          ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border-teal-300 dark:border-teal-700'
-                          : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/60'
+                          ? 'bg-teal-50 dark:bg-teal-950/40 text-brand-teal-dark dark:text-teal-300 border-teal-300 dark:border-brand-teal-dark'
+                          : 'bg-brand-light dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/60'
                       }`}
                     >
-                      <SlidersHorizontal className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                       <span>{showResultFilters ? t.home.filterToggleHide : t.home.filterToggleShow}</span>
                       {activeFilterCount > 0 && (
-                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-teal-600 text-white">
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-brand-teal text-white">
                           {activeFilterCount}
                         </span>
                       )}
@@ -2866,10 +2866,10 @@ export default function HomePage() {
                     <button
                       type="button"
                       onClick={handleShareSearch}
-                      className="shrink-0 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      className="shrink-0 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-brand-light dark:hover:bg-slate-700/60 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
                       title={t.home.shareSearch}
                     >
-                      <Share2 className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                      <Share2 className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                       {/* Short confirmation (shorter than the label, so the row never grows); phones show it too */}
                       {shareCopiedToast ? (
                         <span>{t.home.shareCopiedShort}</span>
@@ -2889,8 +2889,8 @@ export default function HomePage() {
                         onClick={() => switchViewMode('destination')}
                         className={`px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition cursor-pointer ${
                           viewMode === 'destination'
-                            ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-2xs'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-brand-slate text-brand-teal-dark dark:text-brand-teal-light shadow-2xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-brand-slate dark:hover:text-slate-200'
                         }`}
                       >
                         <Compass className="hidden sm:block w-3.5 h-3.5" />
@@ -2902,8 +2902,8 @@ export default function HomePage() {
                         onClick={() => switchViewMode('list')}
                         className={`px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition cursor-pointer ${
                           viewMode === 'list'
-                            ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-2xs'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-brand-slate text-brand-teal-dark dark:text-brand-teal-light shadow-2xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-brand-slate dark:hover:text-slate-200'
                         }`}
                       >
                         <List className="hidden sm:block w-3.5 h-3.5" />
@@ -2932,7 +2932,7 @@ export default function HomePage() {
                           value={shareFallbackUrl || ''}
                           onFocus={(e) => e.currentTarget.select()}
                           autoFocus
-                          className="w-full text-base sm:text-xs rounded-md border border-teal-300 dark:border-teal-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-slate-800 dark:text-slate-100"
+                          className="w-full text-base sm:text-xs rounded-md border border-teal-300 dark:border-brand-teal-dark bg-white dark:bg-slate-800 px-2 py-1.5 text-slate-800 dark:text-slate-100"
                         />
                       </label>
                     )}
@@ -2980,10 +2980,10 @@ export default function HomePage() {
                         {activeQueryDestinations.length > 1 && (
                           <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isDestinationActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
                             <label className={`text-xs flex items-center gap-1.5 transition-colors ${isDestinationActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                              <MapPin className="w-3.5 h-3.5 text-teal-600" />
+                              <MapPin className="w-3.5 h-3.5 text-brand-teal" />
                               <span>{t.home.filterByDestination}</span>
                               {isDestinationActive && (
-                                <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
+                                <span className="w-2 h-2 rounded-full bg-brand-teal ring-2 ring-teal-300 dark:ring-brand-teal-dark/60 animate-pulse shrink-0" title={t.home.filterActive} />
                               )}
                             </label>
                             <div className="flex items-center gap-1.5 w-full sm:w-auto min-w-0">
@@ -3005,7 +3005,7 @@ export default function HomePage() {
                                       setSelectedDestinationsList([]);
                                       setCurrentPage(1);
                                     }}
-                                    className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                    className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-brand-teal-dark dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                     title={t.home.filterReset}
                                     aria-label={t.home.filterReset}
                                   >
@@ -3020,10 +3020,10 @@ export default function HomePage() {
                         {/* Vacation Style Filter */}
                         <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isStyleActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
                           <label className={`text-xs flex items-center gap-1.5 transition-colors ${isStyleActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                            <Compass className={`w-3.5 h-3.5 ${isStyleActive ? 'text-teal-600' : 'text-teal-600'}`} />
+                            <Compass className={`w-3.5 h-3.5 ${isStyleActive ? 'text-brand-teal' : 'text-brand-teal'}`} />
                             <span>{t.home.filterByVacationStyle}</span>
                             {isStyleActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
+                              <span className="w-2 h-2 rounded-full bg-brand-teal ring-2 ring-teal-300 dark:ring-brand-teal-dark/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3051,7 +3051,7 @@ export default function HomePage() {
                                     setResultStyleFilter('ALL');
                                     setCurrentPage(1);
                                   }}
-                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-brand-teal-dark dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
                                   aria-label={t.home.filterReset}
                                 >
@@ -3068,7 +3068,7 @@ export default function HomePage() {
                             <ShieldCheck className={`w-3.5 h-3.5 ${isSafetyActive ? 'text-emerald-600' : 'text-emerald-600'}`} />
                             <span>{t.home.filterBySafety}</span>
                             {isSafetyActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
+                              <span className="w-2 h-2 rounded-full bg-brand-teal ring-2 ring-teal-300 dark:ring-brand-teal-dark/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3094,7 +3094,7 @@ export default function HomePage() {
                                     setSafetyFilter('SAFE_ONLY');
                                     setCurrentPage(1);
                                   }}
-                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-brand-teal-dark dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
                                   aria-label={t.home.filterReset}
                                 >
@@ -3114,10 +3114,10 @@ export default function HomePage() {
                         {/* Month Filter */}
                         <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isMonthActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
                           <label className={`text-xs flex items-center gap-1.5 transition-colors ${isMonthActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                            <Calendar className={`w-3.5 h-3.5 ${isMonthActive ? 'text-teal-600' : 'text-teal-600'}`} />
+                            <Calendar className={`w-3.5 h-3.5 ${isMonthActive ? 'text-brand-teal' : 'text-brand-teal'}`} />
                             <span>{t.home.filterByMonth}</span>
                             {isMonthActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
+                              <span className="w-2 h-2 rounded-full bg-brand-teal ring-2 ring-teal-300 dark:ring-brand-teal-dark/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3147,7 +3147,7 @@ export default function HomePage() {
                                     setSelectedMonth('ALL');
                                     setCurrentPage(1);
                                   }}
-                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-brand-teal-dark dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
                                   aria-label={t.home.filterReset}
                                 >
@@ -3161,10 +3161,10 @@ export default function HomePage() {
                         {/* School Calendar Filter */}
                         <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isSchoolHolidayActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
                           <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSchoolHolidayActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                            <Award className={`w-3.5 h-3.5 ${isSchoolHolidayActive ? 'text-teal-600' : 'text-teal-600'}`} />
+                            <Award className={`w-3.5 h-3.5 ${isSchoolHolidayActive ? 'text-brand-teal' : 'text-brand-teal'}`} />
                             <span>{t.home.schoolHolidaysFilterLabel}</span>
                             {isSchoolHolidayActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
+                              <span className="w-2 h-2 rounded-full bg-brand-teal ring-2 ring-teal-300 dark:ring-brand-teal-dark/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3189,7 +3189,7 @@ export default function HomePage() {
                                     setSchoolHolidayFilter('all');
                                     setCurrentPage(1);
                                   }}
-                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-brand-teal-dark dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
                                   aria-label={t.home.filterReset}
                                 >
@@ -3206,7 +3206,7 @@ export default function HomePage() {
                             <Users className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
                             <span>{t.home.filterBySeasonalInfo}</span>
                             {isSeasonalInfoActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
+                              <span className="w-2 h-2 rounded-full bg-brand-teal ring-2 ring-teal-300 dark:ring-brand-teal-dark/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3231,7 +3231,7 @@ export default function HomePage() {
                                     setSeasonalInfoFilter('ALL');
                                     setCurrentPage(1);
                                   }}
-                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-brand-teal-dark dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
                                   aria-label={t.home.filterReset}
                                 >
@@ -3245,10 +3245,10 @@ export default function HomePage() {
                         {/* Seasonal Warnings Filter */}
                         <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isWarningActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
                           <label className={`text-xs flex items-center gap-1.5 transition-colors ${isWarningActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                            <AlertCircle className={`w-3.5 h-3.5 ${isWarningActive ? 'text-amber-500' : 'text-amber-500'}`} />
+                            <AlertCircle className={`w-3.5 h-3.5 ${isWarningActive ? 'text-brand-sun' : 'text-brand-sun'}`} />
                             <span>{t.home.filterByWarnings}</span>
                             {isWarningActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
+                              <span className="w-2 h-2 rounded-full bg-brand-teal ring-2 ring-teal-300 dark:ring-brand-teal-dark/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto min-w-0">
@@ -3274,7 +3274,7 @@ export default function HomePage() {
                                     setAllowedWarnings([]);
                                     setCurrentPage(1);
                                   }}
-                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-brand-teal-dark dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
                                   aria-label={t.home.filterReset}
                                 >
@@ -3288,10 +3288,10 @@ export default function HomePage() {
                         {/* Extreme Summer Heat Filter */}
                         <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isHeatActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
                           <label className={`text-xs flex items-center gap-1.5 transition-colors ${isHeatActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                            <Sun className={`w-3.5 h-3.5 ${isHeatActive ? 'text-amber-500' : 'text-amber-500'}`} />
+                            <Sun className={`w-3.5 h-3.5 ${isHeatActive ? 'text-brand-sun' : 'text-brand-sun'}`} />
                             <span>{t.home.filterByHeat}</span>
                             {isHeatActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
+                              <span className="w-2 h-2 rounded-full bg-brand-teal ring-2 ring-teal-300 dark:ring-brand-teal-dark/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3316,7 +3316,7 @@ export default function HomePage() {
                                     setHeatFilter('ALL');
                                     setCurrentPage(1);
                                   }}
-                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-brand-teal-dark dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
                                   aria-label={t.home.filterReset}
                                 >
@@ -3339,7 +3339,7 @@ export default function HomePage() {
                             <Car className={`w-3.5 h-3.5 ${isVehicleActive ? 'text-emerald-600' : 'text-emerald-600'}`} />
                             <span>{t.home.filterByVehicle}</span>
                             {isVehicleActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
+                              <span className="w-2 h-2 rounded-full bg-brand-teal ring-2 ring-teal-300 dark:ring-brand-teal-dark/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3367,7 +3367,7 @@ export default function HomePage() {
                                     setVehicleFilter('ALL');
                                     setCurrentPage(1);
                                   }}
-                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-brand-teal-dark dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
                                   aria-label={t.home.filterReset}
                                 >
@@ -3384,7 +3384,7 @@ export default function HomePage() {
                             <Route className="w-3.5 h-3.5 text-indigo-600" />
                             <span>{t.home.filterByDistance}</span>
                             {isDistanceActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
+                              <span className="w-2 h-2 rounded-full bg-brand-teal ring-2 ring-teal-300 dark:ring-brand-teal-dark/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3410,7 +3410,7 @@ export default function HomePage() {
                                     setDistanceFilter('ALL');
                                     setCurrentPage(1);
                                   }}
-                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-brand-teal-dark dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
                                   aria-label={t.home.filterReset}
                                 >
@@ -3424,13 +3424,13 @@ export default function HomePage() {
                         {/* Flight Transit & Stops Filter */}
                         <div title={!flightStopsApplicable ? t.home.filterNoFlights : undefined} className={`${!flightStopsApplicable ? 'opacity-50 ' : ''}flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isFlightStopsActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
                           <label className={`text-xs flex items-center gap-1.5 transition-colors ${isFlightStopsActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                            <Plane className={`w-3.5 h-3.5 ${isFlightStopsActive ? 'text-teal-600' : 'text-teal-600'}`} />
+                            <Plane className={`w-3.5 h-3.5 ${isFlightStopsActive ? 'text-brand-teal' : 'text-brand-teal'}`} />
                             <span>{t.home.filterByFlightStops}</span>
                             {!flightStopsApplicable && (
                               <span className="font-normal text-[10px] text-slate-500 dark:text-slate-400">({t.home.filterNoFlights})</span>
                             )}
                             {isFlightStopsActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
+                              <span className="w-2 h-2 rounded-full bg-brand-teal ring-2 ring-teal-300 dark:ring-brand-teal-dark/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3457,7 +3457,7 @@ export default function HomePage() {
                                     setFlightStopsFilter('ALL');
                                     setCurrentPage(1);
                                   }}
-                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-brand-teal-dark dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
                                   aria-label={t.home.filterReset}
                                 >
@@ -3471,13 +3471,13 @@ export default function HomePage() {
                         {/* Max Overland Duration Filter */}
                         <div title={!overlandDurationApplicable ? t.home.filterNoOverland : undefined} className={`${!overlandDurationApplicable ? 'opacity-50 ' : ''}flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isOverlandDurationActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
                           <label className={`text-xs flex items-center gap-1.5 transition-colors ${isOverlandDurationActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                            <OverlandModeIcons className="text-teal-600" />
+                            <OverlandModeIcons className="text-brand-teal" />
                             <span>{t.home.filterByOverlandDuration}</span>
                             {!overlandDurationApplicable && (
                               <span className="font-normal text-[10px] text-slate-500 dark:text-slate-400">({t.home.filterNoOverland})</span>
                             )}
                             {isOverlandDurationActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
+                              <span className="w-2 h-2 rounded-full bg-brand-teal ring-2 ring-teal-300 dark:ring-brand-teal-dark/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3505,7 +3505,7 @@ export default function HomePage() {
                                     setOverlandDurationFilter('ALL');
                                     setCurrentPage(1);
                                   }}
-                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-brand-teal-dark dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
                                   aria-label={t.home.filterReset}
                                 >
@@ -3528,7 +3528,7 @@ export default function HomePage() {
                             <Utensils className={`w-3.5 h-3.5 ${isBoardTypeActive ? 'text-violet-600' : 'text-violet-600'}`} />
                             <span>{t.home.filterByBoardType}</span>
                             {isBoardTypeActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
+                              <span className="w-2 h-2 rounded-full bg-brand-teal ring-2 ring-teal-300 dark:ring-brand-teal-dark/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3556,7 +3556,7 @@ export default function HomePage() {
                                     setBoardTypeFilter('ALL');
                                     setCurrentPage(1);
                                   }}
-                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-brand-teal-dark dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
                                   aria-label={t.home.filterReset}
                                 >
@@ -3570,10 +3570,10 @@ export default function HomePage() {
                         {/* Max Cost Filter */}
                         <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all border-b ${isMaxCostActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : 'border-slate-100 dark:border-slate-800'}`}>
                           <label className={`text-xs flex items-center gap-1.5 transition-colors ${isMaxCostActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                            <Sparkles className={`w-3.5 h-3.5 ${isMaxCostActive ? 'text-amber-500' : 'text-amber-500'}`} />
+                            <Sparkles className={`w-3.5 h-3.5 ${isMaxCostActive ? 'text-brand-sun' : 'text-brand-sun'}`} />
                             <span>{t.home.filterByCost}</span>
                             {isMaxCostActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
+                              <span className="w-2 h-2 rounded-full bg-brand-teal ring-2 ring-teal-300 dark:ring-brand-teal-dark/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3587,7 +3587,7 @@ export default function HomePage() {
                               }}
                               className={`w-full sm:w-64 text-xs rounded-lg px-3 py-1.5 outline-hidden transition font-medium ${
                                 isMaxCostActive
-                                  ? 'border border-teal-500 dark:border-teal-600 bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
+                                  ? 'border border-teal-500 dark:border-brand-teal bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 font-bold ring-2 ring-teal-500/20 dark:ring-teal-500/30 shadow-2xs'
                                   : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500'
                               }`}
                             />
@@ -3599,7 +3599,7 @@ export default function HomePage() {
                                     setMaxCostFilter(undefined);
                                     setCurrentPage(1);
                                   }}
-                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-brand-teal-dark dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
                                   aria-label={t.home.filterReset}
                                 >
@@ -3613,10 +3613,10 @@ export default function HomePage() {
                         {/* Sort By */}
                         <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 py-1.5 px-2.5 -mx-2.5 rounded-xl transition-all ${isSortActive ? 'bg-teal-50/80 dark:bg-teal-950/30 border border-teal-200/90 dark:border-teal-800/60 shadow-2xs' : ''}`}>
                           <label className={`text-xs flex items-center gap-1.5 transition-colors ${isSortActive ? 'font-bold text-teal-900 dark:text-teal-200' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                            <ArrowUpDown className={`w-3.5 h-3.5 ${isSortActive ? 'text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400'}`} />
+                            <ArrowUpDown className={`w-3.5 h-3.5 ${isSortActive ? 'text-brand-teal dark:text-brand-teal-light' : 'text-slate-500 dark:text-slate-400'}`} />
                             <span>{t.home.sortBy}</span>
                             {isSortActive && (
-                              <span className="w-2 h-2 rounded-full bg-teal-600 ring-2 ring-teal-300 dark:ring-teal-700/60 animate-pulse shrink-0" title={t.home.filterActive} />
+                              <span className="w-2 h-2 rounded-full bg-brand-teal ring-2 ring-teal-300 dark:ring-brand-teal-dark/60 animate-pulse shrink-0" title={t.home.filterActive} />
                             )}
                           </label>
                           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -3640,7 +3640,7 @@ export default function HomePage() {
                                 <button
                                   type="button"
                                   onClick={() => setSortBy('score')}
-                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-brand-teal-dark dark:hover:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/40 rounded-lg transition cursor-pointer"
                                   title={t.home.filterReset}
                                   aria-label={t.home.filterReset}
                                 >
@@ -3657,7 +3657,7 @@ export default function HomePage() {
               </div>
 
               {/* The calendar is its own section, independent of the destination/list view below */}
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/90 overflow-hidden">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-brand-slate/90 overflow-hidden">
                 <button
                   type="button"
                   aria-expanded={calendarOpen}
@@ -3665,9 +3665,9 @@ export default function HomePage() {
                   onClick={() => {
                     setCalendarOpen(!calendarOpen);
                   }}
-                  className="w-full flex items-center gap-2 px-3 sm:px-4 py-3 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+                  className="w-full flex items-center gap-2 px-3 sm:px-4 py-3 text-slate-700 dark:text-slate-200 hover:bg-brand-light dark:hover:bg-slate-800 transition cursor-pointer"
                 >
-                  <CalendarDays className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                  <CalendarDays className="w-5 h-5 text-brand-teal dark:text-brand-teal-light" />
                   <span className="flex-1 text-left text-lg font-bold text-slate-800 dark:text-slate-100">{t.home.calendarTab}</span>
                   <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${calendarOpen ? 'rotate-180' : ''}`} />
                 </button>
@@ -3687,7 +3687,7 @@ export default function HomePage() {
 
               <div id="results-top" className="scroll-mt-24" aria-hidden="true" />
               {filteredResults.length === 0 ? (
-                <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 p-8 text-center text-slate-500 dark:text-slate-400 text-xs">
+                <div className="bg-brand-light dark:bg-slate-800/60 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 p-8 text-center text-slate-500 dark:text-slate-400 text-xs">
                   {t.home.noFilteredResults}
                 </div>
               ) : viewMode === 'destination' ? (
@@ -3695,14 +3695,14 @@ export default function HomePage() {
                 <div className="space-y-4 sm:space-y-6">
                   {/* Empty state when destination filter matches 0 */}
                   {destinationGroups.length === 0 ? (
-                    <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-8 text-center space-y-3">
+                    <div className="bg-white dark:bg-brand-slate/90 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-8 text-center space-y-3">
                       <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
                         {t.home.noDestinationsMatchFilter}
                       </p>
                       <button
                         type="button"
                         onClick={() => setSelectedDestinationsList([])}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 px-3 py-1.5 rounded-lg transition cursor-pointer"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-teal dark:text-brand-teal-light hover:text-teal-800 dark:hover:text-teal-300 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 px-3 py-1.5 rounded-lg transition cursor-pointer"
                       >
                         <X className="w-3.5 h-3.5" />
                         {t.home.clearDestinationFilter}
@@ -3728,15 +3728,15 @@ export default function HomePage() {
                       <div key={group.destinationCode} className="flex flex-col gap-2 h-full xl:gap-0 xl:row-span-3 xl:grid xl:grid-rows-subgrid">
                       {startsCountry && (
                         <h3 className="flex items-center gap-1.5 pt-1 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                          <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                          <MapPin className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                           {group.destinationCountry}
                         </h3>
                       )}
                       <div
-                        className={`flex flex-col flex-1 xl:row-span-3 xl:grid xl:grid-rows-subgrid bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs hover:shadow-md transition${freshDestinations.has(group.destinationCode) ? ' famvac-flash' : ''}`}
+                        className={`flex flex-col flex-1 xl:row-span-3 xl:grid xl:grid-rows-subgrid bg-white dark:bg-brand-slate/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs hover:shadow-md transition${freshDestinations.has(group.destinationCode) ? ' famvac-flash' : ''}`}
                       >
                         {/* Group Header */}
-                        <div className="bg-linear-to-r from-slate-50 via-teal-50/40 to-emerald-50/20 dark:from-slate-800/80 dark:via-slate-800/50 dark:to-teal-950/20 p-3 sm:p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col space-y-3">
+                        <div className="bg-linear-to-r/oklch from-brand-light via-teal-50/40 to-emerald-50/20 dark:from-slate-800/80 dark:via-slate-800/50 dark:to-teal-950/20 p-3 sm:p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col space-y-3">
                           {/* Top: Destination Title & Vacation Style Tags (Wide full row) */}
                           <div className="flex items-start sm:items-center gap-3">
                             <div className="flex-1 min-w-0">
@@ -3763,9 +3763,9 @@ export default function HomePage() {
                                   className="inline-flex items-center gap-1.5 text-left group/loc cursor-pointer hover:opacity-90 transition"
                                   title={t.home.showOnMap}
                                 >
-                                  <h3 className="font-extrabold text-slate-900 dark:text-slate-100 group-hover/loc:text-teal-600 dark:group-hover/loc:text-teal-400 group-hover/loc:underline text-base sm:text-lg transition-colors flex items-center gap-1.5">
+                                  <h3 className="font-extrabold text-brand-slate dark:text-slate-100 group-hover/loc:text-brand-teal dark:group-hover/loc:text-brand-teal-light group-hover/loc:underline text-base sm:text-lg transition-colors flex items-center gap-1.5">
                                     {/* Pin in front of the name, as in the period and list views */}
-                                    <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 opacity-60 group-hover/loc:opacity-100 group-hover/loc:scale-110 transition-all shrink-0" />
+                                    <MapPin className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light opacity-60 group-hover/loc:opacity-100 group-hover/loc:scale-110 transition-all shrink-0" />
                                     <span>{group.destinationName}</span>
                                   </h3>
                                 </button>
@@ -3844,18 +3844,18 @@ export default function HomePage() {
                         </div>
 
                         {/* Featured Top-Scoring Vacation Window */}
-                        <div className="flex flex-col flex-1 p-2 sm:p-4 bg-white dark:bg-slate-900/90">
+                        <div className="flex flex-col flex-1 p-2 sm:p-4 bg-white dark:bg-brand-slate/90">
                           {renderVacationCard(group.featuredWindow, { rank: groupIdx + 1, hideDestinationHeader: true })}
                         </div>
 
                         {/* Every other period of this destination lives in the list view, which
                             brings sorting and pagination */}
                         {group.totalWindows > 1 && (
-                          <div className="border-t border-slate-100 dark:border-slate-800 p-2 sm:p-4 bg-white dark:bg-slate-900/90">
+                          <div className="border-t border-slate-100 dark:border-slate-800 p-2 sm:p-4 bg-white dark:bg-brand-slate/90">
                             <button
                               type="button"
                               onClick={() => showDestinationInList(group.destinationCode)}
-                              className="w-full px-3 py-2 text-xs font-bold rounded-lg border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                              className="w-full px-3 py-2 text-xs font-bold rounded-lg border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-brand-teal-dark dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition inline-flex items-center justify-center gap-1.5 cursor-pointer"
                             >
                               <List className="w-3.5 h-3.5" />
                               {t.home.destGroupShowAllInList.replace('{count}', String(group.totalWindows))}
@@ -3892,7 +3892,7 @@ export default function HomePage() {
                   {(selectedDestinationsList.length > 0 || selectedMonth !== 'ALL') && (
                     <div className="p-3 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50/70 dark:bg-teal-950/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                       <span className="font-semibold text-teal-900 dark:text-teal-100 flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                        <MapPin className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light shrink-0" />
                         {t.home.listDestinationFilterActive.replace(
                           '{destinations}',
                           [
@@ -3916,7 +3916,7 @@ export default function HomePage() {
                             setListReturnView(null);
                             setCurrentPage(1);
                           }}
-                          className="px-2.5 py-1.5 rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 font-semibold hover:bg-teal-50 dark:hover:bg-slate-700 transition cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-lg border border-teal-200 dark:border-brand-teal-dark bg-white dark:bg-slate-800 text-brand-teal-dark dark:text-teal-300 font-semibold hover:bg-teal-50 dark:hover:bg-slate-700 transition cursor-pointer"
                         >
                           {t.home.listClearFilters}
                         </button>
@@ -3928,7 +3928,7 @@ export default function HomePage() {
                               if (listJumpStepRef.current !== null) goBackHistoryStep(listJumpStepRef.current);
                               else returnFromListJump();
                             }}
-                            className="px-2.5 py-1.5 rounded-lg bg-teal-600 text-white font-semibold hover:bg-teal-700 transition cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-lg bg-brand-teal text-white font-semibold hover:bg-brand-teal-dark transition cursor-pointer"
                           >
                             {t.home.listBackToDestinations}
                           </button>

@@ -8,7 +8,7 @@ export default function GlobalError({ error }: { error: unknown; retry: () => vo
   console.error('[app] root error:', error);
   return (
     <html lang="en" translate="no" className="notranslate">
-      <body style={{ margin: 0, fontFamily: 'system-ui, sans-serif', background: '#f8fafc', color: '#0f172a' }}>
+      <body style={{ margin: 0, fontFamily: 'system-ui, sans-serif', background: '#F9FAFC', color: '#0F172A' }}>
         <div role="alert" style={{ maxWidth: 480, margin: '15vh auto', padding: 24, textAlign: 'center' }}>
           <h1 style={{ fontSize: 20 }}>Something went wrong · Etwas ist schiefgelaufen</h1>
           <p style={{ fontSize: 14, color: '#475569' }}>
@@ -20,7 +20,7 @@ export default function GlobalError({ error }: { error: unknown; retry: () => vo
           <button
             type="button"
             onClick={() => window.location.reload()}
-            style={{ marginTop: 8, padding: '8px 16px', borderRadius: 8, border: 0, background: '#0d9488', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+            style={{ marginTop: 8, padding: '8px 16px', borderRadius: 8, border: 0, background: '#0D9488', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
           >
             Reload · Neu laden
           </button>

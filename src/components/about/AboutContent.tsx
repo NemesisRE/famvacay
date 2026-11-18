@@ -42,7 +42,7 @@ const CAPABILITIES: { key: keyof AboutText['capabilities']; icon: LucideIcon }[]
   { key: 'privacy', icon: ShieldCheck },
 ];
 
-const sectionTitleClass = 'text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white';
+const sectionTitleClass = 'text-xl sm:text-2xl font-bold tracking-tight text-brand-slate dark:text-white';
 // One width for every intro/prose block so text edges line up across sections.
 const proseClass = 'max-w-3xl';
 const bodyClass = 'text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed';
@@ -51,7 +51,7 @@ const bodyClass = 'text-sm sm:text-base text-slate-600 dark:text-slate-300 leadi
 // AI always comes first, matching the order of the hero text.
 const BADGE_TONES = {
   ai: 'bg-violet-600 text-white',
-  human: 'bg-teal-600 text-white',
+  human: 'bg-brand-teal text-white',
 } as const;
 
 function RoleBadge({ role, label }: { role: keyof typeof BADGE_TONES; label: string }) {
@@ -71,7 +71,7 @@ function ItemRow({ item, icon: Icon, iconClass }: { item: AboutItem; icon: Lucid
         <Icon className="w-4.5 h-4.5" aria-hidden="true" />
       </span>
       <div>
-        <h4 className="font-semibold text-slate-900 dark:text-slate-100">{item.title}</h4>
+        <h4 className="font-semibold text-brand-slate dark:text-slate-100">{item.title}</h4>
         <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mt-0.5">{item.body}</p>
       </div>
     </li>
@@ -85,12 +85,12 @@ export function AboutContent() {
   return (
     <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8 py-2">
       {/* 1. Hero */}
-      <section className="relative overflow-hidden rounded-3xl border border-teal-200/70 dark:border-teal-900/60 bg-gradient-to-br from-teal-50 via-white to-violet-50 dark:from-teal-950/50 dark:via-slate-900 dark:to-violet-950/40 p-3 sm:p-4">
-        <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-300 bg-white/80 dark:bg-slate-900/70 border border-teal-200 dark:border-teal-800 rounded-full px-3 py-1">
+      <section className="relative overflow-hidden rounded-3xl border border-teal-200/70 dark:border-teal-900/60 bg-gradient-to-br/oklch from-teal-50 via-white to-violet-50 dark:from-teal-950/50 dark:via-brand-slate dark:to-violet-950/40 p-3 sm:p-4">
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-brand-teal-dark dark:text-teal-300 bg-white/80 dark:bg-brand-slate/70 border border-teal-200 dark:border-teal-800 rounded-full px-3 py-1">
           <Scale className="w-3.5 h-3.5" aria-hidden="true" />
           {a.heroBadge}
         </span>
-        <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white max-w-3xl leading-tight">
+        <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-brand-slate dark:text-white max-w-3xl leading-tight">
           {a.heroTitle}
         </h1>
         <p className="mt-3 text-lg sm:text-xl font-semibold text-slate-700 dark:text-slate-200 max-w-3xl">{a.heroSubtitle}</p>
@@ -111,13 +111,13 @@ export function AboutContent() {
           <p className={`${bodyClass} mt-2`}>{a.divisionIntro}</p>
         </div>
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border-2 border-violet-200 dark:border-violet-800 bg-white dark:bg-slate-900 p-3 sm:p-4">
+          <div className="rounded-2xl border-2 border-violet-200 dark:border-violet-800 bg-white dark:bg-brand-slate p-3 sm:p-4">
             <div className="flex items-center gap-3 pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
               <span className="shrink-0 w-11 h-11 rounded-2xl bg-violet-600 text-white flex items-center justify-center">
                 <Bot className="w-6 h-6" aria-hidden="true" />
               </span>
               <div className="min-w-0 space-y-1">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{a.aiTitle}</h3>
+                <h3 className="text-lg font-bold text-brand-slate dark:text-white">{a.aiTitle}</h3>
                 <RoleBadge role="ai" label={a.aiSubtitle} />
               </div>
             </div>
@@ -132,13 +132,13 @@ export function AboutContent() {
               ))}
             </ul>
           </div>
-          <div className="rounded-2xl border-2 border-teal-200 dark:border-teal-800 bg-white dark:bg-slate-900 p-3 sm:p-4">
+          <div className="rounded-2xl border-2 border-teal-200 dark:border-teal-800 bg-white dark:bg-brand-slate p-3 sm:p-4">
             <div className="flex items-center gap-3 pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
-              <span className="shrink-0 w-11 h-11 rounded-2xl bg-teal-600 text-white flex items-center justify-center">
+              <span className="shrink-0 w-11 h-11 rounded-2xl bg-brand-teal text-white flex items-center justify-center">
                 <UserRound className="w-6 h-6" aria-hidden="true" />
               </span>
               <div className="min-w-0 space-y-1">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{a.humanTitle}</h3>
+                <h3 className="text-lg font-bold text-brand-slate dark:text-white">{a.humanTitle}</h3>
                 <RoleBadge role="human" label={a.humanSubtitle} />
               </div>
             </div>
@@ -148,7 +148,7 @@ export function AboutContent() {
                   key={key}
                   item={a.humanItems[key]}
                   icon={icon}
-                  iconClass="bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300"
+                  iconClass="bg-teal-50 dark:bg-teal-950/50 text-brand-teal-dark dark:text-teal-300"
                 />
               ))}
             </ul>
@@ -166,10 +166,10 @@ export function AboutContent() {
           {CAPABILITIES.map(({ key, icon: Icon }) => (
             <div
               key={key}
-              className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 sm:p-4"
+              className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-brand-slate p-3 sm:p-4"
             >
-              <Icon className="w-6 h-6 text-teal-600 dark:text-teal-400" aria-hidden="true" />
-              <h3 className="mt-3 font-bold text-slate-900 dark:text-white">{a.capabilities[key].title}</h3>
+              <Icon className="w-6 h-6 text-brand-teal dark:text-brand-teal-light" aria-hidden="true" />
+              <h3 className="mt-3 font-bold text-brand-slate dark:text-white">{a.capabilities[key].title}</h3>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{a.capabilities[key].body}</p>
             </div>
           ))}
@@ -179,10 +179,10 @@ export function AboutContent() {
       {/* 4. Open & honest engineering */}
       <section
         aria-labelledby="about-honesty"
-        className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white p-3 sm:p-4"
+        className="rounded-3xl bg-white dark:bg-brand-slate border border-slate-200 dark:border-slate-800 text-brand-slate dark:text-white p-3 sm:p-4"
       >
         <h2 id="about-honesty" className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Scale className="w-6 h-6 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+          <Scale className="w-6 h-6 text-brand-teal dark:text-brand-teal-light" aria-hidden="true" />
           {a.honestyTitle}
         </h2>
         <div className="mt-3 space-y-3 max-w-3xl text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -194,7 +194,7 @@ export function AboutContent() {
             href={SOURCE_CODE_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm px-4 py-2.5 transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-teal hover:bg-brand-teal-dark text-white font-semibold text-sm px-4 py-2.5 transition-colors"
           >
             <Code2 className="w-4 h-4" aria-hidden="true" />
             {a.sourceCodeLink}

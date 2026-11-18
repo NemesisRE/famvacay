@@ -128,8 +128,8 @@ export function SeasonalWarningFilterDropdown({
           onClick={() => setIsOpen((prev) => !prev)}
           className={`w-full sm:w-64 px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 transition cursor-pointer shadow-2xs select-none ${
             !isDefaultClean
-              ? 'bg-teal-50 dark:bg-teal-950/40 border-teal-300 dark:border-teal-700 text-teal-900 dark:text-teal-200 font-bold hover:bg-teal-100/70 dark:hover:bg-teal-900/40'
-              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600'
+              ? 'bg-teal-50 dark:bg-teal-950/40 border-teal-300 dark:border-brand-teal-dark text-teal-900 dark:text-teal-200 font-bold hover:bg-teal-100/70 dark:hover:bg-teal-900/40'
+              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-brand-light dark:hover:bg-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600'
           }`}
           title={t.home.filterByWarnings}
         >
@@ -165,7 +165,7 @@ export function SeasonalWarningFilterDropdown({
                 <button
                   type="button"
                   onClick={() => onChange('CLEAN_ONLY', [])}
-                  className="text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 font-semibold cursor-pointer"
+                  className="text-brand-teal dark:text-brand-teal-light hover:text-teal-800 dark:hover:text-teal-300 font-semibold cursor-pointer"
                 >
                   {t.home.warningsFilterCleanOnly}
                 </button>
@@ -180,14 +180,14 @@ export function SeasonalWarningFilterDropdown({
                 className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer text-left ${
                   isDefaultClean
                     ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 font-bold'
-                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300'
+                    : 'hover:bg-brand-light dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <div
                     className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
                       isDefaultClean
-                        ? 'bg-teal-600 border-teal-600 text-white'
+                        ? 'bg-brand-teal border-brand-teal text-white'
                         : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
                     }`}
                   >
@@ -207,14 +207,14 @@ export function SeasonalWarningFilterDropdown({
                 className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer text-left ${
                   isAllShown
                     ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 font-bold'
-                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300'
+                    : 'hover:bg-brand-light dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <div
                     className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
                       isAllShown
-                        ? 'bg-teal-600 border-teal-600 text-white'
+                        ? 'bg-brand-teal border-brand-teal text-white'
                         : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
                     }`}
                   >
@@ -240,7 +240,7 @@ export function SeasonalWarningFilterDropdown({
                         className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer text-left ${
                           isSelected
                             ? 'bg-amber-50/80 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 font-semibold'
-                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300'
+                            : 'hover:bg-brand-light dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300'
                         }`}
                       >
                         <div className="flex items-center gap-2 truncate min-w-0">
@@ -278,7 +278,7 @@ export function SeasonalWarningFilterDropdown({
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="w-full py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition cursor-pointer"
+                className="w-full py-1.5 rounded-lg bg-brand-teal hover:bg-brand-teal-dark text-white text-xs font-semibold transition cursor-pointer"
               >
                 {t.common.done}
               </button>

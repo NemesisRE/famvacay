@@ -378,7 +378,7 @@ function FamilyProfileContent() {
   if (loading) {
     return (
       <div className="py-20 text-center">
-        <span className="w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full animate-spin inline-block"></span>
+        <span className="w-8 h-8 border-4 border-brand-teal border-t-transparent rounded-full animate-spin inline-block"></span>
         <p className="mt-4 text-xs font-semibold text-slate-500 dark:text-slate-400">Loading...</p>
       </div>
     );
@@ -386,16 +386,16 @@ function FamilyProfileContent() {
 
   return (
     <div className="max-w-4xl mx-auto py-6 space-y-6">
-      <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs">
+      <div className="bg-white dark:bg-brand-slate/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-100 dark:border-slate-800 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Users className="w-6 h-6 text-teal-600 dark:text-teal-400" />
+            <h1 className="text-2xl font-bold text-brand-slate dark:text-slate-100 flex items-center gap-2">
+              <Users className="w-6 h-6 text-brand-teal dark:text-brand-teal-light" />
               {t.profile.title}
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t.profile.subtitle}</p>
           </div>
-          <span className="text-xs px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 font-semibold border border-teal-200 dark:border-teal-800 self-start sm:self-auto">
+          <span className="text-xs px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/40 text-brand-teal-dark dark:text-teal-300 font-semibold border border-teal-200 dark:border-teal-800 self-start sm:self-auto">
             {members.length} {t.profile.membersBadge}
           </span>
         </div>
@@ -406,7 +406,7 @@ function FamilyProfileContent() {
             onClick={() => setActiveTab('profile')}
             className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition cursor-pointer ${
               activeTab === 'profile'
-                ? 'border-teal-600 text-teal-600 dark:text-teal-400 dark:border-teal-400'
+                ? 'border-brand-teal text-brand-teal dark:text-brand-teal-light dark:border-brand-teal-light'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
@@ -418,7 +418,7 @@ function FamilyProfileContent() {
             onClick={() => setActiveTab('account')}
             className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition cursor-pointer ${
               activeTab === 'account'
-                ? 'border-teal-600 text-teal-600 dark:text-teal-400 dark:border-teal-400'
+                ? 'border-brand-teal text-brand-teal dark:text-brand-teal-light dark:border-brand-teal-light'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
@@ -454,7 +454,7 @@ function FamilyProfileContent() {
           {/* Section 1: Home & school holiday region (same fields & wording as the search form) */}
           <div className="space-y-4">
             <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <MapPin className="w-4 h-4 text-brand-teal dark:text-brand-teal-light" />
               {t.profile.sec1Title}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -499,7 +499,7 @@ function FamilyProfileContent() {
               />
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <Info className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+              <Info className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light shrink-0" />
               <span>{t.home.holidayScopeNotice}</span>
             </p>
           </div>
@@ -507,14 +507,14 @@ function FamilyProfileContent() {
           {/* Section 2: Vacation & travel preferences - same order and controls as the search form */}
           <div className="space-y-4">
             <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <Compass className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <Compass className="w-4 h-4 text-brand-teal dark:text-brand-teal-light" />
               {t.profile.sec2Title}
             </h2>
 
             <div>
               <div className="mb-2 space-y-0.5">
                 <label htmlFor="profile-excluded-countries" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Ban className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <Ban className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                   <span>{t.home.excludeCountriesLabel}</span>
                 </label>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{t.home.excludeCountriesHint}</p>
@@ -530,7 +530,7 @@ function FamilyProfileContent() {
             <div>
               <div className="mb-2.5 space-y-0.5">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Compass className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <Compass className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                   <span>{t.home.vacationKindLabel}</span>
                 </label>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{t.home.vacationKindHint}</p>
@@ -555,7 +555,7 @@ function FamilyProfileContent() {
                 <>
                   <div className="mt-4 mb-2.5 space-y-0.5">
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                      <Globe className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                      <Globe className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                       <span>{t.home.travelDistanceLabel}</span>
                     </label>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{t.home.travelDistanceHint}</p>
@@ -571,7 +571,7 @@ function FamilyProfileContent() {
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
               <div className="mb-2.5 space-y-0.5">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Car className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <Car className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                   <span>{t.home.travelVehicleLabel}</span>
                 </label>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{t.home.travelVehicleHint}</p>
@@ -638,7 +638,7 @@ function FamilyProfileContent() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                <Calendar className="w-4 h-4 text-brand-teal dark:text-brand-teal-light" />
                 {t.profile.sec3Title}
               </h2>
             </div>
@@ -646,7 +646,7 @@ function FamilyProfileContent() {
             {/* Passport validity check belongs with the travelers' passport expiry dates */}
             <div className="max-w-md">
               <label htmlFor="passportCheck" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <BookUser className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                <BookUser className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                 {t.profile.passportCheckLabel}
               </label>
               <SelectDropdown
@@ -665,7 +665,7 @@ function FamilyProfileContent() {
               {members.map((member, index) => (
                 <div
                   key={index}
-                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-12 gap-3 items-start"
+                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-brand-light/60 dark:bg-slate-800/40 grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-12 gap-3 items-start"
                 >
                   <div className="order-1 lg:order-0 lg:col-span-2">
                     <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
@@ -676,7 +676,7 @@ function FamilyProfileContent() {
                       placeholder={t.profile.memberNamePlaceholder}
                       value={member.firstName}
                       onChange={(e) => updateMember(index, 'firstName', e.target.value)}
-                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                      className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-2 bg-white dark:bg-slate-800 text-brand-slate dark:text-slate-100"
                     />
                   </div>
 
@@ -768,7 +768,7 @@ function FamilyProfileContent() {
               <button
                 type="button"
                 onClick={addMember}
-                className="w-full py-1.5 px-3 rounded-lg border border-dashed border-teal-300 dark:border-teal-700 bg-teal-50/60 dark:bg-teal-950/40 hover:bg-teal-100/70 dark:hover:bg-teal-900/60 text-teal-700 dark:text-teal-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                className="w-full py-1.5 px-3 rounded-lg border border-dashed border-teal-300 dark:border-brand-teal-dark bg-teal-50/60 dark:bg-teal-950/40 hover:bg-teal-100/70 dark:hover:bg-teal-900/60 text-brand-teal-dark dark:text-teal-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 {t.profile.addMember}
@@ -827,7 +827,7 @@ function FamilyProfileContent() {
                           placeholder={t.home.blackoutReasonPlaceholder}
                           value={range.reason || ''}
                           onChange={(e) => updateBlackout(index, 'reason', e.target.value)}
-                          className="flex-1 min-w-0 text-xs rounded border border-slate-300 dark:border-slate-700 px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-hidden focus:ring-1 focus:ring-amber-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                          className="flex-1 min-w-0 text-xs rounded border border-slate-300 dark:border-slate-700 px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-hidden focus:ring-1 focus:ring-brand-sun placeholder:text-slate-400 dark:placeholder:text-slate-500"
                         />
                         <button
                           type="button"
@@ -891,7 +891,7 @@ function FamilyProfileContent() {
             <button
               type="submit"
               disabled={saving}
-              className="w-full py-3 rounded-xl font-bold text-sm bg-teal-600 hover:bg-teal-700 text-white shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+              className="w-full py-3 rounded-xl font-bold text-sm bg-brand-teal hover:bg-brand-teal-dark text-white shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
             >
               {saving ? (
                 <>
@@ -920,7 +920,7 @@ export default function FamilyProfilePage() {
     <Suspense
       fallback={
         <div className="flex justify-center py-16">
-          <span className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+          <span className="w-6 h-6 border-2 border-brand-teal border-t-transparent rounded-full animate-spin" />
         </div>
       }
     >

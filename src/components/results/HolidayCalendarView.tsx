@@ -86,7 +86,7 @@ function densityBuckets(total: number): (Swatch & { max: number })[] {
   const mid = Math.max(low + 1, Math.round(total * 0.5625));
   return [
     { max: 0, ...green },
-    { max: low, className: 'bg-yellow-400', textClassName: 'text-slate-900' },
+    { max: low, className: 'bg-yellow-400', textClassName: 'text-brand-slate' },
     { max: mid, className: 'bg-orange-500', textClassName: 'text-white' },
     { max: total, ...red },
   ];
@@ -104,8 +104,8 @@ const NO_DATA: Swatch = {
   textClassName: 'text-slate-500 dark:text-slate-400',
 };
 const PERSONAL = {
-  blackout: { className: 'bg-slate-600 dark:bg-slate-400', textClassName: 'text-white dark:text-slate-900' },
-  free: { className: 'bg-teal-600', textClassName: 'text-white' },
+  blackout: { className: 'bg-slate-600 dark:bg-slate-400', textClassName: 'text-white dark:text-brand-slate' },
+  free: { className: 'bg-brand-teal', textClassName: 'text-white' },
   school: { className: 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600', textClassName: 'text-slate-500 dark:text-slate-400' },
   weekend: { className: 'bg-slate-200 dark:bg-slate-700', textClassName: 'text-slate-500 dark:text-slate-400' },
 } satisfies Record<string, Swatch>;
@@ -280,7 +280,7 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
         ];
 
   return (
-    <section aria-label={t.home.calendarTab} aria-busy={updating} className={`space-y-4 ${embedded ? '' : 'bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-4'}`}>
+    <section aria-label={t.home.calendarTab} aria-busy={updating} className={`space-y-4 ${embedded ? '' : 'bg-white dark:bg-brand-slate/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-4'}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         {/* Fixed heights: the two views' texts differ in length and must not move the calendar */}
         <div className="min-w-0 flex-1 basis-64">
@@ -306,7 +306,7 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
               aria-pressed={view === v}
               onClick={() => chooseView(v)}
               className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition cursor-pointer ${
-                view === v ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-2xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                view === v ? 'bg-white dark:bg-brand-slate text-brand-teal-dark dark:text-brand-teal-light shadow-2xs' : 'text-slate-600 dark:text-slate-400 hover:text-brand-slate dark:hover:text-slate-200'
               }`}
             >
               {v === 'country' ? t.home.calendarViewCountry : t.home.calendarViewPersonal}
@@ -327,7 +327,7 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
       <div className="relative @container">
         {updating && (
           <div className="absolute inset-0 z-10 flex items-start justify-center pt-16 pointer-events-none">
-            <Loader2 className="w-5 h-5 animate-spin text-teal-600" aria-label={t.common.loading} />
+            <Loader2 className="w-5 h-5 animate-spin text-brand-teal" aria-label={t.common.loading} />
           </div>
         )}
         <div className={`grid grid-cols-2 @lg:grid-cols-3 @4xl:grid-cols-4 gap-3 transition-opacity ${updating ? 'opacity-40' : ''}`}>
@@ -367,7 +367,7 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
                         aria-label={label}
                         className={`relative aspect-square rounded-[3px] flex items-center justify-center text-[9px] sm:text-[10px] font-semibold tabular-nums leading-none select-none ${style.className} ${style.textClassName} ${
                           inPeriod ? '' : 'opacity-30'
-                        } ${holiday ? 'ring-2 ring-inset ring-amber-500 dark:ring-amber-400' : ''}`}
+                        } ${holiday ? 'ring-2 ring-inset ring-brand-sun dark:ring-amber-400' : ''}`}
                       >
                         <span aria-hidden="true">{i + 1}</span>
                         {best && (
@@ -445,7 +445,7 @@ export function HolidayCalendarView({ homeRegion, schoolRegions, earliestDate, l
           </span>
         ))}
         <span className="inline-flex items-center gap-1">
-          <span aria-hidden="true" className="w-3 h-3 rounded-[3px] ring-2 ring-inset ring-amber-500" />
+          <span aria-hidden="true" className="w-3 h-3 rounded-[3px] ring-2 ring-inset ring-brand-sun" />
           {t.home.calendarLegendPublicHoliday}
         </span>
         {noSchoolData && (

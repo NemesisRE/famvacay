@@ -85,9 +85,9 @@ export function DatePicker({ value, onChange, min, max, id, yearDropdown, cleara
         {...getReferenceProps()}
         type="button"
         onClick={() => dispatch({ type: 'toggle' })}
-        className="w-full flex items-center gap-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-xs hover:border-teal-400 dark:hover:border-teal-600 focus:outline-hidden focus:ring-2 focus:ring-teal-500 transition cursor-pointer text-left"
+        className="w-full flex items-center gap-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-xs hover:border-brand-teal-light dark:hover:border-brand-teal focus:outline-hidden focus:ring-2 focus:ring-teal-500 transition cursor-pointer text-left"
       >
-        <Calendar className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+        <Calendar className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light shrink-0" />
         <span className={`flex-1 truncate ${selected ? '' : 'text-slate-400 dark:text-slate-500'}`}>
           {selected ? formatDate(selected, { day: '2-digit', month: '2-digit', year: 'numeric' }) : t.home.selectDate}
         </span>

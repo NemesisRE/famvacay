@@ -61,7 +61,7 @@ export function UserMenu() {
   }
 
   const headerButtonClass =
-    'h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition shadow-2xs flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer';
+    'h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-brand-teal dark:hover:text-brand-teal-light hover:bg-brand-light dark:hover:bg-slate-700/60 transition shadow-2xs flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer';
 
   // Account action in front of the options menu: sign in -> family profile -> (on the profile
   // page itself) sign out.
@@ -88,14 +88,14 @@ export function UserMenu() {
           title={`${t.nav.familyProfile} (${session.user?.name || session.user?.email || ''})`}
           aria-label={t.nav.familyProfile}
         >
-          <Users className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+          <Users className="w-4 h-4 text-brand-teal dark:text-brand-teal-light" />
           <span className="sm:hidden">{t.nav.profileShort}</span>
           <span className="hidden sm:inline">{t.nav.familyProfile}</span>
         </Link>
       )
     ) : (
       <Link href="/auth/signin" className={headerButtonClass} title={t.nav.signIn} aria-label={t.nav.signIn}>
-        <LogIn className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+        <LogIn className="w-4 h-4 text-brand-teal dark:text-brand-teal-light" />
         <span className="sm:hidden">{t.nav.signInShort}</span>
         <span className="hidden sm:inline">{t.nav.signIn}</span>
       </Link>
@@ -111,7 +111,7 @@ export function UserMenu() {
           aria-label={t.nav.menu}
           aria-expanded={isOpen}
           aria-haspopup="menu"
-          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition shadow-2xs flex items-center justify-center cursor-pointer"
+          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-brand-teal dark:hover:text-brand-teal-light hover:bg-brand-light dark:hover:bg-slate-700/60 transition shadow-2xs flex items-center justify-center cursor-pointer"
         >
           <Settings className="w-4 h-4" />
         </button>
@@ -138,7 +138,7 @@ export function UserMenu() {
                 {isDark ? (
                   <Moon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                 ) : (
-                  <Sun className="w-3.5 h-3.5 text-amber-500" />
+                  <Sun className="w-3.5 h-3.5 text-brand-sun" />
                 )}
                 {isDark ? t.nav.darkMode : t.nav.lightMode}
               </span>
@@ -170,7 +170,7 @@ export function UserMenu() {
                   }`}
                 >
                   <span>{l.name}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 stroke-[2.5]" />}
+                  {isSelected && <Check className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light stroke-[2.5]" />}
                 </button>
               );
             })}
