@@ -148,12 +148,12 @@ function SignInContent() {
 
   return (
     <div className="max-w-md mx-auto py-12 px-4 sm:px-6">
-      <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs space-y-6">
+      <div className="bg-white dark:bg-brand-slate/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs space-y-6">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 rounded-xl mx-auto flex items-center justify-center">
+          <div className="w-12 h-12 bg-teal-50 dark:bg-teal-950/40 text-brand-teal dark:text-brand-teal-light rounded-xl mx-auto flex items-center justify-center">
             <Lock className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+          <h1 className="text-2xl font-bold tracking-tight text-brand-slate dark:text-slate-100">
             {isRegisterMode ? t.auth.createAccount : t.auth.welcome}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -187,10 +187,10 @@ function SignInContent() {
                   type="button"
                   disabled={loading || Boolean(socialLoading)}
                   onClick={() => handleSocialSignIn('google')}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition disabled:opacity-60 cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-brand-light dark:hover:bg-slate-700/60 transition disabled:opacity-60 cursor-pointer"
                 >
                   {socialLoading === 'google' ? (
-                    <span className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-brand-teal border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <GoogleIcon />
                   )}
@@ -203,10 +203,10 @@ function SignInContent() {
                   type="button"
                   disabled={loading || Boolean(socialLoading)}
                   onClick={() => handleSocialSignIn('apple')}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition disabled:opacity-60 cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-brand-light dark:hover:bg-slate-700/60 transition disabled:opacity-60 cursor-pointer"
                 >
                   {socialLoading === 'apple' ? (
-                    <span className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-brand-teal border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <AppleIcon />
                   )}
@@ -220,7 +220,7 @@ function SignInContent() {
                 <div className="w-full border-t border-slate-200 dark:border-slate-800"></div>
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white dark:bg-slate-900 px-2 text-slate-400 font-medium">{t.auth.orCredentials}</span>
+                <span className="bg-white dark:bg-brand-slate px-2 text-slate-400 font-medium">{t.auth.orCredentials}</span>
               </div>
             </div>
           </>
@@ -275,7 +275,7 @@ function SignInContent() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-teal-600 hover:bg-teal-700 text-white shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+            className="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-brand-teal hover:bg-brand-teal-dark text-white shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
           >
             {loading ? (
               <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
@@ -309,7 +309,7 @@ function SignInContent() {
               setIsRegisterMode(!isRegisterMode);
               setMessage(null);
             }}
-            className="text-xs text-teal-600 hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-300 font-semibold inline-flex items-center gap-1 cursor-pointer"
+            className="text-xs text-brand-teal hover:text-teal-800 dark:text-brand-teal-light dark:hover:text-teal-300 font-semibold inline-flex items-center gap-1 cursor-pointer"
           >
             {isRegisterMode ? t.auth.alreadyHaveAccount : t.auth.dontHaveAccount}
           </button>
@@ -324,8 +324,8 @@ export default function SignInPage() {
     <Suspense
       fallback={
         <div className="max-w-md mx-auto py-12 px-4 sm:px-6">
-          <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs flex justify-center py-16">
-            <span className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+          <div className="bg-white dark:bg-brand-slate/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs flex justify-center py-16">
+            <span className="w-6 h-6 border-2 border-brand-teal border-t-transparent rounded-full animate-spin" />
           </div>
         </div>
       }

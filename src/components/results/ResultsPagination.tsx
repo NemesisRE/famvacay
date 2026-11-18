@@ -14,7 +14,7 @@ export interface ResultsPaginationProps {
 }
 
 const navButtonClass =
-  'px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer';
+  'px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-brand-light dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer';
 
 export function ResultsPagination({
   page,
@@ -27,7 +27,7 @@ export function ResultsPagination({
   const { t } = useI18n();
 
   return (
-    <div className="bg-white dark:bg-slate-900/90 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div className="bg-white dark:bg-brand-slate/90 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
       <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
         <span>{t.home.resultsPerPage}:</span>
         <SelectDropdown
@@ -62,7 +62,7 @@ export function ResultsPagination({
                 onClick={() => onPageChange(pageNum)}
                 className={`w-7 h-7 rounded-lg text-xs font-bold transition cursor-pointer ${
                   page === pageNum
-                    ? 'bg-teal-600 text-white shadow-2xs'
+                    ? 'bg-brand-teal text-white shadow-2xs'
                     : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >

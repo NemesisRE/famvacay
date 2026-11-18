@@ -20,7 +20,7 @@ export const OVERLAND_DURATION_PRESETS = [4, 6, 8, 10, 14] as const;
  * Car, train and bus icons in front of the overland travel-time label: they say which trips the
  * limit applies to without a vehicle list in the text, which wrapped in the longer languages.
  */
-export function OverlandModeIcons({ className = 'text-teal-600 dark:text-teal-400' }: { className?: string }) {
+export function OverlandModeIcons({ className = 'text-brand-teal dark:text-brand-teal-light' }: { className?: string }) {
   const { t } = useI18n();
   return (
     <span

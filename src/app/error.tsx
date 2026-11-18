@@ -42,7 +42,7 @@ export default function PageError({ error, retry }: { error: unknown; retry: () 
           <button
             type="button"
             onClick={() => retry()}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-brand-teal hover:bg-brand-teal-dark text-white text-sm font-semibold cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
             <span>{t.errorPage.retry}</span>
@@ -53,7 +53,7 @@ export default function PageError({ error, retry }: { error: unknown; retry: () 
           onClick={() => window.location.reload()}
           className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer ${
             domMutation
-              ? 'bg-teal-600 hover:bg-teal-700 text-white'
+              ? 'bg-brand-teal hover:bg-brand-teal-dark text-white'
               : 'border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40'
           }`}
         >

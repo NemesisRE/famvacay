@@ -279,7 +279,7 @@ export function AirportSelector({
       <div ref={searchContainerRef}>
         <div className="flex items-center justify-between mb-1.5">
           <label htmlFor="airport-search" className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-            <Plane className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+            <Plane className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
             <span>{t.home.airportsLabel}</span>
           </label>
           {selectedAirports.length > 0 && (
@@ -300,7 +300,7 @@ export function AirportSelector({
               return (
                 <span
                   key={code}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-teal-600 text-white shadow-xs"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-brand-teal text-white shadow-xs"
                 >
                   <Plane className="w-3 h-3 text-teal-200" />
                   <span>{code}</span>
@@ -312,7 +312,7 @@ export function AirportSelector({
                   <button
                     type="button"
                     onClick={() => handleRemoveAirport(code)}
-                    className="ml-0.5 hover:bg-teal-700 p-0.5 rounded-full transition-colors text-teal-200 hover:text-white cursor-pointer"
+                    className="ml-0.5 hover:bg-brand-teal-dark p-0.5 rounded-full transition-colors text-teal-200 hover:text-white cursor-pointer"
                     title={t.home.airportsRemove}
                     aria-label={t.home.airportsRemove}
                   >
@@ -343,7 +343,7 @@ export function AirportSelector({
                 className={COMBOBOX_INPUT_CLASS}
               />
               {searching && (
-                <span className="w-3.5 h-3.5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin shrink-0 mr-1" />
+                <span className="w-3.5 h-3.5 border-2 border-brand-teal border-t-transparent rounded-full animate-spin shrink-0 mr-1" />
               )}
               {searchQuery && !searching && (
                 <button
@@ -387,7 +387,7 @@ export function AirportSelector({
                     } ${isSelected ? 'font-semibold' : ''}`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-bold text-teal-700 dark:text-teal-300 bg-teal-100 dark:bg-teal-950/60 px-1.5 py-0.5 rounded text-[11px]">
+                      <span className="font-bold text-brand-teal-dark dark:text-teal-300 bg-teal-100 dark:bg-teal-950/60 px-1.5 py-0.5 rounded text-[11px]">
                         {ap.code}
                       </span>
                       <div className="truncate">
@@ -401,7 +401,7 @@ export function AirportSelector({
                         <Check className="w-3 h-3" /> <span>{t.home.airportsSelectedLabel}</span>
                       </span>
                     ) : (
-                      <span className="text-teal-600 dark:text-teal-400 text-[11px] font-semibold shrink-0">
+                      <span className="text-brand-teal dark:text-brand-teal-light text-[11px] font-semibold shrink-0">
                         {t.home.airportsAdd}
                       </span>
                     )}
@@ -418,7 +418,7 @@ export function AirportSelector({
         <button
           type="button"
           onClick={() => setShowSuggestions(!showSuggestions)}
-          className="text-xs text-teal-700 dark:text-teal-400 hover:text-teal-900 dark:hover:text-teal-300 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+          className="text-xs text-brand-teal-dark dark:text-brand-teal-light hover:text-teal-900 dark:hover:text-teal-300 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
         >
           {showSuggestions ? (
             <>
@@ -434,7 +434,7 @@ export function AirportSelector({
         </button>
 
         {showSuggestions && (
-          <div className="mt-2 p-3 bg-slate-50/70 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+          <div className="mt-2 p-3 bg-brand-light/70 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                 {t.home.airportsNearbyHubs}
@@ -454,7 +454,7 @@ export function AirportSelector({
                     onClick={() => toggleSuggestion(airport.code)}
                     className={`text-xs px-2.5 py-1.5 rounded-lg border font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
                       isSelected
-                        ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
+                        ? 'bg-brand-teal text-white border-brand-teal shadow-xs'
                         : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                     }`}
                   >

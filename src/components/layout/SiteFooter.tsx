@@ -10,7 +10,7 @@ export function SiteFooter() {
   const { requestOpen } = useConsentUi();
   const analyticsEnabled = useAnalyticsEnabled();
   return (
-    <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-6 text-center text-xs text-slate-500 dark:text-slate-400 transition-colors">
+    <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-brand-slate py-6 text-center text-xs text-slate-500 dark:text-slate-400 transition-colors">
       <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
         <span>{t.common.footer}</span>
         <span className="hidden sm:inline">•</span>

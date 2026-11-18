@@ -196,12 +196,12 @@ export function BookingDealsPopover({
         {...getReferenceProps()}
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="relative h-7 text-xs font-semibold text-teal-700 dark:text-teal-300 hover:text-teal-800 dark:hover:text-teal-200 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 pl-2.5 pr-7 py-1 rounded-lg border border-teal-200 dark:border-teal-800 transition-colors w-full inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+        className="relative h-7 text-xs font-semibold text-brand-teal-dark dark:text-teal-300 hover:text-teal-800 dark:hover:text-teal-200 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 pl-2.5 pr-7 py-1 rounded-lg border border-teal-200 dark:border-teal-800 transition-colors w-full inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
         title={t.home.viewPortalDeals || 'View booking portal deals & direct links'}
       >
-        <Tag className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+        <Tag className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
         <span>{t.home.viewPortalDeals || 'View Deals'}</span>
-        <ChevronDown className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-teal-600 dark:text-teal-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-brand-teal dark:text-brand-teal-light transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {/* Popover Card anchored via Floating UI FloatingPortal */}
@@ -218,8 +218,8 @@ export function BookingDealsPopover({
             {/* Title and buttons share the first row, the route badge gets its own line below: beside them
                 it squeezed the title into a wrap on narrow popovers */}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 pb-2.5 border-b border-slate-100 dark:border-slate-700">
-              <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900 dark:text-slate-100 min-w-0 flex-1">
-                <Tag className="w-3.5 h-3.5 shrink-0 text-teal-600 dark:text-teal-400" />
+              <div className="flex items-center gap-1.5 font-bold text-xs text-brand-slate dark:text-slate-100 min-w-0 flex-1">
+                <Tag className="w-3.5 h-3.5 shrink-0 text-brand-teal dark:text-brand-teal-light" />
                 <span>{t.home.bookingDealsTitle || 'Travel Portal Deals'}</span>
               </div>
               <div className="order-3 basis-full min-w-0">
@@ -232,7 +232,7 @@ export function BookingDealsPopover({
                   type="button"
                   onClick={() => setShowPortalSettings(!showPortalSettings)}
                   className={`p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer ${
-                    showPortalSettings ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/40' : 'text-slate-400 dark:text-slate-500'
+                    showPortalSettings ? 'text-brand-teal dark:text-brand-teal-light bg-teal-50 dark:bg-teal-950/40' : 'text-slate-400 dark:text-slate-500'
                   }`}
                   title={t.home.customizePortals}
                 >
@@ -256,13 +256,13 @@ export function BookingDealsPopover({
               <div className="py-2.5 space-y-2 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-[11px] text-slate-700 dark:text-slate-200 flex items-center gap-1">
-                    <Sliders className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                    <Sliders className="w-3 h-3 text-brand-teal dark:text-brand-teal-light" />
                     {t.home.customizePortals}
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowPortalSettings(false)}
-                    className="text-[10px] text-teal-600 dark:text-teal-400 font-bold hover:underline cursor-pointer"
+                    className="text-[10px] text-brand-teal dark:text-brand-teal-light font-bold hover:underline cursor-pointer"
                   >
                     {t.home.dealsDone}
                   </button>
@@ -280,12 +280,12 @@ export function BookingDealsPopover({
                         onClick={() => togglePortal(portal.id)}
                         className={`text-left p-1.5 rounded-lg border text-[11px] font-medium flex items-center justify-between transition-colors cursor-pointer ${
                           isChecked
-                            ? 'border-teal-400 dark:border-teal-700 bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 font-semibold'
-                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60'
+                            ? 'border-brand-teal-light dark:border-brand-teal-dark bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 font-semibold'
+                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-brand-light dark:hover:bg-slate-700/60'
                         }`}
                       >
                         <span className="truncate">{portal.name}</span>
-                        {isChecked && <Check className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0 ml-1" />}
+                        {isChecked && <Check className="w-3 h-3 text-brand-teal dark:text-brand-teal-light shrink-0 ml-1" />}
                       </button>
                     );
                   })}
@@ -299,11 +299,11 @@ export function BookingDealsPopover({
                 {/* Trip Cost Breakdown Summary */}
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div className="p-2 rounded-lg bg-teal-50/70 dark:bg-teal-950/30 border border-teal-100 dark:border-teal-900/60">
-                    <span className="text-[10px] text-teal-700 dark:text-teal-300 font-bold flex items-center gap-1">
+                    <span className="text-[10px] text-brand-teal-dark dark:text-teal-300 font-bold flex items-center gap-1">
                       <TravelIcon className="w-3 h-3" />
                       {travelShareLabel}
                     </span>
-                    <div className="font-extrabold text-slate-900 dark:text-slate-100 text-xs mt-0.5">
+                    <div className="font-extrabold text-brand-slate dark:text-slate-100 text-xs mt-0.5">
                       ~{flight.totalFlightCost} €
                       {/* A car costs the same however many travel in it, so no per-person fare */}
                       {travelMode !== 'CAR' && (
@@ -319,7 +319,7 @@ export function BookingDealsPopover({
                       <Building2 className="w-3 h-3" />
                       {t.home.lodgingShare || 'Lodging'}
                     </span>
-                    <div className="font-extrabold text-slate-900 dark:text-slate-100 text-xs mt-0.5">
+                    <div className="font-extrabold text-brand-slate dark:text-slate-100 text-xs mt-0.5">
                       ~{lodging.totalLodgingCost} €
                       <span className="text-[9px] font-normal text-slate-400 dark:text-slate-500 ml-1">
                         (~{lodging.nightlyRate} € / {t.home.perNightShort})
@@ -331,7 +331,7 @@ export function BookingDealsPopover({
                 {/* Source-market demand: school holidays of Europe's big travel markets (already in the totals) */}
                 {pricingDetails.demandAdjustmentEur ? (
                   <div
-                    className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px] flex items-center justify-between gap-2 text-slate-700 dark:text-slate-300"
+                    className="p-2 rounded-lg bg-brand-light dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px] flex items-center justify-between gap-2 text-slate-700 dark:text-slate-300"
                     title={t.home.demandTitle}
                   >
                     <span>{t.home.demandPriceLabel}</span>
@@ -421,7 +421,7 @@ export function BookingDealsPopover({
                     type="button"
                     onClick={() => downloadIcsFile(candidate, pricingDetails)}
                     title={t.home.downloadIcs || 'Download .ics'}
-                    className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors cursor-pointer"
+                    className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-brand-teal dark:hover:text-brand-teal-light transition-colors cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
                   </button>

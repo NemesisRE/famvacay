@@ -64,7 +64,7 @@ export function AirportSavingsBadge({ originAirport, originCity, originState, au
     : t.home.autoOriginExplain;
   const heading = isGold ? t.home.arbitrageTitle.replace('{place}', place) : `${label} · ${place}`;
   const tone = isGold
-    ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-500 dark:border-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40'
+    ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-brand-sun dark:border-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40'
     : 'bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-400 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40';
   const iconTone = isGold ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400';
 
@@ -97,8 +97,8 @@ export function AirportSavingsBadge({ originAirport, originCity, originState, au
             className="z-50 w-[92vw] max-w-sm bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-slate-600 dark:ring-1 dark:ring-white/10 dark:shadow-black/70 text-slate-800 dark:text-slate-100 p-4 space-y-3 animate-in fade-in zoom-in-95 duration-150 focus:outline-hidden"
           >
             <div className="flex items-start justify-between gap-3">
-              <h4 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+              <h4 className="font-extrabold text-sm text-brand-slate dark:text-slate-100 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-brand-sun shrink-0" />
                 {heading}
               </h4>
               <button

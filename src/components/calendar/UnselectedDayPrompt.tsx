@@ -11,7 +11,7 @@ import { useI18n } from '@/lib/i18n/i18n-context';
 export function UnselectedDayPrompt({ onKeepChoosing, onDiscard }: { onKeepChoosing: () => void; onDiscard: () => void }) {
   const { t } = useI18n();
   return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center p-3 rounded-xl bg-white/85 dark:bg-slate-900/85 backdrop-blur-[2px] animate-in fade-in">
+    <div className="absolute inset-0 z-10 flex items-center justify-center p-3 rounded-xl bg-white/85 dark:bg-brand-slate/85 backdrop-blur-[2px] animate-in fade-in">
       <div
         role="alertdialog"
         aria-labelledby="calendar-unselected-title"
@@ -32,7 +32,7 @@ export function UnselectedDayPrompt({ onKeepChoosing, onDiscard }: { onKeepChoos
             type="button"
             autoFocus
             onClick={onKeepChoosing}
-            className="w-full px-2.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold text-center cursor-pointer"
+            className="w-full px-2.5 py-1.5 rounded-lg bg-brand-teal hover:bg-brand-teal-dark text-white font-semibold text-center cursor-pointer"
           >
             {t.calendar.keepChoosing}
           </button>

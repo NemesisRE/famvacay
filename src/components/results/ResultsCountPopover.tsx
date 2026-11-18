@@ -74,7 +74,7 @@ export function ResultsCountPopover({
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         title={hidden > 0 ? t.home.resultsBreakdownTitle : undefined}
-        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border border-slate-200 dark:border-slate-700 text-[11px] hover:border-teal-300 dark:hover:border-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition cursor-pointer"
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border border-slate-200 dark:border-slate-700 text-[11px] hover:border-teal-300 dark:hover:border-brand-teal-dark hover:bg-teal-50 dark:hover:bg-teal-950/40 transition cursor-pointer"
       >
         <span data-testid="results-destination-count">
           {shownDestinations} / {totalDestinations} {t.home.destinationsFound}
@@ -122,7 +122,7 @@ export function ResultsCountPopover({
                   <button
                     type="button"
                     onClick={() => onInclude(row.key, row.warningKey)}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 font-semibold hover:bg-teal-100 dark:hover:bg-teal-900/60 cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-brand-teal-dark dark:text-teal-300 font-semibold hover:bg-teal-100 dark:hover:bg-teal-900/60 cursor-pointer"
                   >
                     <Eye className="w-3 h-3" />
                     {t.home.resultsBreakdownInclude}
@@ -145,7 +145,7 @@ export function ResultsCountPopover({
                   <button
                     type="button"
                     onClick={onIncludeAll}
-                    className="w-full py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold cursor-pointer"
+                    className="w-full py-1.5 rounded-lg bg-brand-teal hover:bg-brand-teal-dark text-white font-semibold cursor-pointer"
                   >
                     {t.home.resultsBreakdownIncludeAll}
                   </button>

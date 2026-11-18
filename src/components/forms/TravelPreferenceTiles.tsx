@@ -34,12 +34,12 @@ export function SelectionTile({ icon: Icon, label, hint, isSelected, onToggle }:
       onClick={onToggle}
       className={`relative flex flex-col justify-between p-2.5 sm:p-3 rounded-xl border text-xs sm:text-sm font-semibold transition cursor-pointer select-none shadow-2xs h-[82px] sm:h-[86px] ${
         isSelected
-          ? 'bg-teal-600 text-white border-teal-600 shadow-xs ring-2 ring-teal-600/25'
-          : 'bg-white dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600'
+          ? 'bg-brand-teal text-white border-brand-teal shadow-xs ring-2 ring-brand-teal/25'
+          : 'bg-white dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-brand-light dark:hover:bg-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600'
       }`}
     >
       <span className="flex items-center justify-between w-full">
-        <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-teal-600 dark:text-teal-400'}`} />
+        <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-brand-teal dark:text-brand-teal-light'}`} />
         {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />}
       </span>
       <span className="font-bold text-xs truncate block text-left w-full">{label}</span>
@@ -49,7 +49,7 @@ export function SelectionTile({ icon: Icon, label, hint, isSelected, onToggle }:
 }
 
 const GRID_CLASS = 'grid grid-cols-2 gap-2.5';
-const PANEL_CLASS = 'mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700';
+const PANEL_CLASS = 'mt-3 p-3 bg-brand-light dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700';
 // Two settings side by side only where the panel itself (not the window) is wide enough: the
 // search form is a narrow column next to the results on tablets and small laptops
 const PANEL_GRID_CLASS = 'grid grid-cols-1 @lg:grid-cols-2 gap-3';
@@ -190,7 +190,7 @@ export function TravelModeTiles({
           {showPlane && (
             <div>
               <label htmlFor={`${idPrefix}-flight-stops`} className={FIELD_LABEL_CLASS}>
-                <Plane className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                <Plane className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                 <span>{t.home.flightTransitPreference}</span>
               </label>
               <SelectDropdown
@@ -209,7 +209,7 @@ export function TravelModeTiles({
           {showPlane && (
             <div>
               <label htmlFor={`${idPrefix}-cabin-class`} className={FIELD_LABEL_CLASS}>
-                <Armchair className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                <Armchair className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                 <span>{t.profile.cabinClass}</span>
               </label>
               <CabinClassSelect id={`${idPrefix}-cabin-class`} value={cabinClass} onChange={onCabinClassChange} />
@@ -227,7 +227,7 @@ export function TravelModeTiles({
           {showCar && (
             <div>
               <label htmlFor={`${idPrefix}-car-fuel`} className={FIELD_LABEL_CLASS}>
-                <Car className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                <Car className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                 <span>{t.home.carFuelPreference}</span>
               </label>
               <SelectDropdown
@@ -277,7 +277,7 @@ export function ClimatePreferencesPanel({
   const { t } = useI18n();
   if (!showBeach && !showAlpine) return null;
   return (
-    <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 @container">
+    <div className="mt-3 p-3 bg-brand-light dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 @container">
       <span className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
         {t.home.climatePreferencesLabel}
       </span>

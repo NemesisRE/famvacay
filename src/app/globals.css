@@ -1,11 +1,12 @@
 @import 'react-day-picker/style.css' layer(base);
 @import 'tailwindcss';
+@import './brand-tokens.css';
 
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
 
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
@@ -13,8 +14,8 @@
   --color-popover: hsl(var(--popover));
   --color-popover-foreground: hsl(var(--popover-foreground));
 
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
 
   --color-secondary: hsl(var(--secondary));
   --color-secondary-foreground: hsl(var(--secondary-foreground));
@@ -30,19 +31,16 @@
 
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
+  --color-ring: var(--ring);
 
-  --color-brand-50: #f0fdfa;
-  --color-brand-100: #ccfbf1;
-  --color-brand-200: #99f6e4;
-  --color-brand-300: #5eead4;
-  --color-brand-400: #2dd4bf;
-  --color-brand-500: #14b8a6;
-  --color-brand-600: #0d9488;
-  --color-brand-700: #0f766e;
-  --color-brand-800: #115e59;
-  --color-brand-900: #134e4a;
-  --color-brand-950: #042f2e;
+  /* Brand colours (see brand-tokens.css): use these instead of Tailwind's teal-400/600/700, amber-500, slate-50/900 */
+  --color-brand-teal: var(--fv-color-teal);
+  --color-brand-teal-light: var(--fv-color-teal-light);
+  --color-brand-teal-dark: var(--fv-color-teal-dark);
+  --color-brand-sun: var(--fv-color-sun);
+  --color-brand-slate: var(--fv-color-slate);
+  --color-brand-light: var(--fv-color-light);
+  --color-brand-night: var(--fv-color-night);
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
@@ -68,14 +66,14 @@
 }
 
 :root {
-  --background: 210 40% 98%;
-  --foreground: 222.2 84% 4.9%;
+  --background: var(--fv-color-light);
+  --foreground: var(--fv-color-slate);
   --card: 0 0% 100%;
   --card-foreground: 222.2 84% 4.9%;
   --popover: 0 0% 100%;
   --popover-foreground: 222.2 84% 4.9%;
-  --primary: 173 80% 32%;
-  --primary-foreground: 0 0% 100%;
+  --primary: var(--fv-color-teal-dark);
+  --primary-foreground: #ffffff;
   --secondary: 165 30% 96%;
   --secondary-foreground: 173 80% 15%;
   --muted: 210 20% 96.1%;
@@ -86,7 +84,7 @@
   --destructive-foreground: 210 40% 98%;
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
-  --ring: 173 80% 32%;
+  --ring: var(--fv-color-teal-dark);
   --radius: 0.5rem;
 }
 
@@ -97,14 +95,14 @@
 
 .dark {
   color-scheme: dark;
-  --background: 222 47% 9%;
-  --foreground: 210 40% 98%;
+  --background: var(--fv-color-night);
+  --foreground: var(--fv-color-light);
   --card: 222 40% 13%;
   --card-foreground: 210 40% 98%;
   --popover: 222 40% 13%;
   --popover-foreground: 210 40% 98%;
-  --primary: 172 85% 42%;
-  --primary-foreground: 222 47% 9%;
+  --primary: var(--fv-color-teal-light);
+  --primary-foreground: var(--fv-color-night);
   --secondary: 217 33% 20%;
   --secondary-foreground: 210 40% 96%;
   --muted: 217 33% 18%;
@@ -115,26 +113,26 @@
   --destructive-foreground: 210 40% 98%;
   --border: 217 30% 22%;
   --input: 217 30% 22%;
-  --ring: 172 85% 42%;
+  --ring: var(--fv-color-teal-light);
 }
 
 body {
-  color: hsl(var(--foreground));
-  background: hsl(var(--background));
+  color: var(--foreground);
+  background: var(--background);
   font-family: var(--font-outfit), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Custom travel card dark accents */
 .dark .card-glow {
-  box-shadow: 0 0 25px -5px rgba(20, 184, 166, 0.12);
+  box-shadow: 0 0 25px -5px color-mix(in oklch, var(--fv-color-teal) 12%, transparent);
 }
 
 /* react-day-picker theming to match the app's palette (used by DateRangePicker) */
 .rdp-themed {
   --rdp-accent-color: #d97706; /* amber-600 */
   --rdp-accent-background-color: #fef3c7; /* amber-100 */
-  --rdp-today-color: #0d9488; /* teal-600 */
+  --rdp-today-color: var(--fv-color-teal-dark); /* 4.5:1 on the white calendar */
   --rdp-day_button-height: 34px;
   --rdp-day_button-width: 34px;
   --rdp-day-height: 34px;
@@ -143,9 +141,9 @@ body {
   color: #1e293b; /* slate-800 */
 }
 .dark .rdp-themed {
-  --rdp-accent-color: #f59e0b; /* amber-500 */
+  --rdp-accent-color: var(--fv-color-sun);
   --rdp-accent-background-color: rgba(120, 53, 15, 0.4); /* amber-900/40 */
-  --rdp-today-color: #2dd4bf; /* teal-400 */
+  --rdp-today-color: var(--fv-color-teal-light);
   color: #e2e8f0; /* slate-200 */
 }
 .rdp-themed .rdp-chevron {
@@ -212,10 +210,10 @@ body {
 @keyframes famvac-flash {
   0%,
   35% {
-    box-shadow: 0 0 0 3px rgb(20 184 166 / 0.7), 0 0 24px rgb(20 184 166 / 0.35);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--fv-color-teal) 70%, transparent), 0 0 24px color-mix(in oklch, var(--fv-color-teal) 35%, transparent);
   }
   100% {
-    box-shadow: 0 0 0 3px rgb(20 184 166 / 0), 0 0 24px rgb(20 184 166 / 0);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--fv-color-teal) 0%, transparent), 0 0 24px color-mix(in oklch, var(--fv-color-teal) 0%, transparent);
   }
 }
 .famvac-flash {
@@ -225,6 +223,6 @@ body {
   /* No motion, but still a (static) cue; it disappears with the state a moment later */
   .famvac-flash {
     animation: none;
-    box-shadow: 0 0 0 2px rgb(20 184 166 / 0.7);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--fv-color-teal) 70%, transparent);
   }
 }

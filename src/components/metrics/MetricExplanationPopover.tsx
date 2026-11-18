@@ -127,7 +127,7 @@ export function MetricExplanationPopover({
             <div className="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold ${
-                  trigger === 'ptoRatio' ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400' : 'bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400'
+                  trigger === 'ptoRatio' ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400' : 'bg-teal-50 dark:bg-teal-950/40 text-brand-teal dark:text-brand-teal-light'
                 }`}>
                   {trigger === 'ptoRatio' ? (
                     <Zap className="w-4 h-4" />
@@ -135,7 +135,7 @@ export function MetricExplanationPopover({
                     <Award className="w-4 h-4" />
                   )}
                 </div>
-                <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 leading-tight">
+                <h4 className="font-bold text-sm text-brand-slate dark:text-slate-100 leading-tight">
                   {trigger === 'ptoRatio' ? t.home.vacationFactorExplainTitle : t.home.scoreExplainTitle}
                 </h4>
               </div>
@@ -156,9 +156,9 @@ export function MetricExplanationPopover({
             <div className="py-3.5 space-y-4 text-xs">
               {/* 1. Vacation Factor Explanation (shown for ptoRatio or generic button) */}
               {(trigger === 'ptoRatio' || trigger === 'button') && (
-                <div className="bg-slate-50 dark:bg-slate-800/80 rounded-xl p-3 border border-slate-100 dark:border-slate-700/80 space-y-2">
-                  <div className="bg-white dark:bg-slate-900/70 rounded-lg p-2 border border-slate-200/70 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-mono text-[11px] text-center">
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">{win.durationDays} {t.home.days}</span>
+                <div className="bg-brand-light dark:bg-slate-800/80 rounded-xl p-3 border border-slate-100 dark:border-slate-700/80 space-y-2">
+                  <div className="bg-white dark:bg-brand-slate/70 rounded-lg p-2 border border-slate-200/70 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-mono text-[11px] text-center">
+                    <span className="font-semibold text-brand-slate dark:text-slate-100">{win.durationDays} {t.home.days}</span>
                     {' ÷ '}
                     <span className="font-semibold text-indigo-600 dark:text-indigo-400">{win.ptoDaysConsumed} {t.home.ptoConsumed}</span>
                     {' = '}
@@ -221,7 +221,7 @@ export function MetricExplanationPopover({
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px]">
                         <span className="text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                          <Calendar className="w-3 h-3 text-brand-teal dark:text-brand-teal-light" />
                           {t.home.scorePillarPto}
                         </span>
                         <span className="font-bold text-slate-800 dark:text-slate-200">{ptoPct}%</span>
@@ -238,14 +238,14 @@ export function MetricExplanationPopover({
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px]">
                         <span className="text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1">
-                          <Sun className="w-3 h-3 text-amber-500" />
+                          <Sun className="w-3 h-3 text-brand-sun" />
                           {t.home.scorePillarWeather}
                         </span>
                         <span className="font-bold text-slate-800 dark:text-slate-200">{weatherPct}%</span>
                       </div>
                       <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-amber-500 rounded-full transition-all duration-300"
+                          className="h-full bg-brand-sun rounded-full transition-all duration-300"
                           style={{ width: `${weatherPct}%` }}
                         />
                       </div>
@@ -298,10 +298,10 @@ export function MetricExplanationPopover({
                     {win.offPeakBonus && win.offPeakBonus > 0 && (
                       <div className="text-[10px] text-teal-900 dark:text-teal-200 bg-teal-50 dark:bg-teal-950/40 border border-teal-200/90 dark:border-teal-900/50 rounded-lg p-2 flex items-center justify-between">
                         <span className="font-semibold flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                          <Sparkles className="w-3 h-3 text-brand-teal dark:text-brand-teal-light" />
                           {t.home.offPeakBonusBadge}: {t.home.offPeakBonusDesc}
                         </span>
-                        <span className="font-extrabold text-teal-700 dark:text-teal-300 shrink-0 ml-1">
+                        <span className="font-extrabold text-brand-teal-dark dark:text-teal-300 shrink-0 ml-1">
                           +{win.offPeakBonus} {t.home.pointsShort}
                         </span>
                       </div>
@@ -311,10 +311,10 @@ export function MetricExplanationPopover({
                     {win.valueForMoneyBonus && win.valueForMoneyBonus > 0 && (
                       <div className="text-[10px] text-teal-900 dark:text-teal-200 bg-teal-50 dark:bg-teal-950/40 border border-teal-200/90 dark:border-teal-900/50 rounded-lg p-2 flex items-center justify-between">
                         <span className="font-semibold flex items-center gap-1">
-                          <DollarSign className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                          <DollarSign className="w-3 h-3 text-brand-teal dark:text-brand-teal-light" />
                           {t.home.valueForMoneyBadge}: {t.home.valueForMoneyDesc}
                         </span>
-                        <span className="font-extrabold text-teal-700 dark:text-teal-300 shrink-0 ml-1">
+                        <span className="font-extrabold text-brand-teal-dark dark:text-teal-300 shrink-0 ml-1">
                           +{win.valueForMoneyBonus} {t.home.pointsShort}
                         </span>
                       </div>
@@ -386,7 +386,7 @@ function WorkweekComparison({ window: win }: { window: CandidateWindow }) {
   return (
     <div className="space-y-1.5 pt-1">
       <p id={titleId} className="font-semibold text-[11px] text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-        <Calendar className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+        <Calendar className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
         {t.home.workweekComparisonTitle}
       </p>
       <table
@@ -394,7 +394,7 @@ function WorkweekComparison({ window: win }: { window: CandidateWindow }) {
         className="w-full text-[11px] border-separate border-spacing-0 rounded-lg overflow-hidden border border-slate-200/80 dark:border-slate-700"
       >
         <thead>
-          <tr className="bg-white dark:bg-slate-900/70 text-slate-500 dark:text-slate-400">
+          <tr className="bg-white dark:bg-brand-slate/70 text-slate-500 dark:text-slate-400">
             <td />
             {columns.map((c, i) => (
               <th key={c.days.join()} scope="col" className="text-right font-semibold px-2 py-1 whitespace-nowrap">
@@ -406,7 +406,7 @@ function WorkweekComparison({ window: win }: { window: CandidateWindow }) {
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.label} className="bg-white dark:bg-slate-900/70">
+            <tr key={row.label} className="bg-white dark:bg-brand-slate/70">
               <th scope="row" className="text-left font-medium text-slate-600 dark:text-slate-300 px-2 py-1 border-t border-slate-100 dark:border-slate-800">
                 {row.label}
               </th>

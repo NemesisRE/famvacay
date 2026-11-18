@@ -342,7 +342,7 @@ export function AccountSettings() {
   if (loading) {
     return (
       <div className="py-12 text-center text-xs text-slate-500 dark:text-slate-400">
-        <span className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin inline-block mb-2" />
+        <span className="w-6 h-6 border-2 border-brand-teal border-t-transparent rounded-full animate-spin inline-block mb-2" />
         <p>{t.common.loading}</p>
       </div>
     );
@@ -356,9 +356,9 @@ export function AccountSettings() {
   return (
     <div className="space-y-8">
       {/* 1. Email Address */}
-      <div className="p-6 bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+      <div className="p-6 bg-white dark:bg-brand-slate/90 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
         <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-          <Mail className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+          <Mail className="w-4 h-4 text-brand-teal dark:text-brand-teal-light" />
           <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{t.account.emailSecTitle}</h3>
           {/* Confirmation status only where this server can send mail */}
           {!loading && accountInfo.mailEnabled && (
@@ -423,7 +423,7 @@ export function AccountSettings() {
             <button
               type="submit"
               disabled={updatingEmail}
-              className="w-full text-xs font-bold py-2 px-4 rounded-lg bg-teal-600 hover:bg-teal-700 text-white transition disabled:opacity-50 cursor-pointer"
+              className="w-full text-xs font-bold py-2 px-4 rounded-lg bg-brand-teal hover:bg-brand-teal-dark text-white transition disabled:opacity-50 cursor-pointer"
             >
               {updatingEmail ? 'Saving...' : t.account.updateEmailBtn}
             </button>
@@ -432,9 +432,9 @@ export function AccountSettings() {
       </div>
 
       {/* 2. Password */}
-      <div className="p-6 bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+      <div className="p-6 bg-white dark:bg-brand-slate/90 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
         <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-          <KeyRound className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+          <KeyRound className="w-4 h-4 text-brand-teal dark:text-brand-teal-light" />
           <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{t.account.passwordSecTitle}</h3>
         </div>
 
@@ -503,7 +503,7 @@ export function AccountSettings() {
               <button
                 type="submit"
                 disabled={updatingPassword}
-                className="w-full text-xs font-bold py-2 px-4 rounded-lg bg-teal-600 hover:bg-teal-700 text-white transition disabled:opacity-50 cursor-pointer"
+                className="w-full text-xs font-bold py-2 px-4 rounded-lg bg-brand-teal hover:bg-brand-teal-dark text-white transition disabled:opacity-50 cursor-pointer"
               >
                 {updatingPassword ? 'Updating...' : t.account.changePasswordBtn}
               </button>
@@ -513,17 +513,17 @@ export function AccountSettings() {
       </div>
 
       {/* 3. Passkeys & WebAuthn */}
-      <div className="p-6 bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+      <div className="p-6 bg-white dark:bg-brand-slate/90 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2">
-            <Fingerprint className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
+            <Fingerprint className="w-4 h-4 text-brand-teal dark:text-brand-teal-light shrink-0" />
             <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{t.account.passkeysSecTitle}</h3>
           </div>
           <button
             type="button"
             onClick={handleRegisterPasskey}
             disabled={registeringPasskey}
-            className="self-start sm:self-auto text-xs font-bold py-1.5 px-3 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 hover:bg-teal-100 dark:hover:bg-teal-900/50 transition flex items-center gap-1.5 shrink-0 disabled:opacity-50 cursor-pointer"
+            className="self-start sm:self-auto text-xs font-bold py-1.5 px-3 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-brand-teal-dark dark:text-teal-300 border border-teal-200 dark:border-teal-800 hover:bg-teal-100 dark:hover:bg-teal-900/50 transition flex items-center gap-1.5 shrink-0 disabled:opacity-50 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             {registeringPasskey ? 'Enrolling...' : t.account.registerPasskeyBtn}
@@ -556,10 +556,10 @@ export function AccountSettings() {
             passkeys.map((p, idx) => (
               <div
                 key={p.credentialID}
-                className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs"
+                className="p-3 bg-brand-light dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs"
               >
                 <div className="flex items-center gap-2.5">
-                  <Fingerprint className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                  <Fingerprint className="w-4 h-4 text-brand-teal dark:text-brand-teal-light" />
                   <div>
                     <span className="font-bold text-slate-800 dark:text-slate-100 block">
                       Device #{idx + 1} ({p.credentialDeviceType || 'platform'})
@@ -585,9 +585,9 @@ export function AccountSettings() {
 
       {/* 4. Connected Accounts (OAuth): only providers this instance has credentials for, or that are still linked */}
       {socialProviders.length > 0 && (
-        <div className="p-6 bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+        <div className="p-6 bg-white dark:bg-brand-slate/90 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
           <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-            <Share2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <Share2 className="w-4 h-4 text-brand-teal dark:text-brand-teal-light" />
             <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{t.account.socialSecTitle}</h3>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">{t.account.socialDesc}</p>
@@ -601,7 +601,7 @@ export function AccountSettings() {
                   className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 flex items-center justify-between gap-3 hover:border-slate-300 dark:hover:border-slate-600 transition"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="w-9 h-9 shrink-0 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-900 dark:text-slate-100">
+                    <span className="w-9 h-9 shrink-0 rounded-lg bg-brand-light dark:bg-brand-slate border border-slate-200 dark:border-slate-700 flex items-center justify-center text-brand-slate dark:text-slate-100">
                       <Icon className={id === 'apple' ? 'w-5 h-5 fill-current' : 'w-5 h-5'} />
                     </span>
                     <div className="min-w-0">
@@ -651,11 +651,11 @@ export function AccountSettings() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-brand-slate/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 dark:border-slate-600 dark:ring-1 dark:ring-white/10 dark:shadow-black/70 space-y-4">
             <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
               <AlertTriangle className="w-6 h-6" />
-              <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100">
+              <h3 className="font-extrabold text-base text-brand-slate dark:text-slate-100">
                 {t.account.deleteConfirmModalTitle}
               </h3>
             </div>
@@ -666,7 +666,7 @@ export function AccountSettings() {
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(false)}
-                className="text-xs font-semibold px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+                className="text-xs font-semibold px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-brand-light dark:hover:bg-slate-800 transition cursor-pointer"
               >
                 {t.account.cancelBtn}
               </button>

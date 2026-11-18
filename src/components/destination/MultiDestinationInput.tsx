@@ -225,7 +225,7 @@ export function MultiDestinationInput({
       case 'country':
         return 'bg-emerald-500/40 text-emerald-100 border-emerald-300/40';
       case 'city':
-        return 'bg-amber-500/40 text-amber-100 border-amber-300/40';
+        return 'bg-brand-sun/40 text-amber-100 border-amber-300/40';
       case 'airport':
         return 'bg-sky-500/40 text-sky-100 border-sky-300/40';
       case 'region':
@@ -262,7 +262,7 @@ export function MultiDestinationInput({
     <div ref={containerRef} className={`space-y-2.5 ${className}`}>
       <div className="flex items-center justify-between">
         <label htmlFor="destination-search" className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-          <Compass className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+          <Compass className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
           <span>{t.home.destinationsLabel}</span>
         </label>
         {selectedDestinations.length > 0 && (
@@ -285,7 +285,7 @@ export function MultiDestinationInput({
                 className={`inline-flex items-center gap-2 text-xs font-semibold pl-2.5 pr-1.5 py-1 rounded-lg shadow-2xs transition-all duration-300 ${
                   isHighlighted
                     ? 'bg-emerald-600 text-white ring-2 ring-emerald-400 ring-offset-1 animate-pulse'
-                    : 'bg-teal-600 text-white'
+                    : 'bg-brand-teal text-white'
                 }`}
               >
                 <Globe className="w-3.5 h-3.5 text-teal-200 shrink-0" />
@@ -300,7 +300,7 @@ export function MultiDestinationInput({
                 <button
                   type="button"
                   onClick={() => removeDestination(dest)}
-                  className="hover:bg-teal-700 p-0.5 rounded-full transition-colors text-teal-200 hover:text-white cursor-pointer ml-0.5"
+                  className="hover:bg-brand-teal-dark p-0.5 rounded-full transition-colors text-teal-200 hover:text-white cursor-pointer ml-0.5"
                   title={t.home.removeDestination}
                   aria-label={t.home.removeDestination}
                 >
@@ -356,7 +356,7 @@ export function MultiDestinationInput({
                 aria-label={t.home.clearSearch}
               >
                 {isValidating ? (
-                  <span className="block w-3.5 h-3.5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                  <span className="block w-3.5 h-3.5 border-2 border-brand-teal border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <X className="w-3.5 h-3.5" />
                 )}
@@ -380,7 +380,7 @@ export function MultiDestinationInput({
               onPointerDown={(e) => e.preventDefault()}
               onClick={() => selectOption(0)}
               onMouseEnter={() => setActiveIndex(0)}
-              className={`w-full text-left px-3 py-2 text-xs font-bold text-teal-700 dark:text-teal-300 transition-colors flex items-center justify-between cursor-pointer ${
+              className={`w-full text-left px-3 py-2 text-xs font-bold text-brand-teal-dark dark:text-teal-300 transition-colors flex items-center justify-between cursor-pointer ${
                 activeIndex === 0 ? 'bg-teal-100 dark:bg-teal-900/60' : 'bg-teal-50/70 dark:bg-teal-950/50'
               }`}
             >
@@ -418,7 +418,7 @@ export function MultiDestinationInput({
                   <div className="flex items-center gap-2 truncate">
                     <span className="font-semibold text-slate-800 dark:text-slate-100">{item.name}</span>
                     {item.code && (
-                      <span className="text-[10px] font-bold text-teal-600 dark:text-teal-300 bg-teal-100 dark:bg-teal-950/60 px-1.5 py-0.2 rounded">
+                      <span className="text-[10px] font-bold text-brand-teal dark:text-teal-300 bg-teal-100 dark:bg-teal-950/60 px-1.5 py-0.2 rounded">
                         {item.code}
                       </span>
                     )}
@@ -429,7 +429,7 @@ export function MultiDestinationInput({
                   <span
                     className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border capitalize shrink-0 ml-2 ${
                       item.category === 'island'
-                        ? 'bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800'
+                        ? 'bg-teal-100 dark:bg-teal-950/60 text-brand-teal-dark dark:text-teal-300 border-teal-200 dark:border-teal-800'
                         : item.category === 'country'
                         ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                         : item.category === 'city'

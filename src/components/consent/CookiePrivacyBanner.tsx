@@ -32,14 +32,14 @@ export function CookiePrivacyBanner() {
               <button
                 type="button"
                 onClick={() => handleChoice('essential_only')}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-brand-light dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 {t.legal.cookieBannerEssentialOnlyLabel}
               </button>
               <button
                 type="button"
                 onClick={() => handleChoice('analytics_accepted')}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-teal hover:bg-brand-teal-dark text-white transition-colors cursor-pointer"
               >
                 {t.legal.cookieBannerAcceptAnalyticsLabel}
               </button>
@@ -49,14 +49,14 @@ export function CookiePrivacyBanner() {
               <button
                 type="button"
                 onClick={() => handleChoice('essential_only')}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-brand-light dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 {t.legal.cookieBannerEssentialOnlyLabel}
               </button>
               <button
                 type="button"
                 onClick={() => handleChoice('accepted')}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-teal hover:bg-brand-teal-dark text-white transition-colors cursor-pointer"
               >
                 {t.legal.cookieBannerAcceptAllLabel}
               </button>

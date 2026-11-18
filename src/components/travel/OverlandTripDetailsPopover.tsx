@@ -123,18 +123,18 @@ export function OverlandTripDetailsPopover({
         {...getReferenceProps()}
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="relative h-7 w-full inline-flex items-center justify-center gap-1.5 font-semibold text-xs text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-slate-700/60 hover:text-teal-800 dark:hover:text-teal-300 pl-2.5 pr-7 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-teal-300 transition-colors cursor-pointer group shadow-2xs"
+        className="relative h-7 w-full inline-flex items-center justify-center gap-1.5 font-semibold text-xs text-slate-700 dark:text-slate-200 bg-brand-light dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-slate-700/60 hover:text-teal-800 dark:hover:text-teal-300 pl-2.5 pr-7 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-teal-300 transition-colors cursor-pointer group shadow-2xs"
         title={t.home.overlandRouteTitle}
       >
-        <Icon className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform shrink-0" />
+        <Icon className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light group-hover:scale-110 transition-transform shrink-0" />
         <span className="font-bold tracking-tight">{t.home.tripDetailsButton}</span>
         {durationMinutes ? (
-          <span className="text-[9px] font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 px-1.5 py-0.2 rounded border border-slate-200 dark:border-slate-700 shrink-0">
+          <span className="text-[9px] font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-brand-slate px-1.5 py-0.2 rounded border border-slate-200 dark:border-slate-700 shrink-0">
             {formatDuration(durationMinutes)}
           </span>
         ) : null}
         {hasFerry && <Ship className="w-3 h-3 text-cyan-600 dark:text-cyan-400 shrink-0" />}
-        <ChevronDown className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 group-hover:text-teal-600 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 group-hover:text-brand-teal transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
@@ -147,10 +147,10 @@ export function OverlandTripDetailsPopover({
             className="animate-in fade-in zoom-in-95 w-80 sm:w-[380px] max-w-[95vw] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 dark:ring-1 dark:ring-white/10 dark:shadow-black/70 p-4 text-slate-800 dark:text-slate-100 space-y-3"
           >
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900 dark:text-slate-100">
-                <Icon className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <div className="flex items-center gap-1.5 font-bold text-xs text-brand-slate dark:text-slate-100">
+                <Icon className="w-4 h-4 text-brand-teal dark:text-brand-teal-light" />
                 <span>{t.home.overlandRouteTitle}</span>
-                <span className="text-[10px] font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 px-2 py-0.5 rounded-full border border-teal-200 dark:border-teal-800">
+                <span className="text-[10px] font-bold text-brand-teal-dark dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 px-2 py-0.5 rounded-full border border-teal-200 dark:border-teal-800">
                   {vehicleLabel}
                   {fuelLabel ? ` · ${fuelLabel}` : ''}
                 </span>
@@ -167,12 +167,12 @@ export function OverlandTripDetailsPopover({
             </div>
 
             {/* Route: home -> destination */}
-            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] space-y-1">
+            <div className="p-2.5 rounded-xl bg-brand-light dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] space-y-1">
               <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200">
-                <MapPin className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
+                <MapPin className="w-3 h-3 text-brand-teal dark:text-brand-teal-light shrink-0" />
                 <span className="truncate">{homeLabel}</span>
                 <span className="text-slate-400">➔</span>
-                <span className="truncate font-bold text-slate-900 dark:text-slate-100">
+                <span className="truncate font-bold text-brand-slate dark:text-slate-100">
                   {destLabel}
                   {localized.country ? `, ${localized.country}` : ''}
                 </span>
@@ -181,30 +181,30 @@ export function OverlandTripDetailsPopover({
 
             <div className="grid grid-cols-2 gap-2 text-[11px]">
               {durationMinutes ? (
-                <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                <div className="p-2 rounded-lg bg-brand-light dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     {t.home.overlandDoorToDoor}
                   </span>
-                  <div className="font-extrabold text-slate-900 dark:text-slate-100 text-xs mt-0.5">{formatDuration(durationMinutes)}</div>
+                  <div className="font-extrabold text-brand-slate dark:text-slate-100 text-xs mt-0.5">{formatDuration(durationMinutes)}</div>
                 </div>
               ) : null}
               {vehicleDetails?.distanceKm ? (
-                <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                <div className="p-2 rounded-lg bg-brand-light dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
                     {distanceLabel}
                   </span>
-                  <div className="font-extrabold text-slate-900 dark:text-slate-100 text-xs mt-0.5">~{vehicleDetails.distanceKm} km</div>
+                  <div className="font-extrabold text-brand-slate dark:text-slate-100 text-xs mt-0.5">~{vehicleDetails.distanceKm} km</div>
                 </div>
               ) : null}
               {vehicleDetails ? (
                 <div className="p-2 rounded-lg bg-teal-50/70 dark:bg-teal-950/30 border border-teal-100 dark:border-teal-900/60">
-                  <span className="text-[10px] text-teal-700 dark:text-teal-300 font-bold flex items-center gap-1">
+                  <span className="text-[10px] text-brand-teal-dark dark:text-teal-300 font-bold flex items-center gap-1">
                     <Wallet className="w-3 h-3" />
                     {t.home.overlandRoundTripCost}
                   </span>
-                  <div className="font-extrabold text-slate-900 dark:text-slate-100 text-xs mt-0.5">~{vehicleDetails.estimatedTravelCost} €</div>
+                  <div className="font-extrabold text-brand-slate dark:text-slate-100 text-xs mt-0.5">~{vehicleDetails.estimatedTravelCost} €</div>
                 </div>
               ) : null}
               {vehicleDetails?.co2KgEstimate ? (
@@ -213,7 +213,7 @@ export function OverlandTripDetailsPopover({
                     <Leaf className="w-3 h-3" />
                     {t.home.overlandCo2}
                   </span>
-                  <div className="font-extrabold text-slate-900 dark:text-slate-100 text-xs mt-0.5">~{vehicleDetails.co2KgEstimate} kg</div>
+                  <div className="font-extrabold text-brand-slate dark:text-slate-100 text-xs mt-0.5">~{vehicleDetails.co2KgEstimate} kg</div>
                 </div>
               ) : null}
             </div>
@@ -221,10 +221,10 @@ export function OverlandTripDetailsPopover({
             {fuelType && vehicleDetails?.energyCostEur !== undefined && (
               <div className="flex items-center justify-between text-[11px] px-1">
                 <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-semibold">
-                  {fuelType === 'ELECTRIC' ? <Zap className="w-3 h-3 text-amber-500" /> : <Fuel className="w-3 h-3 text-slate-500" />}
+                  {fuelType === 'ELECTRIC' ? <Zap className="w-3 h-3 text-brand-sun" /> : <Fuel className="w-3 h-3 text-slate-500" />}
                   {t.home.energyCostLabel}
                 </span>
-                <span className="font-bold text-slate-900 dark:text-slate-100">~{vehicleDetails.energyCostEur} €</span>
+                <span className="font-bold text-brand-slate dark:text-slate-100">~{vehicleDetails.energyCostEur} €</span>
               </div>
             )}
             {chargingStops > 0 && (
@@ -265,7 +265,7 @@ export function OverlandTripDetailsPopover({
                 href={routeUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-center py-1.5 px-2 rounded-lg font-semibold text-[11px] shadow-2xs flex items-center justify-between bg-teal-600 hover:bg-teal-700 text-white transition-colors"
+                className="text-center py-1.5 px-2 rounded-lg font-semibold text-[11px] shadow-2xs flex items-center justify-between bg-brand-teal hover:bg-brand-teal-dark text-white transition-colors"
               >
                 <span className="truncate">{t.home.openRoutePlanner}</span>
                 <ExternalLink className="w-3 h-3 shrink-0 ml-1" />

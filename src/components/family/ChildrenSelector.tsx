@@ -74,7 +74,7 @@ export function ChildrenSelector({
     <div className={`space-y-2.5 ${className}`}>
       <div>
         <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-          <Users className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+          <Users className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
           {t.home.childrenAgesLabel} ({childrenList.length})
         </label>
       </div>
@@ -85,12 +85,12 @@ export function ChildrenSelector({
       )}
 
       {childrenList.length === 0 ? (
-        <div className="p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center">
+        <div className="p-2.5 bg-brand-light dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center">
           <p className="text-xs text-slate-500 dark:text-slate-400">{t.home.noChildrenTraveling}</p>
           <button
             type="button"
             onClick={handleAddChild}
-            className="mt-1 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline cursor-pointer"
+            className="mt-1 text-xs font-semibold text-brand-teal dark:text-brand-teal-light hover:underline cursor-pointer"
           >
             + {t.home.addChild}
           </button>
@@ -104,7 +104,7 @@ export function ChildrenSelector({
             return (
               <div
                 key={child.id}
-                className="px-2.5 py-1.5 bg-slate-50/90 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700 text-xs transition-all hover:bg-white dark:hover:bg-slate-800 space-y-1.5"
+                className="px-2.5 py-1.5 bg-brand-light/90 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700 text-xs transition-all hover:bg-white dark:hover:bg-slate-800 space-y-1.5"
               >
               {/* One line in every language: number, date, compact badges, delete */}
               <div className="flex items-center gap-2">
@@ -146,7 +146,7 @@ export function ChildrenSelector({
           <button
             type="button"
             onClick={handleAddChild}
-            className="w-full mt-2 py-1.5 px-3 rounded-lg border border-dashed border-teal-300 dark:border-teal-700 bg-teal-50/60 dark:bg-teal-950/40 hover:bg-teal-100/70 dark:hover:bg-teal-900/60 text-teal-700 dark:text-teal-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            className="w-full mt-2 py-1.5 px-3 rounded-lg border border-dashed border-teal-300 dark:border-brand-teal-dark bg-teal-50/60 dark:bg-teal-950/40 hover:bg-teal-100/70 dark:hover:bg-teal-900/60 text-brand-teal-dark dark:text-teal-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             {t.home.addChild}

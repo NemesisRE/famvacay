@@ -11,7 +11,7 @@ const STATUS_STYLE: Record<BookingTimingStatus, { icon: LucideIcon; pill: string
   TOO_EARLY_SCHEDULE_LOCKED: {
     icon: Lock,
     pill: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700',
-    card: 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700',
+    card: 'bg-brand-light dark:bg-slate-800/60 border-slate-200 dark:border-slate-700',
     accent: 'text-slate-600 dark:text-slate-300',
   },
   EARLY_BIRD_SWEET_SPOT: {
@@ -119,14 +119,14 @@ export function BookingTimingCard({ advice }: { advice: BookingTimingAdvice }) {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-        <div className="p-1.5 rounded-md bg-white/70 dark:bg-slate-900/50 border border-white dark:border-slate-800">
+        <div className="p-1.5 rounded-md bg-white/70 dark:bg-brand-slate/50 border border-white dark:border-slate-800">
           <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
             <TransportIcon className="w-3 h-3" />
             {t.bookingTiming.transportHeading[advice.travelMode]}
           </span>
           <p className="text-slate-700 dark:text-slate-200 leading-snug mt-0.5">{transportText(t, advice)}</p>
         </div>
-        <div className="p-1.5 rounded-md bg-white/70 dark:bg-slate-900/50 border border-white dark:border-slate-800">
+        <div className="p-1.5 rounded-md bg-white/70 dark:bg-brand-slate/50 border border-white dark:border-slate-800">
           <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
             <BedDouble className="w-3 h-3" />
             {t.bookingTiming.accommodationHeading}

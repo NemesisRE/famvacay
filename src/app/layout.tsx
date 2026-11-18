@@ -53,7 +53,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+    { media: '(prefers-color-scheme: dark)', color: '#0F172A' },
   ],
 };
 
@@ -70,12 +70,12 @@ export default async function RootLayout({
         {/* Theme before first paint (no flash); ThemeSync keeps it once React has taken over */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased flex flex-col transition-colors">
+      <body className="min-h-screen bg-brand-light dark:bg-slate-950 text-brand-slate dark:text-slate-100 antialiased flex flex-col transition-colors">
         <ThemeSync />
         <AuthProvider>
           <I18nProvider initialLocale={locale}>
             <ConsentUiProvider>
-              <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50 transition-colors">
+              <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-brand-slate/80 backdrop-blur-sm sticky top-0 z-50 transition-colors">
                 <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Link href="/" className="flex items-center" aria-label="FamVacay">

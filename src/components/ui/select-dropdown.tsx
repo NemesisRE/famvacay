@@ -161,10 +161,10 @@ export function SelectDropdown({
       ? 'w-full px-2 py-1 rounded-lg font-medium'
       : 'w-full sm:w-64 px-3 py-1.5 rounded-xl font-semibold';
   const triggerTone = highlighted
-    ? 'bg-teal-50 dark:bg-teal-950/40 border-teal-300 dark:border-teal-700 text-teal-900 dark:text-teal-200 font-bold hover:bg-teal-100/70 dark:hover:bg-teal-900/40'
+    ? 'bg-teal-50 dark:bg-teal-950/40 border-teal-300 dark:border-brand-teal-dark text-teal-900 dark:text-teal-200 font-bold hover:bg-teal-100/70 dark:hover:bg-teal-900/40'
     : isForm
     ? 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:border-slate-400 dark:hover:border-slate-600'
-    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600';
+    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-brand-light dark:hover:bg-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600';
 
   return (
     <div className={`relative ${isForm ? 'block' : 'block flex-1 min-w-0 sm:flex-none sm:inline-block'} ${className}`}>
@@ -234,7 +234,7 @@ export function SelectDropdown({
                     }
                   }}
                   placeholder={t.common.search}
-                  className="w-full text-base sm:text-xs rounded-lg pl-7 pr-7 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 outline-hidden focus:ring-1 focus:ring-teal-500"
+                  className="w-full text-base sm:text-xs rounded-lg pl-7 pr-7 py-1.5 bg-brand-light dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 outline-hidden focus:ring-1 focus:ring-teal-500"
                 />
                 {query && (
                   <button
@@ -265,12 +265,12 @@ export function SelectDropdown({
                         ? 'opacity-40 cursor-not-allowed text-slate-500 dark:text-slate-500'
                         : isSelected
                         ? 'bg-teal-50/80 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 font-semibold cursor-pointer'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 cursor-pointer'
+                        : 'hover:bg-brand-light dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 cursor-pointer'
                     }`}
                   >
                     <span className="flex items-center gap-2 min-w-0">
                       <span className="w-3.5 shrink-0">
-                        {isSelected && <Check className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 stroke-3" />}
+                        {isSelected && <Check className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light stroke-3" />}
                       </span>
                       <span className="truncate" title={option.label}>{option.label}</span>
                     </span>
@@ -302,7 +302,7 @@ export function SelectDropdown({
                     setIsOpen(false);
                     setQuery('');
                   }}
-                  className="w-full py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition cursor-pointer"
+                  className="w-full py-1.5 rounded-lg bg-brand-teal hover:bg-brand-teal-dark text-white text-xs font-semibold transition cursor-pointer"
                 >
                   {t.common.done}
                 </button>

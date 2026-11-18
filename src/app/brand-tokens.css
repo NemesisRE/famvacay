@@ -1,0 +1,27 @@
+/*
+  FamVacay brand colours, version 2.0.0 (https://brand.famvacay.us/files/2.0.0/tokens/tokens.css).
+  Copied from the brand repo's tokens.css (FamVacay part only); don't edit the values by hand, bump
+  the version instead. Hex is the official reference and the fallback, OKLCH is used wherever the
+  browser supports it. Everything in the app takes its brand colours from these variables.
+*/
+:root {
+  --fv-color-teal: #0D9488;
+  --fv-color-teal-light: #26D4C3;
+  --fv-color-teal-dark: #11766C;
+  --fv-color-sun: #F59E0B;
+  --fv-color-slate: #0F172A;
+  --fv-color-light: #F9FAFC;
+  --fv-color-night: #0C1322;
+}
+
+@supports (color: oklch(0% 0 0)) {
+  :root {
+    --fv-color-teal: oklch(60.02% 0.1038 184.7);
+    --fv-color-teal-light: oklch(78.45% 0.1325 184.7);
+    --fv-color-teal-dark: oklch(51.09% 0.0861 184.7);
+    --fv-color-sun: oklch(76.86% 0.1647 70.08);
+    --fv-color-slate: oklch(20.77% 0.0398 265.75);
+    --fv-color-light: oklch(98.42% 0.0034 265.75);
+    --fv-color-night: oklch(18.82% 0.0326 265.75);
+  }
+}

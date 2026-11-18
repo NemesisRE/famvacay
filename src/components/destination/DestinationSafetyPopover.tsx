@@ -63,7 +63,7 @@ function SourceLink({ href, label }: { href?: string; label: string }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700 dark:text-teal-400 hover:underline"
+      className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-teal-dark dark:text-brand-teal-light hover:underline"
     >
       {label}
       <ExternalLink className="w-3 h-3 shrink-0" aria-hidden="true" />
@@ -204,7 +204,7 @@ export function DestinationSafetyPopover({
                   )}
                 </div>
                 <div className="min-w-0">
-                  <h4 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-slate-100 truncate">
+                  <h4 className="font-extrabold text-sm sm:text-base text-brand-slate dark:text-slate-100 truncate">
                     {displayName}
                   </h4>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
@@ -235,10 +235,10 @@ export function DestinationSafetyPopover({
             {/* Contextual Travel Advisory Breakdown */}
             <div className="space-y-3">
               {/* 1. Auswärtiges Amt Status */}
-              <div className="bg-slate-50/80 dark:bg-slate-800/80 rounded-xl p-3 border border-slate-200/80 dark:border-slate-700 space-y-1.5">
+              <div className="bg-brand-light/80 dark:bg-slate-800/80 rounded-xl p-3 border border-slate-200/80 dark:border-slate-700 space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Shield className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                    <Shield className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                     {t.home.safetyGermanWarning}
                   </span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${germanStatus.color}`}>
@@ -252,10 +252,10 @@ export function DestinationSafetyPopover({
               </div>
 
               {/* 2. US State Department Advisory */}
-              <div className="bg-slate-50/80 dark:bg-slate-800/80 rounded-xl p-3 border border-slate-200/80 dark:border-slate-700 space-y-1.5">
+              <div className="bg-brand-light/80 dark:bg-slate-800/80 rounded-xl p-3 border border-slate-200/80 dark:border-slate-700 space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Shield className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                    <Shield className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                     {t.home.safetyUsLevel}
                   </span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${usLevelBg}`}>
@@ -274,10 +274,10 @@ export function DestinationSafetyPopover({
                 ['au', safety.auAdvisoryLevel, safety.auAdvisoryTitle, t.home.safetyAuLevel, sourceUrls.auAdvisoryUrl, t.home.safetyAuLink],
               ] as const).map(([key, level, title, label, href, linkLabel]) =>
                 level ? (
-                  <div key={key} className="bg-slate-50/80 dark:bg-slate-800/80 rounded-xl p-3 border border-slate-200/80 dark:border-slate-700 space-y-1.5">
+                  <div key={key} className="bg-brand-light/80 dark:bg-slate-800/80 rounded-xl p-3 border border-slate-200/80 dark:border-slate-700 space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <Shield className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                        <Shield className="w-3.5 h-3.5 text-brand-teal dark:text-brand-teal-light" />
                         {label}
                       </span>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${level === 1 ? TONE.green : level === 2 ? TONE.amber : level === 3 ? TONE.orange : TONE.rose}`}>

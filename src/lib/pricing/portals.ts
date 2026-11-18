@@ -192,7 +192,7 @@ export const TRAVEL_PORTALS: TravelPortal[] = [
     markets: ['OCEANIA'],
     category: 'package',
     badgeKey: 'package',
-    colorClass: 'bg-teal-600 hover:bg-teal-700 text-white',
+    colorClass: 'bg-brand-teal hover:bg-brand-teal-dark text-white',
     buildUrl: ({ originAirport, destinationAirport, startDate, endDate, adults = 2 }) =>
       `https://www.wotif.com/Flights-Search?trip=roundtrip&leg1=from:${originAirport},to:${destinationAirport},departure:${startDate}TANYT&leg2=from:${destinationAirport},to:${originAirport},departure:${endDate}TANYT&passengers=adults:${adults}`,
   },
@@ -204,7 +204,7 @@ export const TRAVEL_PORTALS: TravelPortal[] = [
     markets: ['NORTH_AMERICA', 'GLOBAL'],
     category: 'package',
     badgeKey: 'direct',
-    colorClass: 'bg-yellow-500 hover:bg-yellow-600 text-slate-900',
+    colorClass: 'bg-yellow-500 hover:bg-yellow-600 text-brand-slate',
     buildUrl: ({ originAirport, destinationAirport, startDate, endDate, adults = 2 }) =>
       `https://www.expedia.com/Flights-Search?flight-type=on&mode=search&trip=roundtrip&leg1=from:${originAirport},to:${destinationAirport},departure:${startDate}TANYT&leg2=from:${destinationAirport},to:${originAirport},departure:${endDate}TANYT&passengers=adults:${adults}`,
   },

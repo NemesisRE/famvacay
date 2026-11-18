@@ -23,8 +23,8 @@ export function ImprintContent({ legal }: { legal: LegalConfig }) {
   const { t } = useI18n();
 
   return (
-    <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs space-y-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.legal.imprintTitle}</h1>
+    <div className="bg-white dark:bg-brand-slate/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs space-y-6 max-w-2xl mx-auto">
+      <h1 className="text-2xl font-bold text-brand-slate dark:text-white">{t.legal.imprintTitle}</h1>
 
       {legal.operationMode === 'private' && (
         <p className="text-sm rounded-xl bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-900/60 text-teal-800 dark:text-teal-300 p-3">
