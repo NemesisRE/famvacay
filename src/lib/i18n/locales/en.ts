@@ -768,6 +768,12 @@ export const en: TranslationDictionary = {
       "Practising \"One more ice cream, please\" in five languages…",
     ],
   },
+  seo: {
+    homeTitle: "FamVacay - Family Vacation Optimizer",
+    homeDescription: "Find the best family vacation windows: combine school and public holidays, compare cheaper departure airports, weather and travel advisories, and save paid leave days.",
+    aboutTitle: "About FamVacay - AI builds, humans decide",
+    aboutDescription: "100% AI-generated code, 100% human idea, design, architecture and testing: how FamVacay is built.",
+  },
   offline: {
     title: "You're offline",
     body: "This page can't be loaded without an internet connection. Your last search results are still available on the start page for a while.",

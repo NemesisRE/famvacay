@@ -768,6 +768,12 @@ export const es: TranslationDictionary = {
       "Practicando \"Otro helado, por favor\" en cinco idiomas…",
     ],
   },
+  seo: {
+    homeTitle: "FamVacay - Optimizador de vacaciones familiares",
+    homeDescription: "Encuentra las mejores fechas de vacaciones en familia: combina vacaciones escolares y festivos, compara aeropuertos de salida más baratos, el clima y las recomendaciones de viaje, y ahorra días de permiso.",
+    aboutTitle: "Acerca de FamVacay - la IA construye, las personas deciden",
+    aboutDescription: "100 % del código generado por IA, 100 % de la idea, el diseño, la arquitectura y las pruebas son humanos: así se construye FamVacay.",
+  },
   offline: {
     title: "Estás sin conexión",
     body: "Esta página no se puede cargar sin conexión a internet. Tus últimos resultados de búsqueda siguen disponibles un tiempo en la página de inicio.",

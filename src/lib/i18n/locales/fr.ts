@@ -768,6 +768,12 @@ export const fr: TranslationDictionary = {
       "Entraînement à « Encore une glace, s’il te plaît » en cinq langues…",
     ],
   },
+  seo: {
+    homeTitle: "FamVacay - Optimiseur de vacances en famille",
+    homeDescription: "Trouvez les meilleures périodes de vacances en famille : combinez vacances scolaires et jours fériés, comparez les aéroports de départ moins chers, la météo et les conseils aux voyageurs, et économisez des jours de congé.",
+    aboutTitle: "À propos de FamVacay - l'IA construit, les humains décident",
+    aboutDescription: "100 % du code généré par IA, 100 % de l'idée, du design, de l'architecture et des tests par un humain : comment FamVacay est construit.",
+  },
   offline: {
     title: "Tu es hors ligne",
     body: "Cette page ne peut pas être chargée sans connexion Internet. Tes derniers résultats de recherche restent disponibles un moment sur la page d'accueil.",

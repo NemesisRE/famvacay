@@ -4,7 +4,8 @@ import { getLegalConfig } from '@/lib/config/legal';
 import { ImprintContent } from '@/components/legal/ImprintContent';
 
 export const metadata: Metadata = {
-  title: 'Imprint / Impressum - FamVacay',
+  title: 'Imprint / Impressum',
+  alternates: { canonical: '/imprint' },
 };
 
 export default async function ImprintPage() {

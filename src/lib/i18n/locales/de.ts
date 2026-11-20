@@ -768,6 +768,12 @@ export const de: TranslationDictionary = {
       "Übe „Noch ein Eis, bitte“ in fünf Sprachen…",
     ],
   },
+  seo: {
+    homeTitle: "FamVacay - Familien-Urlaubs-Optimierer",
+    homeDescription: "Finde die besten Urlaubszeiträume für die Familie: Schul- und Feiertage kombinieren, günstigere Abflughäfen, Wetter und Reisehinweise vergleichen und Urlaubstage sparen.",
+    aboutTitle: "Über FamVacay - KI baut, Menschen entscheiden",
+    aboutDescription: "100 % KI-generierter Code, 100 % menschliche Idee, Design, Architektur und Tests: so entsteht FamVacay.",
+  },
   offline: {
     title: "Du bist offline",
     body: "Diese Seite lässt sich ohne Internetverbindung nicht laden. Deine letzten Suchergebnisse findest du noch eine Weile auf der Startseite.",
