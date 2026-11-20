@@ -739,6 +739,13 @@ export interface TranslationDictionary {
     messages: string[];
   };
   /** Offline fallback page of the installed app (service worker) */
+  /** Search-engine and social-share texts (page titles and meta descriptions) */
+  seo: {
+    homeTitle: string;
+    homeDescription: string;
+    aboutTitle: string;
+    aboutDescription: string;
+  };
   offline: {
     title: string;
     body: string;

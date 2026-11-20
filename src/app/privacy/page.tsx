@@ -7,7 +7,8 @@ import { getConfiguredOAuthProviders } from '@/lib/auth/oauth-config';
 import { isMailConfigured } from '@/lib/mail/mailer';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy / Datenschutzerklärung - FamVacay',
+  title: 'Privacy Policy / Datenschutzerklärung',
+  alternates: { canonical: '/privacy' },
 };
 
 export default async function PrivacyPage() {

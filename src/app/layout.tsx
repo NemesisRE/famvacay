@@ -14,6 +14,9 @@ import { ThemeSync } from '@/components/theme/ThemeSync';
 import { THEME_INIT_SCRIPT } from '@/lib/theme';
 import { getRequestLocale } from '@/lib/i18n/server-locale';
 import localFont from 'next/font/local';
+import { dictionaries } from '@/lib/i18n/dictionaries';
+import type { SupportedLocale } from '@/lib/i18n/types';
+import { getSiteUrl, jsonLdString } from '@/lib/seo/site';
 
 // Brand typeface (SIL OFL), self-hosted: the CSP allows fonts from our own origin only
 const outfit = localFont({
@@ -23,32 +26,45 @@ const outfit = localFont({
   display: 'swap',
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(process.env.APP_URL || 'https://famvacay.us'),
-  title: 'FamVacay - Vacation Optimizer',
-  description: 'Self-hostable vacation window optimization engine leveraging school holidays, departure savings, weather models, and PTO bridge days.',
-  applicationName: 'FamVacay',
-  // Installed to the home screen (iOS reads these instead of the web app manifest)
-  appleWebApp: { capable: true, title: 'FamVacay', statusBarStyle: 'default' },
-  icons: {
-    icon: [
-      { url: '/favicon.ico', sizes: '32x32' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/icons/icon-192.png', type: 'image/png', sizes: '192x192' },
-    ],
-    apple: '/icons/apple-touch-icon.png',
-  },
-  // The app is translated itself: browser translation would rewrite React-managed text nodes
-  // (wrapping them in <font>) and crash the next DOM update with removeChild/insertBefore errors
-  other: { google: 'notranslate' },
-  openGraph: {
-    type: 'website',
-    siteName: 'FamVacay',
-    title: 'FamVacay - Family Vacation Optimizer',
-    images: [{ url: '/brand/fv-og-1200x630.png', width: 1200, height: 630, alt: 'FamVacay' }],
-  },
-  twitter: { card: 'summary_large_image', images: ['/brand/fv-og-1200x630.png'] },
-};
+const OG_IMAGE = { url: '/brand/fv-og-1200x630.png', width: 1200, height: 630, alt: 'FamVacay' };
+const OG_LOCALES: Record<SupportedLocale, string> = { en: 'en_US', de: 'de_DE', fr: 'fr_FR', es: 'es_ES', it: 'it_IT' };
+
+/** Titles and descriptions in the visitor's language (crawlers without a cookie get Accept-Language, else English) */
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  const { seo } = dictionaries[locale];
+  return {
+    metadataBase: new URL(getSiteUrl()),
+    title: { default: seo.homeTitle, template: '%s | FamVacay' },
+    description: seo.homeDescription,
+    applicationName: 'FamVacay',
+    // One URL per page whatever the language (it is chosen by cookie), so no hreflang alternates
+    alternates: { canonical: '/' },
+    // Installed to the home screen (iOS reads these instead of the web app manifest)
+    appleWebApp: { capable: true, title: 'FamVacay', statusBarStyle: 'default' },
+    icons: {
+      icon: [
+        { url: '/favicon.ico', sizes: '32x32' },
+        { url: '/icon.svg', type: 'image/svg+xml' },
+        { url: '/icons/icon-192.png', type: 'image/png', sizes: '192x192' },
+      ],
+      apple: '/icons/apple-touch-icon.png',
+    },
+    // The app is translated itself: browser translation would rewrite React-managed text nodes
+    // (wrapping them in <font>) and crash the next DOM update with removeChild/insertBefore errors
+    other: { google: 'notranslate' },
+    openGraph: {
+      type: 'website',
+      siteName: 'FamVacay',
+      title: seo.homeTitle,
+      description: seo.homeDescription,
+      url: '/',
+      locale: OG_LOCALES[locale],
+      images: [OG_IMAGE],
+    },
+    twitter: { card: 'summary_large_image', title: seo.homeTitle, description: seo.homeDescription, images: [OG_IMAGE.url] },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: [
@@ -64,11 +80,26 @@ export default async function RootLayout({
 }) {
   // Rendered in the visitor's language from the first byte (cookie, otherwise Accept-Language)
   const locale = await getRequestLocale();
+  const { seo } = dictionaries[locale];
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: 'FamVacay',
+    url: getSiteUrl(),
+    description: seo.homeDescription,
+    applicationCategory: 'TravelApplication',
+    operatingSystem: 'Any',
+    browserRequirements: 'Requires JavaScript',
+    inLanguage: locale,
+    image: `${getSiteUrl()}/brand/fv-og-1200x630.png`,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  };
   return (
     <html lang={locale} translate="no" className={`notranslate ${outfit.variable}`} suppressHydrationWarning>
       <head>
         {/* Theme before first paint (no flash); ThemeSync keeps it once React has taken over */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(structuredData) }} />
       </head>
       <body className="min-h-screen bg-brand-light dark:bg-slate-950 text-brand-slate dark:text-slate-100 antialiased flex flex-col transition-colors">
         <ThemeSync />

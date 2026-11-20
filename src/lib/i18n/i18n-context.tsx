@@ -3,19 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useSyncExternalStore } from 'react';
 import { SupportedLocale, TranslationDictionary } from './types';
 import { LOCALE_COOKIE, isSupportedLocale, readLocaleCookie, writeLocaleCookie } from './locale-negotiation';
-import { en } from './locales/en';
-import { de } from './locales/de';
-import { fr } from './locales/fr';
-import { es } from './locales/es';
-import { it } from './locales/it';
-
-const dictionaries: Record<SupportedLocale, TranslationDictionary> = {
-  en,
-  de,
-  fr,
-  es,
-  it,
-};
+import { dictionaries } from './dictionaries';
 
 interface I18nContextValue {
   locale: SupportedLocale;
