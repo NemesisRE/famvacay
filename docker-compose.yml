@@ -123,7 +123,7 @@ services:
 
   # Database store (PostgreSQL 16 Alpine)
   postgres:
-    image: postgres:16-alpine@sha256:f377d590e5474681d4d7838635031a2b50647923b7abfa803ce9b5ff35d5c663
+    image: postgres:16-alpine@sha256:f2f98726820d0342055351c6e9d36e705f5bfffb3dd53ff556325114b08afb6d
     container_name: famvacay-postgres
     restart: unless-stopped
     environment:
@@ -164,7 +164,7 @@ services:
   # runs on an empty data volume, so a first start interrupted after initdb left Umami without
   # its database permanently. Same script as the initdb hook, over the network this time.
   db-init:
-    image: postgres:16-alpine@sha256:f377d590e5474681d4d7838635031a2b50647923b7abfa803ce9b5ff35d5c663
+    image: postgres:16-alpine@sha256:f2f98726820d0342055351c6e9d36e705f5bfffb3dd53ff556325114b08afb6d
     container_name: famvacay-db-init
     entrypoint: ["/bin/sh", "/docker-entrypoint-initdb.d/01-create-umami-db.sh"]
     environment:
